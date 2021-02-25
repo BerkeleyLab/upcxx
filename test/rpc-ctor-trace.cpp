@@ -382,10 +382,13 @@ int main() {
 
   { dist_object<upcxx::global_ptr<int>> dobj(upcxx::new_<int>(0));
     upcxx::global_ptr<int> gp = dobj.fetch(target).wait();
+    upcxx::global_ptr<int> gp_local = *dobj;
+    int x = 0; int *lp = &x;
 
     using upcxx::remote_cx;
     using upcxx::operation_cx;
 
+    // rput: as_rpc
     {
       Fn fn;
       upcxx::rput(42, gp, remote_cx::as_rpc(fn));
@@ -551,6 +554,86 @@ int main() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("...&|as_rpc()& T&& -> const T&", 2, 0, 3);
+
+    // copy: as_rpc
+ 
+    {
+      Fn fn;
+      upcxx::copy(lp, gp, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(lp, gp, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, 1, 6);
+
+    {
+      T t;
+      upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put: as_rpc() T& -> const T&", 2, 0, 1);
+
+    upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put: as_rpc() T&& -> const T&", 2, 1, 6);
+
+    {
+      Fn fn;
+      upcxx::copy(gp, lp, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gp, lp, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get: as_rpc(Fn&&)&& ->", 3, 0, 5);
+
+    {
+      T t;
+      upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get: as_rpc() T& -> const T&", 2, 0, 1);
+
+    upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get: as_rpc() T&& -> const T&", 2, 0, 5);
+
+    {
+      Fn fn;
+      upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loopback: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loopback: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+    {
+      T t;
+      upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loopback: as_rpc() T& -> const T&", 2, 0, 1);
+
+    upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loopback: as_rpc() T&& -> const T&", 2, 0, 4);
   }
  
   print_test_success(success);
