@@ -359,7 +359,7 @@ namespace upcxx {
                       if(heap_d == host_heap)
                         bounce_d_cont();
                       else
-                        detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(bounce_d_cont));
+                        detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(std::move(bounce_d_cont)));
                     }
                   );
                 })
@@ -443,7 +443,7 @@ namespace upcxx {
                     if(heap_d == host_heap)
                       bounce_d_cont();
                     else
-                      detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(bounce_d_cont));
+                      detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(std::move(bounce_d_cont)));
                   })
                 );
               }, cxs_remote.template bind_event<remote_cx_event>()

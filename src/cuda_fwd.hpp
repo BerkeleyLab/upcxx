@@ -16,7 +16,8 @@ namespace upcxx {
     template<typename Fn>
     struct event_cb_fn final: event_cb {
       Fn fn;
-      event_cb_fn(Fn fn): fn(std::move(fn)) {}
+      event_cb_fn(const Fn &f): fn(f) {}
+      event_cb_fn(Fn &&f): fn(std::move(f)) {}
       void execute_and_delete() {
         fn();
         delete this;
@@ -24,8 +25,9 @@ namespace upcxx {
     };
 
     template<typename Fn>
-    event_cb_fn<Fn>* make_event_cb(Fn fn) {
-      return new event_cb_fn<Fn>(std::move(fn));
+    event_cb_fn<typename std::remove_reference<Fn>::type>*
+    make_event_cb(Fn &&fn) {
+      return new event_cb_fn<typename std::remove_reference<Fn>::type>(std::forward<Fn>(fn));
     }
 
     // This type is contained within `__thread` storage, so it must be:
