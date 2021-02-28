@@ -281,11 +281,23 @@ namespace upcxx {
     else if (backend::heap_state::use_mk()) { // MK-enabled GASNet backend
       // GASNet will do a direct source-to-dest memory transfer.
       // No bounce buffering, we just need to orchestrate the completions
-      // Spill remote completion into heap to avoid possible issue #421 problem seen with value capture of completion using PGI
-      cxs_remote_t *cxs_remote_heaped = (
-        copy_traits::want_remote ?
-          new cxs_remote_t(std::move(cxs_remote)) : nullptr);
-      if (copy_traits::want_remote) initiator_per->undischarged_n_++;
+      
+      deserialized_cxs_remote_bound_t *cxs_remote_heaped_local = nullptr;
+      cxs_remote_t *cxs_remote_heaped = nullptr;
+
+      if (copy_traits::want_remote) {
+        if (rank_d == initiator) { // in-place RC
+          cxs_remote_heaped_local = new deserialized_cxs_remote_bound_t(
+            serialization_traits<cxs_remote_bound_t>::deserialized_value(
+              cxs_remote.template bind_event<remote_cx_event>()
+            ));
+        } else { // initiator-chained RC XXX
+          cxs_remote_heaped = new cxs_remote_t(std::move(cxs_remote));
+        }
+
+        initiator_per->undischarged_n_++;
+      } // want_remote
+
       detail::rma_copy_remote(heap_s, rank_s, buf_s, heap_d, rank_d, buf_d, size,
         backend::gasnet::make_handle_cb([=]() {
           // issue #423: Ensure completion is delivered to the correct persona
@@ -298,13 +310,14 @@ namespace upcxx {
               if (copy_traits::want_remote) {
                 initiator_per->undischarged_n_--;
                 if (rank_d == initiator) { // in-place RC
-                  serialization_traits<cxs_remote_bound_t>::deserialized_value(cxs_remote_heaped->template bind_event<remote_cx_event>())();
+                  std::move(*cxs_remote_heaped_local)(); // deserialized_bound_function only invocable on an rvalue
+                  delete cxs_remote_heaped_local;
                 } else { // initiator-chained RC
                   backend::send_am_master<progress_level::internal>( rank_d,
                     cxs_remote_heaped->template bind_event<remote_cx_event>()
                   );
+                  delete cxs_remote_heaped;
                 }
-                delete cxs_remote_heaped;
               } // want_remote
             }, /*known_active=*/std::false_type()); // during(initiator_per,internal)
         })
@@ -313,9 +326,13 @@ namespace upcxx {
     else if(rank_d == initiator) {
       UPCXX_ASSERT(rank_s != initiator);
       UPCXX_ASSERT(heap_s != private_heap);
-      cxs_remote_t *cxs_remote_heaped = (
+      deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
         copy_traits::want_remote ?
-          new cxs_remote_t(std::move(cxs_remote)) : nullptr);
+          new deserialized_cxs_remote_bound_t(
+            serialization_traits<cxs_remote_bound_t>::deserialized_value(
+              cxs_remote.template bind_event<remote_cx_event>()
+            )
+          ) : nullptr);
       
       /* We are the destination, so semantically like a GET, even though a PUT
        * is used to transfer on the network
@@ -349,7 +366,7 @@ namespace upcxx {
 
                         if (copy_traits::want_remote) {
                           initiator_per->undischarged_n_--;
-                          serialization_traits<cxs_remote_bound_t>::deserialized_value(cxs_remote_heaped->template bind_event<remote_cx_event>())();
+                          std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
                           delete cxs_remote_heaped;
                         }
                         cxs_here->template operator()<operation_cx_event>();
