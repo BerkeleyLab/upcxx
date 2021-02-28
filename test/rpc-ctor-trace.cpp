@@ -568,7 +568,7 @@ int main() {
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, 1, 6);
+    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, 1, 5);
 
     {
       T t;
@@ -581,7 +581,7 @@ int main() {
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc() T&& -> const T&", 2, 1, 6);
+    SHOW("copy-put: as_rpc() T&& -> const T&", 2, 1, 5);
 
     {
       Fn fn;
