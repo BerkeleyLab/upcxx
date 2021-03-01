@@ -8,9 +8,20 @@
 // future copy/move behavior. 
 // Consult the UPC++ Specification for guaranteed copy/move behaviors.
 
+#ifndef USE_CUDA
+  #if UPCXX_CUDA_ENABLED 
+    #define USE_CUDA 1
+  #else
+    #define USE_CUDA 0
+  #endif
+#endif
+#if USE_CUDA && !UPCXX_CUDA_ENABLED
+  #error requested USE_CUDA but this UPC++ install does not have CUDA support
+#endif
+
 struct T {
-  static void show_stats(int line, char const *title, int expected_ctors, int expected_copies,
-                         int expected_moves=-1);
+  static void show_stats(int line, char const *title, 
+                         int expected_ctors, int expected_copies, int expected_moves);
   static void reset_counts() { ctors = copies = moves = dtors = 0; }
 
   T() { ctors++; }
@@ -29,11 +40,17 @@ struct T {
   }
 
   private:
+  bool serialize() const {
+    UPCXX_ASSERT_ALWAYS(valid, "serializing an invalidated object");
+    return valid;
+  }
+  T(bool v) : valid(v) { ctors++; } // deserialization
+
   static int ctors, dtors, copies, moves;
   bool valid = true;
 
   public:
-  UPCXX_SERIALIZED_FIELDS(valid)
+  UPCXX_SERIALIZED_VALUES( serialize() )
 };
 
 int T::ctors = 0;
@@ -43,8 +60,11 @@ int T::moves = 0;
 
 bool success = true;
 
-void T::show_stats(int line, const char *title, int expected_ctors, int expected_copies,
-                   int expected_moves) {
+// expected_{ctors,copies,moves}:
+//  positive values request an exact match on # of respective default construct, copy, move of T
+//  negative values enforce an upper bound on the given metric
+void T::show_stats(int line, const char *title, 
+                   int expected_ctors, int expected_copies, int expected_moves) {
   upcxx::barrier();
   
   #if !SKIP_OUTPUT
@@ -68,10 +88,21 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
     } \
   } while (0)
 
-  CHECK(ctors == expected_ctors, "ctors="<<ctors<<" expected="<<expected_ctors);
-  CHECK(copies == expected_copies, "copies="<<copies<<" expected="<<expected_copies);
-  CHECK(expected_moves == -1 || moves == expected_moves,
-                      "moves="<<moves<<" expected="<<expected_moves);
+  if (expected_ctors < 0) 
+    CHECK(ctors <= -expected_ctors, "ctors="<<ctors<<" expected<="<<-expected_ctors);
+  else                    
+    CHECK(ctors == expected_ctors, "ctors="<<ctors<<" expected="<<expected_ctors);
+
+  if (expected_copies < 0) 
+    CHECK(copies <= -expected_copies, "copies="<<copies<<" expected<="<<-expected_copies);
+  else 
+    CHECK(copies == expected_copies, "copies="<<copies<<" expected="<<expected_copies);
+
+  if (expected_moves < 0)
+    CHECK(moves <= -expected_moves, "moves="<<moves<<" expected<="<<-expected_moves);
+  else
+    CHECK(moves == expected_moves, "moves="<<moves<<" expected="<<expected_moves);
+
   CHECK(ctors+copies+moves == dtors, "ctors - dtors != 0");
   
   T::reset_counts();
@@ -116,7 +147,8 @@ int main() {
   T::reset_counts(); // discount construction of global
 
   using upcxx::dist_object;
-  dist_object<int> dob(3);
+  dist_object<int> *ddob = new dist_object<int>(3);
+  dist_object<int> const &dob = *ddob;
 
   int target = (upcxx::rank_me() + 1) % upcxx::rank_n();
 
@@ -568,7 +600,7 @@ int main() {
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, 1, 5);
+    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, -1, -5);
 
     {
       T t;
@@ -581,7 +613,18 @@ int main() {
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc() T&& -> const T&", 2, 1, 5);
+    SHOW("copy-put: as_rpc() T&& -> const T&", 2, -1, -5);
+
+    {
+      upcxx::future<> f;
+      { T t;
+        f = upcxx::copy(lp, gp, 1, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t));
+      }
+      f.wait();
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put: as_rpc()|as_future() T& -> const T&", 2, 0, -1);
 
     {
       Fn fn;
@@ -594,7 +637,7 @@ int main() {
     upcxx::copy(gp, lp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get: as_rpc(Fn&&)&& ->", 3, 0, 5);
+    SHOW("copy-get: as_rpc(Fn&&)&& ->", 3, 0, 4);
 
     {
       T t;
@@ -607,7 +650,7 @@ int main() {
     upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get: as_rpc() T&& -> const T&", 2, 0, 5);
+    SHOW("copy-get: as_rpc() T&& -> const T&", 2, 0, 4);
 
     {
       Fn fn;
@@ -634,6 +677,139 @@ int main() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-loopback: as_rpc() T&& -> const T&", 2, 0, 4);
+
+  #if USE_CUDA
+    upcxx::cuda_device dev(0);
+    upcxx::device_allocator<upcxx::cuda_device> dev_alloc(dev, 1024*1024);
+    using gpdev_t = upcxx::global_ptr<int, upcxx::memory_kind::any>;
+    gpdev_t gpdev_local = dev_alloc.allocate<int>(2);
+    dist_object<gpdev_t> devdobj(gpdev_local+1);
+    gpdev_t gpdev = devdobj.fetch(target).wait();
+
+    {
+      Fn fn;
+      upcxx::copy(gpdev_local, lp, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loop-d2h: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gpdev_local, lp, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loop-d2h: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+    {
+      Fn fn;
+      upcxx::copy(lp, gpdev_local, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loop-h2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(lp, gpdev_local, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loop-h2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+    {
+      Fn fn;
+      upcxx::copy(gpdev_local, gpdev_local+1, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loop-d2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gpdev_local, gpdev_local+1, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-loop-d2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+
+    {
+      Fn fn;
+      upcxx::copy(lp, gpdev, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put-h2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(lp, gpdev, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put-h2d: as_rpc(Fn&&)&& ->", 3, -1, -5);
+
+    {
+      Fn fn;
+      upcxx::copy(gpdev_local, gp, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put-d2h: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gpdev_local, gp, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put-d2h: as_rpc(Fn&&)&& ->", 3, -1, -5);
+
+    {
+      Fn fn;
+      upcxx::copy(gpdev_local, gpdev, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put-d2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gpdev_local, gpdev, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-put-d2d: as_rpc(Fn&&)&& ->", 3, -1, -5);
+
+    {
+      Fn fn;
+      upcxx::copy(gpdev, lp, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get-d2h: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gpdev, lp, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get-d2h: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+    {
+      Fn fn;
+      upcxx::copy(gp, gpdev_local, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get-h2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gp, gpdev_local, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+    {
+      Fn fn;
+      upcxx::copy(gpdev, gpdev_local, 1, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get-d2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+
+    upcxx::copy(gpdev, gpdev_local, 1, remote_cx::as_rpc(Fn()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+
+
+    dev.destroy();
+  #endif // USE_CUDA
+
+    upcxx::delete_(gp_local);
+    delete ddob;
   }
  
   print_test_success(success);
