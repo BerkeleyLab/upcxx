@@ -283,7 +283,9 @@ namespace upcxx {
       // No bounce buffering, we just need to orchestrate the completions
       
       deserialized_cxs_remote_bound_t *cxs_remote_heaped_local = nullptr;
-      cxs_remote_t *cxs_remote_heaped = nullptr;
+      using cxs_remote_am_t = decltype(backend::prepare_deferred_am_master(rank_d, 
+                                       cxs_remote.template bind_event<remote_cx_event>()));
+      cxs_remote_am_t *cxs_remote_am = nullptr;
 
       if (copy_traits::want_remote) {
         if (rank_d == initiator) { // in-place RC
@@ -291,8 +293,9 @@ namespace upcxx {
             serialization_traits<cxs_remote_bound_t>::deserialized_value(
               cxs_remote.template bind_event<remote_cx_event>()
             ));
-        } else { // initiator-chained RC XXX
-          cxs_remote_heaped = new cxs_remote_t(std::move(cxs_remote));
+        } else { // initiator-chained RC, serialize remote_cx now to ensure synchronous source_cx for as_rpc arguments
+          cxs_remote_am = new cxs_remote_am_t(backend::prepare_deferred_am_master(rank_d,
+                                       cxs_remote.template bind_event<remote_cx_event>()));
         }
 
         initiator_per->undischarged_n_++;
@@ -313,10 +316,8 @@ namespace upcxx {
                   std::move(*cxs_remote_heaped_local)(); // deserialized_bound_function only invocable on an rvalue
                   delete cxs_remote_heaped_local;
                 } else { // initiator-chained RC
-                  backend::send_am_master<progress_level::internal>( rank_d,
-                    cxs_remote_heaped->template bind_event<remote_cx_event>()
-                  );
-                  delete cxs_remote_heaped;
+                  backend::send_prepared_am_master(progress_level::internal, rank_d, std::move(*cxs_remote_am));
+                  delete cxs_remote_am;
                 }
               } // want_remote
             }, /*known_active=*/std::false_type()); // during(initiator_per,internal)
