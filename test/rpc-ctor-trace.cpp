@@ -95,7 +95,14 @@ struct NmNcFn { // non-movable/non-copyable function object
   void operator()() { done = true; }
   NmNcFn() {}
   NmNcFn(const NmNcFn&) = delete;
-  UPCXX_SERIALIZED_FIELDS(t)
+  template<typename Writer>
+  static void serialize(Writer &writer, const NmNcFn &obj) {
+    writer.write(obj.t);
+  }
+  template<typename Reader>
+  static T* deserialize(Reader &reader, void *spot) {
+    return reader.template read_into<T>(spot);
+  }
 };
 
 int main() {
@@ -282,10 +289,7 @@ int main() {
     NmNcFn fn;
     upcxx::rpc(target, fn).wait_reference();
   }
-  SHOW("NmNcFn& ->", 3, 0, 0);
-
-  upcxx::rpc(target, NmNcFn()).wait_reference();
-  SHOW("NmNcFn&& ->", 3, 0, 0);
+  SHOW("NmNcFn& ->", 2, 0, 0);
 
   // rpc_ff
 
