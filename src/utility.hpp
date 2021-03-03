@@ -450,6 +450,24 @@ namespace detail {
   };
   
   //////////////////////////////////////////////////////////////////////
+  // is_lvalue_or_copyable, is_lvalue_or_movable: trait for whether a
+  // type is either an lvalue reference or Copy/MoveConstructible
+
+  template<typename Arg>
+  struct is_lvalue_or_copyable {
+    static constexpr bool value =
+      std::is_lvalue_reference<Arg>::value ||
+      std::is_copy_constructible<typename std::decay<Arg>::type>::value;
+  };
+
+  template<typename Arg>
+  struct is_lvalue_or_movable {
+    static constexpr bool value =
+      std::is_lvalue_reference<Arg>::value ||
+      std::is_move_constructible<typename std::decay<Arg>::type>::value;
+  };
+
+  //////////////////////////////////////////////////////////////////////
 
   template<typename Tuple, template<typename...> class Into>
   struct tuple_types_into;

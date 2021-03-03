@@ -282,19 +282,6 @@ namespace upcxx {
         )
       > : std::true_type {};
 
-    template<typename Arg>
-    struct is_lvalue_or_copyable {
-      static constexpr bool value =
-        std::is_lvalue_reference<Arg>::value ||
-        std::is_copy_constructible<typename std::decay<Arg>::type>::value;
-    };
-    template<typename Arg>
-    struct is_lvalue_or_movable {
-      static constexpr bool value =
-        std::is_lvalue_reference<Arg>::value ||
-        std::is_move_constructible<typename std::decay<Arg>::type>::value;
-    };
-
     template<typename Event, typename Fn, typename ...Args>
     struct as_rpc_return {
         static_assert(

@@ -299,7 +299,7 @@ namespace upcxx {
       static_assert(
         detail::trait_forall_tupled<detail::is_lvalue_or_movable,
                                     results_tuple>::value,
-        "rpc return values must be MoveConstructible."
+        "rpc return value must be either an lvalue reference or MoveConstructible."
       );
       
       static_assert(
