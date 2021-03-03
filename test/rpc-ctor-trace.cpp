@@ -587,6 +587,60 @@ int main() {
     done = false;
     SHOW("...&|as_rpc()& T&& -> const T&", 2, 0, 3);
 
+    // VIS rput: as_rpc
+ {  std::size_t sz = 1;
+    std::pair<int *,size_t> lpp(lp,sz);
+    std::pair<upcxx::global_ptr<int>,size_t> gpp(gp,sz);
+    std::array<std::ptrdiff_t,1> a_stride = {{4}};
+    std::array<std::size_t,1> a_ext = {{1}};
+
+    {
+      T t;
+      upcxx::rput_irregular(&lpp,&lpp+1,&gpp,&gpp+1, 
+                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("rput_irregular: as_rpc() T& -> const T&", 2, 0, 0);
+
+    upcxx::rput_irregular(&lpp,&lpp+1,&gpp,&gpp+1,  
+                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("rput_irregular: as_rpc() T&& -> const T&", 2, 0, 3);
+
+    {
+      T t;
+      upcxx::rput_regular(&lp,&lp+1,sz,&gp,&gp+1,sz,
+                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("rput_regular: as_rpc() T& -> const T&", 2, 0, 0);
+
+    upcxx::rput_regular(&lp,&lp+1,sz,&gp,&gp+1,sz,
+                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("rput_regular: as_rpc() T&& -> const T&", 2, 0, 3);
+
+    {
+      T t;
+      upcxx::rput_strided(lp, a_stride, gp, a_stride, a_ext,
+                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("rput_strided: as_rpc() T& -> const T&", 2, 0, 0);
+
+    upcxx::rput_strided(lp, a_stride, gp, a_stride, a_ext,
+                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("rput_strided: as_rpc() T&& -> const T&", 2, 0, 3);
+
+ }
+
     // copy: as_rpc
  
     {
