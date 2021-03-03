@@ -1,0 +1,1 @@
+rpc return values must be MoveConstructible.

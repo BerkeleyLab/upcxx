@@ -282,6 +282,19 @@ namespace upcxx {
         )
       > : std::true_type {};
 
+    template<typename Arg>
+    struct is_lvalue_or_copyable {
+      static constexpr bool value =
+        std::is_lvalue_reference<Arg>::value ||
+        std::is_copy_constructible<typename std::decay<Arg>::type>::value;
+    };
+    template<typename Arg>
+    struct is_lvalue_or_movable {
+      static constexpr bool value =
+        std::is_lvalue_reference<Arg>::value ||
+        std::is_move_constructible<typename std::decay<Arg>::type>::value;
+    };
+
     template<typename Event, typename Fn, typename ...Args>
     struct as_rpc_return {
         static_assert(
@@ -298,6 +311,13 @@ namespace upcxx {
               typename binding<Args>::on_wire_type...
             >::value,
           "All rpc arguments must be Serializable."
+        );
+        static_assert(
+          detail::trait_forall<
+              is_lvalue_or_copyable,
+              Fn, Args...
+            >::value,
+          "All rvalue as_rpc arguments must be CopyConstructible."
         );
         static_assert(
           check_rpc_call<Fn(Args...)>::value,

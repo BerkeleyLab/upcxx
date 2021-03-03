@@ -117,6 +117,14 @@ namespace upcxx {
     );
 
     static_assert(
+      detail::trait_forall<
+        detail::is_lvalue_or_movable,
+          Fn, Arg...
+        >::value,
+      "All rvalue rpc arguments must be MoveConstructible."
+    );
+
+    static_assert(
       detail::rpc_ff_return_no_sfinae<Fn(Arg...), completions<>>::value,
       "function object provided to rpc_ff cannot be invoked on the given arguments as rvalue references "
       "(after deserialization of the function object and arguments). "
@@ -181,6 +189,14 @@ namespace upcxx {
           typename binding<Arg>::on_wire_type...
         >::value,
       "All rpc arguments must be Serializable."
+    );
+
+    static_assert(
+      detail::trait_forall<
+        detail::is_lvalue_or_movable,
+          Fn, Arg...
+        >::value,
+      "All rvalue rpc arguments must be MoveConstructible."
     );
       
     static_assert(
@@ -279,6 +295,12 @@ namespace upcxx {
         is_serializable<results_tuple>::value,
         "rpc return values must be Serializable."
       );
+
+      static_assert(
+        detail::trait_forall_tupled<detail::is_lvalue_or_movable,
+                                    results_tuple>::value,
+        "rpc return values must be MoveConstructible."
+      );
       
       static_assert(
         (detail::binding_all_immediate<results_tuple>::value &&
@@ -350,6 +372,14 @@ namespace upcxx {
             typename binding<Arg>::on_wire_type...
           >::value,
         "All rpc arguments must be Serializable."
+      );
+
+      static_assert(
+        detail::trait_forall<
+          detail::is_lvalue_or_movable,
+            Fn, Arg...
+          >::value,
+        "All rvalue rpc arguments must be MoveConstructible."
       );
         
       static_assert(
