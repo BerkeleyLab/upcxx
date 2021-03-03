@@ -52,7 +52,7 @@ int main() {
         .wait();
     upcxx::barrier();
     assert(count_received == count_returned);
-    assert(count_returned == i + 1);
+    assert(count_returned == (size_t)i + 1);
     assert(*dist_count == count_returned);
     assert(count_sent == count_returned);
   }
