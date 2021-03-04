@@ -118,10 +118,8 @@ namespace upcxx
 
       void send_remote() {
         auto *cbs = static_cast<FinalType*>(this);
-        
-        backend::send_am_master<progress_level::user>( cbs->rank_d,
-          cbs->state_remote.template bind_event<remote_cx_event>()
-        );
+       
+        backend::send_prepared_am_master(progress_level::internal, cbs->rank_d, std::move(cbs->state_remote));
 
         upcxx::current_persona().undischarged_n_ -= 1;
       }
@@ -229,7 +227,10 @@ namespace upcxx
                             std::size_t _elemsz,
                             const std::size_t _count[], std::size_t _stridelevels,
                             backend::gasnet::handle_cb *operation_cb);
-    
+   
+    template<typename CxStateRemote>
+    using CxRemoteAm = decltype(backend::prepare_deferred_am_master(0, 
+                                std::declval<CxStateRemote>().template bind_event<remote_cx_event>()));
 
     template<typename CxStateHere, typename CxStateRemote>
     struct rput_cbs_irreg final:
@@ -240,7 +241,7 @@ namespace upcxx
     {
       intrank_t rank_d;
       CxStateHere state_here;
-      CxStateRemote state_remote;
+      CxRemoteAm<CxStateRemote> state_remote;
       std::vector<upcxx::detail::memvec_t> src;
       std::vector<upcxx::detail::memvec_t> dest;
       rput_cbs_irreg(intrank_t rank_d, CxStateHere here, CxStateRemote remote,
@@ -248,7 +249,7 @@ namespace upcxx
                      std::vector<upcxx::detail::memvec_t>&& dest):
         rank_d(rank_d),
         state_here(std::move(here)),
-        state_remote(std::move(remote)),
+        state_remote(backend::prepare_deferred_am_master(rank_d,remote.template bind_event<remote_cx_event>())),
         src(src),
         dest(dest) {
       }
@@ -271,7 +272,7 @@ namespace upcxx
     {
       intrank_t rank_d;
       CxStateHere state_here;
-      CxStateRemote state_remote;
+      CxRemoteAm<CxStateRemote> state_remote;
       std::vector<void*> src;
       std::vector<void*> dest;
       rput_cbs_reg(intrank_t rank_d, CxStateHere here, CxStateRemote remote,
@@ -279,7 +280,7 @@ namespace upcxx
                     std::vector<void*>&& dest):
         rank_d(rank_d),
         state_here(std::move(here)),
-        state_remote(std::move(remote)),
+        state_remote(backend::prepare_deferred_am_master(rank_d,remote.template bind_event<remote_cx_event>())),
         src(src),
         dest(dest) {
       }
@@ -302,11 +303,11 @@ namespace upcxx
     {
       intrank_t rank_d;
       CxStateHere state_here;
-      CxStateRemote state_remote;
+      CxRemoteAm<CxStateRemote> state_remote;
       rput_cbs_strided(intrank_t rank_d, CxStateHere here, CxStateRemote remote):
         rank_d(rank_d),
         state_here(std::move(here)),
-        state_remote(std::move(remote))
+        state_remote(backend::prepare_deferred_am_master(rank_d,remote.template bind_event<remote_cx_event>()))
       {
       }
       static constexpr bool static_scope = false;
