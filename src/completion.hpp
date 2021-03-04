@@ -308,8 +308,8 @@ namespace upcxx {
         );
         static_assert(
           detail::trait_forall<
-              std::is_move_constructible,
-              deserialized_type_t<Fn>, deserialized_type_t<Args>...
+              detail::is_deserialized_move_constructible,
+              Fn, Args...
             >::value,
           "Deserialized type of all as_rpc arguments must be MoveConstructible."
         );

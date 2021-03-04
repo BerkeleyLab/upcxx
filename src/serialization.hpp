@@ -83,6 +83,12 @@ namespace upcxx {
 
   namespace detail {
     template<typename T>
+    struct is_deserialized_move_constructible:
+      std::is_move_constructible<deserialized_type_t<T>> {};
+  }
+
+  namespace detail {
+    template<typename T>
     struct serialization_references_buffer_not {
       static constexpr bool value = !serialization_traits<T>::references_buffer;
     };
