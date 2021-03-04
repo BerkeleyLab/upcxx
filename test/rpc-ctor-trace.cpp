@@ -90,20 +90,24 @@ struct Fn { // movable and copyable function object
   UPCXX_SERIALIZED_FIELDS(t)
 };
 
-struct NmNcFn { // non-movable/non-copyable function object
+struct NmNcFn { // non-movable/non-copyable object that deserializes as Fn
+  static NmNcFn global;
   T t;
-  void operator()() { done = true; }
   NmNcFn() {}
   NmNcFn(const NmNcFn&) = delete;
-  template<typename Writer>
-  static void serialize(Writer &writer, const NmNcFn &obj) {
-    writer.write(obj.t);
-  }
-  template<typename Reader>
-  static T* deserialize(Reader &reader, void *spot) {
-    return reader.template read_into<T>(spot);
-  }
+  struct upcxx_serialization {
+    template<typename Writer>
+    static void serialize(Writer &writer, const NmNcFn &obj) {
+      writer.write(obj.t);
+    }
+    template<typename Reader>
+    static Fn* deserialize(Reader &reader, void *spot) {
+      return new (spot) Fn{reader.template read<T>()};
+    }
+  };
 };
+
+NmNcFn NmNcFn::global;
 
 int main() {
   upcxx::init();
@@ -289,7 +293,22 @@ int main() {
     NmNcFn fn;
     upcxx::rpc(target, fn).wait_reference();
   }
-  SHOW("NmNcFn& ->", 2, 0, 0);
+  SHOW("NmNcFn& ->", 2, 0, 1);
+
+  {
+    NmNcFn fn;
+    upcxx::rpc(target, [](Fn const &) {}, fn).wait_reference();
+  }
+  SHOW("(arg) NmNcFn& ->", 2, 0, 1);
+
+  {
+    NmNcFn fn;
+    upcxx::rpc(target,
+      [](Fn const &) -> NmNcFn& {
+        return NmNcFn::global;
+      }, fn).wait_reference();
+  }
+  SHOW("(arg) NmNcFn& -> NmNcFn&", 3, 0, 3);
 
   // rpc_ff
 
@@ -340,6 +359,24 @@ int main() {
   done = false;
   SHOW("(rpc_ff) Fn&& ->", 3, 0, 0);
 
+  {
+    NmNcFn fn;
+    upcxx::rpc_ff(target, fn);
+  }
+  while (!done) { upcxx::progress(); }
+  done = false;
+  SHOW("(rpc_ff) NmNcFn& ->", 2, 0, 1);
+
+  {
+    NmNcFn fn;
+    upcxx::rpc_ff(target,
+      [](Fn &&dfn) {
+        dfn();
+      }, fn);
+  }
+  while (!done) { upcxx::progress(); }
+  done = false;
+  SHOW("(rpc_ff arg) NmNcFn& ->", 2, 0, 1);
 
   // as_rpc
 
@@ -391,6 +428,25 @@ int main() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc(Fn&&) const & ->", 3, 0, 2);
+
+    {
+      NmNcFn fn;
+      upcxx::rput(42, gp, remote_cx::as_rpc(fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("as_rpc(NmNcFn&)&& ->", 2, 0, 1);
+
+    {
+      NmNcFn fn;
+      upcxx::rput(42, gp, remote_cx::as_rpc(
+                            [](Fn &&dfn) {
+                              dfn();
+                            }, fn));
+    }
+    while (!done) { upcxx::progress(); }
+    done = false;
+    SHOW("as_rpc(lambda, NmNcFn&)&& ->", 2, 0, 1);
 
     {
       T t;
