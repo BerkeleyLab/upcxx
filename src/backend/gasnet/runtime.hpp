@@ -575,6 +575,15 @@ namespace backend {
       );
   }
 
+  // prepare_deferred_am_master: serialize fn into an outgoing AM buffer, but don't send it yet.
+  // the returned buffer must eventually be passed (exactly once) to backend::send_prepared_am_master
+  // may be slightly less efficient than send_am_master because NPAM cannot be used
+  template<typename Fn>
+  auto prepare_deferred_am_master(intrank_t recipient, Fn &&fn) ->
+       decltype(prepare_am<-1/*disableNPAM*/>(std::forward<Fn>(fn), recipient)) {
+         return prepare_am<-1/*disableNPAM*/>(std::forward<Fn>(fn), recipient);
+  }
+
   template<typename AmBuf>
   void send_prepared_am_persona(
       upcxx::progress_level level,
