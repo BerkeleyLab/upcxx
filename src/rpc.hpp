@@ -118,10 +118,18 @@ namespace upcxx {
 
     static_assert(
       detail::trait_forall<
-        detail::is_lvalue_or_movable,
+          detail::is_lvalue_or_movable,
           Fn, Arg...
         >::value,
       "All rvalue rpc arguments must be MoveConstructible."
+    );
+
+    static_assert(
+      detail::trait_forall<
+          std::is_move_constructible,
+          deserialized_type_t<Fn>, deserialized_type_t<Arg>...
+        >::value,
+      "Deserialized type of all rpc arguments must be MoveConstructible."
     );
 
     static_assert(
@@ -193,10 +201,18 @@ namespace upcxx {
 
     static_assert(
       detail::trait_forall<
-        detail::is_lvalue_or_movable,
+          detail::is_lvalue_or_movable,
           Fn, Arg...
         >::value,
       "All rvalue rpc arguments must be MoveConstructible."
+    );
+
+    static_assert(
+      detail::trait_forall<
+          std::is_move_constructible,
+          deserialized_type_t<Fn>, deserialized_type_t<Arg>...
+        >::value,
+      "Deserialized type of all rpc arguments must be MoveConstructible."
     );
       
     static_assert(
@@ -301,6 +317,11 @@ namespace upcxx {
                                     results_tuple>::value,
         "rpc return value must be either an lvalue reference or MoveConstructible."
       );
+
+      static_assert(
+        std::is_move_constructible<deserialized_type_t<results_tuple>>::value,
+        "Deserialized type of rpc return value must be MoveConstructible."
+      );
       
       static_assert(
         (detail::binding_all_immediate<results_tuple>::value &&
@@ -376,10 +397,18 @@ namespace upcxx {
 
       static_assert(
         detail::trait_forall<
-          detail::is_lvalue_or_movable,
+            detail::is_lvalue_or_movable,
             Fn, Arg...
           >::value,
         "All rvalue rpc arguments must be MoveConstructible."
+      );
+
+      static_assert(
+        detail::trait_forall<
+            std::is_move_constructible,
+            deserialized_type_t<Fn>, deserialized_type_t<Arg>...
+          >::value,
+        "Deserialized type of all rpc arguments must be MoveConstructible."
       );
         
       static_assert(

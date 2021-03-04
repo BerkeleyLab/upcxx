@@ -307,6 +307,13 @@ namespace upcxx {
           "All rvalue as_rpc arguments must be CopyConstructible."
         );
         static_assert(
+          detail::trait_forall<
+              std::is_move_constructible,
+              deserialized_type_t<Fn>, deserialized_type_t<Args>...
+            >::value,
+          "Deserialized type of all as_rpc arguments must be MoveConstructible."
+        );
+        static_assert(
           check_rpc_call<Fn(Args...)>::value,
           "function object provided to as_rpc cannot be invoked on the given arguments as rvalue references "
           "(after deserialization of the function object and arguments). "
