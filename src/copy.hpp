@@ -406,15 +406,10 @@ namespace upcxx {
        */
       // must_ack is true iff initiator_per is left awaiting an event
       const bool must_ack = copy_traits::want_op || (copy_traits::want_source && heap_s == host_heap);
-      auto make_bounce_s_cont = [&](void *bounce_s) {
-        return [=]() {
-          if(copy_traits::want_source && heap_s != host_heap) {
-            // since source side has a bounce buffer, we can signal source_cx as soon
-            // as its populated
-            cxs_here->template operator()<source_cx_event>();
-          }
-          
-          backend::send_am_master<progress_level::internal>( rank_d,
+
+      // this lambda runs synchronously to serialize remote_cx and generate the AM payload we'll eventually send
+      auto make_am = [&](void *bounce_s) {
+        return backend::prepare_deferred_am_master(rank_d,
             upcxx::bind(
               [=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
                 // at target
@@ -456,19 +451,34 @@ namespace upcxx {
                           [=]() { backend::gasnet::deallocate(bounce_s, &backend::gasnet::sheap_footprint_rdzv); }
                        );
                       }
-                    };
+                    }; // bounce_d_cont
                     
                     if(heap_d == host_heap)
                       bounce_d_cont();
                     else
                       detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(std::move(bounce_d_cont)));
-                  })
-                );
+                  }) // make_handle_cb
+                ); // rma_copy_get
               }, cxs_remote.template bind_event<remote_cx_event>()
-            )
-          );
-        };
-      };
+            ) // bind
+        ); // prepare_deferred_am_master
+      }; // make_am
+      using am_buf_t = decltype(make_am(nullptr));
+      am_buf_t *am_buf_heaped;
+
+      // this lambda runs synchronously to generate a continuation that will run once the source is in host segment
+      auto make_bounce_s_cont = [&](void *bounce_s) {
+        am_buf_heaped = new am_buf_t(make_am(bounce_s)); // serialize
+        return [=]() {
+          if(copy_traits::want_source && heap_s != host_heap) {
+            // since source side has a bounce buffer, we can signal source_cx as soon
+            // as its populated
+            cxs_here->template operator()<source_cx_event>();
+          }
+          backend::send_prepared_am_master(progress_level::internal, rank_d, std::move(*am_buf_heaped));
+          delete am_buf_heaped;
+        }; // make_bounce_s_cont lambda
+      }; // make_bounce_s_cont
 
       if(heap_s == host_heap)
         make_bounce_s_cont(buf_s)();
@@ -479,7 +489,7 @@ namespace upcxx {
       }
 
       if (!must_ack) delete cxs_here;
-    }
+    } // copy case
 
     return returner();
   }
