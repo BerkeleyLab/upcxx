@@ -120,9 +120,10 @@ namespace upcxx {
       UPCXX_GPTR_CHK(p);
       if(p) {
         UPCXX_ASSERT(this->is_active(), "device_allocator::daallocate() invoked on an inactive device.");
-        UPCXX_ASSERT(p.heap_idx_ == this->heap_idx_ && p.rank_ == upcxx::rank_me());
+        UPCXX_ASSERT(p.UPCXX_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
+                     p.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me());
         lock_.lock();
-        this->seg_.deallocate(p.raw_ptr_);
+        this->seg_.deallocate(p.UPCXX_INTERNAL_ONLY(raw_ptr_));
         lock_.unlock();
       }
     }
@@ -166,10 +167,12 @@ namespace upcxx {
       UPCXX_ASSERT(gp.is_null() || gp.where() == upcxx::rank_me());
       if (!gp) return Device::invalid_device_id;
       else {
-        backend::heap_state *hs = backend::heap_state::get(gp.heap_idx_);
+        backend::heap_state *hs =
+          backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
         UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
           "device_allocator::device_id() invoked with a pointer from an inactive device.");
-        return Device::device_id(detail::internal_only(), gp.heap_idx_);
+        return Device::device_id(detail::internal_only(),
+                                 gp.UPCXX_INTERNAL_ONLY(heap_idx_));
       }
     }
     
@@ -179,10 +182,11 @@ namespace upcxx {
       UPCXX_GPTR_CHK(gp);
       if (!gp) return Device::template null_pointer<T>();
       UPCXX_ASSERT(gp.where() == upcxx::rank_me());
-      backend::heap_state *hs = backend::heap_state::get(gp.heap_idx_);
+      backend::heap_state *hs =
+        backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
       UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
         "device_allocator::device_id() invoked with a pointer from an inactive device.");
-      return gp.raw_ptr_;
+      return gp.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
   };
 }

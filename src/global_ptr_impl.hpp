@@ -11,7 +11,7 @@
     global_ptr operator+=(std::ptrdiff_t diff) {
       if (diff) UPCXX_GPTR_CHK_NONNULL(*this);
       else      UPCXX_GPTR_CHK(*this);
-      this->raw_ptr_ += diff;
+      this->UPCXX_INTERNAL_ONLY(raw_ptr_) += diff;
       UPCXX_GPTR_CHK(*this);
       return *this;
     }
@@ -32,7 +32,7 @@
     global_ptr operator-=(std::ptrdiff_t diff) {
       if (diff) UPCXX_GPTR_CHK_NONNULL(*this);
       else      UPCXX_GPTR_CHK(*this);
-      this->raw_ptr_ -= diff;
+      this->UPCXX_INTERNAL_ONLY(raw_ptr_) -= diff;
       UPCXX_GPTR_CHK(*this);
       return *this;
     }
