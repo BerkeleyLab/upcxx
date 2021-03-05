@@ -29,9 +29,10 @@ struct T {
     valid = false;
     dtors++;
   }
-
-  UPCXX_SERIALIZED_FIELDS(valid)
+  // Deliberately NOT Serializable
+  //UPCXX_SERIALIZED_FIELDS(valid)
 };
+static_assert(!upcxx::is_serializable<T>::value, "oops");
 
 int T::ctors = 0;
 int T::dtors = 0;
@@ -83,8 +84,10 @@ bool done = false;
 struct Fn {
   T t;
   void operator()() { done = true; }
-  UPCXX_SERIALIZED_FIELDS(t)
+  // Deliberately NOT Serializable
+  //UPCXX_SERIALIZED_FIELDS(t)
 };
+static_assert(!upcxx::is_serializable<Fn>::value, "oops");
 
 int main() {
   upcxx::init();
@@ -188,30 +191,26 @@ int main() {
   { 
     Fn fn;
     upcxx::rput(42, gp, operation_cx::as_lpc(target, fn));
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("operation_cx::as_lpc(Fn&) ->", 1, 1, 4);
 
-  { 
-    upcxx::rput(42, gp, operation_cx::as_lpc(target, Fn()));
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::rput(42, gp, operation_cx::as_lpc(target, Fn()));
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("operation_cx::as_lpc(Fn&&) ->", 1, 0, 5);
 
   { 
     Fn fn;
     upcxx::rput(lp, gp, 1, source_cx::as_lpc(target, fn)|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("source_cx::as_lpc(Fn&) ->", 1, 1, 5);
 
-  { 
-    upcxx::rput(lp, gp, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::rput(lp, gp, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("source_cx::as_lpc(Fn&&) ->", 1, 0, 6);
 
@@ -220,90 +219,78 @@ int main() {
   { 
     Fn fn;
     upcxx::copy(lp, gp, 1, operation_cx::as_lpc(target, fn));
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-put: operation_cx::as_lpc(Fn&) ->", 1, 1, 4);
 
-  { 
-    upcxx::copy(lp, gp, 1, operation_cx::as_lpc(target, Fn()));
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::copy(lp, gp, 1, operation_cx::as_lpc(target, Fn()));
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-put: operation_cx::as_lpc(Fn&&) ->", 1, 0, 5);
 
   { 
     Fn fn;
     upcxx::copy(lp, gp, 1, source_cx::as_lpc(target, fn)|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-put: source_cx::as_lpc(Fn&) ->", 1, 1, 5);
 
-  { 
-    upcxx::copy(lp, gp, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::copy(lp, gp, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-put source_cx::as_lpc(Fn&&) ->", 1, 0, 6);
 
   { 
     Fn fn;
     upcxx::copy(gp, lp, 1, operation_cx::as_lpc(target, fn));
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-get: operation_cx::as_lpc(Fn&) ->", 1, 1, 4);
 
-  { 
-    upcxx::copy(gp, lp, 1, operation_cx::as_lpc(target, Fn()));
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::copy(gp, lp, 1, operation_cx::as_lpc(target, Fn()));
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-get: operation_cx::as_lpc(Fn&&) ->", 1, 0, 5);
 
   { 
     Fn fn;
     upcxx::copy(gp, lp, 1, source_cx::as_lpc(target, fn)|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-get: source_cx::as_lpc(Fn&) ->", 1, 1, 5);
 
-  { 
-    upcxx::copy(gp, lp, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::copy(gp, lp, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-get source_cx::as_lpc(Fn&&) ->", 1, 0, 6);
 
   { 
     Fn fn;
     upcxx::copy(lp, gp_local, 1, operation_cx::as_lpc(target, fn));
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-loopback: operation_cx::as_lpc(Fn&) ->", 1, 1, 4);
 
-  { 
-    upcxx::copy(lp, gp_local, 1, operation_cx::as_lpc(target, Fn()));
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::copy(lp, gp_local, 1, operation_cx::as_lpc(target, Fn()));
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-loopback: operation_cx::as_lpc(Fn&&) ->", 1, 0, 5);
 
   { 
     Fn fn;
     upcxx::copy(lp, gp_local, 1, source_cx::as_lpc(target, fn)|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
   }
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-loopback: source_cx::as_lpc(Fn&) ->", 1, 1, 5);
 
-  { 
-    upcxx::copy(lp, gp_local, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
-    while (!done) { upcxx::progress(); }
-  }
+  upcxx::copy(lp, gp_local, 1, source_cx::as_lpc(target, Fn())|operation_cx::as_future()).wait();
+  while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-loopback source_cx::as_lpc(Fn&&) ->", 1, 0, 6);
 
