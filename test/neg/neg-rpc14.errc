@@ -1,0 +1,1 @@
+rpc return value must be either an lvalue reference or MoveConstructible.

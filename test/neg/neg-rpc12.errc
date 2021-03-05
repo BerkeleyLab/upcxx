@@ -1,0 +1,1 @@
+All rvalue rpc arguments must be MoveConstructible.

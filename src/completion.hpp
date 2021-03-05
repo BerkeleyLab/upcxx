@@ -300,6 +300,20 @@ namespace upcxx {
           "All rpc arguments must be Serializable."
         );
         static_assert(
+          detail::trait_forall<
+              is_lvalue_or_copyable,
+              Fn, Args...
+            >::value,
+          "All rvalue as_rpc arguments must be CopyConstructible."
+        );
+        static_assert(
+          detail::trait_forall<
+              detail::is_deserialized_move_constructible,
+              Fn, Args...
+            >::value,
+          "Deserialized type of all as_rpc arguments must be MoveConstructible."
+        );
+        static_assert(
           check_rpc_call<Fn(Args...)>::value,
           "function object provided to as_rpc cannot be invoked on the given arguments as rvalue references "
           "(after deserialization of the function object and arguments). "

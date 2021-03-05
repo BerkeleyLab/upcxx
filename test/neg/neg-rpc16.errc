@@ -1,0 +1,1 @@
+Deserialized type of all rpc arguments must be MoveConstructible.
