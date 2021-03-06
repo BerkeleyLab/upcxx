@@ -67,12 +67,12 @@ namespace upcxx {
 
   
   template<typename T, memory_kind Ks,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, T *dest, std::size_t n,
-       Cxs &&cxs=completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future{{}}) {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -85,12 +85,12 @@ namespace upcxx {
   }
 
   template<typename T, memory_kind Kd,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(T const *src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future{{}}) {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -103,12 +103,12 @@ namespace upcxx {
   }
   
   template<typename T, memory_kind Ks, memory_kind Kd,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future{{}}) {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src); UPCXX_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -161,14 +161,15 @@ namespace upcxx {
       backend::send_am_master<progress_level::internal>( rank_d,
         detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
           // at target
-          auto operation_cx_as_internal_future = upcxx::completions<upcxx::future_cx<upcxx::operation_cx_event, progress_level::internal>>{{}};
+          auto operation_cx_as_internal_future_obj =
+            detail::operation_cx_as_internal_future{{}};
           deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
             copy_traits::want_remote ?
               new deserialized_cxs_remote_bound_t(std::move(cxs_remote_bound)) : nullptr);
           
           detail::copy( heap_s, rank_s, buf_s,
                         heap_d, rank_d, buf_d,
-                        size, operation_cx_as_internal_future )
+                        size, operation_cx_as_internal_future_obj )
           .then([=]() {
             if (copy_traits::want_remote) {
               std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue

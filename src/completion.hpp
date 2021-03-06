@@ -49,6 +49,7 @@ namespace upcxx {
   type to be used as its `deserialized_type`.
   */
 
+  namespace detail {
   // Future completion to be fulfilled during given progress level
   template<typename Event, progress_level level = progress_level::user>
   struct future_cx {
@@ -105,12 +106,14 @@ namespace upcxx {
     
     Fn fn_;
   };
+  } // namespace detail
   
   //////////////////////////////////////////////////////////////////////////////
   /* completions<...>: A list of completion actions. We use lisp-like lists where
   the head is the first element and the tail is the list of everything after.
   */
   
+  namespace detail {
   template<typename ...Cxs>
   struct completions;
   template<>
@@ -146,10 +149,12 @@ namespace upcxx {
       head_(std::forward<H1>(head)) {
     }
   };
+  } // namespace detail
 
   //////////////////////////////////////////////////////////////////////////////
   // operator "|": Concatenates two completions lists.
   
+  namespace detail {
   template<typename ...B>
   constexpr completions<B...>&& operator|(
       completions<> a, completions<B...> &&b
@@ -203,6 +208,7 @@ namespace upcxx {
       a.tail() | b
     };
   }
+  } // namespace detail
 
   //////////////////////////////////////////////////////////////////////////////
   // detail::completions_has_event: detects if there exists an action associated
@@ -409,6 +415,15 @@ namespace upcxx {
   
   struct remote_cx:
     detail::support_as_rpc<remote_cx_event> {};
+
+  //////////////////////////////////////////////////////////////////////
+  // operation_cx_as_future: default completions for most operations
+  namespace detail {
+    using operation_cx_as_future =
+      completions<future_cx<operation_cx_event>>;
+    using operation_cx_as_internal_future =
+      completions<future_cx<operation_cx_event, progress_level::internal>>;
+  }
 
   //////////////////////////////////////////////////////////////////////
   // cx_non_future_return, cx_result_combine, and cx_remote_dispatch:

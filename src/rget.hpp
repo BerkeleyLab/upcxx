@@ -159,7 +159,7 @@ namespace upcxx {
   // rget
   
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -168,7 +168,7 @@ namespace upcxx {
     >::return_t
   rget(
       global_ptr<const T> gp_s,
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
@@ -243,7 +243,7 @@ namespace upcxx {
   }
   
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -253,7 +253,7 @@ namespace upcxx {
   rget(
       global_ptr<const T> gp_s,
       T *buf_d, std::size_t n,
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;

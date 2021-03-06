@@ -232,7 +232,7 @@ namespace upcxx {
       );
     
     template<typename T1, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>,
+             typename Cxs = detail::operation_cx_as_future,
              typename T = typename std::decay<T1>::type>
     typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
@@ -242,7 +242,7 @@ namespace upcxx {
     reduce_one_or_all_trivial(
         T1 &&value, BinaryOp op, intrank_t root_or_all/*-1 = all*/,
         const team &tm = upcxx::world(),
-        Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+        Cxs &&cxs = detail::operation_cx_as_future{{}}
       ) {
       
       using CxsDecayed = typename std::decay<Cxs>::type;
@@ -311,7 +311,7 @@ namespace upcxx {
     }
     
     template<typename T, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>>
+             typename Cxs = detail::operation_cx_as_future>
     typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::reduce_vector_event_values,
@@ -321,7 +321,7 @@ namespace upcxx {
         T const *src, T *dst, std::size_t n,
         BinaryOp op, intrank_t root_or_all/*-1 = all*/,
         const team &tm = upcxx::world(),
-        Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+        Cxs &&cxs = detail::operation_cx_as_future{{}}
       ) {
       using CxsDecayed = typename std::decay<Cxs>::type;
       static_assert(
@@ -413,7 +413,7 @@ namespace upcxx {
   // upcxx::reduce_one
   
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -424,7 +424,7 @@ namespace upcxx {
   reduce_one(
       T1 value, BinaryOp op, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
     UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_one); // issue 392: prevent large types by-value
 
@@ -440,7 +440,7 @@ namespace upcxx {
   }
   
   template<typename T, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
@@ -451,7 +451,7 @@ namespace upcxx {
       T const *src, T *dst, std::size_t n,
       BinaryOp op, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -531,7 +531,7 @@ namespace upcxx {
   }
   
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -542,7 +542,7 @@ namespace upcxx {
   reduce_one_nontrivial(
       T1 &&value, BinaryOp op, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -560,7 +560,7 @@ namespace upcxx {
   // upcxx::reduce_all
   
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -571,7 +571,7 @@ namespace upcxx {
   reduce_all(
       T1 value, BinaryOp op,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
     UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_all); // issue 392: prevent large types by-value
     UPCXX_ASSERT_INIT();
@@ -583,7 +583,7 @@ namespace upcxx {
   }
   
   template<typename T, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -594,7 +594,7 @@ namespace upcxx {
       T const *src, T *dst, std::size_t n,
       BinaryOp op,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -609,7 +609,7 @@ namespace upcxx {
   
   namespace detail {
     template<typename T1, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>,
+             typename Cxs = detail::operation_cx_as_future,
              typename T = typename std::decay<T1>::type>
     UPCXX_NODISCARD
     typename detail::completions_returner<
@@ -628,7 +628,7 @@ namespace upcxx {
     }
     
     template<typename T1, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>,
+             typename Cxs = detail::operation_cx_as_future,
              typename T = typename std::decay<T1>::type>
     UPCXX_NODISCARD
     typename detail::completions_returner<
@@ -676,7 +676,7 @@ namespace upcxx {
   }
   
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -687,7 +687,7 @@ namespace upcxx {
   reduce_all_nontrivial(
       T1 &&value, BinaryOp op,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();

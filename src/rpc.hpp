@@ -96,7 +96,7 @@ namespace upcxx {
     // computes our return type, but SFINAE's out if fn is a completions type
     -> typename std::enable_if<
          !detail::is_completions<Fn>::value,
-         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), completions<>>::type
+         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), detail::completions<>>::type
        >::type {
 
     static_assert(
@@ -133,7 +133,7 @@ namespace upcxx {
     );
 
     static_assert(
-      detail::rpc_ff_return_no_sfinae<Fn(Arg...), completions<>>::value,
+      detail::rpc_ff_return_no_sfinae<Fn(Arg...), detail::completions<>>::value,
       "function object provided to rpc_ff cannot be invoked on the given arguments as rvalue references "
       "(after deserialization of the function object and arguments). "
       "Note: make sure that the function object does not have any non-const lvalue-reference parameters."
@@ -161,7 +161,7 @@ namespace upcxx {
     // computes our return type, but SFINAE's out if fn is a completions type
     -> typename std::enable_if<
          !detail::is_completions<Fn>::value,
-         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), completions<>>::type
+         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), detail::completions<>>::type
        >::type {
 
     UPCXX_ASSERT_INIT();
@@ -538,14 +538,14 @@ namespace upcxx {
     // computes our return type, but SFINAE's out if fn is a completions type
     -> typename std::enable_if<
          !detail::is_completions<Fn>::value,
-         typename detail::rpc_return_no_sfinae<Fn(Arg...), completions<future_cx<operation_cx_event>>>::type
+         typename detail::rpc_return_no_sfinae<Fn(Arg...), detail::operation_cx_as_future>::type
        >::type {
 
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::template rpc_internal<completions<future_cx<operation_cx_event>>, Fn&&, Arg&&...>(
+    return detail::template rpc_internal<detail::operation_cx_as_future, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
       operation_cx::as_future(), 0
     );
@@ -557,14 +557,14 @@ namespace upcxx {
     // computes our return type, but SFINAE's out if fn is a completions type
     -> typename std::enable_if<
          !detail::is_completions<Fn>::value,
-         typename detail::rpc_return_no_sfinae<Fn(Arg...), completions<future_cx<operation_cx_event>>>::type
+         typename detail::rpc_return_no_sfinae<Fn(Arg...), detail::operation_cx_as_future>::type
        >::type {
 
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::template rpc_internal<completions<future_cx<operation_cx_event>>, Fn&&, Arg&&...>(
+    return detail::template rpc_internal<detail::operation_cx_as_future, Fn&&, Arg&&...>(
       recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
       operation_cx::as_future(), 0
     );

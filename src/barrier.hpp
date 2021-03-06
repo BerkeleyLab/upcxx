@@ -21,7 +21,7 @@ namespace upcxx {
   
   void barrier(const team &tm = upcxx::world());
   
-  template<typename Cxs = completions<future_cx<operation_cx_event>>>
+  template<typename Cxs = detail::operation_cx_as_future>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -30,7 +30,7 @@ namespace upcxx {
     >::return_t
   barrier_async(
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>({})
+      Cxs &&cxs = detail::operation_cx_as_future({})
     ) {
     using CxsDecayed = typename std::decay<Cxs>::type;
     UPCXX_ASSERT_INIT();
