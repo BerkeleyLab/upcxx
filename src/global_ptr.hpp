@@ -8,7 +8,6 @@
 
 #include <upcxx/backend.hpp>
 #include <upcxx/diagnostic.hpp>
-#include <upcxx/internal.hpp>
 #include <upcxx/memory_kind.hpp>
 
 #include <cassert> // assert
