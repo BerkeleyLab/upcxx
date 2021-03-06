@@ -94,7 +94,7 @@ namespace upcxx {
     if(tm.rank_me() == root) {
       backend::bcast_am_master<progress_level::user>(
         tm,
-        upcxx::bind([=](T &&value) {
+        detail::bind([=](T &&value) {
             broadcast_state *s = detail::template registered_state<broadcast_state>(id);
             ::new(&s->value) T(std::move(value));
             s->contribute(id);

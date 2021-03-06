@@ -186,6 +186,7 @@ namespace upcxx {
 ////////////////////////////////////////////////////////////////////////
 
 namespace upcxx {
+  namespace detail {
   // dist_object<T> references are bound using their id's.
   template<typename T>
   struct binding<dist_object<T>&> {
@@ -220,5 +221,6 @@ namespace upcxx {
       "Moving a dist_object into a binding must surely be an error!"
     );
   };
+  }
 }
 #endif

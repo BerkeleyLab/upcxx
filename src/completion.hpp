@@ -97,7 +97,7 @@ namespace upcxx {
     }
   };
   
-  // RPC completion. Arguments are already bound into fn_ (via upcxx::bind).
+  // RPC completion. Arguments are already bound into fn_ (via detail::bind).
   template<typename Event, typename Fn>
   struct rpc_cx {
     using event_t = Event;
@@ -328,7 +328,7 @@ namespace upcxx {
         );
 
       using type = completions<
-          rpc_cx<Event, typename bind<Fn&&, Args&&...>::return_type>
+          rpc_cx<Event, typename bind_<Fn&&, Args&&...>::return_type>
         >;
     };
   }
@@ -386,8 +386,8 @@ namespace upcxx {
       static typename detail::as_rpc_return<Event, Fn, Args...>::type
       as_rpc(Fn &&fn, Args &&...args) {
         return {
-          rpc_cx<Event, typename detail::bind<Fn&&, Args&&...>::return_type>{
-            upcxx::bind(std::forward<Fn>(fn), std::forward<Args>(args)...)
+          rpc_cx<Event, typename detail::bind_<Fn&&, Args&&...>::return_type>{
+            detail::bind(std::forward<Fn>(fn), std::forward<Args>(args)...)
           }
         };
       }
@@ -774,12 +774,12 @@ namespace upcxx {
     template<typename FnRefTuple, int ...i>
     auto cx_bind_remote_fns(FnRefTuple &&fns, detail::index_sequence<i...>)
       UPCXX_RETURN_DECLTYPE (
-        upcxx::bind(
+        detail::bind(
           cx_remote_dispatch{},
           std::get<i>(std::forward<FnRefTuple>(fns))...
         )
       ) {
-      return upcxx::bind(
+      return detail::bind(
           cx_remote_dispatch{},
           std::get<i>(std::forward<FnRefTuple>(fns))...
         );

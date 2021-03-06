@@ -159,7 +159,7 @@ namespace upcxx {
       UPCXX_ASSERT(heap_s != detail::private_heap && heap_d != detail::private_heap);
       
       backend::send_am_master<progress_level::internal>( rank_d,
-        upcxx::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
+        detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
           // at target
           auto operation_cx_as_internal_future = upcxx::completions<upcxx::future_cx<upcxx::operation_cx_event, progress_level::internal>>{{}};
           deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
@@ -240,7 +240,7 @@ namespace upcxx {
       } else must_ack |= copy_traits::want_source;
 
       backend::send_am_master<progress_level::internal>( rank_d,
-        upcxx::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
+        detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
           // at target
           deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
             copy_traits::want_remote ?
@@ -410,7 +410,7 @@ namespace upcxx {
       // this lambda runs synchronously to serialize remote_cx and generate the AM payload we'll eventually send
       auto make_am = [&](void *bounce_s) {
         return backend::prepare_deferred_am_master(rank_d,
-            upcxx::bind(
+            detail::bind(
               [=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
                 // at target
                 void *bounce_d = heap_d == host_heap ? buf_d : backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);

@@ -111,7 +111,7 @@ namespace upcxx {
     static_assert(
       detail::trait_forall<
           is_serializable,
-          typename binding<Arg>::on_wire_type...
+          typename detail::binding<Arg>::on_wire_type...
         >::value,
       "All rpc arguments must be Serializable."
     );
@@ -142,7 +142,7 @@ namespace upcxx {
     static_assert(
       detail::trait_forall<
          detail::type_respects_static_size_limit,
-         typename binding<Arg>::on_wire_type...
+         typename detail::binding<Arg>::on_wire_type...
        >::value,
       UPCXX_STATIC_ASSERT_RPC_MSG(rpc_ff)
     );
@@ -152,7 +152,7 @@ namespace upcxx {
       "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
     backend::template send_am_master<progress_level::user>( recipient,
-      upcxx::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
+      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
     );
   }
   
@@ -194,7 +194,7 @@ namespace upcxx {
     static_assert(
       detail::trait_forall<
           is_serializable,
-          typename binding<Arg>::on_wire_type...
+          typename detail::binding<Arg>::on_wire_type...
         >::value,
       "All rpc arguments must be Serializable."
     );
@@ -225,7 +225,7 @@ namespace upcxx {
     static_assert(
       detail::trait_forall<
          detail::type_respects_static_size_limit,
-         typename binding<Arg>::on_wire_type...
+         typename detail::binding<Arg>::on_wire_type...
        >::value,
       UPCXX_STATIC_ASSERT_RPC_MSG(rpc_ff)
     );
@@ -253,7 +253,7 @@ namespace upcxx {
       >{state};
     
     backend::template send_am_master<progress_level::user>( recipient,
-      upcxx::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
+      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
     );
     
     // send_am_master doesn't support async source-completion, so we know
@@ -391,7 +391,7 @@ namespace upcxx {
       static_assert(
         detail::trait_forall<
             is_serializable,
-            typename binding<Arg>::on_wire_type...
+            typename detail::binding<Arg>::on_wire_type...
           >::value,
         "All rpc arguments must be Serializable."
       );
@@ -415,7 +415,7 @@ namespace upcxx {
       static_assert(
         detail::trait_forall<
             detail::type_respects_static_size_limit,
-            typename binding<Arg>::on_wire_type...
+            typename detail::binding<Arg>::on_wire_type...
           >::value,
         UPCXX_STATIC_ASSERT_RPC_MSG(rpc)
       );
@@ -442,11 +442,11 @@ namespace upcxx {
       intrank_t initiator = backend::rank_me;
       auto *op_lpc = static_cast<cxs_state_t&&>(state).template to_lpc_dormant<operation_cx_event>();
       
-      using fn_bound_t = typename detail::bind<const Fn&, const Arg&...>::return_type;
+      using fn_bound_t = typename detail::bind_<const Fn&, const Arg&...>::return_type;
 
       backend::template send_am_master<progress_level::user>(
         recipient,
-        upcxx::bind_rvalue_as_lvalue(
+        detail::bind_rvalue_as_lvalue(
           [=](deserialized_type_t<fn_bound_t> &&fn_bound) {
             return upcxx::apply_as_future_then_lazy(
                 static_cast<deserialized_type_t<fn_bound_t>&&>(fn_bound),
@@ -459,7 +459,7 @@ namespace upcxx {
                 }
               );
           },
-          upcxx::bind_rvalue_as_lvalue(static_cast<Fn&&>(fn), static_cast<Arg&&>(args)...)
+          detail::bind_rvalue_as_lvalue(static_cast<Fn&&>(fn), static_cast<Arg&&>(args)...)
         )
       );
       

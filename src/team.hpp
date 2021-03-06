@@ -66,6 +66,7 @@ namespace upcxx {
     return detail::the_local_team.value();
   }
 
+  namespace detail {
   // team references are bound using their id's.
   template<>
   struct binding<team&> {
@@ -105,6 +106,7 @@ namespace upcxx {
       );
     #endif
   };
+  }
 }
 #endif
   
