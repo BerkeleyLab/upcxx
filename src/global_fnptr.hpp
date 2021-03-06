@@ -40,6 +40,9 @@ namespace upcxx {
         return ans;
       }
     }
+
+    template<typename ...Arg>
+    class command; // defined in command.hpp
   }
 
   template<typename Ret, typename ...Arg>
@@ -52,10 +55,12 @@ namespace upcxx {
   public:
     using function_type = Ret(Arg...);
 
-  public: //private!
-    std::uintptr_t u_;
-  
+    friend struct std::hash<upcxx::global_fnptr<Ret(Arg...)>>;
+    friend class detail::command<Arg...>;
+
   private:
+    std::uintptr_t u_;
+
     static std::uintptr_t encode(Ret(*fp)(Arg...)) {
       return fp == nullptr
         ? detail::global_fnptr_null
