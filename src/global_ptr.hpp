@@ -262,6 +262,10 @@ namespace upcxx {
     #endif
     intrank_t UPCXX_INTERNAL_ONLY(rank_);
     T* UPCXX_INTERNAL_ONLY(raw_ptr_);
+
+    T* raw_internal(detail::internal_only) {
+      return UPCXX_INTERNAL_ONLY(raw_ptr_);
+    }
   };
 
   template<typename T, typename U, memory_kind K>

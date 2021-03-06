@@ -240,8 +240,9 @@ int main() {
               while(iters--) {
                 gex_Event_t *e = new gex_Event_t(
                   gex_RMA_PutNB(
-                    upcxx::backend::gasnet::handle_of(upcxx::world()), dest.rank_,
-                    dest.raw_ptr_, (void*)src, size,
+                    upcxx::backend::gasnet::handle_of(upcxx::world()), dest.where(),
+                    dest.raw_internal(upcxx::detail::internal_only{}),
+                    (void*)src, size,
                     GEX_EVENT_DEFER,
                     /*flags*/0
                   )
@@ -319,8 +320,9 @@ int main() {
             [&](char *src, global_ptr<char> dest, size_t size, int iters) {
               while(iters--) {
                 gex_Event_t e = gex_RMA_PutNB(
-                  upcxx::backend::gasnet::handle_of(upcxx::world()), dest.rank_,
-                  dest.raw_ptr_, (void*)src, size,
+                  upcxx::backend::gasnet::handle_of(upcxx::world()), dest.where(),
+                  dest.raw_internal(upcxx::detail::internal_only{}),
+                  (void*)src, size,
                   GEX_EVENT_DEFER,
                   /*flags*/0
                 );
@@ -357,8 +359,9 @@ int main() {
             [&](char *src, global_ptr<char> dest, size_t size, int iters) {
               while(iters--) {
                 gex_RMA_PutNBI(
-                  upcxx::backend::gasnet::handle_of(upcxx::world()), dest.rank_,
-                  dest.raw_ptr_, (void*)src, size,
+                  upcxx::backend::gasnet::handle_of(upcxx::world()), dest.where(),
+                  dest.raw_internal(upcxx::detail::internal_only{}),
+                  (void*)src, size,
                   GEX_EVENT_DEFER,
                   /*flags*/0
                 );
