@@ -28,7 +28,7 @@ namespace upcxx {
     digest dig_;
     explicit dist_id(digest id) : dig_(id) {}
 
-    friend class upcxx::dist_object<T>;
+    friend class dist_object<T>;
     friend struct std::hash<upcxx::dist_id<T>>;
     
   public:

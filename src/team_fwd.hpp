@@ -33,8 +33,8 @@ namespace upcxx {
     digest dig_;
     explicit team_id(digest id) : dig_(id) {}
 
-    friend class upcxx::team;
-    friend void upcxx::finalize();
+    friend class team;
+    friend void finalize();
     friend struct std::hash<upcxx::team_id>;
 
   public:
