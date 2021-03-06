@@ -8,7 +8,7 @@
 
 using namespace std;
 
-using upcxx::digest;
+using upcxx::detail::digest;
 
 struct uts_node {
   uts_node *next;

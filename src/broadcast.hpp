@@ -78,7 +78,7 @@ namespace upcxx {
         cxs_state.~cxs_state_t();
       }
 
-      void contribute(digest my_id) {
+      void contribute(detail::digest my_id) {
         if(0 == --this->awaiting) {
           this->cxs_state.template operator()<operation_cx_event>(std::move(this->value));
           delete this;
@@ -87,7 +87,7 @@ namespace upcxx {
       }
     };
     
-    digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
+    detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
 
     broadcast_state *s = detail::template registered_state<broadcast_state>(id);
 

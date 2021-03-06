@@ -581,7 +581,7 @@ void upcxx::init() {
   ::new(detail::the_world_team.raw()) upcxx::team(
     detail::internal_only(),
     backend::team_base{reinterpret_cast<uintptr_t>(world_tm)},
-    digest{0x1111111111111111, 0x1111111111111111},
+    detail::digest{0x1111111111111111, 0x1111111111111111},
     backend::rank_n, backend::rank_me
   );
   
@@ -829,7 +829,7 @@ void upcxx::init() {
     detail::internal_only(),
     backend::team_base{reinterpret_cast<uintptr_t>(local_tm)},
     // we use different digests even if local_tm==world_tm
-    (digest{0x2222222222222222, 0x2222222222222222}).eat(backend::pshm_peer_lb),
+    (detail::digest{0x2222222222222222, 0x2222222222222222}).eat(backend::pshm_peer_lb),
     peer_n, peer_me
   );
   

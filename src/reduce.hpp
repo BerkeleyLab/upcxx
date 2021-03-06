@@ -404,7 +404,8 @@ namespace upcxx {
       }
       
       template<typename T1>
-      static void contribute(const team&, intrank_t root, digest id, Op const &op, T1 &&value, cxs_state_t *cxs_st);
+      static void contribute(const team&, intrank_t root, detail::digest id,
+                             Op const &op, T1 &&value, cxs_state_t *cxs_st);
     };
   }
   
@@ -519,7 +520,7 @@ namespace upcxx {
           CxsDecayed
         >(cxs_st);
         
-      digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
+      detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
       
       reduce_state::contribute(
           tm, root, id, std::move(op), std::forward<T1>(value), &cxs_st
@@ -663,7 +664,7 @@ namespace upcxx {
           CxsDecayed
         >(cxs_st);
       
-      digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
+      detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
       intrank_t root = id.w0 % tm.rank_n();
       
       reduce_state::contribute(
@@ -704,7 +705,7 @@ namespace upcxx {
     template<typename T, typename Op, bool one_not_all, typename Cxs>
     template<typename T1>
     void reduce_state<T,Op,one_not_all,Cxs>::contribute(
-        const team &tm, intrank_t root, digest id, Op const &op, T1 &&value,
+        const team &tm, intrank_t root, detail::digest id, Op const &op, T1 &&value,
         typename reduce_state::cxs_state_t *cxs_st
       ) {
       
