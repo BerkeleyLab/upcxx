@@ -1830,7 +1830,7 @@ void gasnet::bcast_am_master_rdzv(
             );
           
           detail::serialization_reader r(payload_target);
-          r.unplace(storage_size_of<bcast_payload_header>());
+          r.unplace(detail::storage_size_of<bcast_payload_header>());
           
           bcast_as_lpc *m = new bcast_as_lpc;
           m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(r);
@@ -1864,7 +1864,7 @@ void gasnet::bcast_am_master_rdzv(
 
               {
                 detail::serialization_reader r(payload_here);
-                r.unplace(storage_size_of<bcast_payload_header>());
+                r.unplace(detail::storage_size_of<bcast_payload_header>());
                 m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(r);
               }
               
