@@ -42,11 +42,11 @@ namespace upcxx {
   }
   
   template<typename Kind, typename ...T>
-  future1<Kind,T...>&& to_future(future1<Kind,T...> &&x) {
-    return static_cast<future1<Kind,T...>&&>(x);
+  detail::future1<Kind,T...>&& to_future(detail::future1<Kind,T...> &&x) {
+    return static_cast<detail::future1<Kind,T...>&&>(x);
   }
   template<typename Kind, typename ...T>
-  future1<Kind,T...> const& to_future(future1<Kind,T...> const &x) {
+  detail::future1<Kind,T...> const& to_future(detail::future1<Kind,T...> const &x) {
     return x;
   }
 

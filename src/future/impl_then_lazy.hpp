@@ -66,17 +66,17 @@
  */
 
 namespace upcxx {
-  //////////////////////////////////////////////////////////////////////////////
-  // future_is_trivially_ready: future_impl_then_lazy specialization
-  
-  template<typename FuArg, typename Fn, typename ...T>
-  struct future_is_trivially_ready<
-      future1<detail::future_kind_then_lazy<FuArg,Fn>,T...>
-    > {
-    static constexpr bool value = false;
-  };
-  
   namespace detail {
+    //////////////////////////////////////////////////////////////////////////////
+    // future_is_trivially_ready: future_impl_then_lazy specialization
+
+    template<typename FuArg, typename Fn, typename ...T>
+    struct future_is_trivially_ready<
+        future1<detail::future_kind_then_lazy<FuArg,Fn>,T...>
+      > {
+      static constexpr bool value = false;
+    };
+  
     template<typename Fn1, typename Fn2>
     struct future_composite_fn;
     

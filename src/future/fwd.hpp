@@ -71,8 +71,10 @@ namespace upcxx {
   // future1: The type given to users.
   // implemented in: upcxx/future/future1.hpp
   
-  template<typename Kind, typename ...T>
-  struct future1;
+  namespace detail {
+    template<typename Kind, typename ...T>
+    struct future1;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // future_impl_traits: given the impl type, determine other associated types
@@ -123,7 +125,7 @@ namespace upcxx {
   }
   
   template<typename ...T>
-  using future = future1<detail::future_kind_default, T...>;
+  using future = detail::future1<detail::future_kind_default, T...>;
   
   template<typename ...T>
   class promise;
@@ -131,11 +133,13 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   // future_is_trivially_ready: Trait for detecting trivially ready
   // futures. Specializations provided in each future implementation.
-  
-  template<typename Future>
-  struct future_is_trivially_ready/*{
-    static constexpr bool value;
-  }*/;
+
+  namespace detail {
+    template<typename Future>
+    struct future_is_trivially_ready/*{
+      static constexpr bool value;
+    }*/;
+  }
   
   //////////////////////////////////////////////////////////////////////
   // Future/continuation function-application support

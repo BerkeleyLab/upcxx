@@ -64,6 +64,7 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   // future1: The actual type users get (aliased as future<>).
   
+  namespace detail {
   template<typename Kind, typename ...T>
   struct future1 {
     typedef Kind kind_type;
@@ -395,5 +396,6 @@ namespace upcxx {
       return static_cast<future1&&>(*this).template result_reference<i>();
     }
   };
+  } // namespace detail
 }
 #endif

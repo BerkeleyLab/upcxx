@@ -7,17 +7,17 @@
 #include <initializer_list>
 
 namespace upcxx {
-  //////////////////////////////////////////////////////////////////////
-  // future_is_trivially_ready: future_impl_when_all specialization
-  
-  template<typename ...Arg, typename ...T>
-  struct future_is_trivially_ready<
-      future1<detail::future_kind_when_all<Arg...>, T...>
-    > {
-    static constexpr bool value = detail::trait_forall<upcxx::future_is_trivially_ready, Arg...>::value;
-  };
-  
   namespace detail {
+    //////////////////////////////////////////////////////////////////////
+    // future_is_trivially_ready: future_impl_when_all specialization
+
+    template<typename ...Arg, typename ...T>
+    struct future_is_trivially_ready<
+        future1<detail::future_kind_when_all<Arg...>, T...>
+      > {
+      static constexpr bool value = detail::trait_forall<future_is_trivially_ready, Arg...>::value;
+    };
+  
     ////////////////////////////////////////////////////////////////////
     // future_body_identity: Future body that holds a single dependency
     // and whose `leave_active()` routine just returns that dependencies
