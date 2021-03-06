@@ -417,11 +417,11 @@ namespace upcxx {
     detail::support_as_rpc<remote_cx_event> {};
 
   //////////////////////////////////////////////////////////////////////
-  // operation_cx_as_future: default completions for most operations
+  // operation_cx_as_future_t: default completions for most operations
   namespace detail {
-    using operation_cx_as_future =
+    using operation_cx_as_future_t =
       completions<future_cx<operation_cx_event>>;
-    using operation_cx_as_internal_future =
+    using operation_cx_as_internal_future_t =
       completions<future_cx<operation_cx_event, progress_level::internal>>;
   }
 

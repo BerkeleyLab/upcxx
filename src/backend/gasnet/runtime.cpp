@@ -142,8 +142,8 @@ namespace {
   bool oversubscribed;
   
   auto do_internal_progress = []() { upcxx::progress(progress_level::internal); };
-  auto operation_cx_as_internal_future_obj =
-    upcxx::detail::operation_cx_as_internal_future{{}};
+  auto operation_cx_as_internal_future =
+    upcxx::detail::operation_cx_as_internal_future_t{{}};
 
   void quiesce_rdzv(bool in_finalize, noise_log&);
 }
@@ -1011,7 +1011,7 @@ void upcxx::finalize() {
           return {a.sum + b.sum, std::min(a.min, b.min), std::max(a.max, b.max)};
         },
         /*root=*/0, upcxx::world(),
-        operation_cx_as_internal_future_obj
+        operation_cx_as_internal_future
       ).wait(do_internal_progress);
   };
   

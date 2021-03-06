@@ -32,7 +32,7 @@ namespace upcxx {
   // upcxx::broadcast_nontrivial
   
   template<typename T1,
-           typename Cxs = detail::operation_cx_as_future,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -43,7 +43,7 @@ namespace upcxx {
   broadcast_nontrivial(
       T1 &&value, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = detail::operation_cx_as_future{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
@@ -132,7 +132,7 @@ namespace upcxx {
   }
   
   template<typename T,
-           typename Cxs = detail::operation_cx_as_future>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -142,7 +142,7 @@ namespace upcxx {
   broadcast(
       T *buf, std::size_t n, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = detail::operation_cx_as_future{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     using CxsDecayed = typename std::decay<Cxs>::type;
     static_assert(
@@ -195,7 +195,7 @@ namespace upcxx {
   }
   
   template<typename T1,
-           typename Cxs = detail::operation_cx_as_future,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -206,7 +206,7 @@ namespace upcxx {
   broadcast(
       T1 value, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs cxs = detail::operation_cx_as_future{{}}
+      Cxs cxs = detail::operation_cx_as_future_t{{}}
     ) {
     
     using CxsDecayed = typename std::decay<Cxs>::type;

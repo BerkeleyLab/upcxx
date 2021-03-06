@@ -412,7 +412,7 @@ namespace upcxx
   rput_irregular(
                   SrcIter src_runs_begin, SrcIter src_runs_end,
                   DestIter dst_runs_begin, DestIter dst_runs_end,
-                  Cxs &&cxs=detail::operation_cx_as_future{{}})
+                  Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
 
 
@@ -513,7 +513,7 @@ namespace upcxx
     rget_irregular(
                    SrcIter src_runs_begin, SrcIter src_runs_end,
                    DestIter dst_runs_begin, DestIter dst_runs_end,
-                   Cxs &&cxs=detail::operation_cx_as_future{{}})
+                   Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
@@ -617,7 +617,7 @@ namespace upcxx
                std::size_t src_run_length,
                DestIter dst_runs_begin, DestIter dst_runs_end,
                std::size_t dst_run_length,
-               Cxs &&cxs=detail::operation_cx_as_future{{}})
+               Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
     using CxsDecayed = typename std::decay<Cxs>::type;
    // This computes T by pulling it out of global_ptr<T>.
@@ -725,7 +725,7 @@ namespace upcxx
                   std::size_t src_run_length,
                   DestIter dst_runs_begin, DestIter dst_runs_end,
                   std::size_t dst_run_length,
-                  Cxs &&cxs=detail::operation_cx_as_future{{}})
+                  Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
@@ -834,7 +834,7 @@ namespace upcxx
        global_ptr<T> dest_base,
        std::ptrdiff_t const *dest_strides,
        std::size_t const *extents,
-       Cxs &&cxs=detail::operation_cx_as_future{{}})
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
     using CxsDecayed = typename std::decay<Cxs>::type;
     static_assert(
@@ -898,7 +898,7 @@ namespace upcxx
                global_ptr<T> dest_base,
                std::array<std::ptrdiff_t,Dim> const &dest_strides,
                std::array<std::size_t,Dim> const &extents,
-               Cxs &&cxs=detail::operation_cx_as_future{{}})
+               Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
     return rput_strided<Dim, T, Cxs>(src_base,&src_strides.front(),
                                      dest_base, &dest_strides.front(),
@@ -918,7 +918,7 @@ namespace upcxx
                T* dest_base,
                std::ptrdiff_t const *dest_strides,
                std::size_t const *extents,
-               Cxs &&cxs=detail::operation_cx_as_future{{}})
+               Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
     using CxsDecayed = typename std::decay<Cxs>::type;
     static_assert(is_trivially_serializable<T>::value,
@@ -983,7 +983,7 @@ namespace upcxx
                T *dest_base,
                std::array<std::ptrdiff_t,Dim> const &dest_strides,
                std::array<std::size_t,Dim> const &extents,
-               Cxs &&cxs=detail::operation_cx_as_future{{}})
+               Cxs &&cxs=detail::operation_cx_as_future_t{{}})
   {
     return rget_strided<Dim, T, Cxs>(src_base,&src_strides.front(),
                               dest_base, &dest_strides.front(),

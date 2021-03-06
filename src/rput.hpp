@@ -429,12 +429,12 @@ namespace upcxx {
   ////////////////////////////////////////////////////////////////////////////
 
   template<typename T,
-           typename Cxs = detail::operation_cx_as_future>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/true>::return_t
   rput(T value_s,
        global_ptr<T> gp_d,
-       Cxs &&cxs = detail::operation_cx_as_future{{}}) {
+       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     using traits_t = detail::rput_traits<CxsDecayed, /*by_val=*/true>;
@@ -471,13 +471,13 @@ namespace upcxx {
   }
   
   template<typename T,
-           typename Cxs = detail::operation_cx_as_future>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/false>::return_t
   rput(T const *buf_s,
        global_ptr<T> gp_d,
        std::size_t n,
-       Cxs &&cxs = detail::operation_cx_as_future{{}}) {
+       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     using traits_t = detail::rput_traits<CxsDecayed, /*by_val=*/false>;

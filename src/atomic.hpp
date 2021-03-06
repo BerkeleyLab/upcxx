@@ -190,7 +190,7 @@ namespace upcxx {
       template<typename Cxs>
       using NOFETCH_RTYPE = typename detail::completions_returner<detail::event_is_here,
           nofetch_aop_event_values, typename std::decay<Cxs>::type>::return_t;
-      using FUTURE_CX = detail::operation_cx_as_future;
+      using FUTURE_CX = detail::operation_cx_as_future_t;
 
       // generic fetching atomic operation
       template<typename Cxs = FUTURE_CX>
