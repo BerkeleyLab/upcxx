@@ -27,7 +27,7 @@ namespace upcxx {
         )
       > {
       using type = typename decltype(
-          upcxx::apply_as_future(
+          detail::apply_as_future(
             std::declval<typename binding<Fn>::off_wire_type>(),
             std::declval<typename binding<Arg>::off_wire_type>()...
           )
@@ -448,7 +448,7 @@ namespace upcxx {
         recipient,
         detail::bind_rvalue_as_lvalue(
           [=](deserialized_type_t<fn_bound_t> &&fn_bound) {
-            return upcxx::apply_as_future_then_lazy(
+            return detail::apply_as_future_then_lazy(
                 static_cast<deserialized_type_t<fn_bound_t>&&>(fn_bound),
                 // Wish we could just use a lambda here, but since it has
                 // to take variadic Arg... we have to call to an outlined

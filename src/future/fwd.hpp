@@ -163,7 +163,7 @@ namespace upcxx {
 
     // Apply function to tupled arguments lifting return to future.
     template<typename FnRef, typename ArgRefTupRef/*=std::tuple<ArgRef...> {const} {&|&&}*/>
-    struct apply_tupled_as_future/*{
+    struct apply_tupled_as_future_/*{
       typedef future1<Kind,U...> return_type;
       return_type operator()(FnRef fn, ArgRefTupRef args);
     }*/;
