@@ -155,7 +155,7 @@ namespace detail {
   };
 
   //////////////////////////////////////////////////////////////////////
-  // future/fwd.hpp: detail::apply_tupled_as_future_
+  // future/fwd.hpp: detail::apply_tupled_as_future1
 
   template<typename FnRef, typename ArgRefTupRef,
            typename ArgRefTup = typename std::decay<ArgRefTupRef>::type>
@@ -173,7 +173,7 @@ namespace detail {
   };
   
   template<typename FnRef, typename ArgRefTupRef>
-  struct apply_tupled_as_future_: apply_tupled_as_future_help<FnRef,ArgRefTupRef> {};
+  struct apply_tupled_as_future1: apply_tupled_as_future_help<FnRef,ArgRefTupRef> {};
 
   //////////////////////////////////////////////////////////////////////
   // future/fwd.hpp: detail::apply_futured_as_future
@@ -238,9 +238,9 @@ namespace detail {
   }
 
   template<typename Fn, typename Args>
-  typename detail::apply_tupled_as_future_<Fn&&,Args&&>::return_type
+  typename detail::apply_tupled_as_future1<Fn&&,Args&&>::return_type
   apply_tupled_as_future(Fn &&fn, Args &&args) {
-    return detail::apply_tupled_as_future_<Fn&&, Args&&>()(
+    return detail::apply_tupled_as_future1<Fn&&, Args&&>()(
       static_cast<Fn&&>(fn), static_cast<Args&&>(args)
     );
   }

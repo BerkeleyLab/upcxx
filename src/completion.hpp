@@ -334,7 +334,7 @@ namespace upcxx {
         );
 
       using type = completions<
-          rpc_cx<Event, typename bind_<Fn&&, Args&&...>::return_type>
+          rpc_cx<Event, typename bind1<Fn&&, Args&&...>::return_type>
         >;
     };
   }
@@ -392,7 +392,7 @@ namespace upcxx {
       static typename detail::as_rpc_return<Event, Fn, Args...>::type
       as_rpc(Fn &&fn, Args &&...args) {
         return {
-          rpc_cx<Event, typename detail::bind_<Fn&&, Args&&...>::return_type>{
+          rpc_cx<Event, typename detail::bind1<Fn&&, Args&&...>::return_type>{
             detail::bind(std::forward<Fn>(fn), std::forward<Args>(args)...)
           }
         };

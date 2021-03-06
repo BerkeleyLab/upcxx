@@ -406,7 +406,7 @@ namespace upcxx {
 namespace upcxx {
   namespace detail {
     template<typename Fn, typename ...B>
-    struct bind_ {
+    struct bind1 {
       using FnStripped = typename binding<Fn>::stripped_type;
       using return_type = bound_function_of<
           typename detail::globalize_fnptr_return<FnStripped>::type,
@@ -430,17 +430,17 @@ namespace upcxx {
     };
   
     template<typename Fn, typename ...B>
-    typename detail::template bind_<Fn&&, B&&...>::return_type
+    typename detail::template bind1<Fn&&, B&&...>::return_type
     bind(Fn &&fn, B &&...b) {
-      return detail::bind_<Fn&&, B&&...>()(
+      return detail::bind1<Fn&&, B&&...>()(
         std::forward<Fn>(fn), std::forward<B>(b)...
       );
     }
 
     template<typename Fn, typename ...B>
-    typename detail::template bind_<const Fn&, const B&...>::return_type
+    typename detail::template bind1<const Fn&, const B&...>::return_type
     bind_rvalue_as_lvalue(Fn &&fn, B &&...b) {
-      return detail::bind_<const Fn&, const B&...>()(
+      return detail::bind1<const Fn&, const B&...>()(
         static_cast<const Fn&>(fn), static_cast<const B&>(b)...
       );
     }

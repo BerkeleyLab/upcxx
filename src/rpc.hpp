@@ -442,7 +442,7 @@ namespace upcxx {
       intrank_t initiator = backend::rank_me;
       auto *op_lpc = static_cast<cxs_state_t&&>(state).template to_lpc_dormant<operation_cx_event>();
       
-      using fn_bound_t = typename detail::bind_<const Fn&, const Arg&...>::return_type;
+      using fn_bound_t = typename detail::bind1<const Fn&, const Arg&...>::return_type;
 
       backend::template send_am_master<progress_level::user>(
         recipient,
