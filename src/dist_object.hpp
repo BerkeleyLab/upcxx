@@ -24,10 +24,14 @@ namespace upcxx {
 namespace upcxx {
   template<typename T>
   struct dist_id {
-  //private:
+  private:
     digest dig_;
+    explicit dist_id(digest id) : dig_(id) {}
+
+    friend class dist_object<T>;
+    friend struct std::hash<upcxx::dist_id<T>>;
     
-  //public:
+  public:
     dist_object<T>& here() const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(detail::registry[dig_],

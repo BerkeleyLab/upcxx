@@ -77,7 +77,9 @@ namespace upcxx {
     UPCXX_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
     detail::copy_traits<Cxs>::template assert_sane<T>();
-    return detail::copy( src.heap_idx_, src.rank_, src.raw_ptr_,
+    return detail::copy( src.UPCXX_INTERNAL_ONLY(heap_idx_),
+                         src.UPCXX_INTERNAL_ONLY(rank_),
+                         src.UPCXX_INTERNAL_ONLY(raw_ptr_),
                          detail::private_heap, upcxx::rank_me(), dest,
                          n * sizeof(T), std::forward<Cxs>(cxs) );
   }
@@ -94,7 +96,9 @@ namespace upcxx {
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
     detail::copy_traits<Cxs>::template assert_sane<T>();
     return detail::copy( detail::private_heap, upcxx::rank_me(), const_cast<T*>(src),
-                         dest.heap_idx_, dest.rank_, dest.raw_ptr_,
+                         dest.UPCXX_INTERNAL_ONLY(heap_idx_),
+                         dest.UPCXX_INTERNAL_ONLY(rank_),
+                         dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
                          n * sizeof(T), std::forward<Cxs>(cxs) );
   }
   
@@ -110,8 +114,10 @@ namespace upcxx {
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
     detail::copy_traits<Cxs>::template assert_sane<T>();
     return detail::copy(
-      src.heap_idx_, src.rank_, src.raw_ptr_,
-      dest.heap_idx_, dest.rank_, dest.raw_ptr_,
+      src.UPCXX_INTERNAL_ONLY(heap_idx_), src.UPCXX_INTERNAL_ONLY(rank_),
+      src.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      dest.UPCXX_INTERNAL_ONLY(heap_idx_), dest.UPCXX_INTERNAL_ONLY(rank_),
+      dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
       n*sizeof(T), std::forward<Cxs>(cxs)
     );
   }

@@ -95,11 +95,11 @@ namespace upcxx {
     UPCXX_GPTR_CHK(gptr);
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.rank_ == upcxx::rank_me(),
+        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::deallocate must be called by owner of global pointer"
       );
       
-      upcxx::deallocate(gptr.raw_ptr_);
+      upcxx::deallocate(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_));
     }
   }
 
@@ -229,11 +229,11 @@ namespace upcxx {
     
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.rank_ == upcxx::rank_me(),
+        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::delete_ must be called by owner of shared memory."
       );
       
-      T *ptr = gptr.raw_ptr_;
+      T *ptr = gptr.UPCXX_INTERNAL_ONLY(raw_ptr_);
       ptr->~T();
       upcxx::deallocate(ptr);
     }
@@ -248,7 +248,7 @@ namespace upcxx {
     
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.rank_ == upcxx::rank_me(),
+        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::delete_array must be called by owner of shared memory."
       );
       

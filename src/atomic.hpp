@@ -203,8 +203,10 @@ namespace upcxx {
         UPCXX_ASSERT((detail::completions_has_event<CxsDecayed, operation_cx_event>::value));
         UPCXX_GPTR_CHK(gptr);
         UPCXX_ASSERT(gptr != nullptr, "Global pointer for atomic operation is null");
-        UPCXX_ASSERT(this->parent_tm_->from_world(gptr.rank_,-1) >= 0, 
-                     "Global pointer must reference a member of the team used to construct atomic_domain");
+        UPCXX_ASSERT(
+          this->parent_tm_->from_world(gptr.UPCXX_INTERNAL_ONLY(rank_),-1) >= 0,
+          "Global pointer must reference a member of the team used to construct atomic_domain"
+        );
         UPCXX_ASSERT(static_cast<gex_OP_t>(aop) & this->atomic_gex_ops,
               "Atomic operation '" << detail::atomic_op_str(aop) << "'"
               " not in domain's operation set '" << 
@@ -234,7 +236,8 @@ namespace upcxx {
         
         // execute the backend gasnet function
         gex_Event_t h = this->inject( this->ad_gex_handle,
-          &cb->result, gptr.rank_, gptr.raw_ptr_, 
+          &cb->result, gptr.UPCXX_INTERNAL_ONLY(rank_),
+          gptr.UPCXX_INTERNAL_ONLY(raw_ptr_), 
           aop, static_cast<proxy_type>(val1), static_cast<proxy_type>(val2), 
           detail::memory_order_flags(order) | GEX_FLAG_RANK_IS_JOBRANK
         );
@@ -262,8 +265,10 @@ namespace upcxx {
         UPCXX_ASSERT((detail::completions_has_event<CxsDecayed, operation_cx_event>::value));
         UPCXX_GPTR_CHK(gptr);
         UPCXX_ASSERT(gptr != nullptr, "Global pointer for atomic operation is null");
-        UPCXX_ASSERT(this->parent_tm_->from_world(gptr.rank_,-1) >= 0, 
-                     "Global pointer must reference a member of the team used to construct atomic_domain");
+        UPCXX_ASSERT(
+          this->parent_tm_->from_world(gptr.UPCXX_INTERNAL_ONLY(rank_),-1) >= 0, 
+          "Global pointer must reference a member of the team used to construct atomic_domain"
+        );
         UPCXX_ASSERT(static_cast<gex_OP_t>(aop) & this->atomic_gex_ops,
               "Atomic operation '" << detail::atomic_op_str(aop) << "'"
               " not in domain's operation set '" << 
@@ -292,7 +297,8 @@ namespace upcxx {
         
         // execute the backend gasnet function
         gex_Event_t h = this->inject( this->ad_gex_handle,
-          nullptr, gptr.rank_, gptr.raw_ptr_, 
+          nullptr, gptr.UPCXX_INTERNAL_ONLY(rank_),
+          gptr.UPCXX_INTERNAL_ONLY(raw_ptr_), 
           aop, static_cast<proxy_type>(val1), static_cast<proxy_type>(val2), 
           detail::memory_order_flags(order) | GEX_FLAG_RANK_IS_JOBRANK
         );

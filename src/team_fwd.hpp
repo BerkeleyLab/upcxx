@@ -29,11 +29,15 @@ namespace upcxx {
   class team;
   
   struct team_id {
-  //private:
+  private:
     digest dig_;
-    team_id(digest id) : dig_(id) {}
-    
-  //public:
+    explicit team_id(digest id) : dig_(id) {}
+
+    friend class team;
+    friend void finalize();
+    friend struct std::hash<upcxx::team_id>;
+
+  public:
     team_id() : dig_(digest::zero()) {} // issue 343: disable trivial default construction
 
     team& here() const {
@@ -64,11 +68,11 @@ namespace upcxx {
     UPCXX_COMPARATOR(>)
     UPCXX_COMPARATOR(>=)
     #undef UPCXX_COMPARATOR
-  };
   
-  inline std::ostream& operator<<(std::ostream &o, team_id x) {
-    return o << x.dig_;
-  }
+    friend inline std::ostream& operator<<(std::ostream &o, team_id x) {
+      return o << x.dig_;
+    }
+  };
 }
 
 namespace std {

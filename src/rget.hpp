@@ -209,7 +209,7 @@ namespace upcxx {
     using detail::rma_get_done;
     
     auto *cb = new detail::rget_cb_byval<T,cxs_here_t,cxs_remote_t>{
-      gp_s.rank_,
+      gp_s.UPCXX_INTERNAL_ONLY(rank_),
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     };
@@ -221,7 +221,8 @@ namespace upcxx {
       >{cb->state_here};
     
     rma_get_done done = detail::rma_get_nb(
-      &cb->buffer, gp_s.rank_, gp_s.raw_ptr_, sizeof(T), cb
+      &cb->buffer, gp_s.UPCXX_INTERNAL_ONLY(rank_),
+      gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), sizeof(T), cb
     );
     
     gasnet::handle_cb_queue &cb_q = gasnet::get_handle_cb_queue();
@@ -289,7 +290,7 @@ namespace upcxx {
       CxsDecayed>;
     
     detail::rget_cb_byref<cxs_here_t,cxs_remote_t> cb(
-      gp_s.rank_,
+      gp_s.UPCXX_INTERNAL_ONLY(rank_),
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     );
@@ -303,7 +304,8 @@ namespace upcxx {
       >{cb.state_here};
     
     rma_get_done done = detail::rma_get_nb(
-      buf_d, gp_s.rank_, gp_s.raw_ptr_, n*sizeof(T), &cb
+      buf_d, gp_s.UPCXX_INTERNAL_ONLY(rank_),
+      gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), n*sizeof(T), &cb
     );
     
     switch(done) {
