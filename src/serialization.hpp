@@ -31,7 +31,9 @@
 #endif
 
 namespace upcxx {
-  constexpr std::uintptr_t serialization_align_max = 64;
+  namespace detail {
+    constexpr std::uintptr_t serialization_align_max = 64;
+  }
 
   template<typename T>
   struct serialization;

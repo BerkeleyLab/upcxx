@@ -218,8 +218,9 @@ namespace gasnet {
 
     static constexpr std::size_t cmd_size_static_ub = std::size_t(-1);
     
-    static constexpr std::size_t tiny_size = 512 > serialization_align_max ? 512 : serialization_align_max;
-    detail::xaligned_storage<tiny_size, serialization_align_max> tiny_;
+    static constexpr std::size_t tiny_size =
+      512 > detail::serialization_align_max ? 512 : detail::serialization_align_max;
+    detail::xaligned_storage<tiny_size, detail::serialization_align_max> tiny_;
     
     detail::serialization_writer</*bounded=*/false> prepare_writer(
         detail::invalid_storage_size_t, std::size_t rdzv_cutover_size,
@@ -285,7 +286,9 @@ namespace gasnet {
 
     static constexpr std::size_t cmd_size_static_ub = std::size_t(-1);
     
-    static constexpr std::size_t tiny_align = (Ub::static_align_ub < serialization_align_max) ? Ub::static_align_ub : serialization_align_max;
+    static constexpr std::size_t tiny_align =
+      (Ub::static_align_ub < detail::serialization_align_max) ?
+      Ub::static_align_ub : detail::serialization_align_max;
     static constexpr std::size_t tiny_size =  
          ( Ub::static_size < 512 ? Ub::static_size 
                                  : ( tiny_align < 512 ? 512 : tiny_align) );
@@ -297,7 +300,7 @@ namespace gasnet {
                  ub.size <= rdzv_cutover_size;
       
       if(is_eager) {
-        UPCXX_ASSERT(ub.align <= serialization_align_max);
+        UPCXX_ASSERT(ub.align <= detail::serialization_align_max);
         if (eagerNPAMArgs >= 0) // NPAM
           buffer = gasnet::prepare_npam_medium(recipient, ub.size, eagerNPAMArgs, npam_nonce);
         else if(ub.size <= tiny_size)
@@ -399,7 +402,7 @@ namespace gasnet {
                  ub.size <= rdzv_cutover_size;
 
       if(is_eager) {
-        UPCXX_ASSERT(ub.align <= serialization_align_max);
+        UPCXX_ASSERT(ub.align <= detail::serialization_align_max);
         UPCXX_ASSERT(ub.size <= rdzv_cutover_size);
         UPCXX_ASSERT(eagerNPAMArgs >= 0 && eagerNPAMArgs == static_npam_args);
 

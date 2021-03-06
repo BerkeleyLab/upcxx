@@ -8,7 +8,7 @@ using namespace upcxx;
 constexpr std::uintptr_t hunk_size_small = 512;
 constexpr std::uintptr_t hunk_size_large = 8192;
 
-constexpr std::uintptr_t align_max = serialization_align_max; // shorthand
+constexpr std::uintptr_t align_max = detail::serialization_align_max; // shorthand
 
 void upcxx::detail::serialization_writer<false>::grow(std::size_t size0, std::size_t size1) {
   static_assert(2*align_max <= hunk_size_small, "Small hunk size (hunk_size_small) not big enough");
