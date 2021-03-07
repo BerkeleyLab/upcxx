@@ -20,7 +20,6 @@
 #include <upcxx/rpc.hpp>
 #include <upcxx/team.hpp>
 #include <upcxx/vis.hpp>
-//#include <upcxx/wait.hpp>
 #include <upcxx/view.hpp>
 #include <upcxx/memberof.hpp>
 

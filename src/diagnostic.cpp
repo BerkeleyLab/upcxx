@@ -13,7 +13,8 @@
 
 ////////////////////////////////////////////////////////////////////////
 
-void upcxx::fatal_error(const char *msg, const char *title, const char *func, const char *file, int line) {
+void upcxx::detail::fatal_error(const char *msg, const char *title,
+                                const char *func, const char *file, int line) {
   std::stringstream ss;
 
   ss << std::string(70, '/') << '\n';
@@ -68,8 +69,9 @@ void upcxx::fatal_error(const char *msg, const char *title, const char *func, co
   #endif
 }
 
-void upcxx::assert_failed(const char *func, const char *file, int line, const char *msg) {
-  upcxx::fatal_error(msg, "assertion failure", func, file, line);
+void upcxx::detail::assert_failed(const char *func, const char *file,
+                                  int line, const char *msg) {
+  upcxx::detail::fatal_error(msg, "assertion failure", func, file, line);
 }
 
 upcxx::say::say(std::ostream &output, const char *prefix) : target(output) {

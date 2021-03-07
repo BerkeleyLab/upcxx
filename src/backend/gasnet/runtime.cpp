@@ -1258,7 +1258,7 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
   }
 
   if (eb == entry_barrier::user) { // issue 412
-    upcxx::fatal_error(
+    upcxx::detail::fatal_error(
      "Collective operations with user-level progress semantics are prohibited "
      "from being initiated inside the restricted context (from a callback already running inside user-level progress).\n"
      "Please refactor your code and/or request entry_barrier::internal or entry_barrier::none "
@@ -1518,7 +1518,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
   if_pf (error) {
     if (short_context && *short_context) ss << " in " << short_context;
     ss << "\n  rank = " << rank << ", raw_ptr = " << raw_ptr << ", heap_idx = " << heap_idx;
-    fatal_error(ss.str(), "fatal global_ptr error", context);
+    detail::fatal_error(ss.str(), "fatal global_ptr error", context);
   }
 }
 
