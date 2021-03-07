@@ -95,7 +95,13 @@ namespace upcxx {
         using body_type = future_body_identity<future1<future_kind_when_all<FuArg...>,T...>>;
         void *body_mem = body_type::operator new(sizeof(body_type));
         
-        hdr->body_ = ::new(body_mem) body_type(body_mem, hdr, static_cast<future_impl_when_all&&>(*this));
+        hdr->body_ = ::new(body_mem) body_type(
+          body_mem, hdr,
+          future1<future_kind_when_all<FuArg...>,T...>(
+            static_cast<future_impl_when_all&&>(*this),
+            detail::internal_only{}
+          )
+        );
         
         if(hdr->status_ == future_header::status_active)
           hdr->entered_active();

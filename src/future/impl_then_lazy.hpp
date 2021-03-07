@@ -144,12 +144,15 @@ namespace upcxx {
         UPCXX_ASSERT(must_materialize_);
         must_materialize_ = false;
         
-        return future_impl_then_lazy<FuArg, future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>, Fn2RetT...>(
-          static_cast<FuArg&&>(arg_),
-          future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>{
-            static_cast<Fn&&>(fn_), static_cast<Fn2Ref&&>(fn2)
-          }
-        );
+        return {
+          future_impl_then_lazy<FuArg, future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>, Fn2RetT...>(
+            static_cast<FuArg&&>(arg_),
+            future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>{
+              static_cast<Fn&&>(fn_), static_cast<Fn2Ref&&>(fn2)
+            }
+          ),
+          detail::internal_only{}
+        };
       }
     };
     

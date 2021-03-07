@@ -54,8 +54,11 @@ namespace upcxx {
 
     template<typename ...ArgFu>
     when_all_return_t<ArgFu...> when_all_fast(ArgFu &&...arg) {
-      return typename when_all_return_t<ArgFu...>::impl_type(
-        to_fast_future(static_cast<ArgFu&&>(arg))...
+      return when_all_return_t<ArgFu...>(
+        typename when_all_return_t<ArgFu...>::impl_type(
+          to_fast_future(static_cast<ArgFu&&>(arg))...
+        ),
+        detail::internal_only{}
       );
     }
     // single component optimization
@@ -78,8 +81,11 @@ namespace upcxx {
   // that is equivalent to `detail::when_all_fast(<futures>...).then(<callable>)`
   template<typename ...ArgFu>
   detail::when_all_return_t<ArgFu...> when_all(ArgFu &&...arg) {
-    return typename detail::when_all_return_t<ArgFu...>::impl_type(
-      detail::to_fast_future(static_cast<ArgFu&&>(arg))...
+    return detail::when_all_return_t<ArgFu...>(
+      typename detail::when_all_return_t<ArgFu...>::impl_type(
+        detail::to_fast_future(static_cast<ArgFu&&>(arg))...
+      ),
+      detail::internal_only{}
     );
   }
   // single component optimization

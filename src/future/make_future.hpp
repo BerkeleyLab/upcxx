@@ -17,7 +17,8 @@ namespace upcxx {
           /*not_ready*/false,
           /*values*/std::tuple<T...>{static_cast<T&&>(values)...}
         }
-      )
+      ),
+      detail::internal_only{}
     );
   }
   
@@ -28,7 +29,8 @@ namespace upcxx {
     template<typename ...T>
     future1<future_kind_result, T...> make_fast_future(T ...values) {
       return future1<future_kind_result, T...>(
-        future_impl_result<T...>(static_cast<T&&>(values)...)
+        future_impl_result<T...>(static_cast<T&&>(values)...),
+        detail::internal_only{}
       );
     }
   }
@@ -57,7 +59,8 @@ namespace upcxx {
     template<typename T>
     future1<future_kind_result, T> to_fast_future(T x) {
       return future1<future_kind_result, T>(
-        future_impl_result<T>(static_cast<T&&>(x))
+        future_impl_result<T>(static_cast<T&&>(x)),
+        detail::internal_only{}
       );
     }
     

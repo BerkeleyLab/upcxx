@@ -30,7 +30,7 @@ namespace detail {
     
     return_type operator()(FnRef fn, ArgRefTupRef args) {
       static_cast<FnRef>(fn)(std::get<ai>(static_cast<ArgRefTupRef>(args))...);
-      return return_type(future_impl_result<>());
+      return return_type(future_impl_result<>(), detail::internal_only{});
     }
   };
 
@@ -42,7 +42,7 @@ namespace detail {
     
     return_type operator()(FnRef fn, ArgRef ...arg) {
       static_cast<FnRef>(fn)(static_cast<ArgRef>(arg)...);
-      return return_type(future_impl_result<>());
+      return return_type(future_impl_result<>(), detail::internal_only{});
     }
 
     template<typename ThenFn>
@@ -72,7 +72,8 @@ namespace detail {
       return return_type(
         future_impl_result<Return>(
           static_cast<FnRef>(fn)(std::get<ai>(static_cast<ArgRefTupRef>(args))...)
-        )
+        ),
+        detail::internal_only{}
       );
     }
   };
@@ -87,7 +88,8 @@ namespace detail {
       return return_type(
         future_impl_result<Return>(
           static_cast<FnRef>(fn)(static_cast<ArgRef>(arg)...)
-        )
+        ),
+        detail::internal_only{}
       );
     }
 

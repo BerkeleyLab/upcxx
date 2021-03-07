@@ -100,7 +100,7 @@ namespace upcxx {
              // Prune from overload resolution if `impl_type1` is not a known
              // future_impl_*** type.
              typename = typename detail::future_impl_traits<impl_type1>::kind_type>
-    future1(impl_type1 &&impl): impl_(static_cast<impl_type1&&>(impl)) {}
+    future1(impl_type1 &&impl, detail::internal_only): impl_(static_cast<impl_type1&&>(impl)) {}
     
     future1(future1 const&) = default;
     template<typename Kind1>
