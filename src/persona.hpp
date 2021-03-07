@@ -155,6 +155,7 @@ namespace upcxx {
   namespace detail {
     // Holds all the fields for a persona_scope but in a trivial type.
     struct persona_scope_raw {
+    protected:
       friend struct detail::persona_tls;
       
       persona_scope_raw *next_;
@@ -179,7 +180,7 @@ namespace upcxx {
       
       //////////////////////////////////////////////////////////////////////////
       // accessors
-      
+    public:
       persona* get_persona(detail::persona_tls &tls) const;
       void set_persona(persona *val, detail::persona_tls &tls);
     };
@@ -195,6 +196,8 @@ namespace upcxx {
   
   class persona_scope: public detail::persona_scope_raw {
     friend struct detail::persona_tls;
+    friend persona_scope& default_persona_scope();
+    friend persona_scope& top_persona_scope();
     
   private:
     // the_default_dummy_'s constructor
@@ -208,9 +211,9 @@ namespace upcxx {
     template<typename Mutex>
     persona_scope(Mutex &lock, persona &persona, detail::persona_tls &tls);
     
-  public:
     static persona_scope the_default_dummy_;
     
+  public:
     persona_scope(persona &persona);
     
     template<typename Mutex>
