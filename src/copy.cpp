@@ -63,7 +63,7 @@ void upcxx::detail::rma_copy_local(
     cb->cu_event = (void*)event;
 
     persona *per = detail::the_persona_tls.get_top_persona();
-    per->cuda_state_.event_cbs.enqueue(cb);
+    per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.enqueue(cb);
     
     {CUcontext dump; CU_CHECK(cuCtxPopCurrent(&dump));}
   #else

@@ -700,7 +700,7 @@ namespace gasnet {
     #if UPCXX_BACKEND_GASNET_SEQ
       return gasnet::master_hcbs;
     #elif UPCXX_BACKEND_GASNET_PAR
-      return upcxx::current_persona().backend_state_.hcbs;
+      return upcxx::current_persona().UPCXX_INTERNAL_ONLY(backend_state_).hcbs;
     #endif
   }
   

@@ -113,7 +113,7 @@ namespace upcxx
     template<typename FinalType, typename CxStateHere, typename CxStateRemote>
     struct rput_cb_remote<FinalType, CxStateHere, CxStateRemote, /*has_remote=*/true> {
       rput_cb_remote() {
-        upcxx::current_persona().undischarged_n_ += 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
       void send_remote() {
@@ -121,7 +121,7 @@ namespace upcxx
        
         backend::send_prepared_am_master(progress_level::internal, cbs->rank_d, std::move(cbs->state_remote));
 
-        upcxx::current_persona().undischarged_n_ -= 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
     

@@ -53,10 +53,10 @@ namespace upcxx {
       >
       pros_deferred_trivial_;
     
-  public:
-    backend::persona_state backend_state_;
-    cuda::persona_state cuda_state_;
-    std::intptr_t undischarged_n_; // num reasons progress_required() is true
+  public: //private!
+    backend::persona_state UPCXX_INTERNAL_ONLY(backend_state_);
+    cuda::persona_state UPCXX_INTERNAL_ONLY(cuda_state_);
+    std::intptr_t UPCXX_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
   
   private:
     persona* get_owner() const;
@@ -69,8 +69,8 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      backend_state_(),
-      undischarged_n_(0) {
+      UPCXX_INTERNAL_ONLY(backend_state_)(),
+      UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
   
   public:
@@ -80,11 +80,13 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      backend_state_(),
-      undischarged_n_(0) {
+      UPCXX_INTERNAL_ONLY(backend_state_)(),
+      UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
     
     bool active_with_caller() const;
+
+  private:
     bool active_with_caller(detail::persona_tls &tls) const;
     bool active() const;
     
@@ -745,7 +747,7 @@ namespace upcxx {
     persona_tls &tls = *this;
     persona_scope_raw *ps = tls.get_top_scope();
     persona *p = ps->get_persona(tls);
-    return p->undischarged_n_ != 0;
+    return p->UPCXX_INTERNAL_ONLY(undischarged_n_) != 0;
   }
   
   inline bool detail::persona_tls::progress_required(persona_scope &bottom) {
@@ -757,7 +759,7 @@ namespace upcxx {
     
     while(true) {
       persona *p = ps->get_persona(tls);
-      if(p->undischarged_n_ != 0)
+      if(p->UPCXX_INTERNAL_ONLY(undischarged_n_) != 0)
         return true;
       if(ps == bot)
         return false;
