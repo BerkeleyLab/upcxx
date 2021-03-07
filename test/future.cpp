@@ -133,19 +133,24 @@ int main() {
   // which is the case since both lambdas return trivially ready values
   ans0.then_lazy([](int x) {
         std::cout<<"lazy1="<<x<<std::endl; return x+1;
-      })
+      },
+      detail::internal_only{})
       .then_lazy([](int x) {
         std::cout<<"lazy2="<<x<<std::endl; return x+1;
-      })
+      },
+      detail::internal_only{})
       .then(     [](int x) { std::cout<<"lazy3="<<x<<std::endl; return x+1; })
-      .then_lazy([](int x) { std::cout<<"lazy4="<<x<<std::endl; return x+1; });
+      .then_lazy([](int x) { std::cout<<"lazy4="<<x<<std::endl; return x+1; },
+                 detail::internal_only{});
 
   ans0.then_lazy([=](int x) {
         return fib(x+1).then_lazy([=](int y) {
           // break here and ensure we are in a detail::future_composite_fn
           return x + y;
-        });
-      })
+        },
+        detail::internal_only{});
+      },
+      detail::internal_only{})
       .then([](int x_p_y) {
         // break here and ensure we are in a detail::future_composite_fn
         std::cout<<x_p_y<<'\n';
@@ -160,7 +165,8 @@ int main() {
         ans1.then([](int x) { return x*x; }),
         ans1.then_lazy([](int x) {
           return x*x;
-        }),
+        },
+        detail::internal_only{}),
         make_future<const int&>(arg)
       ),
       make_future<vector<int>>({0*0, 1*1, 2*2, 3*3, 4*4})

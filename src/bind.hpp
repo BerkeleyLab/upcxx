@@ -263,7 +263,8 @@ namespace upcxx {
           .then_lazy(bound_function_applicator<
               typename binding<Fn>::off_wire_type,
               typename binding<B>::off_wire_type...
-            >()
+            >(),
+            detail::internal_only{}
           )
         ) {
         return detail::when_all_fast(
@@ -272,7 +273,8 @@ namespace upcxx {
           ).then_lazy(bound_function_applicator<
               typename binding<Fn>::off_wire_type,
               typename binding<B>::off_wire_type...
-            >()
+            >(),
+            detail::internal_only{}
           );
       }
       // TODO: operator()() &

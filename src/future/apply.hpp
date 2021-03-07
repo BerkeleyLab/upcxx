@@ -132,13 +132,15 @@ namespace detail {
 
     template<typename ThenFn>
     using then_lazy_return_type =
-      decltype(std::declval<return_type>().then_lazy(std::declval<ThenFn>()));
+      decltype(std::declval<return_type>().then_lazy(std::declval<ThenFn>(),
+                                                     detail::internal_only{}));
 
     template<typename ThenFn>
     then_lazy_return_type<ThenFn&&>
     call_then_lazy(FnRef fn, ThenFn &&then_fn, ArgRef ...arg) {
       return static_cast<FnRef>(fn)(static_cast<ArgRef>(arg)...).then_lazy(
-        static_cast<ThenFn&&>(then_fn)
+        static_cast<ThenFn&&>(then_fn),
+        detail::internal_only{}
       );
     }
   };

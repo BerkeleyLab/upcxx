@@ -54,6 +54,14 @@ namespace upcxx {
         }
       };
     #endif
+
+    #ifndef UPCXX_BACKEND
+      // Used to mark member function as internal only. Normally defined in
+      // <upcxx/backend_fwd.hpp>.
+      struct internal_only {
+        explicit constexpr internal_only() {}
+      };
+    #endif
     
     template<typename T>
     struct is_future1: std::false_type {};
@@ -277,7 +285,7 @@ namespace upcxx {
     typename detail::future_then<
         future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true
       >::return_type
-    then_lazy(Fn &&fn) const& {
+    then_lazy(Fn &&fn, detail::internal_only) const& {
       return detail::future_then<future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true>()(
         *this, static_cast<Fn&&>(fn)
       );
@@ -288,7 +296,7 @@ namespace upcxx {
     typename detail::future_then<
         future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true
       >::return_type
-    then_lazy(Fn &&fn) && {
+    then_lazy(Fn &&fn, detail::internal_only) && {
       return detail::future_then<future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true>()(
         static_cast<future1&&>(*this), static_cast<Fn&&>(fn)
       );
