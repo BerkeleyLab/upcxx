@@ -89,15 +89,15 @@ First of all `future` isn't really a class but an alias like:
 
 ```
 // namespace upcxx
-template<typename Kind, typename ...T>
-class future1;
-
 namespace detail {
+  template<typename Kind, typename ...T>
+  class future1;
+
   using future_kind_default = ???;
 }
 
 template<typename ...T>
-using future = future1<future_kind_default, T...>;
+using future = detail::future1<detail::future_kind_default, T...>;
 ```
 
 The `Kind` type parameter of `future1` encodes our AST expression using
@@ -153,7 +153,7 @@ non-default kind, it is the sole exception). These analogs are:
 ```
 upcxx::detail::make_fast_future; // semantic match for upcxx::make_future
 upcxx::detail::when_all_fast; // match for upcxx::when_all
-upcxx::future1::then_lazy; // match for future1::then
+upcxx::detail::future1::then_lazy; // match for future1::then
 ```
 
 See issue #288 for more about spooky futures getting into the user's hands.
