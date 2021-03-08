@@ -286,7 +286,7 @@ while [[ $# -gt 0 ]]; do
     # Passed to GASNet's configure implicitly via environment:
     -with-gmake?(=*))           GMAKE="$(get_arg_val $arg)"; export GMAKE;;
 
-    # Not yet relevant to GASNet's configure (but might move there later):
+    # Note GASNet's related configure option(s) handled later
     -with-cuda)                 UPCXX_CUDA=1; export UPCXX_CUDA;;
     -without-cuda)              unset UPCXX_CUDA;;
     -with-nvcc?(=*))            UPCXX_CUDA_NVCC="$(get_arg_val $arg)";     export UPCXX_CUDA_NVCC;;
@@ -860,6 +860,8 @@ fi
 # In particular, we discard (nearly?) all failure output from nvcc
 #
 if [[ $UPCXX_CUDA -eq 1 ]]; then
+  # PREpend to allow user to disable if needed
+  GASNET_CONFIGURE_ARGS="--enable-kind-cuda-uva ${GASNET_CONFIGURE_ARGS}"
   trap - ERR # suspend error handler
   # UPCXX_CUDA_NVCC: the nvcc utility
   nvcc=$(check_tool_path ${UPCXX_CUDA_NVCC:-nvcc})
