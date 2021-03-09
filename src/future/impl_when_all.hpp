@@ -15,7 +15,8 @@ namespace upcxx {
     struct future_is_trivially_ready<
         future1<detail::future_kind_when_all<Arg...>, T...>
       > {
-      static constexpr bool value = detail::trait_forall<future_is_trivially_ready, Arg...>::value;
+      static constexpr bool value =
+        detail::trait_forall<detail::future_is_trivially_ready, Arg...>::value;
     };
   
     ////////////////////////////////////////////////////////////////////
