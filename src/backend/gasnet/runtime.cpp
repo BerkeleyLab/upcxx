@@ -1340,6 +1340,12 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
   return gex_TM_TranslateRankToJobrank(gasnet::handle_of(tm), peer);
 }
 
+#ifndef UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
+#if GASNETI_EX_SPEC_VERSION_MAJOR > 0 || GASNETI_EX_SPEC_VERSION_MINOR >= 13 // This line to be removed soon
+  #define UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB 1 // have gex_EP_QueryBoundSegmentNB
+#endif
+#endif
+#if !UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
 // issue #440: This is a temporary hack, to be replaced once GEX expands segment query.
 // Until then we need to track AM handler context to avoid invoking segment query there.
 // The relevant call in backend::validate_global_ptr is currently only reachable from am_eager_restricted(),
@@ -1349,6 +1355,7 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
 #endif
 #if UPCXX_TRACK_AM_CONTEXT
 static __thread bool inside_am_handler;
+#endif
 #endif
 
 void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
@@ -1409,7 +1416,11 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
     }
 
     #ifndef UPCXX_GPTR_CHECK_SCALE
-    #define UPCXX_GPTR_CHECK_SCALE 1024 // job size limit where we stop bounds-checking remote segs
+      #if UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
+        #define UPCXX_GPTR_CHECK_SCALE INT_MAX // unlimited
+      #else
+        #define UPCXX_GPTR_CHECK_SCALE 1024 // job size limit where we stop bounds-checking remote segs
+      #endif
     #endif
     if (rank_is_local(rank) || backend::rank_n <= UPCXX_GPTR_CHECK_SCALE) {
       // compute segment bounds
@@ -1442,6 +1453,26 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
         #endif
       }
 
+    #if UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
+      if (tm != GEX_TM_INVALID) {
+        // GEX_FLAG_IMMEDIATE ensures correct operation when called in handler context (issue #440),
+        // and also avoids introducing communication in our checking logic
+        gex_Event_t result = gex_EP_QueryBoundSegmentNB(tm, rank, &owner_vbase, nullptr, &size, GEX_FLAG_IMMEDIATE);
+        if (result == GEX_EVENT_NO_OP) { 
+          // information not locally available, need to conservatively assume validity
+        } else {
+          UPCXX_ASSERT(result == GEX_EVENT_INVALID);
+          if (!owner_vbase || !size) { // can only be device heap that does not exist
+            UPCXX_ASSERT(heap_idx > 0);
+            UPCXX_ASSERT(rank != backend::rank_me);
+            ss << pretty_type() << " representation corrupted or stale pointer, "
+               << "heap_idx does not correspond to an active device segment\n";
+            error = true; break;
+          }
+          UPCXX_ASSERT(owner_vbase && size);
+        }
+      }
+    #else // GASNet-EX 0.12 and earlier
       if (tm != GEX_TM_INVALID &&
        // issue #440: Cannot call in gex_Segment_QueryBound in AM handler context
        #if UPCXX_TRACK_AM_CONTEXT
@@ -1460,6 +1491,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
         }
         UPCXX_ASSERT(owner_vbase && size);
       }
+    #endif
       if (owner_vbase) {
         UPCXX_ASSERT(size);
         void *owner_vlim = (void *)(((char*)owner_vbase) + size - 1);
