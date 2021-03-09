@@ -982,8 +982,8 @@ fi
 #
 # Default conduit
 #
-ALL_CONDUITS='smp udp mpi ibv aries ucx'
-UNOFFICIAL_CONDUITS='mpi ucx'
+ALL_CONDUITS='smp udp mpi ibv aries ucx ofi'
+UNOFFICIAL_CONDUITS='mpi ucx ofi'
 ##
 unset OFFICIAL_CONDUITS
 # Set difference:
