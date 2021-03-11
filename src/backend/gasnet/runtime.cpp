@@ -393,7 +393,7 @@ namespace {
 }
 
 // WARNING: This is not a documented or supported entry point, and may soon be removed!!
-// void upcxx::destroy_heap(void):
+// void upcxx::experimental::destroy_heap(void):
 //
 // Precondition: The shared heap is a live state, either by virtue
 // of library initialization, or a prior call to upcxx::restore_heap.
@@ -413,7 +413,7 @@ namespace {
 // creation have undefined behavior. The list of such functions is
 // implementation-defined.
 
-void upcxx::destroy_heap() {
+void upcxx::experimental::destroy_heap() {
   noise_log noise("upcxx::destroy_heap()");
   
   UPCXX_ASSERT_ALWAYS_MASTER();
@@ -445,7 +445,7 @@ void upcxx::destroy_heap() {
   noise.show();
 }
 
-// void upcxx::restore_heap(void):
+// void upcxx::experimental::restore_heap(void):
 //
 // Precondition: The shared heap is a dead state, due to a prior call to upcxx::destroy_heap.
 // Calling thread must have the master persona.
@@ -453,7 +453,7 @@ void upcxx::destroy_heap() {
 // This collective call over all processes re-initializes the shared heap of 
 // all processes, returning them to a live state.
 
-void upcxx::restore_heap(void) {
+void upcxx::experimental::restore_heap(void) {
   UPCXX_ASSERT_ALWAYS_MASTER();
   UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
   UPCXX_ASSERT_ALWAYS(shared_heap_sz > 0);

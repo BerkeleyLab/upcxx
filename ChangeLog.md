@@ -49,6 +49,10 @@ Breaking changes:
 
 * Array types are now prohibited as template arguments to `upcxx::new_` and
   `upcxx::new_array`.
+* `destroy_heap`, `restore_heap`, `broadcast_nontrivial`,
+  `reduce_one_nontrivial`, `reduce_all_nontrival`, and the non-fast `op_*`
+  reduction constants have been moved to the `upcxx::experimental` namespace.
+  These are all unspecified and experimental, and they are subject to change.
 
 
 ### 2020.10.30: Memory Kinds Prototype 2020.11.0

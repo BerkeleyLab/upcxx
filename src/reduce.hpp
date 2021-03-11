@@ -74,8 +74,10 @@ namespace upcxx {
       }
     };
   }
-  constexpr detail::op_wrap<detail::opfn_min_not_max<true>, /*fast_demanded=*/false> op_min = {};
-  constexpr detail::op_wrap<detail::opfn_min_not_max<false>, /*fast_demanded=*/false> op_max = {};
+  namespace experimental {
+    constexpr detail::op_wrap<detail::opfn_min_not_max<true>, /*fast_demanded=*/false> op_min = {};
+    constexpr detail::op_wrap<detail::opfn_min_not_max<false>, /*fast_demanded=*/false> op_max = {};
+  }
   constexpr detail::op_wrap<detail::opfn_min_not_max<true>, /*fast_demanded=*/true> op_fast_min = {};
   constexpr detail::op_wrap<detail::opfn_min_not_max<false>, /*fast_demanded=*/true> op_fast_max = {};
   
