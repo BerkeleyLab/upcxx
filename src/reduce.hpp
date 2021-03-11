@@ -47,7 +47,9 @@ namespace upcxx {
         }\
       };\
     }\
-    constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/false> op_##name = {};\
+    namespace experimental {\
+      constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/false> op_##name = {};\
+    }\
     constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/true> op_fast_##name = {};
   
   UPCXX_INFIX_OP(+, |, add, false)
@@ -249,7 +251,7 @@ namespace upcxx {
       static_assert(
         upcxx::is_trivially_serializable<T>::value,
         "`upcxx::reduce_[all|one]<T>` only permitted for TriviallySerializable T. "
-        "Consider using `upcxx::reduce_[all|one]_nontrivial<T>` instead "
+        "Consider using `upcxx::experimental::reduce_[all|one]_nontrivial<T>` instead "
         "(experimental feature, use at own risk)."
       );
       
@@ -327,7 +329,7 @@ namespace upcxx {
       static_assert(
         upcxx::is_trivially_serializable<T>::value,
         "`upcxx::reduce_[all|one]<T>` only permitted for TriviallySerializable T. "
-        "Consider using `upcxx::reduce_[all|one]_nontrivial<T>` instead "
+        "Consider using `upcxx::experimental::reduce_[all|one]_nontrivial<T>` instead "
         "(experimental feature, use at own risk)."
       );
 
@@ -465,7 +467,7 @@ namespace upcxx {
   }
   
   //////////////////////////////////////////////////////////////////////////////
-  // upcxx::reduce_one_nontrivial
+  // upcxx::experimental::reduce_one_nontrivial
   
   namespace detail {
     template<typename T1, typename BinaryOp,
@@ -529,7 +531,8 @@ namespace upcxx {
       return returner();
     }
   }
-  
+
+  namespace experimental {
   template<typename T1, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
@@ -555,6 +558,7 @@ namespace upcxx {
         std::integral_constant<bool, upcxx::is_trivially_serializable<T>::value>()
       );
   }
+  } // namespace experimental
   
   //////////////////////////////////////////////////////////////////////////////
   // upcxx::reduce_all
@@ -605,7 +609,7 @@ namespace upcxx {
   }
   
   //////////////////////////////////////////////////////////////////////////////
-  // upcxx::reduce_all_nontrivial
+  // upcxx::experimental::reduce_all_nontrivial
   
   namespace detail {
     template<typename T1, typename BinaryOp,
@@ -674,7 +678,8 @@ namespace upcxx {
       return returner();
     }
   }
-  
+
+  namespace experimental {
   template<typename T1, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
@@ -697,6 +702,7 @@ namespace upcxx {
         std::integral_constant<bool, upcxx::is_trivially_serializable<T>::value>()
       );
   }
+  } // namespace experimental
   
   //////////////////////////////////////////////////////////////////////////////
   // reduce_state::contribute

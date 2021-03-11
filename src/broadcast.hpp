@@ -29,8 +29,9 @@ namespace upcxx {
   }
   
   //////////////////////////////////////////////////////////////////////////////
-  // upcxx::broadcast_nontrivial
-  
+  // upcxx::experimental::broadcast_nontrivial
+
+  namespace experimental {
   template<typename T1,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
@@ -49,7 +50,7 @@ namespace upcxx {
     using CxsDecayed = typename std::decay<Cxs>::type;
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::broadcast_nontrivial()", entry_barrier::internal);
+    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::experimental::broadcast_nontrivial()", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "broadcast_nontrivial(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     UPCXX_ASSERT_ALWAYS(
@@ -119,6 +120,7 @@ namespace upcxx {
     
     return returner();
   }
+  } // namespace experimental
   
   //////////////////////////////////////////////////////////////////////////////
   // upcxx::broadcast
@@ -148,7 +150,7 @@ namespace upcxx {
     static_assert(
       upcxx::is_trivially_serializable<T>::value,
       "Only TriviallySerializable types permitted for `upcxx::broadcast`. "
-      "Consider `upcxx::broadcast_nontrivial` instead (experimental feature, "
+      "Consider `upcxx::experimental::broadcast_nontrivial` instead (experimental feature, "
       "use at own risk)."
     );
     
@@ -213,7 +215,7 @@ namespace upcxx {
     static_assert(
       upcxx::is_trivially_serializable<T>::value,
       "Only TriviallySerializable types permitted for `upcxx::broadcast`. "
-      "Consider `upcxx::broadcast_nontrivial` instead (experimental feature, "
+      "Consider `upcxx::experimental::broadcast_nontrivial` instead (experimental feature, "
       "use at own risk)."
     );
 

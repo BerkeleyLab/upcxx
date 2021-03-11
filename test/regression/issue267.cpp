@@ -22,9 +22,9 @@ int main() {
   auto handler2 = handler1;
   #endif
 
-  upcxx::reduce_all_nontrivial(
+  upcxx::experimental::reduce_all_nontrivial(
     std::string(10,'x'),
-    upcxx::op_add,
+    upcxx::experimental::op_add,
     upcxx::world(),
     upcxx::operation_cx::as_lpc(upcxx::current_persona(), handler1) |
     upcxx::operation_cx::as_lpc(upcxx::current_persona(), handler2)

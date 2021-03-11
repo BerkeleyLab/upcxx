@@ -18,7 +18,7 @@ int main() {
   gp = broadcast(gp, 0).wait();
 
   static bigarray_t bigval;
-  reduce_all(bigval, op_add).wait(); // reduce huge val passed on stack
+  reduce_all(bigval, op_fast_add).wait(); // reduce huge val passed on stack
 
   finalize();
   return 0;
