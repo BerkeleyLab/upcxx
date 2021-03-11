@@ -31,7 +31,9 @@ Infrastructure changes:
 
 Notable bug fixes:
 
+* issue #25: Remove non-public symbols from top-level upcxx:: namespace
 * issue #245: persona-example deadlocks when --with-mpsc-queue=biglock
+* issue #276: Use C++ protection features to enforce abstraction boundaries
 * issue #382: Expose shared heap usage at runtime
 * issue #408: Cannot register multiple completions against a non-copyable results type
 * issue #421: upcxx::copy() breaks with PGI optimizer
