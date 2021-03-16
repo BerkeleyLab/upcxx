@@ -708,16 +708,16 @@ namespace upcxx {
       cx_state(lpc_cx<Event,Fn> &&cx):
         target_(cx.target_),
         fn_(static_cast<Fn&&>(cx.fn_)) {
-        upcxx::current_persona().undischarged_n_ += 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
       }
       cx_state(const lpc_cx<Event,Fn> &cx):
         target_(cx.target_),
         fn_(cx.fn_) {
-        upcxx::current_persona().undischarged_n_ += 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
-        upcxx::current_persona().undischarged_n_ -= 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
         return detail::make_lpc_dormant(*target_, progress_level::user, std::move(fn_), tail);
       }
       
@@ -725,7 +725,7 @@ namespace upcxx {
         target_->lpc_ff(
           detail::lpc_bind<Fn,T...>(static_cast<Fn&&>(fn_), static_cast<T&&>(vals)...)
         );
-        upcxx::current_persona().undischarged_n_ -= 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
 

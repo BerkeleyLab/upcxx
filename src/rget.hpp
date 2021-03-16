@@ -79,7 +79,7 @@ namespace upcxx {
         rank_s{rank_s},
         state_remote{std::move(state_remote)} {
 
-        upcxx::current_persona().undischarged_n_ += 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
       void send_remote() {
@@ -87,7 +87,7 @@ namespace upcxx {
           state_remote.template bind_event<remote_cx_event>()
         );
         
-        upcxx::current_persona().undischarged_n_ -= 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
     

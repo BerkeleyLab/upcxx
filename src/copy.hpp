@@ -202,14 +202,14 @@ namespace upcxx {
               cxs_remote.template bind_event<remote_cx_event>()
             )
           ) : nullptr);
-      if (copy_traits::want_remote) initiator_per->undischarged_n_++;
+      if (copy_traits::want_remote) initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
       detail::rma_copy_local(heap_d, buf_d, heap_s, buf_s, size,
         cuda::make_event_cb([=]() {
           cxs_here->template operator()<source_cx_event>();
           cxs_here->template operator()<operation_cx_event>();
           delete cxs_here;
           if (copy_traits::want_remote) {
-            initiator_per->undischarged_n_--;
+            initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
             std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
             delete cxs_remote_heaped;
           }
@@ -298,7 +298,7 @@ namespace upcxx {
                                        cxs_remote.template bind_event<remote_cx_event>()));
         }
 
-        initiator_per->undischarged_n_++;
+        initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
       } // want_remote
 
       detail::rma_copy_remote(heap_s, rank_s, buf_s, heap_d, rank_d, buf_d, size,
@@ -311,7 +311,7 @@ namespace upcxx {
               delete cxs_here;
           
               if (copy_traits::want_remote) {
-                initiator_per->undischarged_n_--;
+                initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
                 if (rank_d == initiator) { // in-place RC
                   std::move(*cxs_remote_heaped_local)(); // deserialized_bound_function only invocable on an rvalue
                   delete cxs_remote_heaped_local;
@@ -345,7 +345,7 @@ namespace upcxx {
         bounce_d = backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);
       }
 
-      if (copy_traits::want_remote) initiator_per->undischarged_n_++;
+      if (copy_traits::want_remote) initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
       backend::send_am_master<progress_level::internal>( rank_s,
         [=]() {
           auto make_bounce_s_cont = [=](void *bounce_s) {
@@ -366,7 +366,7 @@ namespace upcxx {
                           backend::gasnet::deallocate(bounce_d, &backend::gasnet::sheap_footprint_rdzv);
 
                         if (copy_traits::want_remote) {
-                          initiator_per->undischarged_n_--;
+                          initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
                           std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
                           delete cxs_remote_heaped;
                         }

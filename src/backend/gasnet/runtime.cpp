@@ -2045,10 +2045,10 @@ RpcAsLpc* rpc_as_lpc::build_rdzv_lz(
 namespace {
   void burst_cuda(persona *per) {
   #if UPCXX_CUDA_ENABLED
-    while(cuda::event_cb *cb = per->cuda_state_.event_cbs.peek()) {
+    while(cuda::event_cb *cb = per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
       if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->cu_event)) {
         CU_CHECK(cuEventDestroy((CUevent)cb->cu_event));
-        per->cuda_state_.event_cbs.dequeue();
+        per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.dequeue();
         cb->execute_and_delete();
       }
       else
@@ -2078,7 +2078,7 @@ void gasnet::after_gasnet() {
         if(&p == &backend::master)
           exec_n += gasnet::master_hcbs.burst(/*spinning=*/false);
       #elif UPCXX_BACKEND_GASNET_PAR
-        exec_n += p.backend_state_.hcbs.burst(/*spinning=*/false);
+        exec_n += p.UPCXX_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/false);
       #endif
       
       exec_n += tls.burst_internal(p);
@@ -2127,7 +2127,7 @@ void upcxx::progress(progress_level level) {
         if(&p == &backend::master)
           exec_n += gasnet::master_hcbs.burst(/*spinning=*/true);
       #elif UPCXX_BACKEND_GASNET_PAR
-        exec_n += p.backend_state_.hcbs.burst(/*spinning=*/true);
+        exec_n += p.UPCXX_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/true);
       #endif
       
       exec_n += tls.burst_internal(p);
