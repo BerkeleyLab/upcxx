@@ -159,6 +159,8 @@ namespace upcxx {
     struct persona_scope_raw {
     protected:
       friend struct detail::persona_tls;
+      friend class upcxx::persona_scope;
+      friend persona& upcxx::current_persona();
       
       persona_scope_raw *next_;
       std::uintptr_t persona_xor_default_;
@@ -182,7 +184,6 @@ namespace upcxx {
       
       //////////////////////////////////////////////////////////////////////////
       // accessors
-    public:
       persona* get_persona(detail::persona_tls &tls) const;
       void set_persona(persona *val, detail::persona_tls &tls);
     };
