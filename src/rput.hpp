@@ -231,7 +231,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn &&remote
         ) {
-        //upcxx::say()<<"amlong with reply";
+        //upcxx::experimental::say()<<"amlong with reply";
         auto *o = static_cast<Obj*>(this);
 
         auto sync_out = backend::gasnet::template rma_put_then_am_master<sync_lb1>(
@@ -274,7 +274,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn &&remote
         ) {
-        //upcxx::say()<<"amlong with reply blocking";
+        //upcxx::experimental::say()<<"amlong with reply blocking";
         auto *o = static_cast<Obj*>(this);
         
         auto sync_out = backend::gasnet::template rma_put_then_am_master<
@@ -325,7 +325,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn &&remote
         ) {
-        //upcxx::say()<<"amlong without reply";
+        //upcxx::experimental::say()<<"amlong without reply";
         auto sync_out = backend::gasnet::template rma_put_then_am_master<sync_lb1>(
           rank_d, buf_d, buf_s, buf_size,
           progress_level::user, std::move(remote),

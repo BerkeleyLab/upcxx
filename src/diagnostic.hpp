@@ -134,16 +134,19 @@ namespace detail {
 #endif
 
 namespace upcxx {
+ namespace experimental {
   // ostream-like class which will print to the provided stream with an optional prefix and
   // as much atomicity as possible. Includes trailing newline (if missing).
   // usage:
-  //   upcxx::say() << "hello world";
+  //   upcxx::experimental::say() << "hello world";
   // prints:
   //   [0] hello world \n
   class say {
     std::stringstream ss;
     std::ostream &target;
   public:
+    // Optional arguments are the std::ostream to use,  
+    // and the output prefix string, where `%d` (if present) is replaced by the rank number
     say(std::ostream &output, const char *prefix="[%d] ");
     say(const char *prefix="[%d] ") : say(std::cout, prefix) {}
     ~say();
@@ -154,6 +157,7 @@ namespace upcxx {
       return *this;
     }
   };
+ }
 }
 
 #endif

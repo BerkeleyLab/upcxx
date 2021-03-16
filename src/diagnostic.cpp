@@ -74,7 +74,7 @@ void upcxx::detail::assert_failed(const char *func, const char *file,
   upcxx::detail::fatal_error(msg, "assertion failure", func, file, line);
 }
 
-upcxx::say::say(std::ostream &output, const char *prefix) : target(output) {
+upcxx::experimental::say::say(std::ostream &output, const char *prefix) : target(output) {
   if (!prefix) return;
   intrank_t myrank = -1;
   #ifdef UPCXX_BACKEND
@@ -93,7 +93,7 @@ upcxx::say::say(std::ostream &output, const char *prefix) : target(output) {
   ss << prefix;
 }
 
-upcxx::say::~say() {
+upcxx::experimental::say::~say() {
   std::string result = ss.str();
   if (!result.empty()) {
     if (result.back() != '\n') result.push_back('\n');

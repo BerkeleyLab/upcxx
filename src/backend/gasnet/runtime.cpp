@@ -29,6 +29,7 @@ using upcxx::persona_scope;
 using upcxx::progress_level;
 using upcxx::team;
 using upcxx::team_id;
+using upcxx::experimental::say;
 
 using detail::command;
 using detail::par_atomic;
@@ -841,7 +842,7 @@ void upcxx::init() {
 
   if(backend::verbose_noise) {
     // output process identity information, for validating job layout matches user intent
-    upcxx::say(std::cerr,"") << "UPCXX: Process " 
+    say(std::cerr,"") << "UPCXX: Process " 
         << setw(to_string(backend::rank_n-1).size()) << backend::rank_me << "/" << backend::rank_n
         << " (local_team: " << setw(to_string(peer_n-1).size()) << peer_me << "/" << peer_n << ") on "
         << gasnett_gethostname() << " (" << gasnett_cpu_count() << " processors)";
@@ -1245,7 +1246,7 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
   if (warn) {
     if (!upcxx::rank_me()) { // only output from proc0 to avoid spamminess 
                              // (at a small risk of missing subteam calls that exclude proc0)
-      upcxx::say("") << std::string(70, '/') << "\n"
+      say("") << std::string(70, '/') << "\n"
         "WARNING: The following collective UPC++ operation was initiated inside the "
         "UPC++ restricted context (from a callback running inside user-level progress):\n\n"
         "   " << fnname << "\n\n"

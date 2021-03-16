@@ -15,7 +15,7 @@ int main() {
   int64_t total = upcxx::shared_segment_size();
   int64_t used_initial = upcxx::shared_segment_used();
 
-  upcxx::say() << "Shared segment: size=" << total << " used=" << used_initial;
+  say() << "Shared segment: size=" << total << " used=" << used_initial;
 
   assert(total > 0); // NOT guaranteed by spec, but true for curr implementation
   assert(used_initial >= 0); // NOT guaranteed by spec, but true for curr implementation
@@ -35,7 +35,7 @@ int main() {
 
       int64_t new_used = upcxx::shared_segment_used();
       int64_t delta = new_used - used;
-      upcxx::say() << " allocated=" << sz << ": used=" << new_used << " delta=" << delta;
+      say() << " allocated=" << sz << ": used=" << new_used << " delta=" << delta;
 
       assert(delta >= (int64_t)sz); // NOT guaranteed by spec, but should be true in this particular case
 
@@ -48,7 +48,7 @@ int main() {
       int64_t new_used = upcxx::shared_segment_used();
       int64_t delta = new_used - used;
 
-      upcxx::say() << " deleted one object: used=" << new_used << " delta=" << delta;
+      say() << " deleted one object: used=" << new_used << " delta=" << delta;
       assert(delta < 0); // NOT guaranteed by spec, but should be true in this particular case
 
       used = new_used;
@@ -61,7 +61,7 @@ int main() {
   if (!upcxx::rank_me()) {
     int64_t new_used = upcxx::shared_segment_used();
     int64_t new_total = upcxx::shared_segment_size();
-    upcxx::say() << "Shared segment: size=" << new_total << " used=" << new_used;
+    say() << "Shared segment: size=" << new_total << " used=" << new_used;
 
     assert(new_total == total); // NOT guaranteed by spec, but true for curr implementation
   }

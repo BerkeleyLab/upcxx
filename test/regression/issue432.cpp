@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
   gp_d peer_gp = all_gps.fetch(peer).wait();
   gp_d peer_gp2 = peer_gp + SZ;
   upcxx::barrier();
-#define SAY(stuff)  do { upcxx::say() << stuff << ", line=" << __LINE__; } while (0)
+#define SAY(stuff)  do { say() << stuff << ", line=" << __LINE__; } while (0)
 #if 1
 { // --------------------------------------------------
   SAY("test: get(remote GPU -> private host, remote_cx::as_rpc)");
