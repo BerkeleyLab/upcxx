@@ -30,6 +30,7 @@ using upcxx::progress_level;
 using upcxx::team;
 using upcxx::team_id;
 using upcxx::experimental::say;
+using upcxx::experimental::os_env;
 
 using detail::command;
 using detail::par_atomic;
@@ -281,12 +282,12 @@ void upcxx::backend::heap_state::init() {
       UPCXX_ASSERT(intrank_t(num_nbrhd) <= backend::rank_n);
       bool bug4148 = // GASNet bug 4148 arises in two scenarios:
          (intrank_t(num_nbrhd) < backend::rank_n) // some node is using PSHM bypass
-         || upcxx::os_env<bool>("GASNET_USE_FENCED_PUTS", false); // or ibv multi-rail
+         || os_env<bool>("GASNET_USE_FENCED_PUTS", false); // or ibv multi-rail
     #else
       bool bug4148 = false;
     #endif
     heap_state::bug4148_workaround_ =
-      upcxx::os_env<bool>("UPCXX_BUG4148_WORKAROUND", bug4148);
+      os_env<bool>("UPCXX_BUG4148_WORKAROUND", bug4148);
   #endif
 }
 
@@ -325,14 +326,14 @@ namespace {
       if (firstcall) {
         firstcall = false;
         // UPCXX_USE_UPC_ALLOC enables the use of the UPC allocator to replace our allocator
-        upcxx_use_upc_alloc = upcxx::os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxx_upc_is_pthreads() || upcxx_use_upc_alloc));
+        upcxx_use_upc_alloc = os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxx_upc_is_pthreads() || upcxx_use_upc_alloc));
         if (upcxx_upc_is_pthreads() && !upcxx_use_upc_alloc) {
           noise.warn() << "UPCXX_USE_UPC_ALLOC=no is not supported in UPC -pthreads mode. Forcing UPCXX_USE_UPC_ALLOC=yes";
           upcxx_use_upc_alloc = 1;
         }
         if (!upcxx_use_upc_alloc) {
           // UPCXX_UPC_HEAP_COLL: selects the use of the collective or non-collective UPC shared heap to host the UPC++ allocator
-          upcxx_upc_heap_coll = upcxx::os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxx_upc_heap_coll);
+          upcxx_upc_heap_coll = os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxx_upc_heap_coll);
         }
       }
       if (local_scratch_sz && !local_scratch_ptr) { 
@@ -2690,15 +2691,16 @@ inline int handle_cb_queue::burst(bool maybe_spinning) {
 ////////////////////////////////////////////////////////////////////////
 // from: upcxx/os_env.hpp
 
-namespace upcxx {
-  template<>
+namespace upcxx { namespace experimental {
+  template<> // bool specialization for yes/no
   bool os_env(const std::string &name, const bool &otherwise) {
     return !!gasnett_getenv_yesno_withdefault(name.c_str(), otherwise);
   }
+  // overload for mem_size_multiplier
   int64_t os_env(const std::string &name, const int64_t &otherwise, size_t mem_size_multiplier) {
     return gasnett_getenv_int_withdefault(name.c_str(), otherwise, mem_size_multiplier);
   }
-}
+} } // namespace
 
 ////////////////////////////////////////////////////////////////////////
 // Other library ident strings live in watermark.cpp

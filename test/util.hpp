@@ -28,11 +28,14 @@
 // ensure up-to-date versions of this header (and tests relying on it) still compile unchanged with older releases
 #if UPCXX_VERSION >= 20201111
 using upcxx::experimental::say;
+using upcxx::experimental::os_env;
 #elif UPCXX_VERSION >= 20200308
 using upcxx::say;
+using upcxx::os_env;
 #else // before 2020.3.8
 using say_ = upcxx::say;
 say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); } 
+using upcxx::os_env;
 #endif
 
 template<typename=void>

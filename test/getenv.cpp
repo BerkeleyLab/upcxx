@@ -1,5 +1,6 @@
 #include <upcxx/upcxx.hpp>
 #include <gasnet.h>
+#include "util.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -11,7 +12,7 @@ int main(int argc, char **argv) {
 
   const char *p =  std::getenv(key);
   const char *g =  gasnett_getenv(key);
-  std::string u =  upcxx::os_env<std::string>(key,"NULL");
+  std::string u =  os_env<std::string>(key,"NULL");
   const char *c =  upcxx::getenv_console(key);
   std::ostringstream oss;
   oss << upcxx::rank_me() << ":" 

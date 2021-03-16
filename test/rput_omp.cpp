@@ -20,9 +20,8 @@ int main () {
 	const int n = upcxx::rank_n();
 	const int me = upcxx::rank_me();
 	
-	int tn = upcxx::os_env<int>("THREADS", 0);
-	if(tn <= 0)
-		tn = upcxx::os_env<int>("OMP_NUM_THREADS", 10);
+	int tn = os_env<int>("THREADS", 0);
+	if(tn <= 0) tn = os_env<int>("OMP_NUM_THREADS", 10);
 	
 	if(me == 0)
 		std::cout<<"Threads: "<<tn<<'\n';

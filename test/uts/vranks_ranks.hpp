@@ -2,6 +2,7 @@
 #define _9d56dedd_fa3c_4193_bb74_ed270f331282
 
 #include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 
 #define VRANKS_IMPL "ranks"
 #define VRANK_LOCAL /*empty*/

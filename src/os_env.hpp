@@ -10,16 +10,7 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace upcxx {
-  template<class T>
-  T os_env(const std::string &name);
-  template<class T>
-  T os_env(const std::string &name, const T &otherwise);
-
-  template<>
-  bool os_env(const std::string &name, const bool &otherwise);
-  // mem_size_multiplier = default units (eg 1024=KB), or 0 for not a memory size
-  std::int64_t os_env(const std::string &name, const std::int64_t &otherwise, std::size_t mem_size_multiplier);
+namespace upcxx { 
 
   namespace detail {
     extern char *(*getenv)(const char *key);
@@ -63,7 +54,20 @@ namespace upcxx {
         return ss.str();
       }
     };
-  }
+  } // namespace detail
+
+ namespace experimental {
+  template<class T>
+  T os_env(const std::string &name);
+  template<class T>
+  T os_env(const std::string &name, const T &otherwise);
+
+  template<>
+  bool os_env(const std::string &name, const bool &otherwise);
+  // mem_size_multiplier = default units (eg 1024=KB), or 0 for not a memory size
+  std::int64_t os_env(const std::string &name, const std::int64_t &otherwise, std::size_t mem_size_multiplier);
+ } // namespace experimental
+
   inline char *getenv_console(const char *env_var) {
     #ifdef UPCXX_BACKEND
       UPCXX_ASSERT(initialized(), "UPC++ is not currently initialized");
@@ -71,10 +75,11 @@ namespace upcxx {
     UPCXX_ASSERT(detail::getenv);
     return detail::getenv(env_var);
   }
-}
+
+} // namespace upcxx
 
 template<class T>
-T upcxx::os_env(const std::string &name) {
+T upcxx::experimental::os_env(const std::string &name) {
   char const *key = name.c_str();
   std::string sval;
   
@@ -86,7 +91,7 @@ T upcxx::os_env(const std::string &name) {
 }
 
 template<class T>
-T upcxx::os_env(const std::string &name, const T &otherwise) {
+T upcxx::experimental::os_env(const std::string &name, const T &otherwise) {
   char const *key = name.c_str();
   char const *p = detail::getenv(key);
   std::string sval;

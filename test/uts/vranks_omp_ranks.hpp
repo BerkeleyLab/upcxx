@@ -2,6 +2,7 @@
 #define _6dd7e289_751e_45bc_90dc_006795a19ea7
 
 #include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 
 #include <atomic>
 #include <vector>
@@ -38,7 +39,7 @@ namespace vranks {
   void spawn(Fn fn) {
     upcxx::init();
     
-    thread_per_rank = upcxx::os_env<int>("THREADS", 4);
+    thread_per_rank = os_env<int>("THREADS", 4);
     thread_agents.resize(thread_per_rank);
     
     std::atomic<int> bar1{0};
