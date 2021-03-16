@@ -53,10 +53,20 @@ Breaking changes:
 
 * Array types are now prohibited as template arguments to `upcxx::new_` and
   `upcxx::new_array`.
-* `destroy_heap`, `restore_heap`, `broadcast_nontrivial`,
-  `reduce_one_nontrivial`, `reduce_all_nontrival`, and the non-fast `op_*`
-  reduction constants have been moved to the `upcxx::experimental` namespace.
-  These are all unspecified and experimental, and they are subject to change.
+* The following *unspecified* identifiers, previously in the `upcxx` namespace:
+    - `broadcast_nontrivial`, `reduce_one_nontrivial`, `reduce_all_nontrivial`
+    - The non-fast `op_*` reduction constants (e.g. `op_add`)
+    - `os_env`
+    - `say`
+    - `destroy_heap` and `restore_heap`
+  have all been moved to the `upcxx::experimental` namespace.  These interfaces
+  all remain unspecified and experimental, and they are subject to change
+  without notice in future revisions.
+* The unspecified/obsolete `UPCXX_REFLECTED()` macro and `upcxx::wait()` function have been removed.
+* Many other unspecified internal functions and members have been renamed.
+  Applications should avoid depending on unspecified functions or members, which
+  are subject to change without notice. This in particular includes anything in
+  the upcxx sub-namespaces (e.g. `upcxx::detail`).
 
 
 ### 2020.10.30: Memory Kinds Prototype 2020.11.0
