@@ -67,12 +67,12 @@ namespace upcxx {
 
   
   template<typename T, memory_kind Ks,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, T *dest, std::size_t n,
-       Cxs &&cxs=completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -85,12 +85,12 @@ namespace upcxx {
   }
 
   template<typename T, memory_kind Kd,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(T const *src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -103,12 +103,12 @@ namespace upcxx {
   }
   
   template<typename T, memory_kind Ks, memory_kind Kd,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src); UPCXX_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -159,9 +159,10 @@ namespace upcxx {
       UPCXX_ASSERT(heap_s != detail::private_heap && heap_d != detail::private_heap);
       
       backend::send_am_master<progress_level::internal>( rank_d,
-        upcxx::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
+        detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
           // at target
-          auto operation_cx_as_internal_future = upcxx::completions<upcxx::future_cx<upcxx::operation_cx_event, progress_level::internal>>{{}};
+          auto operation_cx_as_internal_future =
+            detail::operation_cx_as_internal_future_t{{}};
           deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
             copy_traits::want_remote ?
               new deserialized_cxs_remote_bound_t(std::move(cxs_remote_bound)) : nullptr);
@@ -240,7 +241,7 @@ namespace upcxx {
       } else must_ack |= copy_traits::want_source;
 
       backend::send_am_master<progress_level::internal>( rank_d,
-        upcxx::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
+        detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
           // at target
           deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
             copy_traits::want_remote ?
@@ -410,7 +411,7 @@ namespace upcxx {
       // this lambda runs synchronously to serialize remote_cx and generate the AM payload we'll eventually send
       auto make_am = [&](void *bounce_s) {
         return backend::prepare_deferred_am_master(rank_d,
-            upcxx::bind(
+            detail::bind(
               [=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
                 // at target
                 void *bounce_d = heap_d == host_heap ? buf_d : backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);

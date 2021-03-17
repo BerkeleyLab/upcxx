@@ -29,6 +29,8 @@ using upcxx::persona_scope;
 using upcxx::progress_level;
 using upcxx::team;
 using upcxx::team_id;
+using upcxx::experimental::say;
+using upcxx::experimental::os_env;
 
 using detail::command;
 using detail::par_atomic;
@@ -142,7 +144,8 @@ namespace {
   bool oversubscribed;
   
   auto do_internal_progress = []() { upcxx::progress(progress_level::internal); };
-  auto operation_cx_as_internal_future = upcxx::completions<upcxx::future_cx<upcxx::operation_cx_event, progress_level::internal>>{{}};
+  auto operation_cx_as_internal_future =
+    upcxx::detail::operation_cx_as_internal_future_t{{}};
 
   void quiesce_rdzv(bool in_finalize, noise_log&);
 }
@@ -279,12 +282,12 @@ void upcxx::backend::heap_state::init() {
       UPCXX_ASSERT(intrank_t(num_nbrhd) <= backend::rank_n);
       bool bug4148 = // GASNet bug 4148 arises in two scenarios:
          (intrank_t(num_nbrhd) < backend::rank_n) // some node is using PSHM bypass
-         || upcxx::os_env<bool>("GASNET_USE_FENCED_PUTS", false); // or ibv multi-rail
+         || os_env<bool>("GASNET_USE_FENCED_PUTS", false); // or ibv multi-rail
     #else
       bool bug4148 = false;
     #endif
     heap_state::bug4148_workaround_ =
-      upcxx::os_env<bool>("UPCXX_BUG4148_WORKAROUND", bug4148);
+      os_env<bool>("UPCXX_BUG4148_WORKAROUND", bug4148);
   #endif
 }
 
@@ -323,14 +326,14 @@ namespace {
       if (firstcall) {
         firstcall = false;
         // UPCXX_USE_UPC_ALLOC enables the use of the UPC allocator to replace our allocator
-        upcxx_use_upc_alloc = upcxx::os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxx_upc_is_pthreads() || upcxx_use_upc_alloc));
+        upcxx_use_upc_alloc = os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxx_upc_is_pthreads() || upcxx_use_upc_alloc));
         if (upcxx_upc_is_pthreads() && !upcxx_use_upc_alloc) {
           noise.warn() << "UPCXX_USE_UPC_ALLOC=no is not supported in UPC -pthreads mode. Forcing UPCXX_USE_UPC_ALLOC=yes";
           upcxx_use_upc_alloc = 1;
         }
         if (!upcxx_use_upc_alloc) {
           // UPCXX_UPC_HEAP_COLL: selects the use of the collective or non-collective UPC shared heap to host the UPC++ allocator
-          upcxx_upc_heap_coll = upcxx::os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxx_upc_heap_coll);
+          upcxx_upc_heap_coll = os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxx_upc_heap_coll);
         }
       }
       if (local_scratch_sz && !local_scratch_ptr) { 
@@ -392,7 +395,7 @@ namespace {
 }
 
 // WARNING: This is not a documented or supported entry point, and may soon be removed!!
-// void upcxx::destroy_heap(void):
+// void upcxx::experimental::destroy_heap(void):
 //
 // Precondition: The shared heap is a live state, either by virtue
 // of library initialization, or a prior call to upcxx::restore_heap.
@@ -412,7 +415,7 @@ namespace {
 // creation have undefined behavior. The list of such functions is
 // implementation-defined.
 
-void upcxx::destroy_heap() {
+void upcxx::experimental::destroy_heap() {
   noise_log noise("upcxx::destroy_heap()");
   
   UPCXX_ASSERT_ALWAYS_MASTER();
@@ -444,7 +447,7 @@ void upcxx::destroy_heap() {
   noise.show();
 }
 
-// void upcxx::restore_heap(void):
+// void upcxx::experimental::restore_heap(void):
 //
 // Precondition: The shared heap is a dead state, due to a prior call to upcxx::destroy_heap.
 // Calling thread must have the master persona.
@@ -452,7 +455,7 @@ void upcxx::destroy_heap() {
 // This collective call over all processes re-initializes the shared heap of 
 // all processes, returning them to a live state.
 
-void upcxx::restore_heap(void) {
+void upcxx::experimental::restore_heap(void) {
   UPCXX_ASSERT_ALWAYS_MASTER();
   UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
   UPCXX_ASSERT_ALWAYS(shared_heap_sz > 0);
@@ -581,7 +584,7 @@ void upcxx::init() {
   ::new(detail::the_world_team.raw()) upcxx::team(
     detail::internal_only(),
     backend::team_base{reinterpret_cast<uintptr_t>(world_tm)},
-    digest{0x1111111111111111, 0x1111111111111111},
+    detail::digest{0x1111111111111111, 0x1111111111111111},
     backend::rank_n, backend::rank_me
   );
   
@@ -829,7 +832,7 @@ void upcxx::init() {
     detail::internal_only(),
     backend::team_base{reinterpret_cast<uintptr_t>(local_tm)},
     // we use different digests even if local_tm==world_tm
-    (digest{0x2222222222222222, 0x2222222222222222}).eat(backend::pshm_peer_lb),
+    (detail::digest{0x2222222222222222, 0x2222222222222222}).eat(backend::pshm_peer_lb),
     peer_n, peer_me
   );
   
@@ -840,7 +843,7 @@ void upcxx::init() {
 
   if(backend::verbose_noise) {
     // output process identity information, for validating job layout matches user intent
-    upcxx::say(std::cerr,"") << "UPCXX: Process " 
+    say(std::cerr,"") << "UPCXX: Process " 
         << setw(to_string(backend::rank_n-1).size()) << backend::rank_me << "/" << backend::rank_n
         << " (local_team: " << setw(to_string(peer_n-1).size()) << peer_me << "/" << peer_n << ") on "
         << gasnett_gethostname() << " (" << gasnett_cpu_count() << " processors)";
@@ -1244,7 +1247,7 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
   if (warn) {
     if (!upcxx::rank_me()) { // only output from proc0 to avoid spamminess 
                              // (at a small risk of missing subteam calls that exclude proc0)
-      upcxx::say("") << std::string(70, '/') << "\n"
+      say("") << std::string(70, '/') << "\n"
         "WARNING: The following collective UPC++ operation was initiated inside the "
         "UPC++ restricted context (from a callback running inside user-level progress):\n\n"
         "   " << fnname << "\n\n"
@@ -1257,7 +1260,7 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
   }
 
   if (eb == entry_barrier::user) { // issue 412
-    upcxx::fatal_error(
+    upcxx::detail::fatal_error(
      "Collective operations with user-level progress semantics are prohibited "
      "from being initiated inside the restricted context (from a callback already running inside user-level progress).\n"
      "Please refactor your code and/or request entry_barrier::internal or entry_barrier::none "
@@ -1517,7 +1520,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
   if_pf (error) {
     if (short_context && *short_context) ss << " in " << short_context;
     ss << "\n  rank = " << rank << ", raw_ptr = " << raw_ptr << ", heap_idx = " << heap_idx;
-    fatal_error(ss.str(), "fatal global_ptr error", context);
+    detail::fatal_error(ss.str(), "fatal global_ptr error", context);
   }
 }
 
@@ -1830,7 +1833,7 @@ void gasnet::bcast_am_master_rdzv(
             );
           
           detail::serialization_reader r(payload_target);
-          r.unplace(storage_size_of<bcast_payload_header>());
+          r.unplace(detail::storage_size_of<bcast_payload_header>());
           
           bcast_as_lpc *m = new bcast_as_lpc;
           m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(r);
@@ -1864,7 +1867,7 @@ void gasnet::bcast_am_master_rdzv(
 
               {
                 detail::serialization_reader r(payload_here);
-                r.unplace(storage_size_of<bcast_payload_header>());
+                r.unplace(detail::storage_size_of<bcast_payload_header>());
                 m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(r);
               }
               
@@ -2688,15 +2691,16 @@ inline int handle_cb_queue::burst(bool maybe_spinning) {
 ////////////////////////////////////////////////////////////////////////
 // from: upcxx/os_env.hpp
 
-namespace upcxx {
-  template<>
+namespace upcxx { namespace experimental {
+  template<> // bool specialization for yes/no
   bool os_env(const std::string &name, const bool &otherwise) {
     return !!gasnett_getenv_yesno_withdefault(name.c_str(), otherwise);
   }
+  // overload for mem_size_multiplier
   int64_t os_env(const std::string &name, const int64_t &otherwise, size_t mem_size_multiplier) {
     return gasnett_getenv_int_withdefault(name.c_str(), otherwise, mem_size_multiplier);
   }
-}
+} } // namespace
 
 ////////////////////////////////////////////////////////////////////////
 // Other library ident strings live in watermark.cpp

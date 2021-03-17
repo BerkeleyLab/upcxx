@@ -23,7 +23,7 @@ namespace upcxx {
 
     template<typename Fn>
     using lpc_raw_results_type = // std::tuple wrapping the raw results of an lpc callable
-      typename decltype(upcxx::apply_as_future(typename std::decay<Fn>::type(std::declval<Fn>())))::results_type;
+      typename decltype(detail::apply_as_future(typename std::decay<Fn>::type(std::declval<Fn>())))::results_type;
 
     template<typename Fn>
     using lpc_results_type = // std::tuple wrapping the decayed results of an lpc callable
@@ -134,7 +134,7 @@ namespace upcxx {
       Fn fn_;
       
       void operator()() {
-        upcxx::apply_as_future_then_lazy(
+        detail::apply_as_future_then_lazy(
           fn_,
           lpc_recipient_executed<Promise>{initiator_, pro_}
         );

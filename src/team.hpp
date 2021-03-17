@@ -7,7 +7,7 @@
 namespace upcxx {
   namespace detail {
     template<typename T>
-    future_header_promise<T>* registered_promise(digest id, int initial_anon) {
+    future_header_promise<T>* registered_promise(detail::digest id, int initial_anon) {
       UPCXX_ASSERT_MASTER();
       
       future_header_promise<T> *pro;
@@ -28,7 +28,7 @@ namespace upcxx {
     }
 
     template<typename T, typename ...U>
-    T* registered_state(digest id, U &&...ctor_args) {
+    T* registered_state(detail::digest id, U &&...ctor_args) {
       UPCXX_ASSERT_MASTER();
       
       T *thing;
@@ -66,6 +66,7 @@ namespace upcxx {
     return detail::the_local_team.value();
   }
 
+  namespace detail {
   // team references are bound using their id's.
   template<>
   struct binding<team&> {
@@ -105,6 +106,7 @@ namespace upcxx {
       );
     #endif
   };
+  }
 }
 #endif
   

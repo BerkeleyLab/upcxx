@@ -66,17 +66,17 @@
  */
 
 namespace upcxx {
-  //////////////////////////////////////////////////////////////////////////////
-  // future_is_trivially_ready: future_impl_then_lazy specialization
-  
-  template<typename FuArg, typename Fn, typename ...T>
-  struct future_is_trivially_ready<
-      future1<detail::future_kind_then_lazy<FuArg,Fn>,T...>
-    > {
-    static constexpr bool value = false;
-  };
-  
   namespace detail {
+    //////////////////////////////////////////////////////////////////////////////
+    // future_is_trivially_ready: future_impl_then_lazy specialization
+
+    template<typename FuArg, typename Fn, typename ...T>
+    struct future_is_trivially_ready<
+        future1<detail::future_kind_then_lazy<FuArg,Fn>,T...>
+      > {
+      static constexpr bool value = false;
+    };
+  
     template<typename Fn1, typename Fn2>
     struct future_composite_fn;
     
@@ -144,12 +144,15 @@ namespace upcxx {
         UPCXX_ASSERT(must_materialize_);
         must_materialize_ = false;
         
-        return future_impl_then_lazy<FuArg, future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>, Fn2RetT...>(
-          static_cast<FuArg&&>(arg_),
-          future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>{
-            static_cast<Fn&&>(fn_), static_cast<Fn2Ref&&>(fn2)
-          }
-        );
+        return {
+          future_impl_then_lazy<FuArg, future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>, Fn2RetT...>(
+            static_cast<FuArg&&>(arg_),
+            future_composite_fn<Fn,typename std::decay<Fn2Ref>::type>{
+              static_cast<Fn&&>(fn_), static_cast<Fn2Ref&&>(fn2)
+            }
+          ),
+          detail::internal_only{}
+        };
       }
     };
     

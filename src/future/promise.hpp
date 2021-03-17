@@ -109,7 +109,8 @@ namespace upcxx {
     future<T...> promise_get_future(future_header_promise<T...> *hdr) {
       hdr->incref(1);
       return future<T...>(
-        detail::future_impl_shref<detail::future_header_ops_general, /*unique=*/false, T...>(&hdr->base_header_result.base_header)
+        detail::future_impl_shref<detail::future_header_ops_general, /*unique=*/false, T...>(&hdr->base_header_result.base_header),
+        detail::internal_only{}
       );
     }
   }
@@ -171,13 +172,19 @@ namespace upcxx {
         future_header_promise<T...> *hdr = this->header();
         hdr->fulfill(1);
         hdr->incref(1);
-        return typename future<T...>::impl_type(&hdr->base_header_result.base_header);
+        return future<T...>(
+          typename future<T...>::impl_type(&hdr->base_header_result.base_header),
+          detail::internal_only{}
+        );
       }
       
       future<T...> get_future() const {
         future_header_promise<T...> *hdr = this->header();
         hdr->incref(1);
-        return typename future<T...>::impl_type(&hdr->base_header_result.base_header);
+        return future<T...>(
+          typename future<T...>::impl_type(&hdr->base_header_result.base_header),
+          detail::internal_only{}
+        );
       }
     };
   }

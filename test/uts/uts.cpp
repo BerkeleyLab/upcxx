@@ -8,7 +8,7 @@
 
 using namespace std;
 
-using upcxx::digest;
+using upcxx::detail::digest;
 
 struct uts_node {
   uts_node *next;
@@ -35,7 +35,7 @@ int main() {
       vrank_me = vrank_me1;
       vrank_n = vrank_n1;
       
-      uts_width = upcxx::os_env<double>("UTS_WIDTH", 100);
+      uts_width = os_env<double>("UTS_WIDTH", 100);
       if (!vrank_me) std::cout<<"UTS_WIDTH: " << uts_width << std::endl;
 
       uint64_t par_node_n;

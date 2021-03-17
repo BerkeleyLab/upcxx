@@ -31,7 +31,9 @@ Infrastructure changes:
 
 Notable bug fixes:
 
+* issue #25: Remove non-public symbols from top-level upcxx:: namespace
 * issue #245: persona-example deadlocks when --with-mpsc-queue=biglock
+* issue #276: Use C++ protection features to enforce abstraction boundaries
 * issue #382: Expose shared heap usage at runtime
 * issue #408: Cannot register multiple completions against a non-copyable results type
 * issue #421: upcxx::copy() breaks with PGI optimizer
@@ -44,11 +46,27 @@ Notable bug fixes:
 * issue #440: Invalid GASNet call while deserializing a global ptr
 * issue #447: REGRESSION: bulk upcxx::rput with l-value completions
 * issue #450: `upcxx::lpc` callback return of rvalue reference not decayed as specified
+* issue #459: Move unspecified functions and constants into a new
+  `upcxx::experimental` namespace
 
 Breaking changes:
 
 * Array types are now prohibited as template arguments to `upcxx::new_` and
   `upcxx::new_array`.
+* The following *unspecified* identifiers, previously in the `upcxx` namespace:
+    - `broadcast_nontrivial`, `reduce_one_nontrivial`, `reduce_all_nontrivial`
+    - The non-fast `op_*` reduction constants (e.g. `op_add`)
+    - `os_env`
+    - `say`
+    - `destroy_heap` and `restore_heap`
+  have all been moved to the `upcxx::experimental` namespace.  These interfaces
+  all remain unspecified and experimental, and they are subject to change
+  without notice in future revisions.
+* The unspecified/obsolete `UPCXX_REFLECTED()` macro and `upcxx::wait()` function have been removed.
+* Many other unspecified internal functions and members have been renamed.
+  Applications should avoid depending on unspecified functions or members, which
+  are subject to change without notice. This in particular includes anything in
+  the upcxx sub-namespaces (e.g. `upcxx::detail`).
 
 
 ### 2020.10.30: Memory Kinds Prototype 2020.11.0

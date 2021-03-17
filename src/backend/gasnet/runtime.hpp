@@ -191,7 +191,7 @@ namespace gasnet {
     
     static detail::serialization_reader reader_of(detail::lpc_base *me) {
       detail::serialization_reader r(static_cast<bcast_as_lpc*>(me)->payload);
-      r.unplace(storage_size_of<bcast_payload_header>());
+      r.unplace(detail::storage_size_of<bcast_payload_header>());
       return r;
     }
     
@@ -207,7 +207,9 @@ namespace gasnet {
 
   // am_send_buffer<UNBOUNDED>
   template<int static_npam_args>
-  struct am_send_buffer</*Ub=*/invalid_storage_size_t, static_npam_args, /*is_static_and_eager=*/false> {
+  struct am_send_buffer</*Ub=*/detail::invalid_storage_size_t,
+                               static_npam_args,
+                               /*is_static_and_eager=*/false> {
     void *buffer;
     bool is_eager;
     std::uint16_t cmd_align;
@@ -216,11 +218,14 @@ namespace gasnet {
 
     static constexpr std::size_t cmd_size_static_ub = std::size_t(-1);
     
-    static constexpr std::size_t tiny_size = 512 > serialization_align_max ? 512 : serialization_align_max;
-    detail::xaligned_storage<tiny_size, serialization_align_max> tiny_;
+    static constexpr std::size_t tiny_size =
+      512 > detail::serialization_align_max ? 512 : detail::serialization_align_max;
+    detail::xaligned_storage<tiny_size, detail::serialization_align_max> tiny_;
     
-    detail::serialization_writer</*bounded=*/false> prepare_writer(invalid_storage_size_t, std::size_t rdzv_cutover_size,
-                                                                   int eagerNPAMArgs, intrank_t recipient) {
+    detail::serialization_writer</*bounded=*/false> prepare_writer(
+        detail::invalid_storage_size_t, std::size_t rdzv_cutover_size,
+        int eagerNPAMArgs, intrank_t recipient
+      ) {
       return detail::serialization_writer<false>(tiny_.storage(), tiny_size);
     }
     
@@ -270,7 +275,9 @@ namespace gasnet {
   // am_send_buffer<BOUNDED, not statically NPAM, not statically eager>
   template<typename Ub>
   struct am_send_buffer<Ub, /*static_npam_args=*/-1, /*is_static_and_eager=*/false,
-                        typename std::enable_if<!std::is_same<Ub, invalid_storage_size_t>::value>::type> {
+                        typename std::enable_if<
+                          !std::is_same<Ub, detail::invalid_storage_size_t>::value
+                        >::type> {
     void *buffer;
     bool is_eager;
     std::uint16_t cmd_align;
@@ -279,7 +286,9 @@ namespace gasnet {
 
     static constexpr std::size_t cmd_size_static_ub = std::size_t(-1);
     
-    static constexpr std::size_t tiny_align = (Ub::static_align_ub < serialization_align_max) ? Ub::static_align_ub : serialization_align_max;
+    static constexpr std::size_t tiny_align =
+      (Ub::static_align_ub < detail::serialization_align_max) ?
+      Ub::static_align_ub : detail::serialization_align_max;
     static constexpr std::size_t tiny_size =  
          ( Ub::static_size < 512 ? Ub::static_size 
                                  : ( tiny_align < 512 ? 512 : tiny_align) );
@@ -291,7 +300,7 @@ namespace gasnet {
                  ub.size <= rdzv_cutover_size;
       
       if(is_eager) {
-        UPCXX_ASSERT(ub.align <= serialization_align_max);
+        UPCXX_ASSERT(ub.align <= detail::serialization_align_max);
         if (eagerNPAMArgs >= 0) // NPAM
           buffer = gasnet::prepare_npam_medium(recipient, ub.size, eagerNPAMArgs, npam_nonce);
         else if(ub.size <= tiny_size)
@@ -376,7 +385,7 @@ namespace gasnet {
   template<typename Ub, int static_npam_args, bool is_static_and_eager>
   struct am_send_buffer<Ub, static_npam_args, is_static_and_eager,
                         typename std::enable_if<
-                              !std::is_same<Ub, invalid_storage_size_t>::value
+                              !std::is_same<Ub, detail::invalid_storage_size_t>::value
                               && static_npam_args >= 0
                             >::type> {
     void *buffer;
@@ -393,7 +402,7 @@ namespace gasnet {
                  ub.size <= rdzv_cutover_size;
 
       if(is_eager) {
-        UPCXX_ASSERT(ub.align <= serialization_align_max);
+        UPCXX_ASSERT(ub.align <= detail::serialization_align_max);
         UPCXX_ASSERT(ub.size <= rdzv_cutover_size);
         UPCXX_ASSERT(eagerNPAMArgs >= 0 && eagerNPAMArgs == static_npam_args);
 
@@ -523,13 +532,13 @@ namespace backend {
       Fn &&fn,
       intrank_t recipient,
       std::integral_constant<bool, restricted> restricted1={}
-    ) -> gasnet::am_send_buffer<decltype(detail::command<detail::lpc_base*>::ubound(empty_storage_size, fn)),
+    ) -> gasnet::am_send_buffer<decltype(detail::command<detail::lpc_base*>::ubound(detail::empty_storage_size, fn)),
                                 (UPCXX_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> {
     
     using gasnet::am_send_buffer;
     using gasnet::rpc_as_lpc;
     
-    auto ub = detail::command<detail::lpc_base*>::ubound(empty_storage_size, fn);
+    auto ub = detail::command<detail::lpc_base*>::ubound(detail::empty_storage_size, fn);
     
     constexpr bool definitely_not_rdzv = ub.static_size <= gasnet::am_size_rdzv_cutover_min;
 
@@ -614,7 +623,7 @@ namespace backend {
   template<typename ...T, typename ...U>
   void send_awaken_lpc(intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals) {
     auto am_buf(prepare_am<1>(
-        upcxx::bind([=](detail::deserialized_raw_tuple<U...> &&vals) {
+        upcxx::detail::bind([=](detail::deserialized_raw_tuple<U...> &&vals) {
           lpc->awaken(std::move(vals));
         },
         detail::serialized_raw_tuple<U...>{vals}
@@ -643,7 +652,7 @@ namespace backend {
     using gasnet::bcast_payload_header;
     
     auto ub = detail::command<detail::lpc_base*>::ubound(
-      empty_storage_size.cat_size_of<bcast_payload_header>(),
+      detail::empty_storage_size.cat_size_of<bcast_payload_header>(),
       fn
     );
     
@@ -653,7 +662,7 @@ namespace backend {
     am_send_buffer<decltype(ub)> am_buf;
 
     auto w = am_buf.prepare_writer(ub, rdzv_cutover_size, -1/*npam disabled*/, 0);
-    w.place(storage_size_of<bcast_payload_header>());
+    w.place(detail::storage_size_of<bcast_payload_header>());
     
     detail::command<detail::lpc_base*>::template serialize<
         bcast_as_lpc::reader_of,

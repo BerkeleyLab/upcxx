@@ -24,11 +24,12 @@ bool equals(T const (&a)[n], T const (&b)[n]) {
 
 template<typename T>
 void roundtrip(T const &x) {
-  void *buf0 = upcxx::detail::alloc_aligned(8*serialization_align_max, serialization_align_max);
+  void *buf0 = upcxx::detail::alloc_aligned(8*detail::serialization_align_max,
+                                            detail::serialization_align_max);
   
   detail::serialization_writer<
       decltype(serialization_traits<T>::static_ubound)::is_valid
-    > w(buf0, 8*serialization_align_max);
+    > w(buf0, 8*detail::serialization_align_max);
 
   serialization_traits<T>::serialize(w, x);
 

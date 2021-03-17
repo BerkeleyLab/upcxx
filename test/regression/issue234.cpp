@@ -40,7 +40,7 @@ int main() {
 
   { // nontrivial scalar bcast
     awaiting += 1;
-    upcxx::broadcast_nontrivial(
+    upcxx::experimental::broadcast_nontrivial(
       std::string(100, 'a' + (char)(me % 26)),
       0, world(),
       operation_cx::as_lpc(

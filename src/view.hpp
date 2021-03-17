@@ -87,24 +87,26 @@ namespace upcxx {
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  // view_default_iterator<T>::type: Determines the best iterator type for
+  // view_default_iterator_t<T>: Determines the best iterator type for
   // looking at a consecutive sequence of packed T's.
-  
-  template<typename T,
-           bool trivial = is_trivially_serializable<T>::value>
-  struct view_default_iterator;
+
+  namespace detail {
+    template<typename T,
+             bool trivial = is_trivially_serializable<T>::value>
+    struct view_default_iterator;
+
+    template<typename T>
+    struct view_default_iterator<T, /*trivial=*/true> {
+      using type = T*;
+    };
+    template<typename T>
+    struct view_default_iterator<T, /*trivial=*/false> {
+      using type = deserializing_iterator<T>;
+    };
+  }
   
   template<typename T>
-  struct view_default_iterator<T, /*trivial=*/true> {
-    using type = T*;
-  };
-  template<typename T>
-  struct view_default_iterator<T, /*trivial=*/false> {
-    using type = deserializing_iterator<T>;
-  };
-  
-  template<typename T>
-  using view_default_iterator_t = typename view_default_iterator<T>::type;
+  using view_default_iterator_t = typename detail::view_default_iterator<T>::type;
 
   //////////////////////////////////////////////////////////////////////////////
   // view: A non-owning range delimited by a begin and end

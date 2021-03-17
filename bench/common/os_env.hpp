@@ -1,3 +1,10 @@
+// NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE 
+//
+// THIS HEADER FILE IS DEPRECATED - DO NOT ADD NEW USES OF THIS HEADER!
+// New code should use upcxx::getenv_console or upcxx::experimental::os_env instead
+//
+// NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE 
+
 #ifndef _325f0701_4dd7_4cfe_9b01_996de4980b99
 #define _325f0701_4dd7_4cfe_9b01_996de4980b99
 

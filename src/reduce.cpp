@@ -46,7 +46,7 @@ void upcxx::detail::reduce_one_or_all_trivial_erased(
   
   #if 0
     if(&tm == &upcxx::world() && tm.rank_me()==0)
-      upcxx::say()<<"gex_Coll_ReduceToXxxNB(dt="<<ty_id<<", op="<<op_id<<")";
+      upcxx::experimental::say()<<"gex_Coll_ReduceToXxxNB(dt="<<ty_id<<", op="<<op_id<<")";
   #endif
   
   gex_Event_t e = root_or_all >= 0

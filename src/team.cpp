@@ -14,9 +14,10 @@ using detail::raw_storage;
 raw_storage<team> detail::the_world_team;
 raw_storage<team> detail::the_local_team;
 
-std::unordered_map<upcxx::digest, void*> upcxx::detail::registry;
+std::unordered_map<upcxx::detail::digest, void*> upcxx::detail::registry;
 
-team::team(detail::internal_only, backend::team_base &&base, digest id, intrank_t n, intrank_t me):
+team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
+           intrank_t n, intrank_t me):
   backend::team_base(std::move(base)),
   id_(id),
   coll_counter_(0),
@@ -35,9 +36,9 @@ team::team(team &&that):
 
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_MASTER();
-  UPCXX_ASSERT((that.id_ != digest{~0ull, ~0ull}));
+  UPCXX_ASSERT((that.id_ != detail::digest{~0ull, ~0ull}));
   
-  that.id_ = digest{~0ull, ~0ull}; // the tombstone id value
+  that.id_ = detail::digest{~0ull, ~0ull}; // the tombstone id value
   
   detail::registry[id_] = this;
 }
@@ -122,6 +123,6 @@ void team::destroy(detail::internal_only, entry_barrier eb) {
     upcxx::deallocate(scratch);
   }
   
-  if(id_ != digest{~0ull, ~0ull})
+  if(id_ != detail::digest{~0ull, ~0ull})
     detail::registry.erase(id_);
 }

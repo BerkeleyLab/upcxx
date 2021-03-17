@@ -15,12 +15,12 @@ namespace {
     int incoming;
     upcxx::promise<> pro;
     
-    static barrier_state* lookup(team &tm, digest id);
-    void receive(team &tm, digest id);
-    void broadcast(team &tm, digest id, intrank_t rank_ub);
+    static barrier_state* lookup(team &tm, detail::digest id);
+    void receive(team &tm, detail::digest id);
+    void broadcast(team &tm, detail::digest id, intrank_t rank_ub);
   };
   
-  barrier_state* barrier_state::lookup(team &tm, digest id) {
+  barrier_state* barrier_state::lookup(team &tm, detail::digest id) {
     auto it_and_inserted = detail::registry.insert({id, nullptr});
     barrier_state *st;
     
@@ -51,7 +51,7 @@ namespace {
     return st;
   }
   
-  void barrier_state::receive(team &tm, digest id) {
+  void barrier_state::receive(team &tm, detail::digest id) {
     if(--this->incoming == 0) {
       if(tm.rank_me() == 0) {
         intrank_t rank_ub = tm.rank_n();
@@ -96,7 +96,7 @@ namespace {
     }
   }
   
-  void barrier_state::broadcast(team &tm, digest id, intrank_t rank_ub) {
+  void barrier_state::broadcast(team &tm, detail::digest id, intrank_t rank_ub) {
     intrank_t rank_me = tm.rank_me();
     while(true) {
       intrank_t mid = rank_me + (rank_ub - rank_me)*(radix-1)/radix;
@@ -151,7 +151,7 @@ void upcxx::detail::barrier_async_inject(
     backend::gasnet::register_cb(cb);
   #else
     // do hand-rolled barrier
-    digest id = tm.next_collective_id(detail::internal_only());
+    detail::digest id = tm.next_collective_id(detail::internal_only());
     barrier_state *st = barrier_state::lookup(tm, id);
     future<> ans = st->pro.get_future();
     st->receive(tm, id);

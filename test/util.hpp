@@ -24,13 +24,18 @@
   #define KLBLUE ""
 #endif
 
-// backwards-compatibility hack for convenience of defect archaeology:
-// ensure up-to-date versions of this header still compile with older releases lacking say(prefix)
-#if UPCXX_VERSION < 20200308
-namespace upcxx {
-  using say_ = say;
-  say_ &&say(const char *_discard, say_ &&s=say_()) { return std::move(s); } 
-}
+// backwards-compatibility hacks for convenience of defect archaeology:
+// ensure up-to-date versions of this header (and tests relying on it) still compile unchanged with older releases
+#if UPCXX_VERSION >= 20201111
+using upcxx::experimental::say;
+using upcxx::experimental::os_env;
+#elif UPCXX_VERSION >= 20200308
+using upcxx::say;
+using upcxx::os_env;
+#else // before 2020.3.8
+using say_ = upcxx::say;
+say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); } 
+using upcxx::os_env;
 #endif
 
 template<typename=void>
@@ -49,19 +54,19 @@ inline void flush_all_output() {
 
 template<typename=void>
 void print_test_header_inner(const char *file) {
-    upcxx::say("") << KLBLUE << "Test: " << test_name(file) << KNORM;
+    say("") << KLBLUE << "Test: " << test_name(file) << KNORM;
 }
 
 template<typename=void>
 void print_test_success_inner(bool success=true) {
     flush_all_output();
-    upcxx::say("") << (success?KLGREEN:KLRED) << "Test result: "<< (success?"SUCCESS":"ERROR") << KNORM;
+    say("") << (success?KLGREEN:KLRED) << "Test result: "<< (success?"SUCCESS":"ERROR") << KNORM;
 }
 
 template<typename=void>
 void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCESS") {
     flush_all_output();
-    upcxx::say("")
+    say("")
         << KLBLUE << "Test result: "<< "SKIPPED" << KNORM << "\n"
         << "UPCXX_TEST_SKIPPED: This test was skipped due to: " << reason << "\n"
         << "Please ignore the following line which placates our automated test infrastructure:\n"
@@ -75,7 +80,7 @@ void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCE
           print_test_header_inner(file);
       }
       if(upcxx::initialized() && !upcxx::rank_me()) {
-          upcxx::say("") << KLBLUE << "Ranks: " << upcxx::rank_n() << KNORM;
+          say("") << KLBLUE << "Ranks: " << upcxx::rank_n() << KNORM;
       }
   }
   #define print_test_header()   print_test_header_(__FILE__)

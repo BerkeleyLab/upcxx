@@ -231,7 +231,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn &&remote
         ) {
-        //upcxx::say()<<"amlong with reply";
+        //upcxx::experimental::say()<<"amlong with reply";
         auto *o = static_cast<Obj*>(this);
 
         auto sync_out = backend::gasnet::template rma_put_then_am_master<sync_lb1>(
@@ -274,7 +274,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn &&remote
         ) {
-        //upcxx::say()<<"amlong with reply blocking";
+        //upcxx::experimental::say()<<"amlong with reply blocking";
         auto *o = static_cast<Obj*>(this);
         
         auto sync_out = backend::gasnet::template rma_put_then_am_master<
@@ -325,7 +325,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn &&remote
         ) {
-        //upcxx::say()<<"amlong without reply";
+        //upcxx::experimental::say()<<"amlong without reply";
         auto sync_out = backend::gasnet::template rma_put_then_am_master<sync_lb1>(
           rank_d, buf_d, buf_s, buf_size,
           progress_level::user, std::move(remote),
@@ -429,12 +429,12 @@ namespace upcxx {
   ////////////////////////////////////////////////////////////////////////////
 
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/true>::return_t
   rput(T value_s,
        global_ptr<T> gp_d,
-       Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     using traits_t = detail::rput_traits<CxsDecayed, /*by_val=*/true>;
@@ -471,13 +471,13 @@ namespace upcxx {
   }
   
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/false>::return_t
   rput(T const *buf_s,
        global_ptr<T> gp_d,
        std::size_t n,
-       Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}) {
+       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     using traits_t = detail::rput_traits<CxsDecayed, /*by_val=*/false>;

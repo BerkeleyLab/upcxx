@@ -11,7 +11,7 @@ void check_val(global_ptr<int> gp, int expect) {
   if (val != expect) {
     diag="  ERROR"; errors++;
   }
-  upcxx::say() << (gp) << " => " << val << " expect=" << expect << diag; 
+  say() << (gp) << " => " << val << " expect=" << expect << diag; 
 }
 
 

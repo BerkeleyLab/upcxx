@@ -6,6 +6,7 @@
 #include <iostream>
 
 namespace upcxx {
+namespace detail {
   struct digest {
     std::uint64_t w0, w1; // 2 64-bit words
     
@@ -32,11 +33,12 @@ namespace upcxx {
     return o << '{'<<x.w0<<','<<x.w1<<'}';
   }
 }
+}
 
 namespace std {
   template<>
-  struct hash<upcxx::digest> {
-    size_t operator()(upcxx::digest x) const {
+  struct hash<upcxx::detail::digest> {
+    size_t operator()(upcxx::detail::digest x) const {
       return x.w0;
     }
   };

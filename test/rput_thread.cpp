@@ -36,7 +36,7 @@ int main () {
 	const int n = upcxx::rank_n();
 	const int me = upcxx::rank_me();
 	
-	int tn = upcxx::os_env<int>("THREADS", 10);
+	int tn = os_env<int>("THREADS", 10);
 	
 	if(me == 0)
 		std::cout<<"Threads: "<<tn<<'\n';
