@@ -45,9 +45,6 @@ The current release is known to work on the following configurations:
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
 
-    Note that gcc- and clang-based toolchains from Arm Ltd. exist, but have
-    not been tested with UPC++.
-
     Note the GPUDirect drivers necessary for GDR-accelerated memory kinds on
     InfiniBand are not supported on the Linux/aarch64 platform.
 
@@ -65,6 +62,31 @@ The current release is known to work on the following configurations:
     it is recommended to `module unload xalt` to avoid a large volume of
     verbose linker output in this configuration.  Mixing with OpenMP in this
     configuration is not currently supported.  (smp and aries conduits).
+
+* NOT officially supported:  
+    - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
+      Initial testing on this platform with both Xcode and Free Software
+      Foundation g++ show functionally complete and correct operation.  
+      Nothing platform-specific has been implemented for the mix of
+      "performance" and "efficiency" cores, meaning performance could be
+      highly variable.  
+      At this time we consider it premature to list this platform as
+      "supported", and the `configure` script will issue a warning.
+    - Vendor-specific `clang++` or `g++` variants.  
+      At least Arm Ltd., Intel and AMD provide compilers based on their own
+      modifications to Clang/LLVM.  Similarly, at least Arm Ltd. and IBM
+      provide forks of `g++`.  
+      To the best of our limited current knowledge, these all behave as their
+      respective "upstream" compilers, with no additional compiler-specific
+      issues.  
+      At this time we do not consider these compilers to be officially
+      supported due to insufficient periodic automated testing.  
+      The presence or absence of a warning from `configure` varies.
+    - NVIDIA HPC SDK compilers (aka PGI 20.7 and newer)  
+      The NVIDIA-branded host compilers (`pgc++` or `nvc++`) are NOT currently
+      supported due to critical bugs.
+      This refers to the host compilers previously branded as PGI, and should
+      not be confused with `nvcc`, the CUDA compiler driver.
 
 ### Miscellaneous software requirements:
 
