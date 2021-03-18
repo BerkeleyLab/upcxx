@@ -222,7 +222,7 @@ define upcxx_meta_body
 #!/bin/sh
 CC='$($(UPCXX_META_COMPILERS)_CC)'
 CFLAGS='$(GASNET_CFLAGS)'
-CPPFLAGS="$(UPCXX_DEFINES) -I$(DST)/include $(addprefix -I, $(wildcard $(DST)/gen_include)) $(GASNET_CXXCPPFLAGS) $$_UPCXX_EXTRA_CPPFLAGS"
+CPPFLAGS="$(UPCXX_DEFINES) $(addprefix -I, $(wildcard $(dir $(DST))include) $(wildcard $(DST)/include) $(DST)/gen_include) $(GASNET_CXXCPPFLAGS) $$_UPCXX_EXTRA_CPPFLAGS"
 CXX='$($(UPCXX_META_COMPILERS)_CXX)'
 CXXFLAGS='$(UPCXX_STDCXX) $(GASNET_CXXFLAGS)'
 GASNET_CONDUIT='$(GASNET_CONDUIT)'
@@ -476,7 +476,8 @@ $(all_libupcxx): force
 ## Note that these just cover UPCXX_CODEMODE of opt or debug
 ##
 .PHONY: upcxx-all upcxx-install upcxx-clean upcxx-distclean
-.PHONY: do-upcxx-all do-upcxx-install-one do-upcxx-install-all
+.PHONY: do-upcxx-all do-upcxx-install-one do-upcxx-install-one-codemode
+.PHONY: do-upcxx-install-lib do-upcxx-install-include do-upcxx-install-gen_include
 
 #
 # Helpers to iterate over conduits and backends
@@ -497,10 +498,10 @@ do-upcxx-all: force
 	   done;                                                               \
 	 done;                                                                 \
 	 $(MAKE) $$targets
-do-upcxx-install-headers: force
+do-upcxx-install-include: force
 	@cd "$(UPCXXDIR)/include/upcxx/" &&                               \
 	 depfile="$(builddir)/$(UPCXXDIR)/lib/upcxx_headers.d"            \
-	 dst="$(DESTDIR)$(DST)/include/upcxx" src="$$(pwd -P)" &&         \
+	 dst="$(DESTDIR)$(prefix)/include/upcxx" src="$$(pwd -P)" &&      \
 	 for file in $$(find . -name '*.hpp'); do                         \
 	   file="$${file##./}";                                           \
 	   if fgrep -e "/bld/$(UPCXXDIR)/include/upcxx/$$file"            \
@@ -510,15 +511,18 @@ do-upcxx-install-headers: force
 	     mkdir -p "$$dst/$$(dirname $$file)" || exit $$?;             \
 	     cp $$file "$$dst/$$file" || exit $$?;                        \
 	   fi;                                                            \
-	 done;                                                            \
+	 done
+do-upcxx-install-gen_include: force
+	@dst="$(DESTDIR)$(DST)/gen_include/upcxx";                        \
+	 mkdir -p $$dst &&                                                \
 	 cp "$(builddir)/$(UPCXXDIR)/gen_include/upcxx/"*.hpp "$$dst/"
 do-upcxx-install-lib: force
 	@mkdir -p "$(DESTDIR)$(DST)/lib" || exit $$?;                     \
 	 cp "$(UPCXXDIR)/lib/libupcxx.a" "$(DESTDIR)$(DST)/lib/"
 do-upcxx-install-one: force
-	@$(MAKE) do-upcxx-install-headers do-upcxx-install-lib \
+	@$(MAKE) do-upcxx-install-gen_include do-upcxx-install-lib \
 	         do-upcxx-meta UPCXX_META_GASNET='$(prefix)/$(GASNETDIR)'
-do-upcxx-install-all: force
+do-upcxx-install-one-codemode: force
 	@for conduit in $(CONDUITS); do                                      \
 	   for backend in $(ALL_BACKENDS); do                                \
 	     $(MAKE) do-upcxx-install-one                                    \
@@ -539,12 +543,12 @@ do-upcxx-all-opt: force
 	@$(MAKE) do-upcxx-all ASSERT=0 OPTLEV=3 DBGSYM=0
 do-upcxx-all-debug: force
 	@$(MAKE) do-upcxx-all ASSERT=1 OPTLEV=0 DBGSYM=1
-do-upcxx-install-opt: do-upcxx-all-opt
-	@$(MAKE) do-upcxx-install-all \
+do-upcxx-install-opt: do-upcxx-all-opt do-upcxx-install-include
+	@$(MAKE) do-upcxx-install-one-codemode \
 	         ASSERT=0 OPTLEV=3 DBGSYM=0 UPCXX_CODEMODE=opt    \
 	         UPCXX_FRAGMENTS="$(DESTDIR)$(prefix)/gasnet.opt/include"
-do-upcxx-install-debug: do-upcxx-all-debug
-	@$(MAKE) do-upcxx-install-all \
+do-upcxx-install-debug: do-upcxx-all-debug do-upcxx-install-include
+	@$(MAKE) do-upcxx-install-one-codemode \
 	         ASSERT=1 OPTLEV=0 DBGSYM=1 UPCXX_CODEMODE=debug \
 	         UPCXX_FRAGMENTS="$(DESTDIR)$(prefix)/gasnet.debug/include"
 do-upcxx-clean-opt: force
