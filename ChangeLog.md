@@ -42,6 +42,7 @@ Notable bug fixes:
   not a multiple of alignment
 * issue #428: Regression in `rpc(team,rank,..,view)` overload resolution
 * issue #429: upcxx library exposes dlmalloc symbols
+* issue #430: cannot disable the default network
 * issue #432: Some `upcxx::copy()` cases do not `discharge()` properly
 * issue #440: Invalid GASNet call while deserializing a global ptr
 * issue #447: REGRESSION: bulk upcxx::rput with l-value completions
