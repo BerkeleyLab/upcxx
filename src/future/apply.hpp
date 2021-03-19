@@ -154,7 +154,7 @@ namespace detail {
   struct apply_variadic_as_future:
     apply_variadic_as_future_dispatch<
       FnRef, std::tuple<ArgRef...>,
-      typename std::result_of<FnRef(ArgRef...)>::type
+      detail::invoke_result_t<FnRef, ArgRef...>
     > {
   };
 
@@ -172,7 +172,7 @@ namespace detail {
     apply_tupled_as_future_dispatch<
       FnRef, ArgRefTupRef,
       /*ArgIxs=*/detail::make_index_sequence<sizeof...(ArgRef)>,
-      /*Return=*/typename std::result_of<FnRef(ArgRef...)>::type
+      /*Return=*/detail::invoke_result_t<FnRef, ArgRef...>
     > {
   };
   

@@ -386,6 +386,22 @@ namespace detail {
   };
   
   //////////////////////////////////////////////////////////////////////
+  // detail::invoke_result<T, Args...>: abstract over std::result_of and
+  // std::invoke_result.
+
+  #if __cpp_lib_is_invocable >= 201703
+    template<typename T, typename ...Args>
+    using invoke_result = std::invoke_result<T, Args...>;
+    template<typename T, typename ...Args>
+    using invoke_result_t = std::invoke_result_t<T, Args...>;
+  #else
+    template<typename T, typename ...Args>
+    using invoke_result = std::result_of<T(Args...)>;
+    template<typename T, typename ...Args>
+    using invoke_result_t = typename std::result_of<T(Args...)>::type;
+  #endif
+
+  //////////////////////////////////////////////////////////////////////
   // trait_forall: logical conjunction of one trait applied to
   // variadically-many argument types.
 
