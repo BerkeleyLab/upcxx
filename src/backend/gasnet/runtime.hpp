@@ -119,12 +119,13 @@ namespace gasnet {
     // These numeric assignments intentionally match like-named members of
     // detail::rma_put_sync as this *may* assist the compiler in optimizing
     // enum translations, though correctness does not depend on it.
+    src_ignore=-1,
     src_cb=0,
     src_now=2,
     op_now=3
   };
 
-  template<rma_put_then_am_sync sync_lb/*src_cb,src_now*/, typename AmFn>
+  template<rma_put_then_am_sync sync_lb/*src_X*/, typename AmFn>
   rma_put_then_am_sync rma_put_then_am_master(
     intrank_t rank_d,
     void *buf_d, void const *buf_s, std::size_t buf_size,
