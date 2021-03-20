@@ -54,6 +54,7 @@ Notable bug fixes:
 * issue #440: Invalid GASNet call while deserializing a global ptr
 * issue #447: REGRESSION: bulk upcxx::rput with l-value completions
 * issue #450: `upcxx::lpc` callback return of rvalue reference not decayed as specified
+* issue #455: Performance bug in `rput(remote_cx::as_rpc(...))` with "bare" remote_cx
 * issue #459: Move unspecified functions and constants into a new
   `upcxx::experimental` namespace
 * issue #460: Implementation relies on std::result_of, which is deprecated in
