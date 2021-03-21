@@ -1009,8 +1009,8 @@ else
   echo_and_die "ERROR: --with-default-network='$GASNET_CONDUIT' is not a valid network.\nValid networks include:$OFFICIAL_CONDUITS"
 fi
 # Complain if last of enabled/disable flags for the default network is disable
-if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT\>" <<<"$GASNET_CONFIGURE_ARGS" | tail -1) =~ -disable- ]]; then
-  echo_and_die "ERROR: an explicit '--disable-$GASNET_CONDUIT' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '--disable-$GASNET_CONDUIT'."
+if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
+  echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '--disable-$GASNET_CONDUIT'."
 fi
 
 #
