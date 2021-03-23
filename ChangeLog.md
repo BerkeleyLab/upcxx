@@ -49,6 +49,8 @@ Notable bug fixes:
 * issue #450: `upcxx::lpc` callback return of rvalue reference not decayed as specified
 * issue #459: Move unspecified functions and constants into a new
   `upcxx::experimental` namespace
+* issue #460: Implementation relies on std::result_of, which is deprecated in
+   C++17 and removed in C++20
 
 Breaking changes:
 
