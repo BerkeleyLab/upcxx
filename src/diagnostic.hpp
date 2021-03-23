@@ -85,8 +85,8 @@ namespace detail {
 #if UPCXX_ASSERT_ENABLED
   #define UPCXX_ASSERT_MASTER() UPCXX_ASSERT_ALWAYS_MASTER()
   #define UPCXX_ASSERT_MASTER_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
-          UPCXX_ASSERT(backend::master.active_with_caller(), \
-               "This operation requires the calling thread to have the master persona, when compiled in threadmode=seq.\n" \
+          UPCXX_ASSERT(&::upcxx::current_persona() == &::upcxx::master_persona(), \
+               "This operation requires the primordial thread using the master persona, when compiled in threadmode=seq.\n" \
                "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
                "For details, please see `docs/implementation-defined.md`"))
 #else
