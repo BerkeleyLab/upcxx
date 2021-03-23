@@ -6,6 +6,7 @@
   #include <cuda.h>
   constexpr int max_dev_n = 32;
   int dev_n;
+  #define CHECK UPCXX_ASSERT_ALWAYS
 #else
   constexpr int max_dev_n = 0; // set to num GPU/process
   constexpr int dev_n = 0;
@@ -30,8 +31,8 @@ int main() {
 
     #if UPCXX_CUDA_ENABLED
     {
-      cuInit(0);
-      cuDeviceGetCount(&dev_n);
+      CHECK(cuInit(0) == CUDA_SUCCESS);
+      CHECK(cuDeviceGetCount(&dev_n) == CUDA_SUCCESS);
       if(dev_n >= max_dev_n)
         dev_n = max_dev_n-1;
 
@@ -75,7 +76,8 @@ int main() {
           int *tmp = new int[1<<20];
           for(int i=0; i < 1<<20; i++)
             tmp[i] = (i%(1<<17)%10) + (i>>17)*10 + (dev*100) + (me*1000);
-          cudaSetDevice(dev-1);
+          CHECK(cudaSetDevice(dev-1) == cudaSuccess);
+          CHECK(
           cuMemcpyHtoD(
             reinterpret_cast<CUdeviceptr>(
               seg[dev-1]->local(
@@ -83,7 +85,7 @@ int main() {
               )
             ),
             tmp, sizeof(int)<<20
-          );
+          ) == CUDA_SUCCESS);
           delete[] tmp;
         }
         else {
@@ -180,7 +182,8 @@ int main() {
           else {
           #if UPCXX_CUDA_ENABLED
             tmp = new int[1<<17];
-            cudaSetDevice(dd-1);
+            CHECK(cudaSetDevice(dd-1) == cudaSuccess);
+            CHECK(
             cuMemcpyDtoH(tmp,
               reinterpret_cast<CUdeviceptr>(
                 seg[dd-1]->local(
@@ -188,7 +191,7 @@ int main() {
                 ) + (dp<<17)
               ),
               sizeof(int)<<17
-            );
+            ) == CUDA_SUCCESS);
           #endif
           }
           
