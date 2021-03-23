@@ -603,7 +603,7 @@ namespace upcxx {
   inline persona& current_persona() {
     UPCXX_ASSERT_INIT();
     detail::persona_tls &tls = detail::the_persona_tls;
-    return *tls.get_top_scope()->get_persona(tls);
+    return *tls.get_top_persona();
   }
   
   inline persona_scope& default_persona_scope() {
