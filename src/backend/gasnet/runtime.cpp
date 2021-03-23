@@ -2320,6 +2320,10 @@ gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
   gex_Event_t src_h = GEX_EVENT_INVALID, *src_ph;
 
   switch(sync_lb) {
+  case rma_put_then_am_sync::src_ignore:
+    // issue 455: source_cx is being ignored, so dump it into NBI that we never sync
+    src_ph = GEX_EVENT_GROUP;
+    break;
   case rma_put_then_am_sync::src_now:
     src_ph = GEX_EVENT_NOW;
     break;
@@ -2406,9 +2410,9 @@ gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
 
   // look for chance to escalate actual synchronization achieved
   if(sync_lb == rma_put_then_am_sync::src_cb) {
-    src_cb->handle = reinterpret_cast<uintptr_t>(src_h);
     if(0 == gex_Event_Test(src_h))
       return rma_put_then_am_sync::src_now;
+    src_cb->handle = reinterpret_cast<uintptr_t>(src_h);
   }
   
   return sync_lb; // no sync escalation
@@ -2430,6 +2434,8 @@ INSTANTIATE(gasnet::rma_put_then_am_sync::src_now, true)
 INSTANTIATE(gasnet::rma_put_then_am_sync::src_now, false)
 INSTANTIATE(gasnet::rma_put_then_am_sync::src_cb, true)
 INSTANTIATE(gasnet::rma_put_then_am_sync::src_cb, false)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_ignore, true)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_ignore, false)
 #undef INSTANTIATE
 
 namespace {

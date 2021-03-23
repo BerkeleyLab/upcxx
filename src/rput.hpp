@@ -21,6 +21,7 @@ namespace upcxx {
     enum class rma_put_sync: int {
       // Explicitly assigned so that backend/gasnet/runtime.hpp can reliably
       // match them.
+      src_ignore=-1,
       src_cb=0,
       src_into_op_cb=1,
       src_now=2,
@@ -122,6 +123,7 @@ namespace upcxx {
         auto *o = static_cast<Obj*>(this);
         o->cx_state_here.template operator()<source_cx_event>();
         this->add_op_suc(suc, std::integral_constant<bool, op_is_handle>());
+        UPCXX_ASSERT(Traits::want_src);
         o->src_hook(); // potentially overriden by Obj
       }
     };
@@ -203,11 +205,11 @@ namespace upcxx {
         /*want_op=*/true, /*op_is_sync=*/false,
         want_src
       >:
-      rput_src_handle_cb<Obj, Traits, /*src_is_handle=*/!Traits::src_is_sync, /*op_is_handle=*/false>,
+      rput_src_handle_cb<Obj, Traits, /*src_is_handle=*/want_src && !Traits::src_is_sync, /*op_is_handle=*/false>,
       rput_op_handle_cb<Obj, Traits, /*op_is_handle=*/false>,
       rput_reply_cb<Obj, Traits, /*replies=*/true> {
       
-      std::int8_t outstanding = 2; // counts source and reply
+      std::int8_t outstanding = ( want_src ? 2 : 1 ); // counts source and reply
       
       void src_hook() {
         if(--this->outstanding == 0) {
@@ -220,11 +222,12 @@ namespace upcxx {
 
       static constexpr rma_put_sync sync_lb = Traits::src_is_sync
         ? rma_put_sync::src_now
-        : rma_put_sync::src_cb;
+        : ( want_src ? rma_put_sync::src_cb : rma_put_sync::src_ignore );
 
       static constexpr backend::gasnet::rma_put_then_am_sync sync_lb1 = Traits::src_is_sync
         ? backend::gasnet::rma_put_then_am_sync::src_now
-        : backend::gasnet::rma_put_then_am_sync::src_cb;
+        : ( want_src ? backend::gasnet::rma_put_then_am_sync::src_cb : 
+                       backend::gasnet::rma_put_then_am_sync::src_ignore );
       
       template<typename RemoteFn>
       rma_put_sync inject(
@@ -241,12 +244,18 @@ namespace upcxx {
           this->the_reply_cb()
         );
 
+        if((int)sync_lb1 <= (int)backend::gasnet::rma_put_then_am_sync::src_ignore &&
+           (int)sync_out == (int)backend::gasnet::rma_put_then_am_sync::src_ignore)
+          return rma_put_sync::src_ignore;
+
         if((int)sync_lb1 <= (int)backend::gasnet::rma_put_then_am_sync::src_cb &&
            (int)sync_out == (int)backend::gasnet::rma_put_then_am_sync::src_cb)
           return rma_put_sync::src_cb;
         
         if(sync_out == backend::gasnet::rma_put_then_am_sync::src_now)
           return rma_put_sync::src_now;
+
+        UPCXX_ASSERT(sync_out == backend::gasnet::rma_put_then_am_sync::op_now);
         return rma_put_sync::op_now;
       }
     };
@@ -305,20 +314,20 @@ namespace upcxx {
       rput_src_handle_cb<Obj, Traits, /*src_is_handle=*/want_src && !Traits::src_is_sync, /*op_is_handle=*/false>,
       rput_op_handle_cb<Obj, Traits, /*op_is_handle=*/false> {
 
-      // We handle absence of source_cx as assuming synchronous completion as
-      // opposed to asynchronous (with an ignored notification) since this (naked
-      // remote_cx) is a bizarre thing to ask for. So bizarre that I feel its more
-      // likely a user mistake rather than they actually have a source buffer
-      // that they feel safe giving over to us forever.
-      static constexpr bool src_now = !want_src || Traits::src_is_sync;
+      // issue 455: remote_cx implies source_cx, so a distributed algorithm might reasonably
+      // explcitly request only the former (fire-and-forget style rput-then-rpc). 
+      // Don't force synchronous source_cx unless that was explicitly requested, 
+      // even if the caller requested no initiator-side completion (!want_op && !want_src)
+      static constexpr bool src_now = Traits::src_is_sync;
       
-      static constexpr rma_put_sync sync_lb = src_now
+      static constexpr rma_put_sync sync_lb = Traits::src_is_sync
         ? rma_put_sync::src_now
-        : rma_put_sync::src_cb;
+        : ( want_src ? rma_put_sync::src_cb : rma_put_sync::src_ignore );
 
-      static constexpr backend::gasnet::rma_put_then_am_sync sync_lb1 = src_now
+      static constexpr backend::gasnet::rma_put_then_am_sync sync_lb1 = Traits::src_is_sync
         ? backend::gasnet::rma_put_then_am_sync::src_now
-        : backend::gasnet::rma_put_then_am_sync::src_cb;
+        : ( want_src ? backend::gasnet::rma_put_then_am_sync::src_cb
+                     : backend::gasnet::rma_put_then_am_sync::src_ignore );
       
       template<typename RemoteFn>
       rma_put_sync inject(
@@ -332,12 +341,18 @@ namespace upcxx {
           this->the_src_cb(), nullptr
         );
 
+        if((int)sync_lb1 <= (int)backend::gasnet::rma_put_then_am_sync::src_ignore &&
+           (int)sync_out == (int)backend::gasnet::rma_put_then_am_sync::src_ignore)
+          return rma_put_sync::src_ignore;
+
         if((int)sync_lb1 <= (int)backend::gasnet::rma_put_then_am_sync::src_cb &&
            (int)sync_out == (int)backend::gasnet::rma_put_then_am_sync::src_cb)
           return rma_put_sync::src_cb;
         
         if(sync_out == backend::gasnet::rma_put_then_am_sync::src_now)
           return rma_put_sync::src_now;
+
+        UPCXX_ASSERT(sync_out == backend::gasnet::rma_put_then_am_sync::op_now);
         return rma_put_sync::op_now;
       }
     };
@@ -404,7 +419,7 @@ namespace upcxx {
          rma_put_sync::src_now <= sync_returned
         ) {
         o->cx_state_here.template operator()<source_cx_event>();
-        o->src_hook();
+        if (Traits::want_src) o->src_hook();
         
         if(rma_put_sync::op_now <= Obj::sync_lb ||
            rma_put_sync::op_now <= sync_returned
