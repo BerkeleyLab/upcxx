@@ -207,11 +207,10 @@ namespace upcxx {
 
       deserialized_bound_function_base(serialization_reader &r) : base_type(r) {}
 
-      typename std::result_of<
-          typename binding<Fn>::off_wire_type&&(
-            typename binding<B>::off_wire_type&&...
-          )
-        >::type
+      detail::invoke_result_t<
+          typename binding<Fn>::off_wire_type&&,
+          typename binding<B>::off_wire_type&&...
+        >
       operator()() && {
         return binding<Fn>::off_wire(std::move(base_type::raw_fn_.value())).operator()(
             binding<B>::off_wire(std::move(std::get<bi>(base_type::raw_b_).value()))...
@@ -225,7 +224,7 @@ namespace upcxx {
     template<typename Fn_off_wire, typename ...B_off_wire>
     struct bound_function_applicator {
       template<typename Fn1, typename ...B1>
-      typename std::result_of<Fn_off_wire(B_off_wire...)>::type
+      detail::invoke_result_t<Fn_off_wire, B_off_wire...>
       operator()(Fn1 &&fn, B1 &&...b) const {
         return static_cast<Fn1&&>(fn)(static_cast<B1&&>(b)...);
       }

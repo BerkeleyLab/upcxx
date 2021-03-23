@@ -492,12 +492,12 @@ namespace upcxx {
 
     template<typename Fn>
     using cx_decayed_result =
-      typename std::decay<typename std::result_of<Fn()>::type>::type;
+      typename std::decay<detail::invoke_result_t<Fn>>::type;
 
     template<typename Fn>
     using cx_converted_rettype = typename std::conditional<
       detail::is_future1<cx_decayed_result<Fn>>::value,
-      typename std::result_of<Fn()>::type,
+      detail::invoke_result_t<Fn>,
       cx_non_future_return
     >::type;
 
