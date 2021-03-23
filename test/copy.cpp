@@ -97,7 +97,13 @@ int main() {
     upcxx::broadcast(&buf[1], 1, 1).wait();
 
     persona per_other;
-    persona *pers[2] = {&upcxx::master_persona(), &per_other};
+    persona *pers[2] = { &upcxx::master_persona(), 
+                       #if UPCXX_THREADMODE // issue #423
+                         &per_other
+                       #else
+                         &upcxx::master_persona()
+                       #endif
+                       };
 
     for(int initiator=0; initiator < upcxx::rank_n(); initiator++) {
       for(int per=0; per < 2; per++) {
