@@ -86,6 +86,8 @@ int main() {
             ),
             tmp, sizeof(int)<<20
           ) == CUDA_SUCCESS);
+          CHECK(cuCtxSynchronize() == CUDA_SUCCESS); // issue #241
+          CHECK(cudaDeviceSynchronize() == cudaSuccess);
           delete[] tmp;
         }
         else {
