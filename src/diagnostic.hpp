@@ -80,7 +80,7 @@ namespace detail {
 
 // asserting master persona
 #define UPCXX_ASSERT_ALWAYS_MASTER() \
-        UPCXX_ASSERT(backend::master.active_with_caller(), \
+        UPCXX_ASSERT_ALWAYS(backend::master.active_with_caller(), \
                      "This operation requires the calling thread to have the master persona")
 #if UPCXX_ASSERT_ENABLED
   #define UPCXX_ASSERT_MASTER() UPCXX_ASSERT_ALWAYS_MASTER()
