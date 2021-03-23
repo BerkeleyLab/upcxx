@@ -11,6 +11,13 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 * New `shared_segment_{size,used}` queries return snapshots of the host shared segment
   size and utilization.
+* Updates to GASNet's support for InfiniBand networks (ibv-conduit):
+    - Significantly improved performance of both RPC and RMA operations under
+      certain conditions
+    - Measurable reduction in startup time for medium to large-scale jobs on
+      wide SMPs
+    - Heterogeneous multirail configurations no longer reduce the size of
+      `upcxx::local_team()`.
 
 Improvements to RPC and Serialization:
 
@@ -51,6 +58,12 @@ Notable bug fixes:
   `upcxx::experimental` namespace
 * issue #460: Implementation relies on std::result_of, which is deprecated in
    C++17 and removed in C++20
+
+Fixes the following notable bugs in the GASNet library
+  (see https://gasnet-bugs.lbl.gov for details):
+
+* bug4194: ibv: unnecessarily slow startup
+* bug4208: ibv: unfortunate multi-rail interactions with PSHM and XRC
 
 Breaking changes:
 
