@@ -39,12 +39,14 @@ Infrastructure changes:
 Notable bug fixes:
 
 * issue #25: Remove non-public symbols from top-level upcxx:: namespace
+* issue #241: Intermittent validation failures in test/copy.cpp
 * issue #245: persona-example deadlocks when --with-mpsc-queue=biglock
 * issue #276: Use C++ protection features to enforce abstraction boundaries
 * issue #382: Expose shared heap usage at runtime
 * issue #408: Cannot register multiple completions against a non-copyable results type
 * issue #421: upcxx::copy() breaks with PGI optimizer
 * issue #422: Improve configure behavior for GASNet archives lacking Bootstrap
+* issue #423: Prohibit communication using non-master personas in SEQ mode
 * issue #427: Crash after `write_sequence()` where serialized element size is
   not a multiple of alignment
 * issue #428: Regression in `rpc(team,rank,..,view)` overload resolution
