@@ -304,9 +304,6 @@ namespace upcxx {
 
       detail::rma_copy_remote(heap_s, rank_s, buf_s, heap_d, rank_d, buf_d, size,
         backend::gasnet::make_handle_cb([=]() {
-          // issue #423: Ensure completion is delivered to the correct persona
-          detail::the_persona_tls.during(*initiator_per, progress_level::internal,
-            [=]() {
               cxs_here->template operator()<source_cx_event>();
               cxs_here->template operator()<operation_cx_event>();
               delete cxs_here;
@@ -321,7 +318,6 @@ namespace upcxx {
                   delete cxs_remote_am;
                 }
               } // want_remote
-            }, /*known_active=*/std::false_type()); // during(initiator_per,internal)
         })
       );
     }

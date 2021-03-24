@@ -47,8 +47,9 @@ additional restrictions on the client application:
 
   * Any upcxx routine with internal or user-progress (typically inter-process
     communication, e.g. `upcxx::rput/rget/rpc/...`) must be called from the
-    primordial thread while holding the master persona. There are some routines
-    which are excepted from this restriction and are listed below.
+    primordial thread with the master persona at the top of the active persona
+    stack. There are some routines which are excepted from this restriction and
+    are listed below.
 
   * Shared-heap allocation/deallocation (e.g. `upcxx::allocate/deallocate/new_/
     new_array/delete_/delete_array`) must be called from the primordial thread
