@@ -23,12 +23,12 @@ int main() {
   dist_object<double> dobj4(3.14);
   UPCXX_ASSERT_ALWAYS(!(id1 == dobj3.id()));
   UPCXX_ASSERT_ALWAYS(id1 != dobj3.id());
-  UPCXX_ASSERT_ALWAYS(id1 <= dobj3.id() || id1 > dobj3.id());
-  UPCXX_ASSERT_ALWAYS(id1 >= dobj3.id() || id1 < dobj3.id());
+  UPCXX_ASSERT_ALWAYS((id1 <= dobj3.id()) ^ (id1 > dobj3.id()));
+  UPCXX_ASSERT_ALWAYS((id1 >= dobj3.id()) ^ (id1 < dobj3.id()));
   UPCXX_ASSERT_ALWAYS(!(dobj2.id() == dobj3.id()));
   UPCXX_ASSERT_ALWAYS(dobj2.id() != dobj3.id());
-  UPCXX_ASSERT_ALWAYS(dobj2.id() <= dobj3.id() || dobj2.id() > dobj3.id());
-  UPCXX_ASSERT_ALWAYS(dobj2.id() >= dobj3.id() || dobj2.id() < dobj3.id());
+  UPCXX_ASSERT_ALWAYS((dobj2.id() <= dobj3.id()) ^ (dobj2.id() > dobj3.id()));
+  UPCXX_ASSERT_ALWAYS((dobj2.id() >= dobj3.id()) ^ (dobj2.id() < dobj3.id()));
 
   std::size_t hash1 = std::hash<dist_id<int>>()(id1);
   std::cout << id1 << ": " << hash1 << std::endl;
@@ -36,6 +36,8 @@ int main() {
   std::cout << dobj2.id() << ": " << hash2 << std::endl;
   std::size_t hash3 = std::hash<dist_id<int>>()(dobj3.id());
   std::cout << dobj3.id() << ": " << hash3 << std::endl;
+  std::size_t hash4 = std::hash<dist_id<double>>()(dobj4.id());
+  std::cout << dobj4.id() << ": " << hash4 << std::endl;
 
   std::ostringstream tmp;
   tmp << id1;
