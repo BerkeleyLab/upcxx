@@ -32,6 +32,8 @@ namespace upcxx {
     friend struct std::hash<upcxx::dist_id<T>>;
     
   public:
+    dist_id() : dig_(detail::digest::zero()) {}
+
     dist_object<T>& here() const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(detail::registry[dig_],
@@ -63,12 +65,11 @@ namespace upcxx {
     UPCXX_COMPARATOR(>)
     UPCXX_COMPARATOR(>=)
     #undef UPCXX_COMPARATOR
+
+    friend std::ostream& operator<<(std::ostream &o, dist_id<T> x) {
+      return o << x.dig_;
+    }
   };
-  
-  template<typename T>
-  std::ostream& operator<<(std::ostream &o, dist_id<T> x) {
-    return o << x.dig_;
-  }
 }
 
 namespace std {
