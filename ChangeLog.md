@@ -5,17 +5,25 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### 20XX.YY.ZZ: PENDING
+### 2021.03.31: Release 2021.3.0
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* The optimizations and features supporting CUDA GPUs initially previewed in
+  the 2020.11.0 Memory Kinds Prototype have been hardened and incorporated
+  into this release.
+* On platforms with NVIDIA-branded CUDA devices and Mellanox-branded InfiniBand
+  network adapters (such as OLCF Summit), `upcxx::copy()` uses GPUDirect RDMA
+  (GDR) hardware support to offload RMA operations involving GPU memory.
+* See [INSTALL.md](INSTALL.md) for instructions to enable UPC++ CUDA support
+  and for a list of detailed requirements and known issues.
 * New `shared_segment_{size,used}` queries return snapshots of the host shared segment
   size and utilization.
 * Updates to GASNet's support for InfiniBand networks (ibv-conduit):
     - Significantly improved performance of both RPC and RMA operations under
       certain conditions
-    - Measurable reduction in startup time for medium to large-scale jobs on
-      wide SMPs
+    - Measurable reduction in startup time for medium-scale and large-scale
+      jobs with wide SMP nodes.
     - Heterogeneous multirail configurations no longer reduce the size of
       `upcxx::local_team()`.
 
@@ -24,27 +32,34 @@ Improvements to RPC and Serialization:
 * The RPC implementation has been tuned and now incurs one less payload copy on
   ibv and aries networks on moderately sized RPCs. Additionally, internal
   protocol cross-over points have been adjusted on all networks. These changes
-  may result in noticable performance improvement for RPCs with a total size 
+  may result in noticeable performance improvement for RPCs with a total size 
   (including serialized arguments) under about 64kb (exact limit varies with network).
 * The default aries-conduit max AM Medium size has been doubled to ~8kb to improve
   performance of the RPC eager protocol. See aries-conduit README for details on
   the available configure/envvar knobs to control this quantity.
+* Arguments to `rpc`, `rpc_ff` and `remote_cx::as_rpc` are now serialized synchronously 
+  before return from the communication-injection call, regardless of asynchronous `source_cx`
+  completions (which are now deprecated for `rpc` and `rpc_ff`).
+* Streamlined some overheads associated with `remote_cx::as_rpc` and RPC replies.
 
 Infrastructure changes:
 
 * The `install` script, deprecated since 2020.3.0, has been removed.
 * `make check` (and similar) now accept comma-delimited `NETWORKS` settings,
   in addition to space-delimited.
+* The PGI C++ compiler (through version 20.4) remains fully supported. The re-branded
+  variant of this host compiler (i.e. `pgc++` or `nvc++` released as NVIDIA HPC
+  SDK 20.7 and later) is not currently supported, due to critical defects.
 
 Notable bug fixes:
 
-* issue #25: Remove non-public symbols from top-level upcxx:: namespace
+* issue #25: Remove non-public symbols from top-level `upcxx::` namespace
 * issue #241: Intermittent validation failures in test/copy.cpp
 * issue #245: persona-example deadlocks when --with-mpsc-queue=biglock
 * issue #276: Use C++ protection features to enforce abstraction boundaries
 * issue #382: Expose shared heap usage at runtime
 * issue #408: Cannot register multiple completions against a non-copyable results type
-* issue #421: upcxx::copy() breaks with PGI optimizer
+* issue #421: `upcxx::copy()` breaks with PGI optimizer
 * issue #422: Improve configure behavior for GASNet archives lacking Bootstrap
 * issue #423: Prohibit communication using non-master personas in SEQ mode
 * issue #427: Crash after `write_sequence()` where serialized element size is
@@ -54,13 +69,12 @@ Notable bug fixes:
 * issue #430: cannot disable the default network
 * issue #432: Some `upcxx::copy()` cases do not `discharge()` properly
 * issue #440: Invalid GASNet call while deserializing a global ptr
-* issue #447: REGRESSION: bulk upcxx::rput with l-value completions
+* issue #447: REGRESSION: bulk `upcxx::rput` with l-value completions
 * issue #450: `upcxx::lpc` callback return of rvalue reference not decayed as specified
-* issue #455: Performance bug in `rput(remote_cx::as_rpc(...))` with "bare" remote_cx
-* issue #459: Move unspecified functions and constants into a new
-  `upcxx::experimental` namespace
-* issue #460: Implementation relies on std::result_of, which is deprecated in
-   C++17 and removed in C++20
+* issue #455: Performance bug in `rput(remote_cx::as_rpc(...))` with "bare" `remote_cx`
+* issue #459: Move unspecified identifiers into a new `upcxx::experimental` namespace
+* issue #460: Implementation relies on `std::result_of`, which is deprecated in
+  C++17 and removed in C++20
 
 Fixes the following notable bugs in the GASNet library
   (see https://gasnet-bugs.lbl.gov for details):
@@ -68,24 +82,33 @@ Fixes the following notable bugs in the GASNet library
 * bug4194: ibv: unnecessarily slow startup
 * bug4208: ibv: unfortunate multi-rail interactions with PSHM and XRC
 
+This prototype library release conforms to the
+[UPC++ v1.0 Specification, Revision 2021.3.0](docs/spec.pdf).
+All currently specified features are fully implemented.
+See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
+
 Breaking changes:
 
-* Array types are now prohibited as template arguments to `upcxx::new_` and
-  `upcxx::new_array`.
-* The following *unspecified* identifiers, previously in the `upcxx` namespace:
+* When compiling for the default "seq" threading mode, inter-process
+  communication may only be initiated by the primordial thread, 
+  and now additionally requires use of the master persona. 
+  For details, see [docs/implementation-defined.md](docs/implementation-defined.md).
+* Array types are now prohibited as the element-type template argument to 
+  `upcxx::new_` and `upcxx::new_array`.
+* The following *unspecified* identifiers, previously in the `upcxx` namespace,
+  have all been moved to the new `upcxx::experimental` namespace.
+  These interfaces all remain unspecified and experimental, and they are
+  subject to change without notice in future revisions:
     - `broadcast_nontrivial`, `reduce_one_nontrivial`, `reduce_all_nontrivial`
     - The non-fast `op_*` reduction constants (e.g. `op_add`)
     - `os_env`
     - `say`
     - `destroy_heap` and `restore_heap`
-  have all been moved to the `upcxx::experimental` namespace.  These interfaces
-  all remain unspecified and experimental, and they are subject to change
-  without notice in future revisions.
 * The unspecified/obsolete `UPCXX_REFLECTED()` macro and `upcxx::wait()` function have been removed.
 * Many other unspecified internal functions and members have been renamed.
   Applications should avoid depending on unspecified functions or members, which
   are subject to change without notice. This in particular includes anything in
-  the upcxx sub-namespaces (e.g. `upcxx::detail`).
+  the upcxx sub-namespaces (e.g. `upcxx::detail` and `upcxx::backend`).
 
 
 ### 2020.10.30: Memory Kinds Prototype 2020.11.0
@@ -128,7 +151,7 @@ Notable bug fixes:
 * issue #421: Regression with `upcxx::copy(remote_cx::as_rpc)`
 
 This prototype library release conforms to the
-[UPC++ v1.0 Specification, Revision 2020.11.0-draft](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2020.11.0-draft](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2020.11.0-draft.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
