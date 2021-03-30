@@ -417,14 +417,14 @@ resident in a CUDA-compatible NVIDIA GPU.  Specific requirements:
 
 #### Additional System Requirements for GDR-accelerated memory kinds:
 
-This prototype introduces support for GPUDirect RDMA (GDR) acceleration of memory kinds
+This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory kinds
 on selected platforms using modern NVIDIA-branded GPUs and Mellanox-branded InfiniBand
 network hardware, when using the native ibv-conduit. Additional requirements:
 
 * Linux OS with x86-64 or ppc64le CPU (not ARM)
 * Recent Mellanox-branded InfiniBand network hardware
 * GPUDirect RDMA drivers installed
-* ibv-conduit built from the GASNet memory\_kinds prototype (the default for this release)
+* ibv-conduit built from the current version of GASNet-EX (the default for this release)
 
 When using GDR-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
@@ -436,7 +436,8 @@ reference implementation which has not been tuned for performance. In
 particular, `upcxx::copy` will stage data transfers involving device
 memory through intermediate buffers in host memory, and is expected to
 underperform relative to solutions using RDMA, GPUDirect and similar
-zero-copy technologies.
+zero-copy technologies. Future versions of UPC++ will introduce
+native memory kinds acceleration for additional GPU and network variants.
 
 #### `configure` Command for Enabling CUDA GPU Support
 
@@ -449,8 +450,7 @@ cd <upcxx-source-path>
 ```
 
 This will detect whether the requirements for GDR acceleration are met and
-automatically activate that feature. To force detection of GDR acceleration,
-one can optionally add the `--enable-kind-cuda-uva` configure option. 
+automatically activate that feature. 
 For troubleshooting installation of GASNet's GDR support, please see
 [docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
 in the GASNet memory_kinds distribution.
@@ -480,7 +480,7 @@ compiler as was passed to the UPC++ `configure` script.
    
 UPC++ CUDA operation can be validated using the following programs in the source tree:
 
-* `test/copy.cpp`: correctness tester for the UPC++ `cuda_device`
+* `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `cuda_device`
 * `bench/cuda_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
 * `example/cuda_vecadd`: demonstration of using UPC++ `cuda_device` to orchestrate
   communication for a program invoking CUDA computational kernels on the GPU.
@@ -502,7 +502,7 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 
 There are several known defects in the current GASNet GDR Put implementation, arising from
 a mismatch between the vendor's overly weak memory model for GDR transfers and 
-traditional RMA Put completion semantics. This UPC++ prototype includes a workaround
+traditional RMA Put completion semantics. This UPC++ version includes a workaround
 for these defects that automatically converts Put-like `upcxx::copy` operations into
 use of wire-level GDR Gets from the target rank. This workaround is automatically
 enabled for runs using multi-rail InfiniBand or PSHM shared-memory bypass which are
@@ -528,10 +528,11 @@ Details are here:
 
 * [bug 4151: IBVerbs SEGV on small Gets to device memory](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4151)
 
-In addition to the issues described above, the curent implementation of 
+In addition to the issues described above, the current implementation of 
 GDR-accelerated memory kinds enforces a per-process limit of 32 active `cuda_device`
-opens over the lifetime of the process. This limit is expected to be improved in 
-a future release.
+opens over the lifetime of the process. This static limit can be raised at configure time
+via `configure --with-maxeps=N`, and is expected to become a more dynamic limit
+in a future release.
 
 #### Use of UPC++ memory kinds
 
