@@ -29,7 +29,7 @@ testprograms_par = \
 
 ###
 # Section 2: developer tests
-# Built by 'make tests-dev` and `make check-dev`
+# Built by 'make dev-tests` and `make dev-check`
 #
 # The logic which follows sets variables which controls what is tested.
 # The list of tests is constructed as follows:
@@ -60,12 +60,13 @@ test_dirs = \
 	test/regression \
 	test/neg \
 	test/uts \
+	bench \
 	example/prog-guide \
 	example/serialization
 
 #
 # Section 2. Step 2.
-# Exclusion of files with .cpp suffix which are not suited to `make check`
+# Exclusion of files with .cpp suffix which are not suited to `make dev-check`
 # Some are pieces of a multi-file test or example.
 # Others are not UPC++ tests, are intended to fail, or are not intended to be run.
 #
@@ -80,6 +81,7 @@ test_exclude_all = \
 
 test_exclude_seq = \
 	test/par-threadmode.cpp \
+	test/regression/issue432.cpp \
 	$(TEST_EXCLUDE_SEQ)
 
 test_exclude_par = \
@@ -95,6 +97,8 @@ test_exclude_compile_only = \
 	issue219 \
 	issue224 \
 	issue333 \
+	issue428 \
+	issue450 \
 	nodiscard \
 	promise_multiple_results \
 	promise_reused \
@@ -111,20 +115,24 @@ test_exclude_compile_only = \
 # TODO: distinguish `dev-tests` from `dev-check` to make this
 # exclusion conditional, thus allowing for compile-only tests
 test_exclude_all += \
+	bench/alloc_burn.cpp \
 	test/hello.cpp \
 	test/hello_threads.cpp \
 	test/uts/uts_omp.cpp \
 	test/uts/uts_threads.cpp
 
-# Conditionally exclude tests that require CUDA support:
-ifeq ($(strip $(UPCXX_CUDA)),)
-test_exclude_all += \
+# Conditionally exclude tests that require a valid CUDA device at runtime:
+test_requires_cuda_device = \
+	bench/cuda_microbenchmark.cpp \
+	test/bad-segment-alloc.cpp \
+	test/regression/issue432.cpp \
 	example/prog-guide/h-d.cpp \
 	example/prog-guide/h-d-remote.cpp
+ifneq ($(UPCXX_CUDA),1)
+test_exclude_all += $(test_requires_cuda_device)
 endif
 
 # Conditionally exclude tests that require OpenMP:
-# TODO: configure logic to enable UPCXX_HAVE_OPENMP
 ifeq ($(strip $(UPCXX_HAVE_OPENMP)),)
 test_exclude_all += \
 	test/rput_omp.cpp \
@@ -155,10 +163,8 @@ test_exclude_par += \
 # PAR-only tests:
 test_exclude_seq += \
 	test/hello_threads.cpp \
-	test/lpc_barrier.cpp \
 	test/rput_thread.cpp \
 	test/rput_omp.cpp \
-	test/view.cpp \
 	test/regression/issue142.cpp \
 	test/regression/issue168.cpp \
 	test/uts/uts_hybrid.cpp \
@@ -173,8 +179,7 @@ test_exclude_seq += \
 #
 
 test_exclude_fail_all = \
-	test/regression/issue242.cpp \
-	test/regression/issue336.cpp
+	test/regression/issue242.cpp 
 
 test_exclude_fail_seq =
 
@@ -192,16 +197,55 @@ TEST_FLAGS_MEMBEROF_GNU=-Wno-invalid-offsetof
 TEST_FLAGS_MEMBEROF_Clang=-Wno-invalid-offsetof
 export TEST_FLAGS_MEMBEROF=$(TEST_FLAGS_MEMBEROF_$(GASNET_CXX_FAMILY))
 
-ifeq ($(strip $(PGI_DEBUG_SYMBOLS_BROKEN)),1)
+ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
 test_pgi_debug_symbols_broken = \
 	RPC_CTOR_TRACE \
 	NODISCARD \
 	MEMBEROF \
+	MISC_PERF \
 	ISSUE138
 endif
 $(foreach test,$(test_pgi_debug_symbols_broken),$(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) -purge-option=-g))
+
+ifeq ($(strip $(UPCXX_PLATFORM_IBV_CUDA_HAS_BUG_4150)),1)
+  # Compile-time measure(s) to avoid known failures attributable to GASNet bug 4150
+  export TEST_FLAGS_COPY_COVER:=$(TEST_FLAGS_COPY_COVER) -DSKIP_KILL
+endif
+
+# Some tests use std::thread in both SEQ and PAR
+test_seq_threaded = \
+	VIEW \
+	LPC_BARRIER \
+	LPC_STRESS
+$(foreach test,$(test_seq_threaded), \
+  $(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) $(TEST_THREADED_FLAGS)))
+
+# 
+# Section 4. 
+# Environment variables and command-line arguments to affect test runs.
+# Note use of export to ensure shell can use these
+# Also note these settings currently do NOT support env values or individual args with 
+# embedded spaces or other special shell characters. Don't do that.
+
+# Tweak benchmarks for efficient coverage, these parameters are too small for good measurements
+export TEST_ENV_PUT_FLOOD=fixed_iters=10
+export TEST_ARGS_CUDA_MICROBENCHMARK='-t 1 -w 1'
+export TEST_ARGS_MISC_PERF='1000'
+export TEST_ARGS_RPC_PERF='100 10 1048576'
+
+ifeq ($(strip $(UPCXX_PLATFORM_IBV_CUDA_HAS_BUG_4148)),1)
+  # Run-time measures to eliminate multiple communications paths, and
+  # thus avoid known failures attributable to GASNet bug 4148
+  test_ibv_cuda_bug_4148 = \
+	COPY_COVER
+  ifneq ($(strip $(GASNET_IBV_PORTS)),) # non-empty
+    # Reduce GASNET_IBV_PORTS, if any, to its first '+'-delimited element
+    TEST_IBV_SINGLE_PORT_SETTING = GASNET_IBV_PORTS=$(shell cut -d+ -f1 <<<$(GASNET_IBV_PORTS))
+  endif
+endif
+$(foreach test,$(test_ibv_cuda_bug_4148), $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) GASNET_SUPERNODE_MAXSIZE=1 $(TEST_IBV_SINGLE_PORT_SETTING)))
 
 #
 # End of configuration

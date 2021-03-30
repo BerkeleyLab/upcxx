@@ -14,8 +14,8 @@ int main() {
   int *lp = gp2.local();
   copy(gp0, lp, 1).wait();
   assert(*lp == 42);
-  copy(gp0, gp, 1).wait();
-  assert(*gp.local() == 42);
+  copy(gp0, gp2, 1).wait();
+  assert(*gp2.local() == 42);
   barrier();
   *gp.local() = 0;
   copy(lp, gp, 1).wait();

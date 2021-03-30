@@ -179,7 +179,27 @@ options for configure and logic for running tests on batch-scheduled systems.
 These are maintained to include representative coverage of the range of
 compilers and networks which we document as officially supported.
 
-For details see [utils/dev-ci/README.md](../utils/dev-ci/README.md).
+These are maintained in a distinct git repository:
+[upcxx-ci](https://bitbucket.org/berkeleylab/upcxx-ci).
+
+If that repo is cloned *within* the top-level `upcxx` source directory, then
+the `upcxx-ci/dev-ci/*` scripts can be run in place.
+
+## GitLab CI Testing
+
+The `upcxx` git repo contains a 1-line `.gitlab-ci.yml` which just includes a
+complete configuration file in the same `upcxx-ci` git repo described in the
+preceding section.  This is usable only if you have an account on the
+[ALCF GitLab server](https://gitlab-ci.alcf.anl.gov/).  If you want access,
+you should contact Paul to initiate an account request as the project PI.
+
+There is
+[documentation](https://bitbucket.org/berkeleylab/upcxx-ci/src/master/gitlab-ci.md)
+available describing the various settings to control the CI pipelines.
+Additionally, since the UI provided by GitLab for launching CI pipelines is
+"minimal" (to be kind), we have a
+[frontend](https://upcxx-bugs.lbl.gov/gitlab-ci/ci-form.html) to simplify
+composition of GitLab CI pipeline launch requests.
   
 ## Internal-Only Make Options
 

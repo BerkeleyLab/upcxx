@@ -109,13 +109,3 @@ endif
 ifeq ($(GASNET_CXX_SUBFAMILY),NVIDIA)
 UPCXX_DEP_GEN = $(1) -E -Xcompiler "$(UPCXX_DEP_GEN_FLAGS)" $(3) $(4)
 endif
-
-#
-# UPCXX_OPENMP_FLAGS
-# TODO: logic in configure to replace or supplement these
-#
-ifeq ($(GASNET_CXX_FAMILY),PGI)
-UPCXX_OPENMP_FLAGS = -mp
-else
-UPCXX_OPENMP_FLAGS = -fopenmp
-endif

@@ -109,7 +109,7 @@ namespace detail {
   template<typename T>
   T* launder_unconstructed(T *p) noexcept {
     #if __INTEL_COMPILER
-      // the intel compiler ICEs on gnu-style extended asm below,
+      // issue 400: the intel compiler ICEs on gnu-style extended asm below,
       // so use this more convoluted variant that means the same thing:
       // (Note in particular that C++ [basic.lval] aliasing rules permit
       // modification via char type, which we exploit here)
@@ -254,6 +254,14 @@ namespace detail {
   void destruct(T &x) noexcept { destruct_dispatch<T>()(x); }
   
   //////////////////////////////////////////////////////////////////////////////
+  // detail::is_aligned
+
+  inline bool is_aligned(void const *x, std::size_t align) {
+    UPCXX_ASSERT((align & (align-1)) == 0, "align must be a power of 2");
+    return 0 == (reinterpret_cast<std::uintptr_t>(x) & (align-1));
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
   // detail::alloc_aligned
 
   inline void* alloc_aligned(std::size_t size, std::size_t align) noexcept {
@@ -278,17 +286,10 @@ namespace detail {
     UPCXX_ASSERT_ALWAYS(err == 0,
       "upcxx::detail::alloc_aligned: posix_memalign(align="<<align<<", size="<<size<<"): failed with return="<<err
     );
+    UPCXX_ASSERT(is_aligned(p, align));
     return p;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  // detail::is_aligned
-
-  inline bool is_aligned(void const *x, std::size_t align) {
-    UPCXX_ASSERT((align & (align-1)) == 0, "align must be a power of 2");
-    return 0 == (reinterpret_cast<std::uintptr_t>(x) & (align-1));
-  }
-  
   //////////////////////////////////////////////////////////////////////////////
   // xaligned_storage: like std::aligned_storage::type except:
   //   1. Supports extended alignemnts greater than alignof(std::max_align_t)
@@ -311,8 +312,14 @@ namespace detail {
   struct xaligned_storage<size, align, /*valid=*/true, /*extended=*/false> {
     typename std::aligned_storage<(size + align-1) & -align, align>::type storage_;
 
-    void const* storage() const noexcept { return &storage_; }
-    void*       storage()       noexcept { return &storage_; }
+    void const* storage() const noexcept { 
+      UPCXX_ASSERT(is_aligned(&storage_, align));
+      return &storage_; 
+    }
+    void*       storage()       noexcept { 
+      UPCXX_ASSERT(is_aligned(&storage_, align));
+      return &storage_; 
+    }
   };
   
   template<std::size_t size, std::size_t align>
@@ -321,11 +328,15 @@ namespace detail {
     
     void const* storage() const noexcept {
       std::uintptr_t u = reinterpret_cast<std::uintptr_t>(&xbuf_);
-      return &xbuf_[-u & (align-1)];
+      void const *p = &xbuf_[-u & (align-1)];
+      UPCXX_ASSERT(is_aligned(p, align));
+      return p;
     }
     void*       storage()       noexcept {
       std::uintptr_t u = reinterpret_cast<std::uintptr_t>(&xbuf_);
-      return &xbuf_[-u & (align-1)];
+      void       *p = &xbuf_[-u & (align-1)];
+      UPCXX_ASSERT(is_aligned(p, align));
+      return p;
     }
 
     xaligned_storage() noexcept = default;
@@ -374,6 +385,22 @@ namespace detail {
     }
   };
   
+  //////////////////////////////////////////////////////////////////////
+  // detail::invoke_result<T, Args...>: abstract over std::result_of and
+  // std::invoke_result.
+
+  #if __cpp_lib_is_invocable >= 201703
+    template<typename T, typename ...Args>
+    using invoke_result = std::invoke_result<T, Args...>;
+    template<typename T, typename ...Args>
+    using invoke_result_t = std::invoke_result_t<T, Args...>;
+  #else
+    template<typename T, typename ...Args>
+    using invoke_result = std::result_of<T(Args...)>;
+    template<typename T, typename ...Args>
+    using invoke_result_t = typename std::result_of<T(Args...)>::type;
+  #endif
+
   //////////////////////////////////////////////////////////////////////
   // trait_forall: logical conjunction of one trait applied to
   // variadically-many argument types.
@@ -438,6 +465,24 @@ namespace detail {
     };
   };
   
+  //////////////////////////////////////////////////////////////////////
+  // is_lvalue_or_copyable, is_lvalue_or_movable: trait for whether a
+  // type is either an lvalue reference or Copy/MoveConstructible
+
+  template<typename Arg>
+  struct is_lvalue_or_copyable {
+    static constexpr bool value =
+      std::is_lvalue_reference<Arg>::value ||
+      std::is_copy_constructible<typename std::decay<Arg>::type>::value;
+  };
+
+  template<typename Arg>
+  struct is_lvalue_or_movable {
+    static constexpr bool value =
+      std::is_lvalue_reference<Arg>::value ||
+      std::is_move_constructible<typename std::decay<Arg>::type>::value;
+  };
+
   //////////////////////////////////////////////////////////////////////
 
   template<typename Tuple, template<typename...> class Into>
@@ -518,7 +563,21 @@ namespace detail {
     typedef std::tuple<typename std::decay<T>::type...> type;
   };
   #endif
-  
+ 
+  //////////////////////////////////////////////////////////////////////
+  // decay_tupled_rrefs: decay elements of a tuple, preserving lvalue refs but not rvalue refs
+  template<typename Tup>
+  struct decay_tupled_rrefs;
+  template<typename ...T>
+  struct decay_tupled_rrefs<std::tuple<T...>> {
+    typedef std::tuple<
+      typename std::conditional<
+        std::is_lvalue_reference<T>::value,
+        T,
+        typename std::decay<T>::type
+      >::type...> type;
+  };
+
   //////////////////////////////////////////////////////////////////////
   // get_or_void & tuple_element_or_void: analogs of std::get &
   // std::tuple_elemenet which return void for out-of-range indices

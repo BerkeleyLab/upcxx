@@ -70,10 +70,12 @@ namespace detail {
       // immediately after fn is invoked if fn returns a non-future or
       // ready future, otherwise it is deferred until after the future
       // returned by fn is ready.
-      upcxx::apply_as_future(std::move(*fn))
-        .then(after_execute<FnDez, !on_stack, cleanup>{
+      detail::apply_as_future_then_lazy(
+        std::move(*fn),
+        after_execute<FnDez, !on_stack, cleanup>{
           fn, std::tuple<Arg...>(a...)
-        });
+        }
+      );
     }
 
   public:

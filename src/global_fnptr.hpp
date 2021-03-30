@@ -8,13 +8,13 @@
 #include <functional>
 
 namespace upcxx {
+namespace detail {
   //////////////////////////////////////////////////////////////////////////////
   // global_fnptr<Ret(Arg...)>: shippable pointer-to-function
 
   template<typename FnSig>
   class global_fnptr;
   
-  namespace detail {
     void global_fnptr_basis();
 
     static constexpr std::uintptr_t global_fnptr_null = 0;//reinterpret_cast<std::uintptr_t>(global_fnptr_basis);//std::uintptr_t(-1)>>1;
@@ -40,7 +40,9 @@ namespace upcxx {
         return ans;
       }
     }
-  }
+
+  template<typename ...Arg>
+  class command; // defined in command.hpp
 
   template<typename Ret, typename ...Arg>
   class global_fnptr<Ret(Arg...)> {
@@ -52,10 +54,12 @@ namespace upcxx {
   public:
     using function_type = Ret(Arg...);
 
-  public: //private!
-    std::uintptr_t u_;
-  
+    friend struct std::hash<upcxx::detail::global_fnptr<Ret(Arg...)>>;
+    friend class detail::command<Arg...>;
+
   private:
+    std::uintptr_t u_;
+
     static std::uintptr_t encode(Ret(*fp)(Arg...)) {
       return fp == nullptr
         ? detail::global_fnptr_null
@@ -116,7 +120,6 @@ namespace upcxx {
     }
   };
 
-  namespace detail {
     ////////////////////////////////////////////////////////////////////////////
     // detail::globalize_fnptr: Given a callable, return a global_fnptr if that
     // callable is a function pointer/reference, otherwise return the given
@@ -148,37 +151,37 @@ namespace upcxx {
 
 namespace std {
   template<typename Ret, typename ...Arg>
-  struct less<upcxx::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::global_fnptr<Ret(Arg...)> rhs) const {
+  struct less<upcxx::detail::global_fnptr<Ret(Arg...)>> {
+    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
+                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
       return lhs < rhs;
     }
   };
   template<typename Ret, typename ...Arg>
-  struct less_equal<upcxx::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::global_fnptr<Ret(Arg...)> rhs) const {
+  struct less_equal<upcxx::detail::global_fnptr<Ret(Arg...)>> {
+    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
+                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
       return lhs <= rhs;
     }
   };
   template<typename Ret, typename ...Arg>
-  struct greater<upcxx::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::global_fnptr<Ret(Arg...)> rhs) const {
+  struct greater<upcxx::detail::global_fnptr<Ret(Arg...)>> {
+    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
+                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
       return lhs > rhs;
     }
   };
   template<typename Ret, typename ...Arg>
-  struct greater_equal<upcxx::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::global_fnptr<Ret(Arg...)> rhs) const {
+  struct greater_equal<upcxx::detail::global_fnptr<Ret(Arg...)>> {
+    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
+                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
       return lhs >= rhs;
     }
   };
   
   template<typename Ret, typename ...Arg>
-  struct hash<upcxx::global_fnptr<Ret(Arg...)>> {
-    constexpr std::size_t operator()(upcxx::global_fnptr<Ret(Arg...)> x) const {
+  struct hash<upcxx::detail::global_fnptr<Ret(Arg...)>> {
+    constexpr std::size_t operator()(upcxx::detail::global_fnptr<Ret(Arg...)> x) const {
       return std::size_t(x.u_);
     }
   };

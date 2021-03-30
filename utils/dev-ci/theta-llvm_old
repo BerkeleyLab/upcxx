@@ -1,4 +1,0 @@
-#!/bin/bash
-
-export DEV_CI_PRGENV=llvm/4.0
-source $(dirname $0)/theta-llvm

@@ -20,21 +20,25 @@ namespace upcxx {
     
     // Get the promise pointer from the master map.
     template<typename T>
-    future_header_promise<T>* registered_promise(digest id, int initial_anon=0);
+    future_header_promise<T>* registered_promise(detail::digest id, int initial_anon=0);
 
     template<typename T, typename ...U>
-    T* registered_state(digest id, U &&...ctor_args);
+    T* registered_state(detail::digest id, U &&...ctor_args);
   }
   
   class team;
   
   struct team_id {
-  //private:
-    digest dig_;
-    team_id(digest id) : dig_(id) {}
-    
-  //public:
-    team_id() : dig_(digest::zero()) {} // issue 343: disable trivial default construction
+  private:
+    detail::digest dig_;
+    explicit team_id(detail::digest id) : dig_(id) {}
+
+    friend class team;
+    friend void finalize();
+    friend struct std::hash<upcxx::team_id>;
+
+  public:
+    team_id() : dig_(detail::digest::zero()) {} // issue 343: disable trivial default construction
 
     team& here() const {
       UPCXX_ASSERT_INIT();
@@ -64,18 +68,18 @@ namespace upcxx {
     UPCXX_COMPARATOR(>)
     UPCXX_COMPARATOR(>=)
     #undef UPCXX_COMPARATOR
-  };
   
-  inline std::ostream& operator<<(std::ostream &o, team_id x) {
-    return o << x.dig_;
-  }
+    friend inline std::ostream& operator<<(std::ostream &o, team_id x) {
+      return o << x.dig_;
+    }
+  };
 }
 
 namespace std {
   template<>
   struct hash<upcxx::team_id> {
     size_t operator()(upcxx::team_id id) const {
-      return hash<upcxx::digest>()(id.dig_);
+      return hash<upcxx::detail::digest>()(id.dig_);
     }
   };
 }
@@ -83,12 +87,13 @@ namespace std {
 namespace upcxx {
   class team:
       backend::team_base /* defined by <backend>/runtime_fwd.hpp */ {
-    digest id_;
+    detail::digest id_;
     std::uint64_t coll_counter_;
     intrank_t n_, me_;
     
   public:
-    team(detail::internal_only, backend::team_base &&base, digest id, intrank_t n, intrank_t me);
+    team(detail::internal_only, backend::team_base &&base, detail::digest id,
+         intrank_t n, intrank_t me);
     team(team const&) = delete;
     team(team &&that);
     ~team();
@@ -133,7 +138,7 @@ namespace upcxx {
       return *this;
     }
     
-    digest next_collective_id(detail::internal_only) {
+    detail::digest next_collective_id(detail::internal_only) {
       return id_.eat(coll_counter_++);
     }
 

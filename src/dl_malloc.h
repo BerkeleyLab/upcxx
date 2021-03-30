@@ -23,9 +23,8 @@
 #ifndef MALLOC_280_H
 #define MALLOC_280_H
 
-// Added for upcxx:
-#define ONLY_MSPACES 1
-  
+#include "dl_malloc_upcxx.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

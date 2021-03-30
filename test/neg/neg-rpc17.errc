@@ -1,0 +1,1 @@
+Deserialized type of rpc return value must be MoveConstructible.

@@ -9,6 +9,7 @@
 #endif
 
 #include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 
 #include <atomic>
 #include <thread>
@@ -43,7 +44,7 @@ namespace vranks {
   
   template<typename Fn>
   void spawn(Fn fn) {
-    int vrank_n = upcxx::os_env<int>("THREADS", 10);
+    int vrank_n = os_env<int>("THREADS", 10);
     vranks.resize(vrank_n);
     
     std::vector<std::thread*> threads{(unsigned)vrank_n};

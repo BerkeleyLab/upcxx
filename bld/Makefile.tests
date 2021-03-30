@@ -21,9 +21,17 @@ $(upcxx_src)/bld/%.mak: ; @: # empty rule
 
 BLDDIR = $(upcxx_bld)/bld
 
+# Pick 'debug' for building tests, unless --enable-single=opt
+ifeq ($(strip $(UPCXX_DBGOPT)),opt)
+UPCXX_CODEMODE  = opt
+else
+UPCXX_CODEMODE  = debug
+endif
+GASNET_CODEMODE = $(UPCXX_CODEMODE)
+
 ## GASNet ##
 include $(upcxx_src)/bld/gasnet.mak
-GASNET_BLDDIR = $(BLDDIR)/gasnet.$(firstword $(UPCXX_CODEMODE) $(UPCXX_DBGOPT))
+GASNET_BLDDIR = $(BLDDIR)/gasnet.$(UPCXX_CODEMODE)
 
 # public-facing targets don't use GASNet "conduit" terminology
 # using "target-specific variable values" for the defaults
@@ -32,13 +40,6 @@ check dev-check dev-check-debug dev-check-opt: NETWORKS = $(UPCXX_DEFAULT_NETWOR
 NETWORKS ?= $(filter-out $(UNOFFICIAL_CONDUITS),$(CONDUITS))
 ifneq ($(strip $(NETWORKS)),)
 export NETWORKS
-endif
-
-# Pick 'debug' for building tests, unless --enable-single=opt
-ifeq ($(strip $(UPCXX_DBGOPT)),opt)
-UPCXX_CODEMODE       = opt
-else
-UPCXX_CODEMODE       = debug
 endif
 
 ## Compiler features ##
@@ -129,8 +130,8 @@ do-build-%: force
 	 flags=TEST_FLAGS_$$(basename $$src .cpp | tr '[a-z]-' '[A-Z]_'); \
 	 output=$(TEST_OUTPUT)/$${exe}-compile.out ;     \
 	 upcxx_cmd="$(UPCXX_BINDIR)/upcxx" ;             \
-	 ( if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd="echo $$upcxx_cmd"; fi; \
-	   if (( $(UPCXX_VERBOSE) )); then set -x; fi;  \
+	 if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd=": $$upcxx_cmd"; fi; \
+	 ( set -x ; env                                  \
 	   UPCXX_CODEMODE=$(UPCXX_CODEMODE)              \
 	   UPCXX_THREADMODE=$$threadmode                 \
 	   UPCXX_NETWORK=$$network                       \
@@ -139,8 +140,11 @@ do-build-%: force
 	                         $(UPCXX_COLOR_CXXFLAGS) \
 				 $(EXTRAFLAGS)           \
 	                         -o $$exe$(EXESUFFIX)    \
-				 2> $$output );          \
+				 ) &> $$output ;         \
 	 result=$$?;                                     \
+	 if (( $(UPCXX_VERBOSE) )) || (( $(UPCXX_DRY_RUN) )); then \
+	     head -n 1 $$output;                         \
+	 fi;                                             \
 	 if (( $(UPCXX_DRY_RUN) )); then                 \
 	     printf 'Compiling %-60s SKIPPED\n' "$$exe"; \
 	     exit 0;                                     \
@@ -178,7 +182,7 @@ do-build-%: force
 	 else : expect compile pass ;                    \
 	   if [[ $$result == 0 ]]; then                  \
 	     $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-pass OUTPUT=$$output ; \
-	     if $(WARNING_FILTER) $$output | grep -i -q -w warning ; then \
+	     if tail -n +2 $$output | $(WARNING_FILTER) | grep -i -q -w warning ; then \
 	       head -n $(TEST_CERR_LIMIT) $$output ;       \
 	       printf 'Compiling %-60s WARNING\n' "$$exe"; \
 	       [[ -n "$$TEST_WARNING_SENTINEL" ]] && touch $$TEST_WARNING_SENTINEL; \
@@ -442,32 +446,43 @@ do-run-tests: force
 	     fi;                                                        \
 	     runcmd=$${!runvar};                                        \
 	   fi;                                                          \
-	   if (( $(UPCXX_DRY_RUN) )); then runcmd="echo $$runcmd"; fi;  \
+	   if (( $(UPCXX_DRY_RUN) )); then runcmd=": $$runcmd"; fi;  \
 	   output=$(TEST_OUTPUT)/$$test-run.out ;                       \
-	   ( if (( $(UPCXX_VERBOSE) )); then set -x; fi;         \
-	     $$runcmd -np $$ranks -- $$run_wrapper ./$$test &> $$output; \
-	   );                                                           \
+	   ( stem=$$(echo $$test | $(PERL) -pe 's/^test-//; s/-'$$conduit'$$//; s/-(opt|debug)$$//; s/-(seq|par)$$//'); \
+	     test_args=TEST_ARGS_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');\
+	     test_env=TEST_ENV_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');  \
+	     if [[ -n "$${!test_env}" ]] ; then                         \
+	       test_env="env $${!test_env}";                            \
+	     else                                                       \
+	       unset test_env;                                          \
+	     fi;                                                        \
+	     date ;                                                     \
+	     set -x ;                                                   \
+	     $$runcmd -np $$ranks -- $$test_env $$run_wrapper ./$$test $$(eval echo $${!test_args}) \
+	   ) &> $$output;                                               \
 	   exitcode=$$?;                                                \
-	   if [[ $$exitcode != 0 ]] || grep -q ERROR $$output; then     \
+	   header=4; firstout=$$(($$header+1));                         \
+	   if (( $(UPCXX_VERBOSE) )) || (( $(UPCXX_DRY_RUN) )); then    \
+	     tail -n +$$header $$output | head -n 1 ;                   \
+	   fi;                                                          \
+	   date >> $$output;                                            \
+	   if [[ $$exitcode != 0 ]] ||                                  \
+	      ( tail -n +$$firstout $$output | grep -q ERROR ) ; then   \
+	     tail -n +$$firstout $$output | grep -e "Test result:" -e ERROR -e 'Caught a signal ' -e 'Caught a fatal signal' ; \
 	     comment= ; \
 	     case $$exitcode in 124) comment=": probable timeout" ;; esac ; \
 	     echo "FAILED (exitcode=$$exitcode)$$comment"; : $$((++failed));     \
 	     result=fail;                                               \
-	   elif grep -q UPCXX_TEST_SKIPPED $$output; then               \
+	   elif grep UPCXX_TEST_SKIPPED $$output; then                  \
 	     result=skip; : $$((++skipped));                            \
 	   else                                                         \
+	     tail -n +$$firstout $$output | grep -e "Test result:" -e SUCCESS $$output ; \
 	     result=pass;                                               \
 	   fi;                                                          \
 	   $$MAKE $(MAKE_HERE) do-test-xml RESULT=run-$$result OUTPUT=$$output ; \
 	   if expr "$$run_wrapper" : '.*valgrind' > /dev/null &&        \
 	    ( [[ $$exitcode = 123 ]] || grep -q VALGRIND_ERROR $$output ) ; then \
 	     cat $$output;                                              \
-	   else                                                         \
-	     case "$$result" in                                         \
-	       skip) grep -e UPCXX_TEST_SKIPPED $$output ;;             \
-	       pass) grep -e "Test result:" -e SUCCESS $$output ;;      \
-	       fail) grep -e "Test result:" -e ERROR -e 'Caught a signal ' $$output ;; \
-	     esac;                                                      \
 	   fi;                                                          \
 	 done;                                                          \
 	 echo -e "\nResult reports: $(TEST_OUTPUT)";                    \

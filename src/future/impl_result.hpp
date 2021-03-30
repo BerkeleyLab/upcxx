@@ -5,17 +5,17 @@
 #include <upcxx/utility.hpp>
 
 namespace upcxx {
-  //////////////////////////////////////////////////////////////////////
-  // future_is_trivially_ready: future_impl_result specialization
-  
-  template<typename ...T>
-  struct future_is_trivially_ready<
-      future1<detail::future_kind_result, T...>
-    > {
-    static constexpr bool value = true;
-  };
-  
   namespace detail {
+    //////////////////////////////////////////////////////////////////////
+    // future_is_trivially_ready: future_impl_result specialization
+
+    template<typename ...T>
+    struct future_is_trivially_ready<
+        future1<detail::future_kind_result, T...>
+      > {
+      static constexpr bool value = true;
+    };
+  
     ////////////////////////////////////////////////////////////////////
     // future_impl_result: implementation of a trivially ready value
     

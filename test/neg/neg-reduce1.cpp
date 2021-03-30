@@ -5,7 +5,7 @@ int main() {
   upcxx::init();
 
   std::string s;
-  upcxx::reduce_all(s, upcxx::op_add).wait();
+  upcxx::reduce_all(s, upcxx::op_fast_add).wait();
   
   upcxx::finalize();
 }

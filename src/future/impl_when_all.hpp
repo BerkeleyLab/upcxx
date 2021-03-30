@@ -7,17 +7,18 @@
 #include <initializer_list>
 
 namespace upcxx {
-  //////////////////////////////////////////////////////////////////////
-  // future_is_trivially_ready: future_impl_when_all specialization
-  
-  template<typename ...Arg, typename ...T>
-  struct future_is_trivially_ready<
-      future1<detail::future_kind_when_all<Arg...>, T...>
-    > {
-    static constexpr bool value = detail::trait_forall<upcxx::future_is_trivially_ready, Arg...>::value;
-  };
-  
   namespace detail {
+    //////////////////////////////////////////////////////////////////////
+    // future_is_trivially_ready: future_impl_when_all specialization
+
+    template<typename ...Arg, typename ...T>
+    struct future_is_trivially_ready<
+        future1<detail::future_kind_when_all<Arg...>, T...>
+      > {
+      static constexpr bool value =
+        detail::trait_forall<detail::future_is_trivially_ready, Arg...>::value;
+    };
+  
     ////////////////////////////////////////////////////////////////////
     // future_body_identity: Future body that holds a single dependency
     // and whose `leave_active()` routine just returns that dependencies
@@ -95,7 +96,13 @@ namespace upcxx {
         using body_type = future_body_identity<future1<future_kind_when_all<FuArg...>,T...>>;
         void *body_mem = body_type::operator new(sizeof(body_type));
         
-        hdr->body_ = ::new(body_mem) body_type(body_mem, hdr, static_cast<future_impl_when_all&&>(*this));
+        hdr->body_ = ::new(body_mem) body_type(
+          body_mem, hdr,
+          future1<future_kind_when_all<FuArg...>,T...>(
+            static_cast<future_impl_when_all&&>(*this),
+            detail::internal_only{}
+          )
+        );
         
         if(hdr->status_ == future_header::status_active)
           hdr->entered_active();

@@ -5,6 +5,7 @@
 #include <sstream>
 
 namespace upcxx {
+namespace detail {
   void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0);
   inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) {
     fatal_error(msg.c_str(), title, func, file, line);
@@ -14,6 +15,7 @@ namespace upcxx {
   inline void assert_failed(const char *func, const char *file, int line, const std::string &str) {
     assert_failed(func, file, line, str.c_str());
   }
+}
 }
 
 #if (__GNUC__)
@@ -29,18 +31,18 @@ namespace upcxx {
 
 // unconditional fatal error, with file/line and custom message
 #define UPCXX_FATAL_ERROR(ios_msg) \
-      ::upcxx::fatal_error(([&]() { ::std::stringstream _upcxx_fatal_ss; \
+  ::upcxx::detail::fatal_error(([&]() { ::std::stringstream _upcxx_fatal_ss; \
                                      _upcxx_fatal_ss << ios_msg; \
                                      return _upcxx_fatal_ss.str(); })(), \
                            nullptr, UPCXX_FUNC, __FILE__, __LINE__)
 
 #define UPCXX_ASSERT_1(ok) \
  ( (ok) ? (void)0 : \
-      ::upcxx::assert_failed(UPCXX_FUNC, __FILE__, __LINE__, ::std::string("Failed condition: " #ok)) )
+   ::upcxx::detail::assert_failed(UPCXX_FUNC, __FILE__, __LINE__, ::std::string("Failed condition: " #ok)) )
 
 #define UPCXX_ASSERT_2(ok, ios_msg) \
  ( (ok) ? (void)0 : \
-      ::upcxx::assert_failed(UPCXX_FUNC, __FILE__, __LINE__, \
+   ::upcxx::detail::assert_failed(UPCXX_FUNC, __FILE__, __LINE__, \
         ([&]() { ::std::stringstream _upcxx_assert_ss; \
                  _upcxx_assert_ss << ios_msg; \
                  return _upcxx_assert_ss.str(); })()) )
@@ -78,13 +80,13 @@ namespace upcxx {
 
 // asserting master persona
 #define UPCXX_ASSERT_ALWAYS_MASTER() \
-        UPCXX_ASSERT(backend::master.active_with_caller(), \
+        UPCXX_ASSERT_ALWAYS(backend::master.active_with_caller(), \
                      "This operation requires the calling thread to have the master persona")
 #if UPCXX_ASSERT_ENABLED
   #define UPCXX_ASSERT_MASTER() UPCXX_ASSERT_ALWAYS_MASTER()
   #define UPCXX_ASSERT_MASTER_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
-          UPCXX_ASSERT(backend::master.active_with_caller(), \
-               "This operation requires the calling thread to have the master persona, when compiled in threadmode=seq.\n" \
+          UPCXX_ASSERT(&::upcxx::current_persona() == &::upcxx::master_persona(), \
+               "This operation requires the primordial thread using the master persona, when compiled in threadmode=seq.\n" \
                "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
                "For details, please see `docs/implementation-defined.md`"))
 #else
@@ -132,16 +134,19 @@ namespace upcxx {
 #endif
 
 namespace upcxx {
+ namespace experimental {
   // ostream-like class which will print to the provided stream with an optional prefix and
   // as much atomicity as possible. Includes trailing newline (if missing).
   // usage:
-  //   upcxx::say() << "hello world";
+  //   upcxx::experimental::say() << "hello world";
   // prints:
   //   [0] hello world \n
   class say {
     std::stringstream ss;
     std::ostream &target;
   public:
+    // Optional arguments are the std::ostream to use,  
+    // and the output prefix string, where `%d` (if present) is replaced by the rank number
     say(std::ostream &output, const char *prefix="[%d] ");
     say(const char *prefix="[%d] ") : say(std::cout, prefix) {}
     ~say();
@@ -152,6 +157,7 @@ namespace upcxx {
       return *this;
     }
   };
+ }
 }
 
 #endif

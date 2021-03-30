@@ -31,7 +31,9 @@
 #endif
 
 namespace upcxx {
-  constexpr std::uintptr_t serialization_align_max = 64;
+  namespace detail {
+    constexpr std::uintptr_t serialization_align_max = 64;
+  }
 
   template<typename T>
   struct serialization;
@@ -75,26 +77,26 @@ namespace upcxx {
   }
 
   template<typename T>
-  struct deserialized_type {
-    using type = typename serialization_traits<T>::deserialized_type;
-  };
-  template<typename T>
   using deserialized_type_t = typename serialization_traits<T>::deserialized_type;
+
+  namespace detail {
+    template<typename T>
+    struct is_deserialized_move_constructible:
+      std::is_move_constructible<deserialized_type_t<T>> {};
+  }
 
   namespace detail {
     template<typename T>
     struct serialization_references_buffer_not {
       static constexpr bool value = !serialization_traits<T>::references_buffer;
     };
-  }
   
-  template<std::size_t s_size=std::size_t(-2),
-           std::size_t s_align=std::size_t(-2)>
-  struct storage_size;
+    template<std::size_t s_size=std::size_t(-2),
+             std::size_t s_align=std::size_t(-2)>
+    struct storage_size;
 
-  using invalid_storage_size_t = storage_size<std::size_t(-1), std::size_t(-1)>;
+    using invalid_storage_size_t = storage_size<std::size_t(-1), std::size_t(-1)>;
   
-  namespace detail {
     template<std::size_t s_size, std::size_t s_align>
     struct storage_size_base;
 
@@ -153,6 +155,7 @@ namespace upcxx {
     };
   }
 
+  namespace detail {
   template<typename T>
   constexpr storage_size<sizeof(T), alignof(T)> storage_size_of();
   
@@ -267,6 +270,7 @@ namespace upcxx {
 
   constexpr storage_size<0,1> empty_storage_size(0,1);
   constexpr invalid_storage_size_t invalid_storage_size(std::size_t(-1), std::size_t(-1));
+  }
 
   namespace detail {
     template<typename Iter,
@@ -536,8 +540,13 @@ namespace upcxx {
           
           std::size_t size0 = size_;
           size0 = (size0 + elt_ub.align-1) & -elt_ub.align;
+          // size per element including alignment constraints;
+          // round up to next multiplie of alignment
+          std::size_t elt_size = elt_ub.size +
+            (elt_ub.size % elt_ub.align == 0 ? 0 :
+             elt_ub.align - elt_ub.size % elt_ub.align);
           
-          std::size_t n0 = (edge_ - size0)/elt_ub.size;
+          std::size_t n0 = (edge_ - size0)/elt_size;
           n0 = n < n0 ? n : n0;
           
           beg = this->template write_elts_bounded_<T,Iter>(beg, n0, trivial_and_contiguous);
@@ -545,7 +554,7 @@ namespace upcxx {
           
           if(n != 0) {
             size0 = size_;
-            std::size_t size1 = size0 + n*elt_ub.size;
+            std::size_t size1 = size0 + n*elt_size;
             this->grow(size0, size1);
             
             this->template write_elts_bounded_<T,Iter>(beg, n, trivial_and_contiguous);
@@ -1397,7 +1406,7 @@ namespace upcxx {
   struct serialization_traits: detail::serialization_traits1<T> {
     using static_ubound_t = typename decltype(
       detail::serialization_traits1<T>::ubound(
-          empty_storage_size, std::declval<T const&>()
+          detail::empty_storage_size, std::declval<T const&>()
         )
       )::static_otherwise_invalid_t;
     
@@ -1492,7 +1501,7 @@ namespace upcxx {
 
     template<typename Reader>
     static void skip(Reader &r) {
-      r.unplace(storage_size_of<deserialized_type>());
+      r.unplace(detail::storage_size_of<deserialized_type>());
     }
   };
 
@@ -1905,12 +1914,12 @@ namespace upcxx {
       UPCXX_RETURN_DECLTYPE(
         pre.template cat_ubound_of<Alloc>(std::declval<Alloc>())
            .template cat_ubound_of<std::size_t>(1)
-           .cat(storage_size_of<CharT>().arrayed(1))
+           .cat(detail::storage_size_of<CharT>().arrayed(1))
       ) {
       std::size_t n = s.size();
       return pre.template cat_ubound_of<Alloc>(s.get_allocator())
                 .template cat_ubound_of<std::size_t>(n)
-                .cat(storage_size_of<CharT>().arrayed(n));
+                .cat(detail::storage_size_of<CharT>().arrayed(n));
     }
 
     template<typename Writer>
@@ -1927,7 +1936,8 @@ namespace upcxx {
     static Str* deserialize(Reader &r, void *raw) {
       Alloc a = r.template read<Alloc>();
       std::size_t n = r.template read<std::size_t>();
-      CharT const *p = (CharT const*)r.unplace(storage_size_of<CharT>().arrayed(n));
+      CharT const *p =
+        (CharT const*)r.unplace(detail::storage_size_of<CharT>().arrayed(n));
       return ::new(raw) Str(p, n, std::move(a));
     }
 
@@ -1937,7 +1947,7 @@ namespace upcxx {
     static void skip(Reader &r) {
       r.template skip<Alloc>();
       std::size_t n = r.template read<std::size_t>();
-      r.unplace(storage_size_of<CharT>().arrayed(n));
+      r.unplace(detail::storage_size_of<CharT>().arrayed(n));
     }
   };
   #endif
@@ -2260,7 +2270,7 @@ namespace upcxx {
     template<typename Writer>
     static void serialize(Writer &w, std::forward_list<T0,Alloc> const &bag) {
       w.write(bag.get_allocator());
-      void *n_spot = w.place(storage_size_of<std::size_t>());
+      void *n_spot = w.place(detail::storage_size_of<std::size_t>());
       std::size_t n = w.write_sequence(bag.begin(), bag.end());
       ::new(n_spot) std::size_t(n);
     }

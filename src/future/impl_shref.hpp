@@ -8,17 +8,17 @@
 // future_impl_shref.
 
 namespace upcxx {
-  //////////////////////////////////////////////////////////////////////
-  // future_is_trivially_ready: future_impl_shref specialization
-  
-  template<typename HeaderOps, bool unique, typename ...T>
-  struct future_is_trivially_ready<
-      future1<detail::future_kind_shref<HeaderOps,unique>, T...>
-    > {
-    static constexpr bool value = HeaderOps::is_trivially_ready_result;
-  };
-  
   namespace detail {
+    //////////////////////////////////////////////////////////////////////
+    // future_is_trivially_ready: future_impl_shref specialization
+
+    template<typename HeaderOps, bool unique, typename ...T>
+    struct future_is_trivially_ready<
+        future1<detail::future_kind_shref<HeaderOps,unique>, T...>
+      > {
+      static constexpr bool value = HeaderOps::is_trivially_ready_result;
+    };
+  
     ////////////////////////////////////////////////////////////////////
     // future_impl_shref: Future implementation using ref-counted
     // pointer to header.

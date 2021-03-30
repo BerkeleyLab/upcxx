@@ -23,6 +23,8 @@
 
 #include <upcxx/future/fwd.hpp>
 #include <upcxx/diagnostic.hpp>
+#include <upcxx/upcxx_config.hpp>
+#include <gasnet_fwd.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -108,6 +110,11 @@ namespace upcxx {
     struct internal_only {
       explicit constexpr internal_only() {}
     };
+
+    #define UPCXX_CONCAT_(a, b) a ## b
+    #define UPCXX_CONCAT(a, b) UPCXX_CONCAT_(a, b)
+    // Macro for members that are intended to be private.
+    #define UPCXX_INTERNAL_ONLY(name) UPCXX_CONCAT(private_detail_do_not_use_, name)
   }
     
   class persona;
@@ -116,14 +123,20 @@ namespace upcxx {
   namespace detail {
     template<typename ...T>
     struct lpc_dormant;
+    template<typename ...T>
+    struct serialized_raw_tuple;
+    template<typename ...T>
+    struct deserialized_raw_tuple;
   }
   
   void init();
   bool initialized();
   void finalize();
 
-  void destroy_heap();
-  void restore_heap();
+  namespace experimental {
+    void destroy_heap();
+    void restore_heap();
+  }
   
   intrank_t rank_n();
   intrank_t rank_me();
@@ -135,6 +148,8 @@ namespace upcxx {
   namespace detail {
     std::string shared_heap_stats();
   }
+  std::int64_t shared_segment_size();
+  std::int64_t shared_segment_used();
   
   void progress(progress_level level = progress_level::user);
   
@@ -167,6 +182,7 @@ namespace upcxx {
 #endif
 
 namespace upcxx {
+namespace detail { struct device_allocator_base; }
 namespace backend {
   extern int init_count;
   extern intrank_t rank_n;
@@ -189,7 +205,65 @@ namespace backend {
       // personas carry no extra state
     #endif
   };
-  
+
+  struct heap_state {
+    detail::device_allocator_base *alloc_base;
+
+  #if UPCXX_CUDA_ENABLED && UPCXX_MAXEPS > 1
+    static constexpr int max_heaps = UPCXX_MAXEPS;
+  #else
+    static constexpr int max_heaps = 33;
+  #endif
+    static_assert(max_heaps > 1, "bad value of UPCXX_MAXEPS");
+
+    enum class memory_kind : std::uint32_t { 
+      host = 0x40514051, 
+      cuda = 0xC0DAC0DA,
+    };
+    heap_state(memory_kind k) : my_kind(k) {}
+    memory_kind kind() { return my_kind; }
+
+  protected:
+    memory_kind my_kind; // serves as both tag and magic
+    static heap_state *heaps[max_heaps];
+    static int heap_count;
+    static bool recycle;
+    static bool use_mk_;
+    static bool bug4148_workaround_;
+
+  public:
+    static void init();
+    static bool use_mk() { return use_mk_; }
+    static bool bug4148_workaround() { return bug4148_workaround_; }
+    static int alloc_index() {
+      UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
+      int idx;
+      if (recycle) {
+        for (idx=1; idx < max_heaps; idx++) {
+          if (!heaps[idx]) break;
+        }
+      } else {
+        idx = heap_count;
+      }
+      UPCXX_ASSERT_ALWAYS(idx < max_heaps && heaps[idx] == nullptr, "internal error on heap creation");
+      heap_count++;
+      return idx;
+    }
+    static void free_index(int heap_idx) {
+      UPCXX_ASSERT_ALWAYS(heaps[heap_idx] == nullptr && heap_count > 1, "internal error on heap destruction");
+      if (recycle) heap_count--;
+    }
+
+    // retrieve reference to heap_state pointer at heap_idx, with bounds-checking
+    static inline heap_state *&get(std::int32_t heap_idx, bool allow_null = false) {
+      UPCXX_ASSERT(heap_count <= max_heaps, "internal error in backend::heap_state::get");
+      UPCXX_ASSERT(heap_idx > 0 && heap_idx < max_heaps, "invalid heap_idx (corrupted global_ptr?)");
+      heap_state *&hs = heaps[heap_idx];
+      UPCXX_ASSERT(hs || allow_null, "heap_idx referenced a null heap");
+      return hs;
+    }
+  };
+
   void quiesce(const team &tm, entry_barrier eb);
 
   void warn_collective_in_progress(const char *fnname, entry_barrier eb=entry_barrier::none);
@@ -225,13 +299,13 @@ namespace backend {
     );
   
   template<progress_level level, typename Fn>
-  void send_am_master(const team &tm, intrank_t recipient, Fn &&fn);
+  void send_am_master(intrank_t recipient, Fn &&fn);
   
   template<progress_level level, typename Fn>
-  void send_am_persona(const team &tm, intrank_t recipient_rank, persona *recipient_persona, Fn &&fn);
+  void send_am_persona(intrank_t recipient_rank, persona *recipient_persona, Fn &&fn);
 
   template<typename ...T, typename ...U>
-  void send_awaken_lpc(const team &tm, intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals);
+  void send_awaken_lpc(intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals);
 
   template<progress_level level, typename Fn>
   void bcast_am_master(const team &tm, Fn &&fn);

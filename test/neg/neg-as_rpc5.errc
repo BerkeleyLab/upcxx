@@ -1,0 +1,1 @@
+All rvalue as_rpc arguments must be CopyConstructible.

@@ -1,13 +1,7 @@
 #ifndef _dbba940a_54c7_48a3_a31f_66676be3cca4
 #define _dbba940a_54c7_48a3_a31f_66676be3cca4
 
-#ifndef UPCXX_MPSC_QUEUE_ATOMIC
-  #define UPCXX_MPSC_QUEUE_ATOMIC 0
-#endif
-
-#ifndef UPCXX_MPSC_QUEUE_BIGLOCK
-  #define UPCXX_MPSC_QUEUE_BIGLOCK 0
-#endif
+#include <upcxx/upcxx_config.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -369,6 +363,11 @@ namespace upcxx {
     
       /* This is the poorly performing but most likely bug-free implementation of
        * a mpsc intru_queue. There is a single global lock, yuck.
+       *
+       * NOTE: This implementation actually uses one lock PER instantiation of this class.
+       * This means we get slightly improved concurrency for queues of different types, 
+       * but also means it is NOT safe to type-pun this intru_queue and use it, 
+       * even if the T's share an inheritance hierarchy or are structurally equivalent unequal types.
        */
       template<typename T, intru_queue_intruder<T> T::*next>
       class intru_queue<T, intru_queue_safety::mpsc, next> {
@@ -413,19 +412,10 @@ namespace upcxx {
         
         template<typename Fn>
         int burst(int max_n, Fn &&fn) {
-          using blob = typename std::aligned_storage<sizeof(unsafe_queue), alignof(unsafe_queue)>::type;
-          
-          // Use the move constructor to steal from the main into a local temporary
-          blob tmpq_blob;
-          unsafe_queue *tmpq;
-          {
-            std::lock_guard<std::mutex> locked(the_lock_);
-            tmpq = ::new(&tmpq_blob) unsafe_queue(std::move(q_));
-          }
-          
-          int ans = tmpq->burst(max_n, std::forward<Fn>(fn));
-          tmpq->~unsafe_queue();
-          return ans;
+          // issue 245: Cannot safely support max_n here with the current strategy, 
+          // without grabbing the lock again and re-enqueuing any entries beyond max_n
+          // So instead, just ignore max_n and process a snapshot of the entire queue
+          return burst(std::forward<Fn>(fn));
         }
       };
       

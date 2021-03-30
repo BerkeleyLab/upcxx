@@ -54,6 +54,14 @@ namespace upcxx {
         }
       };
     #endif
+
+    #ifndef UPCXX_BACKEND
+      // Used to mark member function as internal only. Normally defined in
+      // <upcxx/backend_fwd.hpp>.
+      struct internal_only {
+        explicit constexpr internal_only() {}
+      };
+    #endif
     
     template<typename T>
     struct is_future1: std::false_type {};
@@ -64,6 +72,7 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   // future1: The actual type users get (aliased as future<>).
   
+  namespace detail {
   template<typename Kind, typename ...T>
   struct future1 {
     typedef Kind kind_type;
@@ -91,7 +100,7 @@ namespace upcxx {
              // Prune from overload resolution if `impl_type1` is not a known
              // future_impl_*** type.
              typename = typename detail::future_impl_traits<impl_type1>::kind_type>
-    future1(impl_type1 &&impl): impl_(static_cast<impl_type1&&>(impl)) {}
+    future1(impl_type1 &&impl, detail::internal_only): impl_(static_cast<impl_type1&&>(impl)) {}
     
     future1(future1 const&) = default;
     template<typename Kind1>
@@ -276,7 +285,7 @@ namespace upcxx {
     typename detail::future_then<
         future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true
       >::return_type
-    then_lazy(Fn &&fn) const& {
+    then_lazy(Fn &&fn, detail::internal_only) const& {
       return detail::future_then<future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true>()(
         *this, static_cast<Fn&&>(fn)
       );
@@ -287,7 +296,7 @@ namespace upcxx {
     typename detail::future_then<
         future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true
       >::return_type
-    then_lazy(Fn &&fn) && {
+    then_lazy(Fn &&fn, detail::internal_only) && {
       return detail::future_then<future1<Kind,T...>, typename std::decay<Fn>::type, /*make_lazy=*/true>()(
         static_cast<future1&&>(*this), static_cast<Fn&&>(fn)
       );
@@ -395,5 +404,6 @@ namespace upcxx {
       return static_cast<future1&&>(*this).template result_reference<i>();
     }
   };
+  } // namespace detail
 }
 #endif

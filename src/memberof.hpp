@@ -129,8 +129,10 @@ struct memberof_general_dispatch<Obj, Kind, Mbr, Get, /*standard_layout=*/true> 
   decltype(upcxx::make_future(std::declval<decayed_gp_t<Mbr,Kind>>()))
   operator()(global_ptr<Obj,Kind> gptr, Get getter) const {
     return upcxx::make_future(
-            UPCXX_DECAYED_GP(Mbr, Kind, detail::internal_only(), gptr.rank_,
-                                 getter(gptr.raw_ptr_), gptr.device_));
+            UPCXX_DECAYED_GP(Mbr, Kind, detail::internal_only(),
+                             gptr.UPCXX_INTERNAL_ONLY(rank_),
+                             getter(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                             gptr.UPCXX_INTERNAL_ONLY(heap_idx_)));
   }
 };
 
@@ -138,10 +140,12 @@ template<typename Obj, memory_kind Kind, typename Mbr, typename Get>
 struct memberof_general_dispatch<Obj, Kind, Mbr, Get, /*standard_layout=*/false> {
   future<decayed_gp_t<Mbr,Kind>>
   operator()(global_ptr<Obj,Kind> gptr, Get getter) const {
-    if (gptr.rank_ == upcxx::rank_me()) {  // this rank owns - return a ready future
+    if (gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me()) {  // this rank owns - return a ready future
       return upcxx::make_future(
-            UPCXX_DECAYED_GP(Mbr, Kind, detail::internal_only(), gptr.rank_,
-                                 getter(gptr.raw_ptr_), gptr.device_));
+            UPCXX_DECAYED_GP(Mbr, Kind, detail::internal_only(),
+                             gptr.UPCXX_INTERNAL_ONLY(rank_),
+                             getter(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                             gptr.UPCXX_INTERNAL_ONLY(heap_idx_)));
     }
   #if UPCXX_UNIFORM_LOCAL_VTABLES
     else if (gptr.dynamic_kind() == memory_kind::host && gptr.is_local()) { // in local_team host segment
@@ -153,9 +157,11 @@ struct memberof_general_dispatch<Obj, Kind, Mbr, Get, /*standard_layout=*/false>
     }
   #endif
     else // communicate with owner
-    return upcxx::rpc(gptr.rank_, [=]() {
-      return UPCXX_DECAYED_GP(Mbr, Kind, detail::internal_only(), gptr.rank_,
-                                  getter(gptr.raw_ptr_), gptr.device_);
+    return upcxx::rpc(gptr.UPCXX_INTERNAL_ONLY(rank_), [=]() {
+      return UPCXX_DECAYED_GP(Mbr, Kind, detail::internal_only(),
+                              gptr.UPCXX_INTERNAL_ONLY(rank_),
+                              getter(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                              gptr.UPCXX_INTERNAL_ONLY(heap_idx_));
     });
   }
 };

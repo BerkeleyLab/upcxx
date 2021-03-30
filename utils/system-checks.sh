@@ -293,7 +293,7 @@ platform_sanity_checks() {
         local EXTRA_RECOMMEND=
         if echo "$CXXVERS" | egrep 'Apple LLVM version [1-7]\.' 2>&1 > /dev/null ; then
             COMPILER_BAD=1
-        elif echo "$CXXVERS" | egrep 'Apple LLVM version ([8-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
+        elif echo "$CXXVERS" | egrep 'Apple (LLVM|clang) version ([8-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
             COMPILER_GOOD=1
         elif echo "$CXXVERS" | egrep 'PGI Compilers and Tools'  > /dev/null ; then
             if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
@@ -325,12 +325,12 @@ platform_sanity_checks() {
              ! check_gnu_version CXX &> /dev/null; then
             COMPILER_BAD=1
         elif test -z "$CRAY_PRGENVINTEL" && \
-             echo "$CXXVERS" | egrep ' +\(ICC\) +(17\.0\.[2-9]|1[89]\.|2[0-9]\.)' 2>&1 > /dev/null ; then
+             echo "$CXXVERS" | egrep ' +\(ICC\) +(17\.0\.[2-9]|1[89]\.|(20)?2[0-9]\.)' 2>&1 > /dev/null ; then
 	    # Ex: icpc (ICC) 18.0.1 20171018
             check_intel_compiler || exit 1
             COMPILER_GOOD=1
         elif test -n "$CRAY_PRGENVINTEL" && \
-             echo "$CXXVERS" | egrep ' +\(ICC\) +(18\.0\.[1-9]|19\.|2[0-9]\.)' 2>&1 > /dev/null ; then
+             echo "$CXXVERS" | egrep ' +\(ICC\) +(18\.0\.[1-9]|19\.|(20)?2[0-9]\.)' 2>&1 > /dev/null ; then
             check_intel_compiler || exit 1
             COMPILER_GOOD=1
         elif echo "$CXXVERS" | egrep ' +\(ICC\) ' 2>&1 > /dev/null ; then
@@ -403,5 +403,9 @@ platform_settings() {
      *)
        ;;
    esac
+   if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
+     # ~8kb is experimentally the best max AM threshold for RPC eager protocol on aries
+     GASNET_CONFIGURE_ARGS="--with-aries-max-medium=8128 ${GASNET_CONFIGURE_ARGS}"
+   fi
 }
 

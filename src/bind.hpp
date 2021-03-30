@@ -11,6 +11,7 @@
 #include <utility>
 
 namespace upcxx {
+  namespace detail {
   //////////////////////////////////////////////////////////////////////////////
   // binding<T>: Specialization for how to bind a T argument within a
   // call to `upcxx::bind`.
@@ -85,6 +86,7 @@ namespace upcxx {
   // binding does not drop reference to function
   template<typename R, typename ...A>
   struct binding<R(&)(A...)>: binding_trivial<R(&)(A...)> {};
+  } // namespace detail
   
   /*////////////////////////////////////////////////////////////////////////////
   bound_function: Packable type wrapping an internal callable and _all_
@@ -205,11 +207,10 @@ namespace upcxx {
 
       deserialized_bound_function_base(serialization_reader &r) : base_type(r) {}
 
-      typename std::result_of<
-          typename binding<Fn>::off_wire_type&&(
-            typename binding<B>::off_wire_type&&...
-          )
-        >::type
+      detail::invoke_result_t<
+          typename binding<Fn>::off_wire_type&&,
+          typename binding<B>::off_wire_type&&...
+        >
       operator()() && {
         return binding<Fn>::off_wire(std::move(base_type::raw_fn_.value())).operator()(
             binding<B>::off_wire(std::move(std::get<bi>(base_type::raw_b_).value()))...
@@ -223,7 +224,7 @@ namespace upcxx {
     template<typename Fn_off_wire, typename ...B_off_wire>
     struct bound_function_applicator {
       template<typename Fn1, typename ...B1>
-      typename std::result_of<Fn_off_wire(B_off_wire...)>::type
+      detail::invoke_result_t<Fn_off_wire, B_off_wire...>
       operator()(Fn1 &&fn, B1 &&...b) const {
         return static_cast<Fn1&&>(fn)(static_cast<B1&&>(b)...);
       }
@@ -261,7 +262,8 @@ namespace upcxx {
           .then_lazy(bound_function_applicator<
               typename binding<Fn>::off_wire_type,
               typename binding<B>::off_wire_type...
-            >()
+            >(),
+            detail::internal_only{}
           )
         ) {
         return detail::when_all_fast(
@@ -270,7 +272,8 @@ namespace upcxx {
           ).then_lazy(bound_function_applicator<
               typename binding<Fn>::off_wire_type,
               typename binding<B>::off_wire_type...
-            >()
+            >(),
+            detail::internal_only{}
           );
       }
       // TODO: operator()() &
@@ -288,59 +291,64 @@ namespace upcxx {
 
       // inherits operator()
     };
-  }
-  
-  template<typename Fn, typename ...B>
-  struct bound_function {
-    typename binding<Fn>::on_wire_type fn_;
-    std::tuple<typename binding<B>::on_wire_type...> b_;
 
-    // This declaration is here for reasoning about the invocation
-    // post-deserialization. It is not intended to actually be called.
-    decltype(
-      std::declval<detail::deserialized_bound_function<Fn, B...>&&>()()
-    )
-    operator()() &&;
-  };
+    template<typename Fn, typename ...B>
+    struct bound_function {
+      typename binding<Fn>::on_wire_type fn_;
+      std::tuple<typename binding<B>::on_wire_type...> b_;
+    };
 
-  template<typename Fn, typename ...B>
-  using bound_function_of = bound_function<
-      typename binding<Fn>::stripped_type,
-      typename binding<B>::stripped_type...
-    >;
+    template<typename Fn, typename ...B>
+    using bound_function_of = bound_function<
+        typename binding<Fn>::stripped_type,
+        typename binding<B>::stripped_type...
+      >;
+  } // namespace detail
   
   // make `bound_function` serializable
   template<typename Fn, typename ...B>
-  struct serialization<bound_function<Fn,B...>> {
+  struct serialization<detail::bound_function<Fn,B...>> {
     static constexpr bool is_serializable =
       /* ignore serializability of Fn to allow for non-TriviallyCopyable lambdas */
-      serialization_traits<std::tuple<typename binding<B>::on_wire_type...>>::is_serializable;
+      serialization_traits<std::tuple<
+          typename detail::binding<B>::on_wire_type...>
+        >::is_serializable;
 
     template<typename Ub>
-    static auto ubound(Ub ub, const bound_function<Fn,B...> &fn)
+    static auto ubound(Ub ub, const detail::bound_function<Fn,B...> &fn)
       UPCXX_RETURN_DECLTYPE(
-        ub.template cat_ubound_of<typename binding<Fn>::on_wire_type>(fn.fn_)
-          .template cat_ubound_of<std::tuple<typename binding<B>::on_wire_type...>>(fn.b_)
+        ub.template cat_ubound_of<
+            typename detail::binding<Fn>::on_wire_type
+          >(fn.fn_)
+          .template cat_ubound_of<std::tuple<
+              typename detail::binding<B>::on_wire_type...>
+            >(fn.b_)
       ) {
-      return ub.template cat_ubound_of<typename binding<Fn>::on_wire_type>(fn.fn_)
-               .template cat_ubound_of<std::tuple<typename binding<B>::on_wire_type...>>(fn.b_);
+      return ub.template cat_ubound_of<
+          typename detail::binding<Fn>::on_wire_type>(fn.fn_)
+            .template cat_ubound_of<std::tuple<
+                typename detail::binding<B>::on_wire_type...>
+              >(fn.b_);
     }
     
     template<typename Writer>
-    static void serialize(Writer &w, const bound_function<Fn,B...> &fn) {
-      w.template write<typename binding<Fn>::on_wire_type, /*AssertSerializable=*/false>(fn.fn_);
+    static void serialize(Writer &w,
+                          const detail::bound_function<Fn,B...> &fn) {
+      w.template write<typename detail::binding<Fn>::on_wire_type,
+                       /*AssertSerializable=*/false>(fn.fn_);
       serialize_args(w, fn, detail::make_index_sequence<sizeof...(B)>());
     }
 
     template<typename Writer, int ...bi>
-    static void serialize_args(Writer &w, const bound_function<Fn,B...> &fn,
+    static void serialize_args(Writer &w,
+                               const detail::bound_function<Fn,B...> &fn,
                                detail::index_sequence<bi...>) {
       // Since we deserialize each argument individually, we have to
       // serialize them individually as well. Otherwise, behavior
       // would depend on the representation of a std::tuple in the
       // TriviallySerializable case.
       (void)std::initializer_list<int>{
-        (w.template write<typename binding<B>::on_wire_type>(
+        (w.template write<typename detail::binding<B>::on_wire_type>(
            std::get<bi>(fn.b_)
          ), 0)...
       };
@@ -349,17 +357,25 @@ namespace upcxx {
     using deserialized_type = detail::deserialized_bound_function<Fn, B...>;
     
     static constexpr bool references_buffer = 
-      serialization_traits<typename binding<Fn>::on_wire_type>::references_buffer ||
-      serialization_traits<std::tuple<typename binding<B>::on_wire_type...>>::references_buffer;
+      serialization_traits<
+          typename detail::binding<Fn>::on_wire_type
+        >::references_buffer ||
+      serialization_traits<
+          std::tuple<typename detail::binding<B>::on_wire_type...>
+        >::references_buffer;
     
     static constexpr bool skip_is_fast =
-      serialization_traits<typename binding<Fn>::on_wire_type>::skip_is_fast &&
-      serialization_traits<std::tuple<typename binding<B>::on_wire_type...>>::skip_is_fast;
+      serialization_traits<
+          typename detail::binding<Fn>::on_wire_type
+        >::skip_is_fast &&
+      serialization_traits<
+          std::tuple<typename detail::binding<B>::on_wire_type...>
+        >::skip_is_fast;
     
     template<typename Reader>
     static void skip(Reader &r) {
-      r.template skip<typename binding<Fn>::on_wire_type>();
-      r.template skip<std::tuple<typename binding<B>::on_wire_type...>>();
+      r.template skip<typename detail::binding<Fn>::on_wire_type>();
+      r.template skip<std::tuple<typename detail::binding<B>::on_wire_type...>>();
     }
 
     template<typename Reader>
@@ -372,7 +388,7 @@ namespace upcxx {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// upcxx::bind: Similar to std::bind but doesn't support placeholders. Most
+// detail::bind: Similar to std::bind but doesn't support placeholders. Most
 // importantly, these can be packed. The `binding` typeclass is used for
 // producing the on-wire and off-wire representations. If the wrapped callable
 // and all bound arguments have trivial binding traits, then the returned
@@ -391,7 +407,7 @@ namespace upcxx {
 namespace upcxx {
   namespace detail {
     template<typename Fn, typename ...B>
-    struct bind {
+    struct bind1 {
       using FnStripped = typename binding<Fn>::stripped_type;
       using return_type = bound_function_of<
           typename detail::globalize_fnptr_return<FnStripped>::type,
@@ -413,22 +429,22 @@ namespace upcxx {
         };
       }
     };
-  }
   
-  template<typename Fn, typename ...B>
-  typename detail::template bind<Fn&&, B&&...>::return_type
-  bind(Fn &&fn, B &&...b) {
-    return detail::bind<Fn&&, B&&...>()(
-      std::forward<Fn>(fn), std::forward<B>(b)...
-    );
-  }
+    template<typename Fn, typename ...B>
+    typename detail::template bind1<Fn&&, B&&...>::return_type
+    bind(Fn &&fn, B &&...b) {
+      return detail::bind1<Fn&&, B&&...>()(
+        std::forward<Fn>(fn), std::forward<B>(b)...
+      );
+    }
 
-  template<typename Fn, typename ...B>
-  typename detail::template bind<const Fn&, const B&...>::return_type
-  bind_rvalue_as_lvalue(Fn &&fn, B &&...b) {
-    return detail::bind<const Fn&, const B&...>()(
-      static_cast<const Fn&>(fn), static_cast<const B&>(b)...
-    );
+    template<typename Fn, typename ...B>
+    typename detail::template bind1<const Fn&, const B&...>::return_type
+    bind_rvalue_as_lvalue(Fn &&fn, B &&...b) {
+      return detail::bind1<const Fn&, const B&...>()(
+        static_cast<const Fn&>(fn), static_cast<const B&>(b)...
+      );
+    }
   }
 }
 

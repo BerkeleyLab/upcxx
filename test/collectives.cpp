@@ -31,7 +31,7 @@ upcxx::future<> test_team(const upcxx::team &tm) {
         })
       );
     all_done = upcxx::when_all(all_done,
-      upcxx::broadcast_nontrivial<uint16_t>(uint16_t(0xbeefu*me), i, tm)
+      upcxx::experimental::broadcast_nontrivial<uint16_t>(uint16_t(0xbeefu*me), i, tm)
         .then([=](uint16_t got) {
           UPCXX_ASSERT_ALWAYS(got == uint16_t(0xbeefu*i));
         })
@@ -57,7 +57,7 @@ upcxx::future<> test_team(const upcxx::team &tm) {
   for(int i=n; i != 0;) {
     i = 31*i/32;
     all_done = upcxx::when_all(all_done,
-      upcxx::broadcast_nontrivial(bag1, i, tm)
+      upcxx::experimental::broadcast_nontrivial(bag1, i, tm)
         .then([=](std::multiset<uint32_t> got) {
           uint32_t tmp = 0xdeadbeefu*i;
           for(int j=0; j < 32000; j++) {
@@ -76,7 +76,7 @@ upcxx::future<> test_team(const upcxx::team &tm) {
   auto sum2_done = upcxx::reduce_all(uint16_t(sum1), [](uint16_t a, uint16_t b) { return a+b; }, tm);
   
   auto max1_done = upcxx::reduce_one(sum1, upcxx::op_fast_max, 0xbeef % tm.rank_n(), tm);
-  auto max2_done = upcxx::reduce_one_nontrivial(sum1, (uint32_t const&(*)(uint32_t const&,uint32_t const&))std::max<uint32_t>, 0xbeef % tm.rank_n(), tm);
+  auto max2_done = upcxx::experimental::reduce_one_nontrivial(sum1, (uint32_t const&(*)(uint32_t const&,uint32_t const&))std::max<uint32_t>, 0xbeef % tm.rank_n(), tm);
   
   auto min1_done = upcxx::reduce_all(sum1, upcxx::op_fast_min, tm);
   auto min2_done = upcxx::reduce_all(sum1, (uint32_t const&(*)(uint32_t const&,uint32_t const&))std::min<uint32_t>, tm); // std::min becomes a function pointer, which the impl does ensure to translate correctly
@@ -120,7 +120,7 @@ upcxx::future<> test_team(const upcxx::team &tm) {
   );
 
   // reduce_all(+) the histograms
-  auto bag2_done = upcxx::reduce_all_nontrivial(bag2,
+  auto bag2_done = upcxx::experimental::reduce_all_nontrivial(bag2,
     #if 1
       [](std::unordered_map<uint16_t,uint16_t> a,
          std::unordered_map<uint16_t,uint16_t> const &b

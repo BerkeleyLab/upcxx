@@ -18,9 +18,8 @@
     #elif GEX_SPEC_VERSION_MAJOR <  UPCXX_REQUIRES_GEX_SPEC_VERSION_MAJOR || \
          (GEX_SPEC_VERSION_MAJOR == UPCXX_REQUIRES_GEX_SPEC_VERSION_MAJOR && \
           GEX_SPEC_VERSION_MINOR <  UPCXX_REQUIRES_GEX_SPEC_VERSION_MINOR)
-      // User is trying to compile with a GASNet-EX version that does not meet our currnet minimum requirement:
-      // spec v0.7: require gex_Coll_BarrierNB() semantic change for upcxx::barrier()
-      #error This version of UPC++ requires GASNet-EX version 2020.3.8 or newer. Please rerun configure without '--with-gasnet=...' to use the default GASNet-EX layer.
+      // User is trying to compile with a GASNet-EX version that does not meet our current minimum requirement:
+      #error This version of UPC++ requires GASNet-EX version 2020.3.8 or newer. Please rerun configure (without '--with-gasnet=...') to fetch and use the default GASNet-EX layer.
     #endif
 #else
     #error "You've either pulled in this header without first including" \

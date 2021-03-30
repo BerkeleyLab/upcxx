@@ -1,5 +1,7 @@
 # UPC\+\+: a PGAS library for C\+\+ #
 
+## Overview
+
 [UPC++](https://upcxx.lbl.gov) is a parallel programming library for developing
 C++ applications with the Partitioned Global Address Space (PGAS) model.
 

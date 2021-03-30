@@ -4,9 +4,25 @@
 #include <upcxx/cuda.hpp>
 #include <upcxx/diagnostic.hpp>
 
+#include <upcxx/backend/gasnet/runtime_internal.hpp> // GEX_SPEC_VERSION
+
 #if UPCXX_CUDA_ENABLED
   #include <cuda.h>
   #include <cuda_runtime_api.h>
+
+  // Decide whether GASNet has native memory kinds support
+  #ifndef GEX_SPEC_VERSION_MINOR
+  #error Missing GEX_SPEC_VERSION_MINOR definition
+  #endif
+  #if GEX_SPEC_VERSION_MINOR >= 12 || GEX_SPEC_VERSION_MAJOR 
+    #include <gasnet_mk.h>
+    #ifndef UPCXX_MAXEPS
+    #error Missing UPCXX_MAXEPS definition
+    #endif
+    #if UPCXX_CUDA_ENABLED && UPCXX_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
+      #define UPCXX_CUDA_USE_MK 1
+    #endif
+  #endif
 
   namespace upcxx {
     namespace cuda {
@@ -41,11 +57,27 @@
 
   namespace upcxx {
     namespace cuda {
-      struct device_state {
+      bool use_mk(); // true iff using GASNet memory kinds
+      struct device_state : public backend::heap_state {
+        int device_id;
         CUcontext context;
         CUstream stream;
         CUdeviceptr segment_to_free;
-        detail::device_allocator_core<upcxx::cuda_device> *allocator_core;
+
+        #if UPCXX_CUDA_USE_MK
+          // gex objects...
+          gex_EP_t ep;
+          gex_MK_t kind;
+          gex_Segment_t segment;
+        #endif
+
+	device_state() : backend::heap_state(backend::heap_state::memory_kind::cuda) {}
+
+        static device_state *get(std::int32_t heap_idx, bool allow_null = false) {
+          backend::heap_state *hs = backend::heap_state::get(heap_idx, allow_null);
+	  if (hs) UPCXX_ASSERT(hs->kind() == backend::heap_state::memory_kind::cuda);
+          return static_cast<device_state*>(hs);
+        }
       };
     }
   }

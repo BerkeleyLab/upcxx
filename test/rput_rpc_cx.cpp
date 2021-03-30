@@ -55,7 +55,7 @@ void do_put(int round, int peer, int *outgoing) {
   uint32_t *src = src_slot(r1, peer);
   gp_u32 dest = dest_slot(r1, peer);
   int size = calc_size(r1, peer);
-  //upcxx::say()<<"put size="<<size;
+  //say()<<"put size="<<size;
   
   std::vector<uint32_t> check(size);
   for(int i=0; i < size; i++)

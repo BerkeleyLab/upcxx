@@ -29,10 +29,11 @@ namespace upcxx {
   }
   
   //////////////////////////////////////////////////////////////////////////////
-  // upcxx::broadcast_nontrivial
-  
+  // upcxx::experimental::broadcast_nontrivial
+
+  namespace experimental {
   template<typename T1,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -43,13 +44,13 @@ namespace upcxx {
   broadcast_nontrivial(
       T1 &&value, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::broadcast_nontrivial()", entry_barrier::internal);
+    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::experimental::broadcast_nontrivial()", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "broadcast_nontrivial(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     UPCXX_ASSERT_ALWAYS(
@@ -78,7 +79,7 @@ namespace upcxx {
         cxs_state.~cxs_state_t();
       }
 
-      void contribute(digest my_id) {
+      void contribute(detail::digest my_id) {
         if(0 == --this->awaiting) {
           this->cxs_state.template operator()<operation_cx_event>(std::move(this->value));
           delete this;
@@ -87,14 +88,14 @@ namespace upcxx {
       }
     };
     
-    digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
+    detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
 
     broadcast_state *s = detail::template registered_state<broadcast_state>(id);
 
     if(tm.rank_me() == root) {
       backend::bcast_am_master<progress_level::user>(
         tm,
-        upcxx::bind([=](T &&value) {
+        detail::bind([=](T &&value) {
             broadcast_state *s = detail::template registered_state<broadcast_state>(id);
             ::new(&s->value) T(std::move(value));
             s->contribute(id);
@@ -119,6 +120,7 @@ namespace upcxx {
     
     return returner();
   }
+  } // namespace experimental
   
   //////////////////////////////////////////////////////////////////////////////
   // upcxx::broadcast
@@ -132,7 +134,7 @@ namespace upcxx {
   }
   
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -142,13 +144,13 @@ namespace upcxx {
   broadcast(
       T *buf, std::size_t n, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     using CxsDecayed = typename std::decay<Cxs>::type;
     static_assert(
       upcxx::is_trivially_serializable<T>::value,
       "Only TriviallySerializable types permitted for `upcxx::broadcast`. "
-      "Consider `upcxx::broadcast_nontrivial` instead (experimental feature, "
+      "Consider `upcxx::experimental::broadcast_nontrivial` instead (experimental feature, "
       "use at own risk)."
     );
     
@@ -195,7 +197,7 @@ namespace upcxx {
   }
   
   template<typename T1,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -206,14 +208,14 @@ namespace upcxx {
   broadcast(
       T1 value, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs cxs = detail::operation_cx_as_future_t{{}}
     ) {
     
     using CxsDecayed = typename std::decay<Cxs>::type;
     static_assert(
       upcxx::is_trivially_serializable<T>::value,
       "Only TriviallySerializable types permitted for `upcxx::broadcast`. "
-      "Consider `upcxx::broadcast_nontrivial` instead (experimental feature, "
+      "Consider `upcxx::experimental::broadcast_nontrivial` instead (experimental feature, "
       "use at own risk)."
     );
 

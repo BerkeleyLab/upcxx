@@ -2,6 +2,7 @@
 #define _f387e40c_d7ab_4dbf_a130_3bcd835cc3b9
 
 #include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 
 #include <atomic>
 #include <thread>
@@ -38,7 +39,7 @@ namespace vranks {
   void spawn(Fn fn) {
     upcxx::init();
     
-    thread_per_rank = upcxx::os_env<int>("THREADS", 4);
+    thread_per_rank = os_env<int>("THREADS", 4);
     thread_agents.resize(thread_per_rank);
     
     std::vector<std::thread*> threads{(unsigned)thread_per_rank};

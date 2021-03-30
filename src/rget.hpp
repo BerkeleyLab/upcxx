@@ -79,21 +79,15 @@ namespace upcxx {
         rank_s{rank_s},
         state_remote{std::move(state_remote)} {
 
-        upcxx::current_persona().undischarged_n_ += 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
       void send_remote() {
-        backend::send_am_master<progress_level::user>(
-          upcxx::world(), rank_s,
-          upcxx::bind(
-            [](deserialized_type_t<CxStateRemote> &&st) {
-              return st.template operator()<remote_cx_event>();
-            },
-            std::move(state_remote)
-          )
+        backend::send_am_master<progress_level::user>( rank_s,
+          state_remote.template bind_event<remote_cx_event>()
         );
         
-        upcxx::current_persona().undischarged_n_ -= 1;
+        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
     
@@ -165,7 +159,7 @@ namespace upcxx {
   // rget
   
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -174,7 +168,7 @@ namespace upcxx {
     >::return_t
   rget(
       global_ptr<const T> gp_s,
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
@@ -215,7 +209,7 @@ namespace upcxx {
     using detail::rma_get_done;
     
     auto *cb = new detail::rget_cb_byval<T,cxs_here_t,cxs_remote_t>{
-      gp_s.rank_,
+      gp_s.UPCXX_INTERNAL_ONLY(rank_),
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     };
@@ -227,7 +221,8 @@ namespace upcxx {
       >{cb->state_here};
     
     rma_get_done done = detail::rma_get_nb(
-      &cb->buffer, gp_s.rank_, gp_s.raw_ptr_, sizeof(T), cb
+      &cb->buffer, gp_s.UPCXX_INTERNAL_ONLY(rank_),
+      gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), sizeof(T), cb
     );
     
     gasnet::handle_cb_queue &cb_q = gasnet::get_handle_cb_queue();
@@ -248,7 +243,7 @@ namespace upcxx {
   }
   
   template<typename T,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -258,7 +253,7 @@ namespace upcxx {
   rget(
       global_ptr<const T> gp_s,
       T *buf_d, std::size_t n,
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
@@ -295,7 +290,7 @@ namespace upcxx {
       CxsDecayed>;
     
     detail::rget_cb_byref<cxs_here_t,cxs_remote_t> cb(
-      gp_s.rank_,
+      gp_s.UPCXX_INTERNAL_ONLY(rank_),
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     );
@@ -309,7 +304,8 @@ namespace upcxx {
       >{cb.state_here};
     
     rma_get_done done = detail::rma_get_nb(
-      buf_d, gp_s.rank_, gp_s.raw_ptr_, n*sizeof(T), &cb
+      buf_d, gp_s.UPCXX_INTERNAL_ONLY(rank_),
+      gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), n*sizeof(T), &cb
     );
     
     switch(done) {

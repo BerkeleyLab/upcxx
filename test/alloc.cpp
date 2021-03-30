@@ -141,8 +141,8 @@ int main(int argc, char **argv) {
     delete [] ptrs;
     upcxx::barrier();
     #if DESTROY
-      upcxx::destroy_heap();
-      upcxx::restore_heap();
+      upcxx::experimental::destroy_heap();
+      upcxx::experimental::restore_heap();
       upcxx::barrier();
     #endif
   }

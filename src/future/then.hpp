@@ -114,7 +114,8 @@ namespace upcxx {
       template<typename Arg1, typename Fn1>
       return_type operator()(Arg1 &&arg1, Fn1 &&fn1) {
         return future1<future_kind_then_lazy<Arg,Fn>, FnRetT...>(
-          future_impl_then_lazy<Arg,Fn,FnRetT...>(static_cast<Arg1&&>(arg1), static_cast<Fn1&&>(fn1))
+          future_impl_then_lazy<Arg,Fn,FnRetT...>(static_cast<Arg1&&>(arg1), static_cast<Fn1&&>(fn1)),
+          detail::internal_only{}
         );
       }
     };
@@ -146,7 +147,10 @@ namespace upcxx {
       template<typename Arg1, typename Fn1>
       return_type operator()(Arg1 &&arg, Fn1 &&fn) {
         auto *hdr = future_body_then<Arg,Fn>::template make_header<Arg1,Fn1,FnRetT...>(static_cast<Arg1&&>(arg), static_cast<Fn1&&>(fn));
-        return future_impl_shref<future_header_ops_dependent, /*unique=*/false, FnRetT...>(hdr);
+        return return_type(
+          future_impl_shref<future_header_ops_dependent, /*unique=*/false, FnRetT...>(hdr),
+          detail::internal_only{}
+        );
       }
     };
     
@@ -162,8 +166,11 @@ namespace upcxx {
 
       template<typename Arg1, typename Fn1>
       return_type operator()(Arg1 &&arg1, Fn1 &&fn1) {
-        return future_impl_shref<future_header_ops_dependent, /*unique=*/false, FnRetT...>(
-          static_cast<Arg1&&>(arg1).impl_.template compose_under<Fn1, FnRetT...>(static_cast<Fn1&&>(fn1)).impl_.steal_header()
+        return return_type(
+          future_impl_shref<future_header_ops_dependent, /*unique=*/false, FnRetT...>(
+            static_cast<Arg1&&>(arg1).impl_.template compose_under<Fn1, FnRetT...>(static_cast<Fn1&&>(fn1)).impl_.steal_header()
+          ),
+          detail::internal_only{}
         );
       }
     };

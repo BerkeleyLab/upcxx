@@ -1,8 +1,0 @@
-#!/bin/bash
-
-export DEV_CI_COMPILER=cce/9.0.0
-
-# COMPILER_PATH is a hack to replace broken linker in out-of-date cce/9.0.0
-export COMPILER_PATH=/opt/cray/pe/cce/default/binutils/x86_64/bin
-
-source $(dirname $0)/cori-cray

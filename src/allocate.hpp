@@ -42,6 +42,29 @@ namespace upcxx {
      static constexpr const char *_base = "upcxx::bad_shared_alloc: ";
   };
   //////////////////////////////////////////////////////////////////////
+  struct bad_segment_alloc : public std::bad_alloc {
+    bad_segment_alloc(const char *device_typename=nullptr, size_t nbytes=0, intrank_t who=-1) {
+      std::stringstream ss;
+      if (!device_typename) device_typename = "Device";
+      ss << _base << "UPC++ failed to allocate " << device_typename << " segment memory";
+      if (who == -1) ss << " on one or more processes";
+      else           ss << " on process " << who << " (and possibly others)";
+      ss << "\n inside upcxx::device_allocator<" << device_typename <<"> segment-allocating constructor";
+      if (nbytes) ss << "\n while trying to allocate a " << nbytes <<  " byte segment";
+      ss << "\n You may need to request a smaller device segment to accomodate the memory capacity of your device.";
+      _what = ss.str();
+    }
+    bad_segment_alloc(const std::string & reason) : _what(_base) {
+      _what += reason;
+    }
+    virtual const char* what() const noexcept {
+      return _what.c_str();
+    }
+    private:
+     std::string _what;
+     static constexpr const char *_base = "upcxx::bad_segment_alloc: ";
+  };
+  //////////////////////////////////////////////////////////////////////
   /* Declared in: upcxx/backend_fwd.hpp
   
   void* allocate(std::size_t size,
@@ -72,17 +95,23 @@ namespace upcxx {
     UPCXX_GPTR_CHK(gptr);
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.rank_ == upcxx::rank_me(),
+        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::deallocate must be called by owner of global pointer"
       );
       
-      upcxx::deallocate(gptr.raw_ptr_);
+      upcxx::deallocate(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_));
     }
   }
 
   namespace detail {
     template<bool throws, typename T, typename ...Args>
     global_ptr<T> new_(Args &&...args) {
+      static_assert(!std::is_array<T>::value,
+                    "The element type to upcxx::new_ currently may not "
+                    "itself be an array type -- use upcxx::new_array "
+                    "instead. Please contact us if you have a need for "
+                    "this functionality in upcxx::new_.");
+
       void *ptr = allocate(sizeof(T), alignof(T));
       
       if (ptr == nullptr) {
@@ -127,6 +156,10 @@ namespace upcxx {
     global_ptr<T> new_array(std::size_t n) {
       static_assert(std::is_default_constructible<T>::value,
                     "T must be default constructible");
+      static_assert(!std::is_array<T>::value,
+                    "The element type to upcxx::new_array currently "
+                    "may not itself be an array type. Please contact us "
+                    "if you have a need for this functionality.");
       
       std::size_t size = sizeof(std::size_t);
       size = (size + alignof(T)-1) & -alignof(T);
@@ -196,11 +229,11 @@ namespace upcxx {
     
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.rank_ == upcxx::rank_me(),
+        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::delete_ must be called by owner of shared memory."
       );
       
-      T *ptr = gptr.raw_ptr_;
+      T *ptr = gptr.UPCXX_INTERNAL_ONLY(raw_ptr_);
       ptr->~T();
       upcxx::deallocate(ptr);
     }
@@ -215,7 +248,7 @@ namespace upcxx {
     
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.rank_ == upcxx::rank_me(),
+        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::delete_array must be called by owner of shared memory."
       );
       

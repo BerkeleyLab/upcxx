@@ -1,10 +1,8 @@
-// Added for upcxx:
-#define ONLY_MSPACES 1
-#if UPCXX_ASSERT_ENABLED
-  #define DEBUG 1
-#else
-  #undef DEBUG
-#endif
+/*
+ * Added for upcxx, so that the name shift #defines at the top of
+ * dl_malloc_upcxx.h also mangle the function names in this file.
+ */
+#include "dl_malloc_upcxx.h"
 
 /*
   This is a version (aka dlmalloc) of malloc/free/realloc written by

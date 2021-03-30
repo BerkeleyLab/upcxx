@@ -19,6 +19,15 @@ namespace upcxx {
     struct persona_scope_raw;
     struct persona_scope_redundant;
     struct persona_tls;
+
+
+    template<typename Fn>
+    using lpc_raw_results_type = // std::tuple wrapping the raw results of an lpc callable
+      typename decltype(detail::apply_as_future(typename std::decay<Fn>::type(std::declval<Fn>())))::results_type;
+
+    template<typename Fn>
+    using lpc_results_type = // std::tuple wrapping the decayed results of an lpc callable
+      typename decay_tupled_rrefs<lpc_raw_results_type<Fn>>::type;
   }
 
   // This type is contained within `__thread` storage, so it must be:
@@ -44,10 +53,10 @@ namespace upcxx {
       >
       pros_deferred_trivial_;
     
-  public:
-    backend::persona_state backend_state_;
-    cuda::persona_state cuda_state_;
-    std::intptr_t undischarged_n_; // num reasons progress_required() is true
+  public: //private!
+    backend::persona_state UPCXX_INTERNAL_ONLY(backend_state_);
+    cuda::persona_state UPCXX_INTERNAL_ONLY(cuda_state_);
+    std::intptr_t UPCXX_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
   
   private:
     persona* get_owner() const;
@@ -60,8 +69,8 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      backend_state_(),
-      undischarged_n_(0) {
+      UPCXX_INTERNAL_ONLY(backend_state_)(),
+      UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
   
   public:
@@ -71,11 +80,13 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      backend_state_(),
-      undischarged_n_(0) {
+      UPCXX_INTERNAL_ONLY(backend_state_)(),
+      UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
     
     bool active_with_caller() const;
+
+  private:
     bool active_with_caller(detail::persona_tls &tls) const;
     bool active() const;
     
@@ -105,11 +116,7 @@ namespace upcxx {
       
       template<typename ...Args>
       void operator()(Args &&...args) {
-        using results_t = std::tuple<typename std::conditional<
-            !std::is_lvalue_reference<Args>::value,
-            typename std::decay<Args>::type,
-            Args
-          >::type...>;
+        using results_t = typename detail::decay_tupled_rrefs<std::tuple<Args...>>::type;
         
         initiator_->lpc_ff(
           lpc_initiator_finish<results_t, Promise>{
@@ -127,8 +134,10 @@ namespace upcxx {
       Fn fn_;
       
       void operator()() {
-        upcxx::apply_as_future(fn_)
-          .then(lpc_recipient_executed<Promise>{initiator_, pro_});
+        detail::apply_as_future_then_lazy(
+          fn_,
+          lpc_recipient_executed<Promise>{initiator_, pro_}
+        );
       }
     };
   
@@ -138,7 +147,7 @@ namespace upcxx {
     auto lpc(Fn &&fn)
       -> typename detail::future_from_tuple_t<
         detail::future_kind_shref<detail::future_header_ops_general>, // the default future kind
-        typename decltype(upcxx::apply_as_future(typename std::decay<Fn>::type(fn)))::results_type
+        typename detail::lpc_results_type<Fn>
       >;
   };
   
@@ -148,7 +157,10 @@ namespace upcxx {
   namespace detail {
     // Holds all the fields for a persona_scope but in a trivial type.
     struct persona_scope_raw {
+    protected:
       friend struct detail::persona_tls;
+      friend class upcxx::persona_scope;
+      friend persona& upcxx::current_persona();
       
       persona_scope_raw *next_;
       std::uintptr_t persona_xor_default_;
@@ -172,7 +184,6 @@ namespace upcxx {
       
       //////////////////////////////////////////////////////////////////////////
       // accessors
-      
       persona* get_persona(detail::persona_tls &tls) const;
       void set_persona(persona *val, detail::persona_tls &tls);
     };
@@ -188,6 +199,8 @@ namespace upcxx {
   
   class persona_scope: public detail::persona_scope_raw {
     friend struct detail::persona_tls;
+    friend persona_scope& default_persona_scope();
+    friend persona_scope& top_persona_scope();
     
   private:
     // the_default_dummy_'s constructor
@@ -201,9 +214,9 @@ namespace upcxx {
     template<typename Mutex>
     persona_scope(Mutex &lock, persona &persona, detail::persona_tls &tls);
     
-  public:
     static persona_scope the_default_dummy_;
     
+  public:
     persona_scope(persona &persona);
     
     template<typename Mutex>
@@ -417,12 +430,11 @@ namespace upcxx {
   auto persona::lpc(Fn &&fn)
     -> typename detail::future_from_tuple_t<
       detail::future_kind_shref<detail::future_header_ops_general>, // the default future kind
-      typename decltype(upcxx::apply_as_future(typename std::decay<Fn>::type(fn)))::results_type
+      typename detail::lpc_results_type<Fn>
     > {
     UPCXX_ASSERT_INIT();
     
-    using decay_fn = typename std::decay<Fn>::type;
-    using results_type = typename decltype(upcxx::apply_as_future(decay_fn(fn)))::results_type;
+    using results_type = typename detail::lpc_results_type<Fn>;
     using results_promise = detail::tuple_types_into_t<results_type, promise>;
     
     detail::persona_tls &tls = detail::the_persona_tls;
@@ -591,7 +603,7 @@ namespace upcxx {
   inline persona& current_persona() {
     UPCXX_ASSERT_INIT();
     detail::persona_tls &tls = detail::the_persona_tls;
-    return *tls.get_top_scope()->get_persona(tls);
+    return *tls.get_top_persona();
   }
   
   inline persona_scope& default_persona_scope() {
@@ -736,7 +748,7 @@ namespace upcxx {
     persona_tls &tls = *this;
     persona_scope_raw *ps = tls.get_top_scope();
     persona *p = ps->get_persona(tls);
-    return p->undischarged_n_ != 0;
+    return p->UPCXX_INTERNAL_ONLY(undischarged_n_) != 0;
   }
   
   inline bool detail::persona_tls::progress_required(persona_scope &bottom) {
@@ -748,7 +760,7 @@ namespace upcxx {
     
     while(true) {
       persona *p = ps->get_persona(tls);
-      if(p->undischarged_n_ != 0)
+      if(p->UPCXX_INTERNAL_ONLY(undischarged_n_) != 0)
         return true;
       if(ps == bot)
         return false;

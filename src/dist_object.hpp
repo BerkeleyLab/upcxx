@@ -24,10 +24,16 @@ namespace upcxx {
 namespace upcxx {
   template<typename T>
   struct dist_id {
-  //private:
-    digest dig_;
+  private:
+    detail::digest dig_;
+    explicit dist_id(detail::digest id) : dig_(id) {}
+
+    friend class dist_object<T>;
+    friend struct std::hash<upcxx::dist_id<T>>;
     
-  //public:
+  public:
+    dist_id() : dig_(detail::digest::zero()) {}
+
     dist_object<T>& here() const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(detail::registry[dig_],
@@ -59,19 +65,18 @@ namespace upcxx {
     UPCXX_COMPARATOR(>)
     UPCXX_COMPARATOR(>=)
     #undef UPCXX_COMPARATOR
+
+    friend std::ostream& operator<<(std::ostream &o, dist_id<T> x) {
+      return o << x.dig_;
+    }
   };
-  
-  template<typename T>
-  std::ostream& operator<<(std::ostream &o, dist_id<T> x) {
-    return o << x.dig_;
-  }
 }
 
 namespace std {
   template<typename T>
   struct hash<upcxx::dist_id<T>> {
     size_t operator()(upcxx::dist_id<T> id) const {
-      return hash<upcxx::digest>()(id.dig_);
+      return hash<upcxx::detail::digest>()(id.dig_);
     }
   };
 }
@@ -82,7 +87,7 @@ namespace upcxx {
   template<typename T>
   class dist_object {
     const upcxx::team *tm_;
-    digest id_;
+    detail::digest id_;
     T value_;
     
   public:
@@ -132,9 +137,9 @@ namespace upcxx {
       
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT_MASTER();
-      UPCXX_ASSERT((that.id_ != digest{~0ull, ~0ull}));
+      UPCXX_ASSERT((that.id_ != detail::digest{~0ull, ~0ull}));
 
-      that.id_ = digest{~0ull, ~0ull}; // the tombstone id value
+      that.id_ = detail::digest{~0ull, ~0ull}; // the tombstone id value
 
       // Moving is painful for us because the original constructor (of that)
       // created a promise, set its result to point to that, and then
@@ -150,7 +155,7 @@ namespace upcxx {
     ~dist_object() {
       if (backend::init_count > 0) UPCXX_ASSERT_MASTER();
 
-      if(id_ != digest{~0ull, ~0ull}) {
+      if(id_ != detail::digest{~0ull, ~0ull}) {
         auto it = detail::registry.find(id_);
         static_cast<detail::future_header_promise<dist_object<T>&>*>(it->second)->dropref();
         detail::registry.erase(it);
@@ -182,6 +187,7 @@ namespace upcxx {
 ////////////////////////////////////////////////////////////////////////
 
 namespace upcxx {
+  namespace detail {
   // dist_object<T> references are bound using their id's.
   template<typename T>
   struct binding<dist_object<T>&> {
@@ -216,5 +222,6 @@ namespace upcxx {
       "Moving a dist_object into a binding must surely be an error!"
     );
   };
+  }
 }
 #endif

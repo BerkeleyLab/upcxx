@@ -47,7 +47,9 @@ namespace upcxx {
         }\
       };\
     }\
-    constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/false> op_##name = {};\
+    namespace experimental {\
+      constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/false> op_##name = {};\
+    }\
     constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/true> op_fast_##name = {};
   
   UPCXX_INFIX_OP(+, |, add, false)
@@ -72,8 +74,10 @@ namespace upcxx {
       }
     };
   }
-  constexpr detail::op_wrap<detail::opfn_min_not_max<true>, /*fast_demanded=*/false> op_min = {};
-  constexpr detail::op_wrap<detail::opfn_min_not_max<false>, /*fast_demanded=*/false> op_max = {};
+  namespace experimental {
+    constexpr detail::op_wrap<detail::opfn_min_not_max<true>, /*fast_demanded=*/false> op_min = {};
+    constexpr detail::op_wrap<detail::opfn_min_not_max<false>, /*fast_demanded=*/false> op_max = {};
+  }
   constexpr detail::op_wrap<detail::opfn_min_not_max<true>, /*fast_demanded=*/true> op_fast_min = {};
   constexpr detail::op_wrap<detail::opfn_min_not_max<false>, /*fast_demanded=*/true> op_fast_max = {};
   
@@ -232,7 +236,7 @@ namespace upcxx {
       );
     
     template<typename T1, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>,
+             typename Cxs = detail::operation_cx_as_future_t,
              typename T = typename std::decay<T1>::type>
     typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
@@ -242,14 +246,14 @@ namespace upcxx {
     reduce_one_or_all_trivial(
         T1 &&value, BinaryOp op, intrank_t root_or_all/*-1 = all*/,
         const team &tm = upcxx::world(),
-        Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+        Cxs &&cxs = detail::operation_cx_as_future_t{{}}
       ) {
       
       using CxsDecayed = typename std::decay<Cxs>::type;
       static_assert(
         upcxx::is_trivially_serializable<T>::value,
         "`upcxx::reduce_[all|one]<T>` only permitted for TriviallySerializable T. "
-        "Consider using `upcxx::reduce_[all|one]_nontrivial<T>` instead "
+        "Consider using `upcxx::experimental::reduce_[all|one]_nontrivial<T>` instead "
         "(experimental feature, use at own risk)."
       );
       
@@ -311,7 +315,7 @@ namespace upcxx {
     }
     
     template<typename T, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>>
+             typename Cxs = detail::operation_cx_as_future_t>
     typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::reduce_vector_event_values,
@@ -321,13 +325,13 @@ namespace upcxx {
         T const *src, T *dst, std::size_t n,
         BinaryOp op, intrank_t root_or_all/*-1 = all*/,
         const team &tm = upcxx::world(),
-        Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+        Cxs &&cxs = detail::operation_cx_as_future_t{{}}
       ) {
       using CxsDecayed = typename std::decay<Cxs>::type;
       static_assert(
         upcxx::is_trivially_serializable<T>::value,
         "`upcxx::reduce_[all|one]<T>` only permitted for TriviallySerializable T. "
-        "Consider using `upcxx::reduce_[all|one]_nontrivial<T>` instead "
+        "Consider using `upcxx::experimental::reduce_[all|one]_nontrivial<T>` instead "
         "(experimental feature, use at own risk)."
       );
 
@@ -404,7 +408,8 @@ namespace upcxx {
       }
       
       template<typename T1>
-      static void contribute(const team&, intrank_t root, digest id, Op const &op, T1 &&value, cxs_state_t *cxs_st);
+      static void contribute(const team&, intrank_t root, detail::digest id,
+                             Op const &op, T1 &&value, cxs_state_t *cxs_st);
     };
   }
   
@@ -412,7 +417,7 @@ namespace upcxx {
   // upcxx::reduce_one
   
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -423,7 +428,7 @@ namespace upcxx {
   reduce_one(
       T1 value, BinaryOp op, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_one); // issue 392: prevent large types by-value
 
@@ -439,7 +444,7 @@ namespace upcxx {
   }
   
   template<typename T, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
@@ -450,7 +455,7 @@ namespace upcxx {
       T const *src, T *dst, std::size_t n,
       BinaryOp op, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -464,7 +469,7 @@ namespace upcxx {
   }
   
   //////////////////////////////////////////////////////////////////////////////
-  // upcxx::reduce_one_nontrivial
+  // upcxx::experimental::reduce_one_nontrivial
   
   namespace detail {
     template<typename T1, typename BinaryOp,
@@ -519,7 +524,7 @@ namespace upcxx {
           CxsDecayed
         >(cxs_st);
         
-      digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
+      detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
       
       reduce_state::contribute(
           tm, root, id, std::move(op), std::forward<T1>(value), &cxs_st
@@ -528,9 +533,10 @@ namespace upcxx {
       return returner();
     }
   }
-  
+
+  namespace experimental {
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -541,7 +547,7 @@ namespace upcxx {
   reduce_one_nontrivial(
       T1 &&value, BinaryOp op, intrank_t root,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -554,12 +560,13 @@ namespace upcxx {
         std::integral_constant<bool, upcxx::is_trivially_serializable<T>::value>()
       );
   }
+  } // namespace experimental
   
   //////////////////////////////////////////////////////////////////////////////
   // upcxx::reduce_all
   
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -570,7 +577,7 @@ namespace upcxx {
   reduce_all(
       T1 value, BinaryOp op,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_all); // issue 392: prevent large types by-value
     UPCXX_ASSERT_INIT();
@@ -582,7 +589,7 @@ namespace upcxx {
   }
   
   template<typename T, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>>
+           typename Cxs = detail::operation_cx_as_future_t>
   UPCXX_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
@@ -593,7 +600,7 @@ namespace upcxx {
       T const *src, T *dst, std::size_t n,
       BinaryOp op,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -604,11 +611,11 @@ namespace upcxx {
   }
   
   //////////////////////////////////////////////////////////////////////////////
-  // upcxx::reduce_all_nontrivial
+  // upcxx::experimental::reduce_all_nontrivial
   
   namespace detail {
     template<typename T1, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>,
+             typename Cxs = detail::operation_cx_as_future_t,
              typename T = typename std::decay<T1>::type>
     UPCXX_NODISCARD
     typename detail::completions_returner<
@@ -627,7 +634,7 @@ namespace upcxx {
     }
     
     template<typename T1, typename BinaryOp,
-             typename Cxs = completions<future_cx<operation_cx_event>>,
+             typename Cxs = detail::operation_cx_as_future_t,
              typename T = typename std::decay<T1>::type>
     UPCXX_NODISCARD
     typename detail::completions_returner<
@@ -663,7 +670,7 @@ namespace upcxx {
           CxsDecayed
         >(cxs_st);
       
-      digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
+      detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
       intrank_t root = id.w0 % tm.rank_n();
       
       reduce_state::contribute(
@@ -673,9 +680,10 @@ namespace upcxx {
       return returner();
     }
   }
-  
+
+  namespace experimental {
   template<typename T1, typename BinaryOp,
-           typename Cxs = completions<future_cx<operation_cx_event>>,
+           typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
   UPCXX_NODISCARD
   typename detail::completions_returner<
@@ -686,7 +694,7 @@ namespace upcxx {
   reduce_all_nontrivial(
       T1 &&value, BinaryOp op,
       const team &tm = upcxx::world(),
-      Cxs &&cxs = completions<future_cx<operation_cx_event>>{{}}
+      Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
@@ -696,6 +704,7 @@ namespace upcxx {
         std::integral_constant<bool, upcxx::is_trivially_serializable<T>::value>()
       );
   }
+  } // namespace experimental
   
   //////////////////////////////////////////////////////////////////////////////
   // reduce_state::contribute
@@ -704,7 +713,7 @@ namespace upcxx {
     template<typename T, typename Op, bool one_not_all, typename Cxs>
     template<typename T1>
     void reduce_state<T,Op,one_not_all,Cxs>::contribute(
-        const team &tm, intrank_t root, digest id, Op const &op, T1 &&value,
+        const team &tm, intrank_t root, detail::digest id, Op const &op, T1 &&value,
         typename reduce_state::cxs_state_t *cxs_st
       ) {
       
@@ -752,7 +761,7 @@ namespace upcxx {
         // We have all of our expected contributions.
         if(rank_me == 0) {
           // We are root, time to broadcast result.
-          auto bound = upcxx::bind([=](T &&value) {
+          auto bound = detail::bind([=](T &&value) {
                 auto it = detail::registry.find(id);
                 reduce_state *me = static_cast<reduce_state*>(it->second);
                 
@@ -781,8 +790,8 @@ namespace upcxx {
           team_id tm_id = tm.id();
           
           backend::template send_am_master<progress_level::internal>(
-            tm, parent,
-            upcxx::bind(
+            backend::team_rank_to_world(tm, parent),
+            detail::bind(
               //[=](T &value, decltype(detail::globalize_fnptr(std::declval<Op>())) const &op) {
               [=](T &&value, typename detail::globalize_fnptr_return<Op>::type const &op)->void {
                 reduce_state::contribute(tm_id.here(), root, id, op, static_cast<T&&>(value), nullptr);

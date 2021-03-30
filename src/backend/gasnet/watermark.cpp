@@ -5,6 +5,7 @@
 #include <gasnet_tools.h>
 
 #include <upcxx/version.hpp>
+#include <upcxx/upcxx_config.hpp>
 
 ////////////////////////////////////////////////////////////////////////
 // Library version watermarking

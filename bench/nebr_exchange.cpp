@@ -259,7 +259,7 @@ std::size_t exchange_via_amlong(mesh_t &m) {
       amlong_handler_id,
       local_buf,
       buf_size,
-      m.out_nebrs[i].remote_buf.raw_ptr_,
+      m.out_nebrs[i].remote_buf.raw_internal(upcxx::detail::internal_only{}),
       &lc,
       0,
       amlong_epoch

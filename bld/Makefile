@@ -93,6 +93,7 @@ do-gasnet-configure: force
 	@dir=$(GASNETDIR);                                                            \
 	 if test \! -f "$$dir/gasnet_config.h" ; then                                 \
 	   echo "Configuring $(GASNET_CODEMODE)-mode build of GASNet";                \
+	   export GASNET_SUPPRESS_DEBUG_WARNING=1 ;                                   \
 	   if test -n "$(UPCXX_CROSS)"; then                                                \
 	     cmd="SRCDIR=$(GASNET) $(GASNET)/other/contrib/cross-configure-$(UPCXX_CROSS)"; \
 	   else                                                                       \
@@ -286,7 +287,7 @@ endif
 include $(top_srcdir)/bld/compiler.mak
 include $(top_srcdir)/bld/sources.mak
 
-UPCXX_DEFINES := -DUPCXX_ASSERT_ENABLED=$(ASSERT) -DUPCXX_BACKEND=1 -D$(UPCXX_MPSC_QUEUE)=1
+UPCXX_DEFINES := -DUPCXX_ASSERT_ENABLED=$(ASSERT) -DUPCXX_BACKEND=1
 ifeq ($(strip $(UPCXX_BACKEND)),gasnet_seq)
 UPCXX_DEFINES += -DUPCXX_BACKEND_GASNET_SEQ=1
 else

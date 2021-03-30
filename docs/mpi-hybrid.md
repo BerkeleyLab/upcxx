@@ -155,6 +155,7 @@ then the job can be spawned using `upcxx-run`:
 ```
 export GASNET_SPAWNFN='C'
 export GASNET_CSPAWN_CMD='mpirun -np %N %C'
+export GASNET_WORKER_RANK=OMPI_COMM_WORLD_RANK   # optional, assumes Open MPI
 upcxx-run -np 2 hello-world
 ```
 
@@ -164,7 +165,17 @@ that job spawn support for regular MPI programs is already correctly installed
 and configured on your system. Consult the documentation for your MPI
 distribution if this is not the case.
 
-Note that udp-conduit may number your UPC++ ranks differently from MPI ranks,
+The (optional) `GASNET_WORKER_RANK=OMPI_COMM_WORLD_RANK` setting above assumes
+an Open-MPI-based MPI implementation, and names an environment variable provided
+by the mpirun job spawner in the worker process environment that identifies the
+MPI process rank.  This requests udp-conduit to assign the UPC++/GASNet rank
+identifiers identically to the `MPI_COMM_WORLD` rank numbering for the
+corresponding process.  For MPICH-based MPI implementations, you may want
+the setting `GASNET_WORKER_RANK=PMI_RANK`.  For other MPI implementations,
+consult their documentation for the corresponding variable name.
+
+If `GASNET_WORKER_RANK` is unset (or names a non-existent variable) then
+udp-conduit may number your UPC++ ranks differently from MPI ranks,
 so you may want to perform an MPI rank renumbering after startup, eg:
 ```
   MPI_Comm newcomm;

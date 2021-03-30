@@ -48,8 +48,8 @@ namespace upcxx {
 
     // allow construction from a pointer-to-non-const
     explicit global_ptr(detail::internal_only, intrank_t rank, T *raw,
-                        int device = -1):
-      base_type(detail::internal_only(), rank, raw, device) {
+                        int heap_idx = 0):
+      base_type(detail::internal_only(), rank, raw, heap_idx) {
     }
 
     template <typename U>
@@ -91,20 +91,20 @@ namespace upcxx {
         #else
           constexpr size_t align = 0;
         #endif
-          backend::validate_global_ptr(allow_null, rank_,
-                                       reinterpret_cast<void*>(raw_ptr_),
-                                       device_, KindSet, align,
+          backend::validate_global_ptr(allow_null, UPCXX_INTERNAL_ONLY(rank_),
+                                       reinterpret_cast<void*>(UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                                       UPCXX_INTERNAL_ONLY(heap_idx_), KindSet, align,
                                        detail::typename_of<T>(), 
                                        short_context, context);
     }
     
     explicit global_ptr(detail::internal_only, intrank_t rank, const T *raw,
-                        int device = -1):
+                        int heap_idx = 0):
       #if UPCXX_MANY_KINDS
-        device_(device),
+        UPCXX_INTERNAL_ONLY(heap_idx_)(heap_idx),
       #endif
-      rank_(rank),
-      raw_ptr_(const_cast<T*>(raw)) {
+      UPCXX_INTERNAL_ONLY(rank_)(rank),
+      UPCXX_INTERNAL_ONLY(raw_ptr_)(const_cast<T*>(raw)) {
       static_assert(std::is_trivially_copyable<global_ptr<T,KindSet>>::value, "Internal error.");
       UPCXX_GPTR_CHK(*this);
     }
@@ -114,11 +114,12 @@ namespace upcxx {
     explicit global_ptr(detail::internal_only, 
                         const global_ptr<U, KindSet> &other, std::ptrdiff_t offset):
       #if UPCXX_MANY_KINDS
-        device_(other.device_),
+        UPCXX_INTERNAL_ONLY(heap_idx_)(other.UPCXX_INTERNAL_ONLY(heap_idx_)),
       #endif
-      rank_(other.rank_),
-      raw_ptr_(reinterpret_cast<T*>(
-                 reinterpret_cast<::std::uintptr_t>(other.raw_ptr_) + offset)) { 
+      UPCXX_INTERNAL_ONLY(rank_)(other.UPCXX_INTERNAL_ONLY(rank_)),
+      UPCXX_INTERNAL_ONLY(raw_ptr_)(reinterpret_cast<T*>(
+          reinterpret_cast<::std::uintptr_t>(
+            other.UPCXX_INTERNAL_ONLY(raw_ptr_)) + offset)) {
         UPCXX_GPTR_CHK(other);
         UPCXX_ASSERT(other, "Global pointer expression may not be null");
         UPCXX_GPTR_CHK_NONNULL(*this);
@@ -127,7 +128,10 @@ namespace upcxx {
     template<memory_kind KindSet1,
              typename = typename std::enable_if<((int)KindSet & (int)KindSet1) == (int)KindSet1>::type>
     global_ptr(global_ptr<const T,KindSet1> const &that):
-      global_ptr(detail::internal_only(), that.rank_, that.raw_ptr_, that.device_) {
+      global_ptr(detail::internal_only(),
+                 that.UPCXX_INTERNAL_ONLY(rank_),
+                 that.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 that.UPCXX_INTERNAL_ONLY(heap_idx_)) {
       UPCXX_GPTR_CHK(*this);
     }
     
@@ -140,12 +144,15 @@ namespace upcxx {
     bool is_local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
-      return device_ == -1 && (raw_ptr_ == nullptr || backend::rank_is_local(rank_));
+      return UPCXX_INTERNAL_ONLY(heap_idx_) == 0 &&
+        (UPCXX_INTERNAL_ONLY(raw_ptr_) == nullptr ||
+         backend::rank_is_local(UPCXX_INTERNAL_ONLY(rank_)));
     }
 
     bool is_null() const {
       UPCXX_GPTR_CHK(*this);
-      return device_ == -1 && raw_ptr_ == nullptr;
+      return UPCXX_INTERNAL_ONLY(heap_idx_) == 0 &&
+        UPCXX_INTERNAL_ONLY(raw_ptr_) == nullptr;
     }
     
     // This creates ambiguity with gp/int arithmetic like `my_gp + 1` since 
@@ -160,19 +167,19 @@ namespace upcxx {
     const T* local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
-      return KindSet != memory_kind::host && device_ != -1
+      return KindSet != memory_kind::host && UPCXX_INTERNAL_ONLY(heap_idx_) != 0
         ? nullptr
         : static_cast<T*>(
           backend::localize_memory(
-            rank_,
-            reinterpret_cast<std::uintptr_t>(raw_ptr_)
+            UPCXX_INTERNAL_ONLY(rank_),
+            reinterpret_cast<std::uintptr_t>(UPCXX_INTERNAL_ONLY(raw_ptr_))
           )
       );
     }
 
     intrank_t where() const {
       UPCXX_GPTR_CHK(*this);
-      return rank_;
+      return UPCXX_INTERNAL_ONLY(rank_);
     }
 
     memory_kind dynamic_kind() const {
@@ -180,20 +187,31 @@ namespace upcxx {
       if(0 == (int(KindSet) & (int(KindSet)-1))) // determines if KindSet is a singleton set
         return KindSet;
       else
-        return device_ == -1 ? memory_kind::host : memory_kind::cuda_device;
+        return UPCXX_INTERNAL_ONLY(heap_idx_) == 0 ? memory_kind::host : memory_kind::cuda_device;
     }
     
     std::ptrdiff_t operator-(global_ptr rhs) const {
-      if (raw_ptr_ == rhs.raw_ptr_) { UPCXX_GPTR_CHK(*this); UPCXX_GPTR_CHK(rhs); }
-      else  { UPCXX_GPTR_CHK_NONNULL(*this); UPCXX_GPTR_CHK_NONNULL(rhs); }
-      UPCXX_ASSERT(device_ == rhs.device_, "operator-(global_ptr,global_ptr): requires pointers of the same kind & device.");
-      UPCXX_ASSERT(rank_ == rhs.rank_, "operator-(global_ptr,global_ptr): requires pointers to the same rank.");
-      return raw_ptr_ - rhs.raw_ptr_;
+      if (UPCXX_INTERNAL_ONLY(raw_ptr_) == rhs.UPCXX_INTERNAL_ONLY(raw_ptr_)) {
+        UPCXX_GPTR_CHK(*this); UPCXX_GPTR_CHK(rhs);
+      } else {
+        UPCXX_GPTR_CHK_NONNULL(*this); UPCXX_GPTR_CHK_NONNULL(rhs);
+      }
+      UPCXX_ASSERT(
+        UPCXX_INTERNAL_ONLY(heap_idx_) == rhs.UPCXX_INTERNAL_ONLY(heap_idx_),
+        "operator-(global_ptr,global_ptr): requires pointers of the same kind & device."
+      );
+      UPCXX_ASSERT(
+        UPCXX_INTERNAL_ONLY(rank_) == rhs.UPCXX_INTERNAL_ONLY(rank_),
+        "operator-(global_ptr,global_ptr): requires pointers to the same rank."
+      );
+      return UPCXX_INTERNAL_ONLY(raw_ptr_) - rhs.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
 
     friend bool operator==(global_ptr a, global_ptr b) {
       UPCXX_GPTR_CHK(a); UPCXX_GPTR_CHK(b); 
-      return a.device_ == b.device_ && a.rank_ == b.rank_ && a.raw_ptr_ == b.raw_ptr_;
+      return a.UPCXX_INTERNAL_ONLY(heap_idx_) == b.UPCXX_INTERNAL_ONLY(heap_idx_) &&
+        a.UPCXX_INTERNAL_ONLY(rank_) == b.UPCXX_INTERNAL_ONLY(rank_) &&
+        a.UPCXX_INTERNAL_ONLY(raw_ptr_) == b.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
     friend bool operator==(global_ptr a, std::nullptr_t) {
       return a == global_ptr(nullptr);
@@ -204,7 +222,9 @@ namespace upcxx {
     
     friend bool operator!=(global_ptr a, global_ptr b) {
       UPCXX_GPTR_CHK(a); UPCXX_GPTR_CHK(b); 
-      return a.device_ != b.device_ || a.rank_ != b.rank_ || a.raw_ptr_ != b.raw_ptr_;
+      return a.UPCXX_INTERNAL_ONLY(heap_idx_) != b.UPCXX_INTERNAL_ONLY(heap_idx_) ||
+        a.UPCXX_INTERNAL_ONLY(rank_) != b.UPCXX_INTERNAL_ONLY(rank_) ||
+        a.UPCXX_INTERNAL_ONLY(raw_ptr_) != b.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
     friend bool operator!=(global_ptr a, std::nullptr_t) {
       return a != global_ptr(nullptr);
@@ -217,15 +237,15 @@ namespace upcxx {
     #define UPCXX_COMPARE_OP(op) \
       friend bool operator op(global_ptr a, global_ptr b) {\
         UPCXX_GPTR_CHK(a); UPCXX_GPTR_CHK(b); \
-        return a.raw_ptr_ op b.raw_ptr_;\
+        return a.UPCXX_INTERNAL_ONLY(raw_ptr_) op b.UPCXX_INTERNAL_ONLY(raw_ptr_);\
       }\
       friend bool operator op(global_ptr a, std::nullptr_t b) {\
         UPCXX_GPTR_CHK(a); \
-        return a.raw_ptr_ op b;\
+        return a.UPCXX_INTERNAL_ONLY(raw_ptr_) op b;\
       }\
       friend bool operator op(std::nullptr_t a, global_ptr b) {\
         UPCXX_GPTR_CHK(b); \
-        return a op b.raw_ptr_;\
+        return a op b.UPCXX_INTERNAL_ONLY(raw_ptr_);\
       }
     UPCXX_COMPARE_OP(<)
     UPCXX_COMPARE_OP(<=)
@@ -235,39 +255,43 @@ namespace upcxx {
   
   public: //private!
     #if UPCXX_MANY_KINDS
-      std::int32_t device_;
+      std::int32_t UPCXX_INTERNAL_ONLY(heap_idx_);
     #else
-      static constexpr std::int32_t device_ = -1;
+      static constexpr std::int32_t UPCXX_INTERNAL_ONLY(heap_idx_) = 0;
     #endif
-    intrank_t rank_;
-    T* raw_ptr_;
+    intrank_t UPCXX_INTERNAL_ONLY(rank_);
+    T* UPCXX_INTERNAL_ONLY(raw_ptr_);
+
+    T* raw_internal(detail::internal_only) {
+      return UPCXX_INTERNAL_ONLY(raw_ptr_);
+    }
   };
 
   template<typename T, typename U, memory_kind K>
   global_ptr<T,K> static_pointer_cast(global_ptr<U,K> ptr) {
     UPCXX_GPTR_CHK(ptr);
     return global_ptr<T,K>(detail::internal_only(),
-                           ptr.rank_,
-                           static_cast<T*>(ptr.raw_ptr_),
-                           ptr.device_);
+                           ptr.UPCXX_INTERNAL_ONLY(rank_),
+                           static_cast<T*>(ptr.UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                           ptr.UPCXX_INTERNAL_ONLY(heap_idx_));
   }
 
   template<typename T, typename U, memory_kind K>
   global_ptr<T,K> reinterpret_pointer_cast(global_ptr<U,K> ptr) {
     UPCXX_GPTR_CHK(ptr);
     return global_ptr<T,K>(detail::internal_only(),
-                           ptr.rank_,
-                           reinterpret_cast<T*>(ptr.raw_ptr_),
-                           ptr.device_);
+                           ptr.UPCXX_INTERNAL_ONLY(rank_),
+                           reinterpret_cast<T*>(ptr.UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                           ptr.UPCXX_INTERNAL_ONLY(heap_idx_));
   }
 
   template<typename T, typename U, memory_kind K>
   global_ptr<T,K> const_pointer_cast(global_ptr<U,K> ptr) {
     UPCXX_GPTR_CHK(ptr);
     return global_ptr<T,K>(detail::internal_only(),
-                           ptr.rank_,
-                           const_cast<T*>(ptr.raw_ptr_),
-                           ptr.device_);
+                           ptr.UPCXX_INTERNAL_ONLY(rank_),
+                           const_cast<T*>(ptr.UPCXX_INTERNAL_ONLY(raw_ptr_)),
+                           ptr.UPCXX_INTERNAL_ONLY(heap_idx_));
   }
 
   template<memory_kind K, typename T, memory_kind K1>
@@ -275,7 +299,10 @@ namespace upcxx {
   typename std::enable_if<(int(K) & int(K1)) != 0 , global_ptr<T,K>>::type
   static_kind_cast(global_ptr<T,K1> p) {
     UPCXX_GPTR_CHK(p);
-    return global_ptr<T,K>(detail::internal_only(), p.rank_, p.raw_ptr_, p.device_);
+    return global_ptr<T,K>(detail::internal_only(),
+                           p.UPCXX_INTERNAL_ONLY(rank_),
+                           p.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                           p.UPCXX_INTERNAL_ONLY(heap_idx_));
   }
   
   template<memory_kind K, typename T, memory_kind K1>
@@ -285,7 +312,8 @@ namespace upcxx {
     UPCXX_GPTR_CHK(p);
     return ((int)p.dynamic_kind() & (int)K) != 0
         ? global_ptr<T,K>(
-          detail::internal_only(), p.rank_, p.raw_ptr_, p.device_
+          detail::internal_only(), p.UPCXX_INTERNAL_ONLY(rank_),
+          p.UPCXX_INTERNAL_ONLY(raw_ptr_), p.UPCXX_INTERNAL_ONLY(heap_idx_)
         )
         : global_ptr<T,K>(nullptr);
   }
@@ -293,9 +321,9 @@ namespace upcxx {
   template<typename T, memory_kind K>
   std::ostream& operator<<(std::ostream &os, global_ptr<T,K> ptr) {
     // UPCXX_GPTR_CHK(ptr) // allow output of bad pointers for diagnostic purposes
-    return os << "(gp: " << ptr.rank_ << ", " 
-              << reinterpret_cast<void*>(ptr.raw_ptr_) // issue #223
-	      << ", dev=" << ptr.device_ << ")";
+    return os << "(gp: " << ptr.UPCXX_INTERNAL_ONLY(rank_) << ", " 
+              << reinterpret_cast<void*>(ptr.UPCXX_INTERNAL_ONLY(raw_ptr_)) // issue #223
+	      << ", heap=" << ptr.UPCXX_INTERNAL_ONLY(heap_idx_) << ")";
   }
 
   template<typename T>
@@ -338,11 +366,11 @@ namespace std {
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
-      bool ans = lhs.raw_ptr_ < rhs.raw_ptr_;
-      ans &= lhs.rank_ == rhs.rank_;
-      ans |= lhs.rank_ < rhs.rank_;
-      ans &= lhs.device_ == rhs.device_;
-      ans |= lhs.device_ < rhs.device_;
+      bool ans = lhs.UPCXX_INTERNAL_ONLY(raw_ptr_) < rhs.UPCXX_INTERNAL_ONLY(raw_ptr_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(rank_) == rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(rank_) < rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) == rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) < rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
       return ans;
     }
   };
@@ -352,11 +380,11 @@ namespace std {
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
-      bool ans = lhs.raw_ptr_ <= rhs.raw_ptr_;
-      ans &= lhs.rank_ == rhs.rank_;
-      ans |= lhs.rank_ < rhs.rank_;
-      ans &= lhs.device_ == rhs.device_;
-      ans |= lhs.device_ < rhs.device_;
+      bool ans = lhs.UPCXX_INTERNAL_ONLY(raw_ptr_) <= rhs.UPCXX_INTERNAL_ONLY(raw_ptr_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(rank_) == rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(rank_) < rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) == rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) < rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
       return ans;
     }
   };
@@ -366,11 +394,11 @@ namespace std {
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
-      bool ans = lhs.raw_ptr_ > rhs.raw_ptr_;
-      ans &= lhs.rank_ == rhs.rank_;
-      ans |= lhs.rank_ > rhs.rank_;
-      ans &= lhs.device_ == rhs.device_;
-      ans |= lhs.device_ > rhs.device_;
+      bool ans = lhs.UPCXX_INTERNAL_ONLY(raw_ptr_) > rhs.UPCXX_INTERNAL_ONLY(raw_ptr_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(rank_) == rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(rank_) > rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) == rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) > rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
       return ans;
     }
   };
@@ -380,11 +408,11 @@ namespace std {
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
-      bool ans = lhs.raw_ptr_ >= rhs.raw_ptr_;
-      ans &= lhs.rank_ == rhs.rank_;
-      ans |= lhs.rank_ > rhs.rank_;
-      ans &= lhs.device_ == rhs.device_;
-      ans |= lhs.device_ > rhs.device_;
+      bool ans = lhs.UPCXX_INTERNAL_ONLY(raw_ptr_) >= rhs.UPCXX_INTERNAL_ONLY(raw_ptr_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(rank_) == rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(rank_) > rhs.UPCXX_INTERNAL_ONLY(rank_);
+      ans &= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) == rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
+      ans |= lhs.UPCXX_INTERNAL_ONLY(heap_idx_) > rhs.UPCXX_INTERNAL_ONLY(heap_idx_);
       return ans;
     }
   };
@@ -420,8 +448,10 @@ namespace std {
       DEALINGS IN THE SOFTWARE.
       */
 
-      std::uint64_t b = std::uint64_t(gptr.device_)<<32 | std::uint32_t(gptr.rank_);
-      std::uint64_t a = reinterpret_cast<std::uint64_t>(gptr.raw_ptr_);
+      std::uint64_t b = std::uint64_t(gptr.UPCXX_INTERNAL_ONLY(heap_idx_))<<32 |
+        std::uint32_t(gptr.UPCXX_INTERNAL_ONLY(rank_));
+      std::uint64_t a =
+        reinterpret_cast<std::uint64_t>(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_));
       a ^= b + 0x9e3779b9 + (a<<6) + (a>>2);
       return std::size_t(a);
     }

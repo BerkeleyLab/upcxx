@@ -43,7 +43,9 @@ void doit1() __attribute__((noinline));
 void doit2() __attribute__((noinline));
 void doit3() __attribute__((noinline));
 
-#define TIME_OPERATION_FULL(desc, preop, op, postop) do {  \
+#define TIME_OPERATION_FULL(desc, preop, op, postop, fullduplex) do {  \
+  if (self > peer && !fullduplex) for (int i=0;i<3;i++) upcxx::barrier(); \
+  else {                                                   \
     int i, _iters = iters, _warmupiters = MAX(1,iters/10); \
     gasnett_tick_t start,end;  /* use ticks interface */   \
     upcxx::barrier();          /* for best accuracy */     \
@@ -60,13 +62,9 @@ void doit3() __attribute__((noinline));
     if (((const char *)(desc)) && ((char*)(desc))[0])      \
       report((desc), tickcvt(end - start), iters);         \
     else report(#op, tickcvt(end - start), iters);         \
-  } while (0)
-#define TIME_OPERATION(desc, op) TIME_OPERATION_FULL(desc, {}, op, {})
-#define TIME_NOOP() for (int i=0;i<3;i++) upcxx::barrier()
-#define TIME_SINGLE(desc,op) do {                          \
-    if (upcxx::rank_me()) TIME_NOOP();                     \
-    else TIME_OPERATION(desc,op);                          \
-  } while (0)
+  }                                                        \
+} while (0)
+#define TIME_OPERATION(desc, op) TIME_OPERATION_FULL(desc, {}, op, {}, 0)
 
 int nranks, self, peer;
 uint64_t iters = 10000;
@@ -120,6 +118,25 @@ void doit() {
 
     doit1();
 }
+struct dummy64_t { char data[64]; }; // 64 bytes of TriviallySerializable data
+struct dummy256_t { char data[256]; }; // 256 bytes of TriviallySerializable data
+
+template<int sz>
+struct myarr { // a silly, but minimal container whose serialization ubound is deliberately unbounded
+  char data[sz];
+  struct upcxx_serialization {
+     template<typename Writer>
+     static void serialize (Writer& writer, myarr const & object) {
+       writer.write_sequence(object.data, object.data+sz);
+     }
+     template<typename Reader>
+     static myarr* deserialize(Reader& reader, void* storage) {
+       myarr *r = ::new(storage) myarr;
+       reader.template read_sequence_into<char>(r->data, sz);
+       return r;
+     }
+  };
+};
 void doit1() {
     if (!upcxx::rank_me()) std::cout << "\n Local UPC++ tests:" << std::endl;
     TIME_OPERATION("upcxx::progress",upcxx::progress());
@@ -135,6 +152,26 @@ void doit1() {
         [](int d1, int d2, int d3, int d4, int d5, int d6, int d7, int d8){},
         0,0,0,0,0,0,0,0).wait());
 
+    static dummy64_t dummy64;
+    static dummy256_t dummy256;
+    myarr<64> a64;
+    myarr<256> a256;
+    myarr<512> a512;
+    TIME_OPERATION("upcxx::rpc(self,lamb 64b static)",upcxx::rpc(self,
+        [](const dummy64_t &){}, dummy64).wait());
+    TIME_OPERATION("upcxx::rpc(self,lamb 64b view)",upcxx::rpc(self,
+        [](const upcxx::view<char> &){}, upcxx::make_view(dummy64.data, dummy64.data+64)).wait());
+    TIME_OPERATION("upcxx::rpc(self,lamb 64b unbounded)",upcxx::rpc(self,
+        [](const myarr<64> &){}, a64).wait());
+    TIME_OPERATION("upcxx::rpc(self,lamb 256b static)",upcxx::rpc(self,
+        [](const dummy256_t &){}, dummy256).wait());
+    TIME_OPERATION("upcxx::rpc(self,lamb 256b view)",upcxx::rpc(self,
+        [](const upcxx::view<char> &){}, upcxx::make_view(dummy256.data, dummy256.data+256)).wait());
+    TIME_OPERATION("upcxx::rpc(self,lamb 256b unbounded)",upcxx::rpc(self,
+        [](const myarr<256> &){}, a256).wait());
+    TIME_OPERATION("upcxx::rpc(self,lamb 512b unbounded)",upcxx::rpc(self,
+        [](const myarr<512> &){}, a512).wait());
+
     doit2();
 }
 upcxx::global_ptr<double> gp;
@@ -146,6 +183,24 @@ void doit2() {
     gp = *dod;
     gp_peer = dod.fetch(peer).wait();
     TIME_OPERATION("upcxx::rput<double>(self)",upcxx::rput(0.,gp).wait());
+    {
+      static int flag;
+      TIME_OPERATION("upcxx::rput<double>(self, RC)", 
+                       flag = 0;
+                       upcxx::rput(0.,gp, upcxx::remote_cx::as_rpc([](){flag=1;}));
+                       do { upcxx::progress(); } while (!flag)
+                    );
+    }
+
+    {
+      static int flag;
+      static dummy64_t dummy;
+      TIME_OPERATION("upcxx::rput<double>(self, RC-64b)", 
+                       flag = 0;
+                       upcxx::rput(0.,gp, upcxx::remote_cx::as_rpc([](const dummy64_t &){flag=1;},dummy));
+                       do { upcxx::progress(); } while (!flag)
+                    );
+    }
 
     upcxx::dist_object<upcxx::global_ptr<std::int64_t>> doi(upcxx::new_<std::int64_t>(0));
     gpi64 = *doi;
@@ -176,7 +231,45 @@ void doit3() {
     TIME_OPERATION("upcxx::rpc(peer,lamb8)",upcxx::rpc(peer,
         [](int d1, int d2, int d3, int d4, int d5, int d6, int d7, int d8){},
         0,0,0,0,0,0,0,0).wait());
+
+    static dummy64_t dummy64;
+    static dummy256_t dummy256;
+    myarr<64> a64;
+    myarr<256> a256;
+    myarr<512> a512;
+    TIME_OPERATION("upcxx::rpc(peer,lamb 64b static)",upcxx::rpc(peer,
+        [](const dummy64_t &){}, dummy64).wait());
+    TIME_OPERATION("upcxx::rpc(peer,lamb 64b view)",upcxx::rpc(peer,
+        [](const upcxx::view<char> &){}, upcxx::make_view(dummy64.data, dummy64.data+64)).wait());
+    TIME_OPERATION("upcxx::rpc(peer,lamb 64b unbounded)",upcxx::rpc(peer,
+        [](const myarr<64> &){}, a64).wait());
+    TIME_OPERATION("upcxx::rpc(peer,lamb 256b static)",upcxx::rpc(peer,
+        [](const dummy256_t &){}, dummy256).wait());
+    TIME_OPERATION("upcxx::rpc(peer,lamb 256b view)",upcxx::rpc(peer,
+        [](const upcxx::view<char> &){}, upcxx::make_view(dummy256.data, dummy256.data+256)).wait());
+    TIME_OPERATION("upcxx::rpc(peer,lamb 256b unbounded)",upcxx::rpc(peer,
+        [](const myarr<256> &){}, a256).wait());
+    TIME_OPERATION("upcxx::rpc(peer,lamb 512b unbounded)",upcxx::rpc(peer,
+        [](const myarr<512> &){}, a512).wait());
+
     TIME_OPERATION("upcxx::rput<double>(peer)",upcxx::rput(0.,gp_peer).wait());
+    {
+      static std::int64_t sent=0,recv=0;
+      TIME_OPERATION_FULL("upcxx::rput<double>(peer, RC)", {},
+                       sent++;
+                       upcxx::rput(0.,gp_peer, upcxx::remote_cx::as_rpc([](){recv++;}));
+                       do { upcxx::progress(); } while (recv<sent)
+                    , {}, 1);
+    }
+    {
+      static std::int64_t sent=0,recv=0;
+      static dummy64_t dummy;
+      TIME_OPERATION_FULL("upcxx::rput<double>(peer, RC-64b)", {},
+                       sent++;
+                       upcxx::rput(0.,gp_peer, upcxx::remote_cx::as_rpc([](const dummy64_t &){recv++;},dummy));
+                       do { upcxx::progress(); } while (recv<sent)
+                    , {}, 1);
+    }
 
     using upcxx::atomic_op;
     { upcxx::promise<> p;

@@ -8,7 +8,7 @@ namespace {
   }
 }
 
-upcxx::digest upcxx::digest::eat(uint64_t x0, uint64_t x1) const {
+upcxx::detail::digest upcxx::detail::digest::eat(uint64_t x0, uint64_t x1) const {
   uint64_t w0 = this->w0;
   uint64_t w1 = this->w1;
   uint64_t w2 = x0;
