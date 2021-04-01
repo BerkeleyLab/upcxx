@@ -82,7 +82,7 @@ Fixes the following notable bugs in the GASNet library
 * bug4194: ibv: unnecessarily slow startup
 * bug4208: ibv: unfortunate multi-rail interactions with PSHM and XRC
 
-This prototype library release conforms to the
+This library release conforms to the
 [UPC++ v1.0 Specification, Revision 2021.3.0](docs/spec.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
