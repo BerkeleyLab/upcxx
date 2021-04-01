@@ -460,12 +460,11 @@ namespace upcxx {
             ) // bind
         ); // prepare_deferred_am_master
       }; // make_am
-      using am_buf_t = decltype(make_am(nullptr));
-      am_buf_t *am_buf_heaped;
 
       // this lambda runs synchronously to generate a continuation that will run once the source is in host segment
       auto make_bounce_s_cont = [&](void *bounce_s) {
-        am_buf_heaped = new am_buf_t(make_am(bounce_s)); // serialize
+        using am_buf_t = decltype(make_am(nullptr));
+        am_buf_t *am_buf_heaped = new am_buf_t(make_am(bounce_s)); // serialize
         return [=]() {
           if(copy_traits::want_source && heap_s != host_heap) {
             // since source side has a bounce buffer, we can signal source_cx as soon
