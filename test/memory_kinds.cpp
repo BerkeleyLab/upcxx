@@ -51,6 +51,8 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     assert(!ai.is_active());
     assert(!ai2.is_active());
     assert(Allocator::local(gp_null) == dp_null);
+    assert(gp_null.is_local());
+    assert(gp_null.local() == nullptr);
     assert(Allocator::device_id(gp_null) == id_invalid);
     assert(ai.to_global_ptr(dp_null) == gp_null);
     ai.deallocate(gp_null);
@@ -115,6 +117,15 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     gp_type gp1 = a->to_global_ptr(dp);
     assert(gp == gp1);
     assert(Allocator::device_id(gp) == id);
+    global_ptr<int, memory_kind::any> gp_any = gp;
+    assert(gp_any.dynamic_kind() == Device::kind);
+    assert(gp.dynamic_kind() == gp_any.dynamic_kind());
+    assert(gp == dynamic_kind_cast<Device::kind>(gp_any));
+    if (Device::kind != memory_kind::host)
+      assert(!gp.is_local()); // unspecified, but true for all current devices
+    #if TEST_ISSUE464
+      auto invalid = gp.local(); // should assert in debug mode
+    #endif
     return gp;
   };
   gp_type gp0 = alloc_check(a0,1); 
