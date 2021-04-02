@@ -5,6 +5,21 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
+### 20XX.YY.ZZ: PENDING
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
+* ...
+
+Notable bug fixes:
+
+* issue #464: assert when calling `global_ptr<T,kind>::local()` on device pointers
+
+Breaking changes:
+
+* ...
+
+
 ### 2021.03.31: Release 2021.3.0
 
 General features/enhancements: (see specification and programmer's guide for full details)

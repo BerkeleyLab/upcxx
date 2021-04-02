@@ -167,9 +167,10 @@ namespace upcxx {
     const T* local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
-      return KindSet != memory_kind::host && UPCXX_INTERNAL_ONLY(heap_idx_) != 0
-        ? nullptr
-        : static_cast<T*>(
+      UPCXX_ASSERT_ALWAYS(KindSet == memory_kind::host || UPCXX_INTERNAL_ONLY(heap_idx_) == 0,
+                   "global_ptr<T>::local() does not create device pointers. Use device_allocator<Device>::local(gptr) instead.");
+      // locality checks for host pointers handled in backend::localize_memory()
+      return static_cast<T*>(
           backend::localize_memory(
             UPCXX_INTERNAL_ONLY(rank_),
             reinterpret_cast<std::uintptr_t>(UPCXX_INTERNAL_ONLY(raw_ptr_))
