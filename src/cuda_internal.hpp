@@ -4,24 +4,19 @@
 #include <upcxx/cuda.hpp>
 #include <upcxx/diagnostic.hpp>
 
-#include <upcxx/backend/gasnet/runtime_internal.hpp> // GEX_SPEC_VERSION
+#include <upcxx/backend/gasnet/runtime_internal.hpp>
 
 #if UPCXX_CUDA_ENABLED
   #include <cuda.h>
   #include <cuda_runtime_api.h>
 
   // Decide whether GASNet has native memory kinds support
-  #ifndef GEX_SPEC_VERSION_MINOR
-  #error Missing GEX_SPEC_VERSION_MINOR definition
+  #include <gasnet_mk.h>
+  #ifndef UPCXX_MAXEPS
+  #error Missing UPCXX_MAXEPS definition
   #endif
-  #if GEX_SPEC_VERSION_MINOR >= 12 || GEX_SPEC_VERSION_MAJOR 
-    #include <gasnet_mk.h>
-    #ifndef UPCXX_MAXEPS
-    #error Missing UPCXX_MAXEPS definition
-    #endif
-    #if UPCXX_CUDA_ENABLED && UPCXX_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
-      #define UPCXX_CUDA_USE_MK 1
-    #endif
+  #if UPCXX_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
+    #define UPCXX_CUDA_USE_MK 1
   #endif
 
   namespace upcxx {
