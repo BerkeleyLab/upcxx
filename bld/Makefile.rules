@@ -30,12 +30,10 @@ GASNET_BLDDIR = $(BLDDIR)/gasnet.$(firstword $(UPCXX_DBGOPT))
 
 include $(upcxx_src)/bld/gasnet.mak
 
-install-hook: force
-	@export CONDUITS='$(CONDUITS)';                      \
-	 cd $(upcxx_src) &&                                  \
-	 . utils/install-common.sh &&                        \
-	 conduit_default="$(UPCXX_DEFAULT_NETWORK)" &&       \
-	 install_to="$(prefix)" install_common
+# If user passes NETWORK use it.
+# Else use UPCXX_DEFAULT_NETWORK
+HAVE_CONDUIT=$(filter-out $(UNOFFICIAL_CONDUITS),$(CONDUITS))
+DFLT_CONDUIT=$(firstword $(NETWORK) $(UPCXX_DEFAULT_NETWORK))
 
 install install-opt install-debug: force
 	@if [[ ! '$(prefix)' =~ ^/ ]]; then \
@@ -44,19 +42,33 @@ install install-opt install-debug: force
 	 fi
 	@$(MAKE) -C $(BLDDIR) $@ || $(MAKE) failure TARGET=installation
 	@$(MAKE) install-hook || $(MAKE) failure TARGET=installation
+
+install-hook: force
+	@export CONDUITS='$(CONDUITS)';                      \
+	 cd $(upcxx_src) &&                                  \
+	 . utils/install-common.sh &&                        \
+	 conduit_default="$(DFLT_CONDUIT)" &&       \
+	 install_to="$(prefix)" install_common
 	@echo; \
 	 echo 'UPC++ installation complete.'; \
+	 echo '  Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 echo '  One may reinstall setting NETWORK=... to override the default.'; \
 	 echo 'Recommended next steps:'; \
 	 echo '  See "Post-install recommendations" in'; \
 	 echo '  $(upcxx_src)/INSTALL.md'
 
 all all-opt all-debug: force
 	@$(MAKE) -C $(BLDDIR) $@ || $(MAKE) failure TARGET=build
+	@$(MAKE) all-hook || $(MAKE) failure TARGET=build
+
+all-hook: force
 	@echo; \
 	 echo 'UPC++ build complete.';    \
 	 echo 'Recommended next steps:';  \
 	 echo "  1. '$(GMAKE_SHORT) check'";    \
-	 echo "  2. '$(GMAKE_SHORT) install'"
+	 echo "  2. '$(GMAKE_SHORT) install [NETWORK=...]'"; \
+	 echo '     One may optionally set NETWORK=... to override the default.'; \
+	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'
 
 distclean-hook: force
 	-[[ $(upcxx_src) = $(upcxx_bld) ]] || rm -R $(BLDDIR)/Makefile
@@ -108,7 +120,14 @@ TEST_TARGETS = check tests tests-clean test_install run-tests run-tests-installe
 $(TEST_TARGETS): force
 	@NETWORKS='$(shell tr ",.:;/" " " <<<"$(NETWORKS)")'; \
 	$(MAKE) -f $(upcxx_src)/bld/Makefile.tests $@ $${NETWORKS:+NETWORKS="$$NETWORKS"}
+	$($@-hook)
 .PHONY: $(TEST_TARGETS)
+
+check-hook = \
+	@echo 'Recommended next steps:';  \
+	 echo "  If you have not already, you may now '$(GMAKE_SHORT) install [NETWORK=...]'"; \
+	 echo '     One may optionally set NETWORK=... to override the default.'; \
+	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).';
 
 ## GASNet pass-through
 # usage: make gasnet [DO_WHAT=target] [NETWORK=xyz] [UPCXX_CODEMODE={opt,debug}]
