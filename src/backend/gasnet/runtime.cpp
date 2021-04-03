@@ -1343,24 +1343,6 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
   return gex_TM_TranslateRankToJobrank(gasnet::handle_of(tm), peer);
 }
 
-#ifndef UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
-#if GASNETI_EX_SPEC_VERSION_MAJOR > 0 || GASNETI_EX_SPEC_VERSION_MINOR >= 13 // This line to be removed soon
-  #define UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB 1 // have gex_EP_QueryBoundSegmentNB
-#endif
-#endif
-#if !UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
-// issue #440: This is a temporary hack, to be replaced once GEX expands segment query.
-// Until then we need to track AM handler context to avoid invoking segment query there.
-// The relevant call in backend::validate_global_ptr is currently only reachable from am_eager_restricted(),
-// so we deploy a point solution for that specific case.
-#ifndef UPCXX_TRACK_AM_CONTEXT
-#define UPCXX_TRACK_AM_CONTEXT UPCXX_ASSERT_ENABLED
-#endif
-#if UPCXX_TRACK_AM_CONTEXT
-static __thread bool inside_am_handler;
-#endif
-#endif
-
 void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
                                   memory_kind KindSet, size_t T_align, const char *T_name, 
                                   const char *short_context, const char *context) {
@@ -1419,13 +1401,9 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
     }
 
     #ifndef UPCXX_GPTR_CHECK_SCALE
-      #if UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
-        #define UPCXX_GPTR_CHECK_SCALE INT_MAX // unlimited
-      #else
-        #define UPCXX_GPTR_CHECK_SCALE 1024 // job size limit where we stop bounds-checking remote segs
-      #endif
+    #define UPCXX_GPTR_CHECK_SCALE INT_MAX // unlimited
     #endif
-    if (rank_is_local(rank) || backend::rank_n <= UPCXX_GPTR_CHECK_SCALE) {
+    if (backend::rank_n <= UPCXX_GPTR_CHECK_SCALE || rank_is_local(rank)) {
       // compute segment bounds
       void *owner_vbase = nullptr;
       size_t size = 0;
@@ -1448,15 +1426,12 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           std::tie(owner_vbase, size) = hs->alloc_base->seg_.segment_range();
           UPCXX_ASSERT(owner_vbase && size);
         }
-        #if GEX_SPEC_VERSION_MINOR >= 12 || GEX_SPEC_VERSION_MAJOR 
         else if (backend::heap_state::use_mk()) { // query GEX for remote device EP
           UPCXX_ASSERT(endpoint0 != GEX_EP_INVALID);
           tm = gex_TM_Pair(endpoint0, heap_idx);
         }
-        #endif
       }
 
-    #if UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
       if (tm != GEX_TM_INVALID) {
         // GEX_FLAG_IMMEDIATE ensures correct operation when called in handler context (issue #440),
         // and also avoids introducing communication in our checking logic
@@ -1475,26 +1450,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           UPCXX_ASSERT(owner_vbase && size);
         }
       }
-    #else // GASNet-EX 0.12 and earlier
-      if (tm != GEX_TM_INVALID &&
-       // issue #440: Cannot call in gex_Segment_QueryBound in AM handler context
-       #if UPCXX_TRACK_AM_CONTEXT
-          !inside_am_handler
-       #else
-          false // unknown context, conservative assumption
-       #endif
-       ) {
-        int result = gex_Segment_QueryBound(tm, rank, &owner_vbase, nullptr, &size);
-        if_pf (result != GASNET_OK) { // can only be remote device heap that does not exist
-          UPCXX_ASSERT(heap_idx > 0);
-          UPCXX_ASSERT(rank != backend::rank_me);
-          ss << pretty_type() << " representation corrupted or stale pointer, "
-             << "heap_idx does not correspond to an active device segment\n";
-          error = true; break;
-        }
-        UPCXX_ASSERT(owner_vbase && size);
-      }
-    #endif
+
       if (owner_vbase) {
         UPCXX_ASSERT(size);
         void *owner_vlim = (void *)(((char*)owner_vbase) + size - 1);
@@ -2191,19 +2147,10 @@ namespace {
       std::memcpy((void**)tmp, (void**)buf, buf_size);
     }
 
-    #if UPCXX_TRACK_AM_CONTEXT // issue #440
-      UPCXX_ASSERT(!inside_am_handler);
-      inside_am_handler = true;
-    #endif
-
     gasnet::rpc_as_lpc dummy;
     dummy.payload = tmp;
     dummy.is_rdzv = false;
     command<detail::lpc_base*>::get_executor(detail::serialization_reader(tmp))(&dummy);
-
-    #if UPCXX_TRACK_AM_CONTEXT
-      inside_am_handler = false; 
-    #endif
 
     if(tmp != buf)
       std::free(tmp);

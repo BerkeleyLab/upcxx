@@ -27,15 +27,7 @@ cat >conftest.c <<_EOF
 #ifdef $SYMBOL
   CONFTEST_RESULT($SYMBOL)
 #else
-  #if GEX_SPEC_VERSION_MAJOR > 0 || GEX_SPEC_VERSION_MINOR >= 13
-    CONFTEST_RESULT(UNDEF)
-  #else /* REMOVE ME: TEMPORARY fallback code */
-    #if GASNET_CONDUIT_IBV || GASNET_CONDUIT_ARIES || GASNET_CONDUIT_SMP
-      CONFTEST_RESULT(1)
-    #else
-      CONFTEST_RESULT(UNDEF)
-    #endif
-  #endif
+  CONFTEST_RESULT(UNDEF)
 #endif
 _EOF
 
