@@ -79,33 +79,37 @@ namespace upcxx {
       return serialization_traits<typename copy_traits<Cxs>::cxs_remote_bound_t>::deserialized_value(cxs_remote);
     }
 
-  // detail::copy
+  // forward declaration
   template<typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
   copy(const int heap_s, const intrank_t rank_s, void *const buf_s,
-       const int heap_d, const intrank_t rank_d, void *const buf_d,
-       const std::size_t size, Cxs &&cxs) {
-    
+     const int heap_d, const intrank_t rank_d, void *const buf_d,
+     const std::size_t size, Cxs &&cxs);
+
+  // special case: 3rd party copy
+  template<typename Cxs>
+  typename detail::copy_traits<Cxs>::return_t UPCXX_NOINLINE
+  copy_3rdparty(const int heap_s, const intrank_t rank_s, void *const buf_s,
+                const int heap_d, const intrank_t rank_d, void *const buf_d,
+                const std::size_t size, Cxs &&cxs) {
+
     using copy_traits = detail::copy_traits<Cxs>;
     using deserialized_cxs_remote_bound_t = typename copy_traits::deserialized_cxs_remote_bound_t;
 
-    auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
-    typename copy_traits::cxs_remote_t cxs_remote(std::forward<Cxs>(cxs));
-
-    persona *initiator_per = &upcxx::current_persona();
     const intrank_t initiator = upcxx::rank_me();
+    persona *initiator_per = &upcxx::current_persona();
 
+    auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
     auto returner = typename copy_traits::returner(*cxs_here);
 
-    if (initiator != rank_d && initiator != rank_s) { // 3rd party copy
-      UPCXX_ASSERT(heap_s != detail::private_heap && heap_d != detail::private_heap);
-      
-      backend::send_am_master<progress_level::internal>( rank_d,
-        detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
-          // at target
-          auto operation_cx_as_internal_future =
-            detail::operation_cx_as_internal_future_t{{}};
-          deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
+    UPCXX_ASSERT(initiator != rank_d && initiator != rank_s);
+    UPCXX_ASSERT(heap_s != detail::private_heap && heap_d != detail::private_heap);
+
+    backend::send_am_master<progress_level::internal>( rank_d,
+      detail::bind([=](deserialized_cxs_remote_bound_t &&cxs_remote_bound) {
+        // at target
+        auto operation_cx_as_internal_future = detail::operation_cx_as_internal_future_t{{}};
+        deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
             copy_traits::want_remote ?
               new deserialized_cxs_remote_bound_t(std::move(cxs_remote_bound)) : nullptr);
           
@@ -130,12 +134,38 @@ namespace upcxx {
               );
             }
           });
-        }, cxs_remote.template bind_event<remote_cx_event>())
-      );
-      // initiator
-      if (!copy_traits::want_initevt) delete cxs_here;
+      }, 
+      typename copy_traits::cxs_remote_t(std::forward<Cxs>(cxs)).template bind_event<remote_cx_event>())
+    );
+    // initiator
+    if (!copy_traits::want_initevt) delete cxs_here;
+
+    return returner();
+  } // detail::copy_3rdparty
+
+  // detail::copy
+  template<typename Cxs>
+  typename detail::copy_traits<Cxs>::return_t
+  copy(const int heap_s, const intrank_t rank_s, void *const buf_s,
+       const int heap_d, const intrank_t rank_d, void *const buf_d,
+       const std::size_t size, Cxs &&cxs) {
+    
+    using copy_traits = detail::copy_traits<Cxs>;
+    using deserialized_cxs_remote_bound_t = typename copy_traits::deserialized_cxs_remote_bound_t;
+
+    const intrank_t initiator = upcxx::rank_me();
+    if (initiator != rank_d && initiator != rank_s) { // 3rd party copy
+      return copy_3rdparty(heap_s, rank_s, buf_s, heap_d, rank_d, buf_d, size, std::forward<Cxs>(cxs));
     }
-    else if(rank_d == rank_s) { // fully loopback on the calling process
+
+    auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
+    typename copy_traits::cxs_remote_t cxs_remote(std::forward<Cxs>(cxs));
+
+    persona *initiator_per = &upcxx::current_persona();
+
+    auto returner = typename copy_traits::returner(*cxs_here);
+
+    if (rank_d == rank_s) { // fully loopback on the calling process
       UPCXX_ASSERT(rank_d == initiator); 
       // Issue #421: synchronously deserialize remote completions into the heap to avoid a PGI optimizer problem
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
