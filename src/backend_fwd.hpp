@@ -267,12 +267,6 @@ namespace backend {
   void quiesce(const team &tm, entry_barrier eb);
 
   void warn_collective_in_progress(const char *fnname, entry_barrier eb=entry_barrier::none);
-  
-  template<progress_level level, typename Fn>
-  void during_level(Fn &&fn, persona &active_per = current_persona());
-  
-  template<typename Fn>
-  void during_user(Fn &&fn, persona &active_per = current_persona());
 
   /* fulfill_during: enlists a promise to be fulfilled in the given persona's
    * lpc queue. Since persona headers are lpc's and thus store queue linkage
