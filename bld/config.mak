@@ -11,6 +11,7 @@ UPCXX_CONFIG_SCRIPTS = \
 	builtin_assume_aligned.sh \
 	hidden_am_concurrency_level.sh \
 	maxeps.sh \
+	noinline.sh \
 	native_npam.sh \
 	issue400_workaround.sh
 # Scripts (in $(upcxx_src)/utils/config/gasnet) to be run IN ORDER
