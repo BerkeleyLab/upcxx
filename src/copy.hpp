@@ -55,74 +55,9 @@ namespace upcxx {
           "safe to read or write again."
         );
       }
-    };
+    }; // detail::copy_traits
 
-    template<typename Cxs>
-    typename detail::copy_traits<Cxs>::return_t
-    copy(const int heap_s, const intrank_t rank_s, void *const buf_s,
-         const int heap_d, const intrank_t rank_d, void *const buf_d,
-         const std::size_t size, Cxs &&cxs);
-
-  } // detail
-
-  
-  template<typename T, memory_kind Ks,
-           typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
-  inline
-  typename detail::copy_traits<Cxs>::return_t
-  copy(global_ptr<const T,Ks> src, T *dest, std::size_t n,
-       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(src);
-    UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    detail::copy_traits<Cxs>::template assert_sane<T>();
-    return detail::copy( src.UPCXX_INTERNAL_ONLY(heap_idx_),
-                         src.UPCXX_INTERNAL_ONLY(rank_),
-                         src.UPCXX_INTERNAL_ONLY(raw_ptr_),
-                         detail::private_heap, upcxx::rank_me(), dest,
-                         n * sizeof(T), std::forward<Cxs>(cxs) );
-  }
-
-  template<typename T, memory_kind Kd,
-           typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
-  inline
-  typename detail::copy_traits<Cxs>::return_t
-  copy(T const *src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(dest);
-    UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    detail::copy_traits<Cxs>::template assert_sane<T>();
-    return detail::copy( detail::private_heap, upcxx::rank_me(), const_cast<T*>(src),
-                         dest.UPCXX_INTERNAL_ONLY(heap_idx_),
-                         dest.UPCXX_INTERNAL_ONLY(rank_),
-                         dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
-                         n * sizeof(T), std::forward<Cxs>(cxs) );
-  }
-  
-  template<typename T, memory_kind Ks, memory_kind Kd,
-           typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
-  inline
-  typename detail::copy_traits<Cxs>::return_t
-  copy(global_ptr<const T,Ks> src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(src); UPCXX_GPTR_CHK(dest);
-    UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    detail::copy_traits<Cxs>::template assert_sane<T>();
-    return detail::copy(
-      src.UPCXX_INTERNAL_ONLY(heap_idx_), src.UPCXX_INTERNAL_ONLY(rank_),
-      src.UPCXX_INTERNAL_ONLY(raw_ptr_),
-      dest.UPCXX_INTERNAL_ONLY(heap_idx_), dest.UPCXX_INTERNAL_ONLY(rank_),
-      dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
-      n*sizeof(T), std::forward<Cxs>(cxs)
-    );
-  }
-
- namespace detail {
+  // detail::copy
   template<typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
   copy(const int heap_s, const intrank_t rank_s, void *const buf_s,
@@ -490,5 +425,65 @@ namespace upcxx {
     return returner();
   }
  } // namespace detail
-}
+ 
+ // ----------------------------------------------------------------------------------
+ // public upcxx::copy entry points
+
+  template<typename T, memory_kind Ks,
+           typename Cxs = detail::operation_cx_as_future_t>
+  UPCXX_NODISCARD
+  inline
+  typename detail::copy_traits<Cxs>::return_t
+  copy(global_ptr<const T,Ks> src, T *dest, std::size_t n,
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
+    UPCXX_ASSERT_INIT();
+    UPCXX_GPTR_CHK(src);
+    UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
+    detail::copy_traits<Cxs>::template assert_sane<T>();
+    return detail::copy( src.UPCXX_INTERNAL_ONLY(heap_idx_),
+                         src.UPCXX_INTERNAL_ONLY(rank_),
+                         src.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                         detail::private_heap, upcxx::rank_me(), dest,
+                         n * sizeof(T), std::forward<Cxs>(cxs) );
+  }
+
+  template<typename T, memory_kind Kd,
+           typename Cxs = detail::operation_cx_as_future_t>
+  UPCXX_NODISCARD
+  inline
+  typename detail::copy_traits<Cxs>::return_t
+  copy(T const *src, global_ptr<T,Kd> dest, std::size_t n,
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
+    UPCXX_ASSERT_INIT();
+    UPCXX_GPTR_CHK(dest);
+    UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
+    detail::copy_traits<Cxs>::template assert_sane<T>();
+    return detail::copy( detail::private_heap, upcxx::rank_me(), const_cast<T*>(src),
+                         dest.UPCXX_INTERNAL_ONLY(heap_idx_),
+                         dest.UPCXX_INTERNAL_ONLY(rank_),
+                         dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                         n * sizeof(T), std::forward<Cxs>(cxs) );
+  }
+  
+  template<typename T, memory_kind Ks, memory_kind Kd,
+           typename Cxs = detail::operation_cx_as_future_t>
+  UPCXX_NODISCARD
+  inline
+  typename detail::copy_traits<Cxs>::return_t
+  copy(global_ptr<const T,Ks> src, global_ptr<T,Kd> dest, std::size_t n,
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
+    UPCXX_ASSERT_INIT();
+    UPCXX_GPTR_CHK(src); UPCXX_GPTR_CHK(dest);
+    UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
+    detail::copy_traits<Cxs>::template assert_sane<T>();
+    return detail::copy(
+      src.UPCXX_INTERNAL_ONLY(heap_idx_), src.UPCXX_INTERNAL_ONLY(rank_),
+      src.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      dest.UPCXX_INTERNAL_ONLY(heap_idx_), dest.UPCXX_INTERNAL_ONLY(rank_),
+      dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      n*sizeof(T), std::forward<Cxs>(cxs)
+    );
+  }
+
+} // namespace upcxx
 #endif
