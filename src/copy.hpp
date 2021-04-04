@@ -30,17 +30,33 @@ namespace upcxx {
 
     template<typename Cxs>
     struct copy_traits {
+      using CxsDecayed = typename std::decay<Cxs>::type;
 
-      using return_t = typename detail::completions_returner<
+      using returner = typename detail::completions_returner<
             /*EventPredicate=*/detail::event_is_here,
             /*EventValues=*/detail::rput_event_values,
-            typename std::decay<Cxs>::type
-          >::return_t;
+            CxsDecayed>;
+      using return_t = typename returner::return_t;
     
-      static constexpr bool want_op = completions_has_event<typename std::decay<Cxs>::type, operation_cx_event>::value;
-      static constexpr bool want_remote = completions_has_event<typename std::decay<Cxs>::type, remote_cx_event>::value;
-      static constexpr bool want_source = completions_has_event<typename std::decay<Cxs>::type, source_cx_event>::value;
+      using cxs_here_t = detail::completions_state<
+            /*EventPredicate=*/detail::event_is_here,
+            /*EventValues=*/detail::rput_event_values,
+            CxsDecayed>;
+      using cxs_remote_t = detail::completions_state<
+            /*EventPredicate=*/detail::event_is_remote,
+            /*EventValues=*/detail::rput_event_values,
+            CxsDecayed>;
+
+      using cxs_remote_bound_t = decltype(std::declval<cxs_remote_t>().template bind_event<remote_cx_event>());
+      using deserialized_cxs_remote_bound_t = deserialized_type_t<cxs_remote_bound_t>;
+
+      static constexpr bool want_op = completions_has_event<CxsDecayed, operation_cx_event>::value;
+      static constexpr bool want_remote = completions_has_event<CxsDecayed, remote_cx_event>::value;
+      static constexpr bool want_source = completions_has_event<CxsDecayed, source_cx_event>::value;
       static constexpr bool want_initevt = want_op || want_source;
+
+      static deserialized_cxs_remote_bound_t UPCXX_NOINLINE
+      cxs_remote_deserialized_value(cxs_remote_bound_t const &cxs_remote);
 
       template<typename T>
       static void assert_sane() {
@@ -57,6 +73,12 @@ namespace upcxx {
       }
     }; // detail::copy_traits
 
+    template<typename Cxs>
+    typename copy_traits<Cxs>::deserialized_cxs_remote_bound_t UPCXX_NOINLINE
+    copy_traits<Cxs>::cxs_remote_deserialized_value(typename copy_traits<Cxs>::cxs_remote_bound_t const &cxs_remote) {
+      return serialization_traits<typename copy_traits<Cxs>::cxs_remote_bound_t>::deserialized_value(cxs_remote);
+    }
+
   // detail::copy
   template<typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
@@ -64,31 +86,16 @@ namespace upcxx {
        const int heap_d, const intrank_t rank_d, void *const buf_d,
        const std::size_t size, Cxs &&cxs) {
     
-    using CxsDecayed = typename std::decay<Cxs>::type;
-    using cxs_here_t = detail::completions_state<
-      /*EventPredicate=*/detail::event_is_here,
-      /*EventValues=*/detail::rput_event_values,
-      CxsDecayed>;
-    using cxs_remote_t = detail::completions_state<
-      /*EventPredicate=*/detail::event_is_remote,
-      /*EventValues=*/detail::rput_event_values,
-      CxsDecayed>;
     using copy_traits = detail::copy_traits<Cxs>;
+    using deserialized_cxs_remote_bound_t = typename copy_traits::deserialized_cxs_remote_bound_t;
 
-    cxs_here_t *cxs_here = new cxs_here_t(std::forward<Cxs>(cxs));
-    cxs_remote_t cxs_remote(std::forward<Cxs>(cxs));
-
-    using cxs_remote_bound_t = decltype(cxs_remote.template bind_event<remote_cx_event>());
-    using deserialized_cxs_remote_bound_t = deserialized_type_t<cxs_remote_bound_t>;
+    auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
+    typename copy_traits::cxs_remote_t cxs_remote(std::forward<Cxs>(cxs));
 
     persona *initiator_per = &upcxx::current_persona();
     const intrank_t initiator = upcxx::rank_me();
 
-    auto returner = detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      >(*cxs_here);
+    auto returner = typename copy_traits::returner(*cxs_here);
 
     if (initiator != rank_d && initiator != rank_s) { // 3rd party copy
       UPCXX_ASSERT(heap_s != detail::private_heap && heap_d != detail::private_heap);
@@ -134,7 +141,7 @@ namespace upcxx {
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
         copy_traits::want_remote ?
           new deserialized_cxs_remote_bound_t(
-            serialization_traits<cxs_remote_bound_t>::deserialized_value(
+            copy_traits::cxs_remote_deserialized_value(
               cxs_remote.template bind_event<remote_cx_event>()
             )
           ) : nullptr);
@@ -226,7 +233,7 @@ namespace upcxx {
       if (copy_traits::want_remote) {
         if (rank_d == initiator) { // in-place RC
           cxs_remote_heaped_local = new deserialized_cxs_remote_bound_t(
-            serialization_traits<cxs_remote_bound_t>::deserialized_value(
+            copy_traits::cxs_remote_deserialized_value(
               cxs_remote.template bind_event<remote_cx_event>()
             ));
         } else { // initiator-chained RC, serialize remote_cx now to ensure synchronous source_cx for as_rpc arguments
@@ -262,7 +269,7 @@ namespace upcxx {
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
         copy_traits::want_remote ?
           new deserialized_cxs_remote_bound_t(
-            serialization_traits<cxs_remote_bound_t>::deserialized_value(
+            copy_traits::cxs_remote_deserialized_value(
               cxs_remote.template bind_event<remote_cx_event>()
             )
           ) : nullptr);
