@@ -37,52 +37,8 @@
 namespace upcxx {
 namespace detail {
   //////////////////////////////////////////////////////////////////////
-  // detail::nop_function
-
-  template<typename Sig>
-  struct nop_function;
-  
-  template<typename Ret, typename ...Arg>
-  struct nop_function<Ret(Arg...)> {
-    template<typename ...Arg1>
-    Ret operator()(Arg1 &&...a) const {
-      UPCXX_ASSERT(false);
-      throw std::bad_function_call();
-    }
-  };
-  template<typename ...Arg>
-  struct nop_function<void(Arg...)> {
-    template<typename ...Arg1>
-    void operator()(Arg1 &&...a) const {}
-  };
-  
-  template<typename Sig>
-  nop_function<Sig> nop() {
-    return nop_function<Sig>{};
-  }
-  
-  //////////////////////////////////////////////////////////////////////
-  // detail::constant_function
-
-  template<typename T>
-  struct constant_function {
-    T value_;
-    constant_function(T value): value_(std::move(value)) {}
-    
-    template<typename ...Arg>
-    T operator()(Arg &&...args) const& {
-      return value_;
-    }
-    template<typename ...Arg>
-    T operator()(Arg &&...args) && {
-      return std::move(value_);
-    }
-  };
-  
-  template<typename T>
-  inline constant_function<T> constant(T value) {
-    return constant_function<T>{std::move(value)};
-  }
+  // detail::nop_function, detail::constant_function removed post
+  // 2021.3.0 release
 
   //////////////////////////////////////////////////////////////////////////////
   // detail::memcpy_aligned
@@ -439,45 +395,8 @@ namespace detail {
   
   //////////////////////////////////////////////////////////////////////
   // trait_any: disjunction, combines multiple traits into a new trait.
-  
-  template<template<typename...> class ...Tr>
-  struct trait_any;
-  
-  template<>
-  struct trait_any<> {
-    template<typename T>
-    using type = std::false_type;
-  };
-  
-  template<template<typename...> class Tr0,
-           template<typename...> class ...Trs>
-  struct trait_any<Tr0,Trs...> {
-    template<typename T>
-    struct type {
-      static constexpr bool value = Tr0<T>::value || trait_any<Trs...>::template type<T>::value;
-    };
-  };
-  
-  //////////////////////////////////////////////////////////////////////
   // trait_all: conjunction, combines multiple traits into a new trait
-  
-  template<template<typename...> class ...Tr>
-  struct trait_all;
-  
-  template<>
-  struct trait_all<> {
-    template<typename T>
-    using type = std::true_type;
-  };
-  
-  template<template<typename...> class Tr0,
-           template<typename...> class ...Trs>
-  struct trait_all<Tr0,Trs...> {
-    template<typename T>
-    struct type {
-      static constexpr bool value = Tr0<T>::value && trait_all<Trs...>::template type<T>::value;
-    };
-  };
+  // trait_any, trait_all removed post 2021.3.0 release
   
   //////////////////////////////////////////////////////////////////////
   // is_lvalue_or_copyable, is_lvalue_or_movable: trait for whether a
@@ -531,52 +450,15 @@ namespace detail {
   //////////////////////////////////////////////////////////////////////////////
   // add_lref_if_nonref: Add a lvalue-reference (&) to type T if T isn't already
   // a reference (& or &&) type.
-  
-  template<typename T>
-  struct add_lref_if_nonref { using type = T&; };
-  
-  template<typename T>
-  struct add_lref_if_nonref<T&> { using type = T&; };
-  
-  template<typename T>
-  struct add_lref_if_nonref<T&&> { using type = T&&; };
-
-  //////////////////////////////////////////////////////////////////////////////
   // add_clref_if_nonref: Add a const-lvalue-reference (const &) to type T if T
   // isn't already a reference (& or &&) type.
-  
-  template<typename T>
-  struct add_clref_if_nonref { using type = T const&; };
-  
-  template<typename T>
-  struct add_clref_if_nonref<T&> { using type = T&; };
-  
-  template<typename T>
-  struct add_clref_if_nonref<T&&> { using type = T&&; };
-
-  //////////////////////////////////////////////////////////////////////////////
   // add_rref_if_nonref: Add a rvalue-reference (&&) to type T if T isn't
   // already a reference (& or &&) type.
-  
-  template<typename T>
-  struct add_rref_if_nonref { using type = T&&; };
-  
-  template<typename T>
-  struct add_rref_if_nonref<T&> { using type = T&; };
-  
-  template<typename T>
-  struct add_rref_if_nonref<T&&> { using type = T&&; };
+  // add_lref_if_nonref, add_clref_if_nonref, add_rref_if_nonref removed
+  // post 2021.3.0 release
   
   //////////////////////////////////////////////////////////////////////
-
-  #if 0
-  template<typename Tup>
-  struct decay_tupled;
-  template<typename ...T>
-  struct decay_tupled<std::tuple<T...>> {
-    typedef std::tuple<typename std::decay<T>::type...> type;
-  };
-  #endif
+  // decay_tupled removed post 2021.3.0 release
  
   //////////////////////////////////////////////////////////////////////
   // decay_tupled_rrefs: decay elements of a tuple, preserving lvalue refs but not rvalue refs
@@ -595,33 +477,7 @@ namespace detail {
   //////////////////////////////////////////////////////////////////////
   // get_or_void & tuple_element_or_void: analogs of std::get &
   // std::tuple_elemenet which return void for out-of-range indices
-
-  #if 0
-  template<int i, typename TupRef,
-           bool in_range = (
-             0 <= i &&
-             i < std::tuple_size<typename std::decay<TupRef>::type>::value
-           )>
-  struct tuple_get_or_void {
-    auto operator()(TupRef t)
-      -> decltype(std::get<i>(t)) {
-      return std::get<i>(t);
-    }
-  };
-  
-  template<int i, typename TupRef>
-  struct tuple_get_or_void<i, TupRef, /*in_range=*/false>{
-    void operator()(TupRef t) {}
-  };
-  
-  template<int i, typename Tup>
-  auto get_or_void(Tup &&tup)
-    -> decltype(
-      tuple_get_or_void<i,Tup>()(std::forward<Tup>(tup))
-    ) {
-    return tuple_get_or_void<i,Tup>()(std::forward<Tup>(tup));
-  }
-  #endif
+  // get_or_void removed post 2021.3.0 release
   
   template<int i, typename Tup,
            bool in_range = 0 <= i && i < std::tuple_size<Tup>::value>
@@ -682,102 +538,13 @@ namespace detail {
     );
   }
 
-  #if 0
   //////////////////////////////////////////////////////////////////////
   // tuple_rvals: Get a tuple of rvalue-references to tuple componenets.
   // Components which are already `&` or `&&` are returned unmodified.
   // Non-reference componenets are returned as `&&` only if the tuple is
   // passed by non-const `&`, otherwise the non-reference type is used
   // and the value is moved or copied from the input to output tuple.
-  
-  namespace help {
-    template<typename Tup, int i,
-             typename Ti = typename std::tuple_element<i, typename std::decay<Tup>::type>::type>
-    struct tuple_rvals_get;
-    
-    // tuple passed by &
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&, i, Ti&> {
-      Ti& operator()(Tup &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&, i, Ti&&> {
-      Ti&& operator()(Tup &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&, i, Ti> {
-      Ti&& operator()(Tup &tup) const {
-        return static_cast<Ti&&>(std::get<i>(tup));
-      }
-    };
-    
-    // tuple passed by const&
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup const&, i, Ti&> {
-      Ti& operator()(Tup const &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup const&, i, Ti&&> {
-      Ti&& operator()(Tup const &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup const&, i, Ti> {
-      Ti const& operator()(Tup const &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    
-    // tuple passed by &&
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&&, i, Ti&> {
-      Ti& operator()(Tup &&tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&&, i, Ti&&> {
-      Ti&& operator()(Tup &&tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&&, i, Ti> {
-      Ti operator()(Tup &&tup) const {
-        return Ti{static_cast<Ti&&>(std::get<i>(tup))};
-      }
-    };
-    
-    template<typename Tup, int ...i>
-    inline auto tuple_rvals(Tup &&tup, index_sequence<i...>)
-      -> std::tuple<decltype(tuple_rvals_get<Tup&&, i>()(tup))...> {
-      return std::tuple<decltype(tuple_rvals_get<Tup&&, i>()(tup))...>{
-        tuple_rvals_get<Tup&&, i>()(tup)...
-      };
-    }
-  }
-  
-  template<typename Tup>
-  inline auto tuple_rvals(Tup &&tup)
-    -> decltype(
-      help::tuple_rvals(
-        std::forward<Tup>(tup),
-        make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>()
-      )
-    ) {
-    return help::tuple_rvals(
-      std::forward<Tup>(tup),
-      make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>()
-    );
-  }
-  #endif
+  // tuple_rvals removed post 2021.3.0 release
   
   //////////////////////////////////////////////////////////////////////
   // forward_as_tuple_decay_rrefs: like std::forward_as_tuple, but drops
