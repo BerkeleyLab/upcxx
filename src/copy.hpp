@@ -13,6 +13,9 @@
 #ifndef UPCXX_COPY_OPTIMIZEHOST
 #define UPCXX_COPY_OPTIMIZEHOST 1 // host-only optimizations can be disabled for debugging library behavior
 #endif
+#ifndef UPCXX_COPY_PROMOTEPRIVATE
+#define UPCXX_COPY_PROMOTEPRIVATE 1 // private promotion optimization can be disabled for debugging library behavior
+#endif
 
 namespace upcxx {
   namespace detail {
@@ -546,7 +549,8 @@ namespace upcxx {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    detail::copy_traits<Cxs>::template assert_sane<T>();
+    using copy_traits = detail::copy_traits<Cxs>;
+    copy_traits::template assert_sane<T>();
 
     #if UPCXX_COPY_OPTIMIZEHOST
       if (Ks == memory_kind::host || src.dynamic_kind() == memory_kind::host)
@@ -556,12 +560,30 @@ namespace upcxx {
                  dest, n * sizeof(T), std::forward<Cxs>(cxs) );
       else
     #endif
+      { int heap_d = detail::private_heap;
+        intrank_t rank_d = upcxx::rank_me();
+        T * buf_d = dest;
+        #if UPCXX_COPY_PROMOTEPRIVATE
+          if (src.UPCXX_INTERNAL_ONLY(rank_) != rank_d) { // not loopback
+            // upcxx::try_global_ptr(buf_d), with less overheads
+            intrank_t p_rank;
+            std::uintptr_t p_raw;
+            std::tie(p_rank, p_raw) = backend::globalize_memory(buf_d, std::make_tuple(0, 0x0));
+            if (p_raw && // promotion succeeded
+               ( !copy_traits::want_remote || rank_d == p_rank ) ) { // can't promote to co-located peer with RC
+              rank_d = p_rank; // possibly a co-located peer
+              buf_d = reinterpret_cast<T*>(p_raw);
+              heap_d = detail::host_heap;
+            }
+          }
+        #endif
         return detail::copy_general( 
                  src.UPCXX_INTERNAL_ONLY(heap_idx_),
                  src.UPCXX_INTERNAL_ONLY(rank_),
                  src.UPCXX_INTERNAL_ONLY(raw_ptr_),
-                 detail::private_heap, upcxx::rank_me(), dest,
+                 heap_d, rank_d, buf_d,
                  n * sizeof(T), std::forward<Cxs>(cxs) );
+      }
   }
 
   template<typename T, memory_kind Kd,
@@ -585,12 +607,29 @@ namespace upcxx {
                  n * sizeof(T), std::forward<Cxs>(cxs) );
       else
     #endif
+      { int heap_s = detail::private_heap;
+        intrank_t rank_s = upcxx::rank_me();
+        T * buf_s = const_cast<T*>(src);
+        #if UPCXX_COPY_PROMOTEPRIVATE
+          if (dest.UPCXX_INTERNAL_ONLY(rank_) != rank_s) { // not loopback
+            // upcxx::try_global_ptr(buf_s), with less overheads
+            intrank_t p_rank;
+            std::uintptr_t p_raw;
+            std::tie(p_rank, p_raw) = backend::globalize_memory(buf_s, std::make_tuple(0, 0x0));
+            if (p_raw) { // promotion succeeded
+              rank_s = p_rank; // possibly a co-located peer
+              buf_s = reinterpret_cast<T*>(p_raw);
+              heap_s = detail::host_heap;
+            }
+          }
+        #endif
         return detail::copy_general( 
-                 detail::private_heap, upcxx::rank_me(), const_cast<T*>(src),
+                 heap_s, rank_s, buf_s,
                  dest.UPCXX_INTERNAL_ONLY(heap_idx_),
                  dest.UPCXX_INTERNAL_ONLY(rank_),
                  dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
                  n * sizeof(T), std::forward<Cxs>(cxs) );
+      }
   }
   
   template<typename T, memory_kind Ks, memory_kind Kd,
