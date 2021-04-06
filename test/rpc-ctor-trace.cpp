@@ -649,12 +649,12 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-put: as_rpc(Fn&)&& ->", 3, 0, 0);
 
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, 0, 2);
 
     {
       T t;
@@ -662,12 +662,12 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc() T& -> const T&", 2, 0, 1);
+    SHOW("copy-put: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc() T&& -> const T&", 2, -1, -5);
+    SHOW("copy-put: as_rpc() T&& -> const T&", 2, 0, 2);
 
     {
       upcxx::future<> f;
@@ -678,7 +678,7 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc()|as_future() T& -> const T&", 2, 0, -1);
+    SHOW("copy-put: as_rpc()|as_future() T& -> const T&", 2, 0, 0);
 
     {
       Fn fn;
@@ -791,7 +791,7 @@ int main() {
     upcxx::copy(lp, gpdev, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-h2d: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put-h2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
 
     {
       Fn fn;
@@ -804,7 +804,7 @@ int main() {
     upcxx::copy(gpdev_local, gp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-d2h: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put-d2h: as_rpc(Fn&&)&& ->", 3, 0, 4);
 
     {
       Fn fn;
@@ -817,7 +817,7 @@ int main() {
     upcxx::copy(gpdev_local, gpdev, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-d2d: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put-d2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
 
     {
       Fn fn;
