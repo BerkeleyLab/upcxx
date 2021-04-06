@@ -264,7 +264,7 @@ command line to limit the tests run to some subset of the tests built above.
 #### 4. Installing the compiled UPC\+\+ package
 
 ```bash
-make install
+make install [NETWORK=net]
 ```
 
 This will install the UPC\+\+ runtime libraries and accompanying utilities to
@@ -272,6 +272,12 @@ the location specified via `--prefix=...` at configuration time.  If that
 value is not the desired installation location, then `make install
 prefix=<desired-install-directory>` may be used to override the value given at
 configure time.
+
+One may optionally pass `NETWORK=net` (replacing `net` by a supported network
+name) to specify the default network (overriding `--with-default-network=...`
+specified at configure time, if any).  Output at the end of the `all` and
+`check` steps report the default to be used in the absence of an explict
+setting, and the available networks.
 
 #### 5. Testing the install UPC\+\+ package (optional)
 
