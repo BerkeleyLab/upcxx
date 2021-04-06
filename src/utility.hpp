@@ -173,9 +173,23 @@ namespace detail {
       T1 *ans = reinterpret_cast<T1*>(::new(dest) T1);
       detail::template memcpy_aligned<alignof(T1)>(ans, src, sizeof(T1));
       #if UPCXX_ISSUE400_WORKAROUND
-        // issue #400: based on our understanding of the C++ spec, launder should be unnecessary here
-        // because memcpy of a TriviallyCopyable type is sufficient to construct a valid object.
-        // However the GCC 7,8,9 optimizer needs this to avoid incorrect optimization in -O2+
+        // issue #400: memcpy of any type of object is always insufficient to construct a valid object, as it does not
+        // perform any of the actions described in [intro.object]/1 that the standard specifies create an object, even in
+        // the case of TriviallyCopyable types. P0593 would change this behavior, but has not been accepted into any
+        // standard as of writing this comment. The proposed std::start_lifetime_as<T> may be necessary to avoid UB even
+        // with this change to the standard. At the present time, the C++ standard does not have mechanisms to avoid this 
+        // UB.
+        //
+        // Additionally, a call to std::launder is necessary to avoid an additional case UB for pointer aliasing even if
+        // an object were to be properly constructed as per the standard. As std::launder requires compiler support with a
+        // builtin such as __builtin_launder, detail::launder_unconstructed attempts to backport a combination of
+        // std::launder and the proposed std::start_lifetime_as<T> as best as possible using inline asm to interrupt the
+        // compiler's analysis. Avoiding this UB is only possible in C++17 or by using compiler builtins if available.
+        //
+        // These undefined behaviors are known to cause incorrect optimizations with GCC 7, 8, and 9 at -O2+.
+        //
+        // Due to a lack of compiler support, the UB is only worked around when it is known to cause problems as the inline
+        // asm can prevent more optimizations than intended.
         return detail::launder_unconstructed<T1>(ans);
       #else
         return ans;
