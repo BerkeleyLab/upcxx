@@ -18,9 +18,17 @@ top_srcdir   = $(upcxx_src)
 top_builddir = $(upcxx_bld)
 
 #defaults:
-ASSERT ?= 1
-OPTLEV ?= 0
-DBGSYM ?= 1
+ifneq ($(strip $(UPCXX_DBGOPT)),opt)
+  # normal case
+  ASSERT ?= 1
+  OPTLEV ?= 0
+  DBGSYM ?= 1
+else
+  # --enable-single=opt case
+  ASSERT ?= 0
+  OPTLEV ?= 3
+  DBGSYM ?= 0
+endif
 UPCXX_BACKEND ?= gasnet_seq
 GASNET_CONDUIT ?= $(UPCXX_DEFAULT_NETWORK)
 
