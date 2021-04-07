@@ -117,16 +117,15 @@ namespace upcxx {
       // Modify the refcount, but do not take action.
       future_header* incref(int n) {
         int ref_n = this->ref_n_;
-        int trash;
-        (ref_n >= 0 ? this->ref_n_ : trash) = ref_n + n;
+        if (ref_n >= 0) this->ref_n_ = ref_n + n;
         return this;
       }
       int decref(int n) { // returns new refcount
         int ref_n = this->ref_n_;
-        bool write_back = ref_n >= 0;
-        ref_n -= (ref_n >= 0 ? n : 0);
-        int trash;
-        (write_back ? this->ref_n_ : trash) = ref_n;
+        if (ref_n >= 0) {
+          ref_n -= n;
+          this->ref_n_ = ref_n;
+        }
         return ref_n;
       }
       
