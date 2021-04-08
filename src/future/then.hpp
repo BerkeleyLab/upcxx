@@ -196,39 +196,6 @@ namespace upcxx {
     };
   } // namespace detail
 
-  #if 0
-    // a>>b === a.then(b)
-    template<typename ArgKind, typename Fn1, typename ...ArgT>
-    inline auto operator>>(future1<ArgKind,ArgT...> arg, Fn1 &&fn)
-      -> decltype(
-        detail::future_then<
-          future1<ArgKind,ArgT...>,
-          typename std::decay<Fn1>::type
-        >()(
-          std::move(arg),
-          std::forward<Fn1>(fn)
-        )
-      ) {
-      return detail::future_then<
-          future1<ArgKind,ArgT...>,
-          typename std::decay<Fn1>::type
-        >()(
-          std::move(arg),
-          std::forward<Fn1>(fn)
-        );
-    }
-    
-    template<typename Fn1, typename ...ArgT>
-    inline future<ArgT...>& operator>>=(future<ArgT...> &arg, Fn1 &&fn) {
-      arg = detail::future_then<
-          future<ArgT...>,
-          typename std::decay<Fn1>::type
-        >()(
-          std::move(arg),
-          std::forward<Fn1>(fn)
-        );
-      return arg;
-    }
-  #endif
+  // obsolete code for >> and >>= removed post 2021.3.0 release
 }
 #endif

@@ -445,51 +445,6 @@ namespace gasnet {
 namespace upcxx {
 namespace backend {
   //////////////////////////////////////////////////////////////////////
-  // during_level
-  
-  template<typename Fn>
-  void during_level(
-      std::integral_constant<progress_level, progress_level::internal>,
-      Fn &&fn,
-      persona &active_per
-    ) {
-    
-    // TODO: revisit the purpose of this seemingly wrong assertion
-    //UPCXX_ASSERT(!UPCXX_BACKEND_GASNET_SEQ || backend::master.active_with_caller());
-    
-    fn();
-  }
-  
-  template<typename Fn>
-  void during_level(
-      std::integral_constant<progress_level, progress_level::user>,
-      Fn &&fn,
-      persona &active_per
-    ) {
-    detail::persona_tls &tls = detail::the_persona_tls;
-    
-    // TODO: revisit the purpose of this seemingly wrong assertion
-    //UPCXX_ASSERT(!UPCXX_BACKEND_GASNET_SEQ || backend::master.active_with_caller(tls));
-    //persona &active_per = UPCXX_BACKEND_GASNET_SEQ
-    //  ? backend::master
-    //  : *tls.get_top_persona();
-    
-    tls.during(
-      active_per, progress_level::user, std::forward<Fn>(fn),
-      /*known_active=*/std::true_type{}
-    );
-  }
-
-  template<progress_level level, typename Fn>
-  void during_level(Fn &&fn, persona &active_per) {
-    during_level(
-      std::integral_constant<progress_level,level>{},
-      std::forward<Fn>(fn),
-      active_per
-    );
-  }
-  
-  //////////////////////////////////////////////////////////////////////
   // send_am_{master|persona}
 
   // NPAM protocol control:

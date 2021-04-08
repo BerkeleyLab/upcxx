@@ -65,13 +65,6 @@ namespace backend {
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_local_minus_remote;
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_vbase;
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_size;
-
-  //////////////////////////////////////////////////////////////////////////////
-  
-  template<typename Fn>
-  void during_user(Fn &&fn, persona &active_per) {
-    during_level<progress_level::user>(std::forward<Fn>(fn), active_per);
-  }
   
   //////////////////////////////////////////////////////////////////////////////
   // fulfill_during_<level=internal>
