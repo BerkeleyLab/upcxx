@@ -168,6 +168,27 @@ namespace backend {
   }
   
   //////////////////////////////////////////////////////////////////////////////
+  // fulfill_now
+
+  template<typename ...T>
+  void fulfill_now(
+      detail::future_header_promise<T...> *pro, // takes ref
+      std::intptr_t anon
+    ) {
+    detail::promise_fulfill_anonymous(pro, anon);
+    pro->dropref();
+  }
+
+  template<typename ...T>
+  void fulfill_now(
+      detail::future_header_promise<T...> *pro, // takes ref
+      std::tuple<T...> &&vals
+    ) {
+    pro->base_header_result.construct_results(std::move(vals));
+    fulfill_now(pro, /*anon*/1);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   
   inline bool rank_is_local(intrank_t r) {
     UPCXX_ASSERT(r >= 0 && r < backend::rank_n, "Invalid argument to rank_is_local: " << r);

@@ -51,18 +51,22 @@ namespace upcxx {
 
   namespace detail {
   // Future completion to be fulfilled during given progress level
-  template<typename Event, progress_level level = progress_level::user>
+  // If eager is true, then fulfillment can be done eagerly and need
+  // not be deferred until the given progress level
+  template<typename Event, bool eager, progress_level level = progress_level::user>
   struct future_cx {
     using event_t = Event;
-    using deserialized_cx = future_cx<Event,level>;
+    using deserialized_cx = future_cx<Event,eager,level>;
     // stateless
   };
 
   // Promise completion
-  template<typename Event, typename ...T>
+  // If eager is true, then fulfillment can be done eagerly and need
+  // not be deferred until user progress
+  template<typename Event, bool eager, typename ...T>
   struct promise_cx {
     using event_t = Event;
-    using deserialized_cx = promise_cx<Event,T...>;
+    using deserialized_cx = promise_cx<Event,eager,T...>;
     detail::promise_shref<T...> pro_;
   };
 
@@ -346,16 +350,25 @@ namespace upcxx {
   namespace detail {
     template<typename Event>
     struct support_as_future {
-      static constexpr completions<future_cx<Event>> as_future() {
-        return {future_cx<Event>{}};
+      static constexpr completions<future_cx<Event, false>> as_future() {
+        return {future_cx<Event, false>{}};
+      }
+      static constexpr completions<future_cx<Event, true>> as_eager_future() {
+        return {future_cx<Event, true>{}};
       }
     };
 
     template<typename Event>
     struct support_as_promise {
       template<typename ...T>
-      static constexpr completions<promise_cx<Event, T...>> as_promise(promise<T...> pro) {
-        return {promise_cx<Event, T...>{
+      static constexpr completions<promise_cx<Event, false, T...>> as_promise(promise<T...> pro) {
+        return {promise_cx<Event, false, T...>{
+          static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
+        }};
+      }
+      template<typename ...T>
+      static constexpr completions<promise_cx<Event, true, T...>> as_eager_promise(promise<T...> pro) {
+        return {promise_cx<Event, true, T...>{
           static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
         }};
       }
@@ -420,9 +433,9 @@ namespace upcxx {
   // operation_cx_as_future_t: default completions for most operations
   namespace detail {
     using operation_cx_as_future_t =
-      completions<future_cx<operation_cx_event>>;
+      completions<future_cx<operation_cx_event, false>>;
     using operation_cx_as_internal_future_t =
-      completions<future_cx<operation_cx_event, progress_level::internal>>;
+      completions<future_cx<operation_cx_event, false, progress_level::internal>>;
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -598,11 +611,11 @@ namespace upcxx {
       void operator()() {}
     };
     
-    template<typename Event, progress_level level, typename ...T>
-    struct cx_state<future_cx<Event,level>, std::tuple<T...>> {
+    template<typename Event, bool eager, progress_level level, typename ...T>
+    struct cx_state<future_cx<Event,eager,level>, std::tuple<T...>> {
       future_header_promise<T...> *pro_; // holds ref, no need to drop it in destructor since we move out it in either operator() ro to_lpc_dormant
 
-      cx_state(future_cx<Event,level>):
+      cx_state(future_cx<Event,eager,level>):
         pro_(new future_header_promise<T...>) {
       }
 
@@ -619,9 +632,15 @@ namespace upcxx {
       }
       
       void operator()(T ...vals) {
-        backend::fulfill_during<level>(
-          /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
-        );
+        if (eager) {
+          backend::fulfill_now(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        } else {
+          backend::fulfill_during<level>(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        }
       }
     };
 
@@ -630,16 +649,16 @@ namespace upcxx {
     list is empty */
     
     // Case when promise and event have matching (non-empty) type lists T...
-    template<typename Event, typename ...T>
-    struct cx_state<promise_cx<Event,T...>, std::tuple<T...>> {
+    template<typename Event, bool eager, typename ...T>
+    struct cx_state<promise_cx<Event,eager,T...>, std::tuple<T...>> {
       future_header_promise<T...> *pro_; // holds ref
 
-      cx_state(promise_cx<Event,T...> &&cx):
-        pro_(static_cast<promise_cx<Event,T...>&&>(cx).pro_.steal_header()) {
+      cx_state(promise_cx<Event,eager,T...> &&cx):
+        pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {
         detail::promise_require_anonymous(pro_, 1);
       }
-      cx_state(const promise_cx<Event,T...> &cx):
-        cx_state(promise_cx<Event,T...>(cx)) {}
+      cx_state(const promise_cx<Event,eager,T...> &cx):
+        cx_state(promise_cx<Event,eager,T...>(cx)) {}
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
         future_header_promise<T...> *pro = /*move ref*/pro_;
@@ -655,22 +674,28 @@ namespace upcxx {
       }
       
       void operator()(T ...vals) {
-        backend::fulfill_during<progress_level::user>(
-          /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
-        );
+        if (eager) {
+          backend::fulfill_now(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        } else {
+          backend::fulfill_during<progress_level::user>(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        }
       }
     };
     // Case when event type list is empty
-    template<typename Event, typename ...T>
-    struct cx_state<promise_cx<Event,T...>, std::tuple<>> {
+    template<typename Event, bool eager, typename ...T>
+    struct cx_state<promise_cx<Event,eager,T...>, std::tuple<>> {
       future_header_promise<T...> *pro_; // holds ref
 
-      cx_state(promise_cx<Event,T...> &&cx):
-        pro_(static_cast<promise_cx<Event,T...>&&>(cx).pro_.steal_header()) {
+      cx_state(promise_cx<Event,eager,T...> &&cx):
+        pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {
         detail::promise_require_anonymous(pro_, 1);
       }
-      cx_state(const promise_cx<Event,T...> &cx):
-        cx_state(promise_cx<Event,T...>(cx)) {}
+      cx_state(const promise_cx<Event,eager,T...> &cx):
+        cx_state(promise_cx<Event,eager,T...>(cx)) {}
       
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
         future_header_promise<T...> *pro = /*move ref*/pro_;
@@ -684,20 +709,24 @@ namespace upcxx {
       }
       
       void operator()() {
-        backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        if (eager) {
+          backend::fulfill_now(/*move ref*/pro_, 1);
+        } else {
+          backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        }
       }
     };
     // Case when promise and event type list are both empty
-    template<typename Event>
-    struct cx_state<promise_cx<Event>, std::tuple<>> {
+    template<typename Event, bool eager>
+    struct cx_state<promise_cx<Event,eager>, std::tuple<>> {
       future_header_promise<> *pro_; // holds ref
 
-      cx_state(promise_cx<Event> &&cx):
-        pro_(static_cast<promise_cx<Event>&&>(cx).pro_.steal_header()) {
+      cx_state(promise_cx<Event,eager> &&cx):
+        pro_(static_cast<promise_cx<Event,eager>&&>(cx).pro_.steal_header()) {
         detail::promise_require_anonymous(pro_, 1);
       }
-      cx_state(const promise_cx<Event> &cx):
-        cx_state(promise_cx<Event>(cx)) {}
+      cx_state(const promise_cx<Event,eager> &cx):
+        cx_state(promise_cx<Event,eager>(cx)) {}
 
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
         future_header_promise<> *pro = /*move ref*/pro_;
@@ -711,7 +740,11 @@ namespace upcxx {
       }
       
       void operator()() {
-        backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        if (eager) {
+          backend::fulfill_now(/*move ref*/pro_, 1);
+        } else {
+          backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        }
       }
     };
     
@@ -1189,11 +1222,12 @@ namespace upcxx {
     // specialization: we found a future_cx and are appending our return value
     // onto a tuple of return values
     template<template<typename> class EventPredicate,
-             typename EventValues, typename CxH_event, progress_level level, typename ...CxT,
+             typename EventValues, typename CxH_event, bool eager,
+             progress_level level, typename ...CxT,
              typename ...TailReturn_tuplees>
     struct completions_returner_head<
         EventPredicate, EventValues,
-        completions<future_cx<CxH_event,level>, CxT...>,
+        completions<future_cx<CxH_event,eager,level>, CxT...>,
         std::tuple<TailReturn_tuplees...>
       > {
       
@@ -1222,11 +1256,12 @@ namespace upcxx {
     // specialization: we found a future_cx and one other item is returning a
     // value, so we introduce a two-element tuple.
     template<template<typename> class EventPredicate,
-             typename EventValues, typename CxH_event, progress_level level, typename ...CxT,
+             typename EventValues, typename CxH_event, bool eager,
+             progress_level level, typename ...CxT,
              typename TailReturn_not_tuple>
     struct completions_returner_head<
         EventPredicate, EventValues,
-        completions<future_cx<CxH_event,level>, CxT...>,
+        completions<future_cx<CxH_event,eager,level>, CxT...>,
         TailReturn_not_tuple
       > {
       
@@ -1255,10 +1290,11 @@ namespace upcxx {
     // specialization: we found a future_cx and are the first to want to return
     // a value.
     template<template<typename> class EventPredicate,
-             typename EventValues, typename CxH_event, progress_level level, typename ...CxT>
+             typename EventValues, typename CxH_event, bool eager,
+             progress_level level, typename ...CxT>
     struct completions_returner_head<
         EventPredicate, EventValues,
-        completions<future_cx<CxH_event,level>, CxT...>,
+        completions<future_cx<CxH_event,eager,level>, CxT...>,
         void
       > {
       
