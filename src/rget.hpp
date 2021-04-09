@@ -214,12 +214,6 @@ namespace upcxx {
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     };
-
-    auto returner = detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rget_byval_event_values<T>,
-        CxsDecayed
-      >{cb->state_here};
     
     rma_get_done done = detail::rma_get_nb(
       &cb->buffer, gp_s.UPCXX_INTERNAL_ONLY(rank_),
@@ -228,6 +222,14 @@ namespace upcxx {
     
     gasnet::handle_cb_queue &cb_q = gasnet::get_handle_cb_queue();
     
+    // construct returner before post-injection actions potentially
+    // destroy cb->state_here
+    auto returner = detail::completions_returner<
+        /*EventPredicate=*/detail::event_is_here,
+        /*EventValues=*/detail::rget_byval_event_values<T>,
+        CxsDecayed
+      >{cb->state_here, done == rma_get_done::operation};
+
     switch(done) {
     case rma_get_done::none:
       cb_q.enqueue(cb);
@@ -299,17 +301,17 @@ namespace upcxx {
     
     using detail::rma_get_done;
     
-    auto returner = detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rget_byref_event_values,
-        CxsDecayed
-      >{cb.state_here};
-    
     rma_get_done done = detail::rma_get_nb(
       buf_d, gp_s.UPCXX_INTERNAL_ONLY(rank_),
       gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), n*sizeof(T), &cb
     );
     
+    auto returner = detail::completions_returner<
+        /*EventPredicate=*/detail::event_is_here,
+        /*EventValues=*/detail::rget_byref_event_values,
+        CxsDecayed
+      >{cb.state_here, done == rma_get_done::operation};
+
     switch(done) {
     case rma_get_done::none:
       gasnet::register_cb(new decltype(cb)(std::move(cb)));

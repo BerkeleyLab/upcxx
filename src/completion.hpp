@@ -614,25 +614,44 @@ namespace upcxx {
     template<typename Event, bool eager, progress_level level, typename ...T>
     struct cx_state<future_cx<Event,eager,level>, std::tuple<T...>> {
       future_header_promise<T...> *pro_; // holds ref, no need to drop it in destructor since we move out it in either operator() ro to_lpc_dormant
+      #if UPCXX_ASSERT_ENABLED
+        bool get_future_invoked = false;
+      #endif
 
       cx_state(future_cx<Event,eager,level>):
-        pro_(new future_header_promise<T...>) {
+        pro_(nullptr) {
       }
 
       // completions_returner_head handles cx_state<future_cx> specially and requires
       // this additional method.
-      future<T...> get_future() const {
+      future<T...> get_future(bool sync_completion) /*const*/ {
+        #if UPCXX_ASSERT_ENABLED
+          get_future_invoked = true;
+        #endif
+
+        if (eager && sizeof...(T) == 0 && sync_completion) {
+          // indirection allows this to type check when T... is non-empty
+          return *static_cast<future<T...>*>(backend::ready_empty_future_addr);
+        }
+
+        pro_ = new future_header_promise<T...>;
         return detail::promise_get_future(pro_);
       }
       
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
+        UPCXX_ASSERT(pro_, "internal error: pro_ null in to_lpc_dormant");
         return detail::make_lpc_dormant_quiesced_promise<T...>(
           upcxx::current_persona(), progress_level::user, /*move ref*/pro_, tail
         );
       }
       
       void operator()(T ...vals) {
-        if (eager) {
+        UPCXX_ASSERT(get_future_invoked,
+                     "internal error: operator() called before get_future");
+        if (eager && sizeof...(T) == 0 && !pro_) {
+          // nothing to do if a promise was not allocated by a call to
+          // get_future()
+        } else if (eager) {
           backend::fulfill_now(
             /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
           );
@@ -1204,7 +1223,8 @@ namespace upcxx {
 
       template<int ordinal>
       completions_returner(
-          completions_state<EventPredicate, EventValues, completions<>, ordinal>&
+          completions_state<EventPredicate, EventValues, completions<>, ordinal>&,
+          bool sync_completion = false
         ) {
       }
       
@@ -1243,10 +1263,10 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail &&tail):
+      completions_returner_head(CxState &s, Tail &&tail, bool sync_completion):
         ans_{
           std::tuple_cat(
-            std::make_tuple(s.head().state_.get_future()),
+            std::make_tuple(s.head().state_.get_future(sync_completion)),
             tail()
           )
         } {
@@ -1277,10 +1297,10 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail &&tail):
+      completions_returner_head(CxState &s, Tail &&tail, bool sync_completion):
         ans_(
           std::make_tuple(
-            s.head().state_.get_future(),
+            s.head().state_.get_future(sync_completion),
             tail()
           )
         ) {
@@ -1307,9 +1327,9 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail&&):
+      completions_returner_head(CxState &s, Tail&&, bool sync_completion):
         ans_(
-          s.head().state_.get_future()
+          s.head().state_.get_future(sync_completion)
         ) {
       }
     };
@@ -1332,7 +1352,8 @@ namespace upcxx {
           CxState&,
           completions_returner<
             EventPredicate, EventValues, completions<CxT...>
-          > &&tail
+          > &&tail,
+          bool sync_completion
         ):
         completions_returner<
             EventPredicate, EventValues, completions<CxT...>
@@ -1359,7 +1380,8 @@ namespace upcxx {
       completions_returner(
           completions_state<
               EventPredicate, EventValues, completions<CxH,CxT...>, ordinal
-            > &s
+            > &s,
+          bool sync_completion = false
         ):
         completions_returner_head<
           EventPredicate, EventValues,
@@ -1370,7 +1392,8 @@ namespace upcxx {
         >{s,
           completions_returner<
               EventPredicate, EventValues, completions<CxT...>
-            >{s.tail()}
+            >{s.tail(), sync_completion},
+          sync_completion
         } {
       }
     };

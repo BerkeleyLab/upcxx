@@ -67,6 +67,12 @@ namespace backend {
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_size;
   
   //////////////////////////////////////////////////////////////////////////////
+  // Canonical ready empty future, allowing us to avoid creating a
+  // promise cell in some cases.
+  extern future<> ready_empty_future;
+  extern void *ready_empty_future_addr;
+
+  //////////////////////////////////////////////////////////////////////////////
   // fulfill_during_<level=internal>
   
   template<typename ...T>

@@ -468,18 +468,21 @@ namespace upcxx {
     
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
-    detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      > returner(o->cx_state_here);
-    
     detail::rma_put_sync sync_done = o->inject(
       gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
       &value_s, sizeof(T),
       traits_t::cx_state_remote_t
         ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
+
+    // construct returner before rput_post_inject potentially destroys
+    // cx_state_here
+    detail::completions_returner<
+        /*EventPredicate=*/detail::event_is_here,
+        /*EventValues=*/detail::rput_event_values,
+        CxsDecayed
+      > returner(o->cx_state_here, sync_done >= detail::rma_put_sync::op_now);
+
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
   }
@@ -506,18 +509,21 @@ namespace upcxx {
     
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
-    detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      > returner(o->cx_state_here);
-    
     detail::rma_put_sync sync_done = o->inject(
       gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
       buf_s, n*sizeof(T),
       traits_t::cx_state_remote_t
         ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
+
+    // construct returner before rput_post_inject potentially destroys
+    // cx_state_here
+    detail::completions_returner<
+        /*EventPredicate=*/detail::event_is_here,
+        /*EventValues=*/detail::rput_event_values,
+        CxsDecayed
+      > returner(o->cx_state_here, sync_done >= detail::rma_put_sync::op_now);
+
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
   }

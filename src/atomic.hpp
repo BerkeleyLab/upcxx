@@ -231,9 +231,6 @@ namespace upcxx {
         // Create the callback object
         auto *cb = new fetch_op_cb<cxs_here_t>{cxs_here_t{std::forward<Cxs>(cxs)}};
         
-        auto returner = detail::completions_returner<detail::event_is_here,
-            fetch_aop_event_values, CxsDecayed>{cb->state_here};
-        
         // execute the backend gasnet function
         gex_Event_t h = this->inject( this->ad_gex_handle,
           &cb->result, gptr.UPCXX_INTERNAL_ONLY(rank_),
@@ -242,6 +239,12 @@ namespace upcxx {
           detail::memory_order_flags(order) | GEX_FLAG_RANK_IS_JOBRANK
         );
         
+        // construct returner before post-injection actions potentially
+        // destroy cb->state_here
+        auto returner = detail::completions_returner<detail::event_is_here,
+            fetch_aop_event_values, CxsDecayed>{cb->state_here,
+                                                h == GEX_EVENT_INVALID};
+
         if (h != GEX_EVENT_INVALID) { // asynchronous AMO in-flight
           cb->handle = reinterpret_cast<uintptr_t>(h);
           backend::gasnet::register_cb(cb);
@@ -292,9 +295,6 @@ namespace upcxx {
         // Create the callback object on stack..
         nofetch_op_cb<cxs_here_t> cb(cxs_here_t(std::forward<Cxs>(cxs)));
         
-        auto returner = detail::completions_returner<detail::event_is_here,
-            nofetch_aop_event_values, CxsDecayed>{cb.state_here};
-        
         // execute the backend gasnet function
         gex_Event_t h = this->inject( this->ad_gex_handle,
           nullptr, gptr.UPCXX_INTERNAL_ONLY(rank_),
@@ -302,6 +302,10 @@ namespace upcxx {
           aop, static_cast<proxy_type>(val1), static_cast<proxy_type>(val2), 
           detail::memory_order_flags(order) | GEX_FLAG_RANK_IS_JOBRANK
         );
+
+        auto returner = detail::completions_returner<detail::event_is_here,
+            nofetch_aop_event_values, CxsDecayed>{cb.state_here,
+                                                  h == GEX_EVENT_INVALID};
 
         if (h != GEX_EVENT_INVALID) { // asynchronous AMO in-flight
           cb.handle = reinterpret_cast<uintptr_t>(h);
