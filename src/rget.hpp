@@ -224,6 +224,10 @@ namespace upcxx {
     
     // construct returner before post-injection actions potentially
     // destroy cb->state_here
+    // we construct the returner after injection for symmetry with the
+    // vector case; in the scalar case, the empty-future optimization
+    // does not actually apply, but there isn't a downside to delaying
+    // construction of the returner until after injection
     auto returner = detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rget_byval_event_values<T>,

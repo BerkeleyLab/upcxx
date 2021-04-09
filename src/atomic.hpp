@@ -241,6 +241,11 @@ namespace upcxx {
         
         // construct returner before post-injection actions potentially
         // destroy cb->state_here
+        // we construct the returner after injection for symmetry with
+        // the non-fetching case; in the fetching case, the
+        // empty-future optimization does not actually apply, but
+        // there isn't a downside to delaying construction of the
+        // returner until after injection
         auto returner = detail::completions_returner<detail::event_is_here,
             fetch_aop_event_values, CxsDecayed>{cb->state_here,
                                                 h == GEX_EVENT_INVALID ?
