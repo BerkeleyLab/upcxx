@@ -11,6 +11,14 @@ int run_gs = 0;
 int run_ss = 0;
 int run_ps = 0;
 int run_pg = 0;
+int use_downcast_self = 0;
+int use_downcast_peer = 0;
+
+const char *Private() {
+  if (use_downcast_self) return "Downcast-Self";
+  else if (use_downcast_peer) return "Downcast-Peer";
+  else return "Private";
+}
 
 template<typename src_ptr_type, typename dst_ptr_type, int flood>
 static double helper(int warmup, int window_size, int trials, int len,
@@ -195,18 +203,18 @@ static void print_latency_results(double local_gpu_to_remote_gpu,
             " s of latency" << std::endl;
     }
     if (run_ps) {
-        std::cout << "  Local Private -> Remote Shared: " <<
+        std::cout << "  Local " << Private() << " -> Remote Shared: " <<
             (local_private_to_remote_shared / double(nmsgs)) <<
             " s of latency" << std::endl;
-        std::cout << "  Remote Shared -> Local Private: " <<
+        std::cout << "  Remote Shared -> Local " << Private() << ": " <<
             (remote_shared_to_local_private / double(nmsgs)) <<
             " s of latency" << std::endl;
     }
     if (run_pg) {
-        std::cout << "  Local Private -> Remote GPU: " <<
+        std::cout << "  Local " << Private() << " -> Remote GPU: " <<
             (local_private_to_remote_gpu / double(nmsgs)) <<
             " s of latency" << std::endl;
-        std::cout << "  Remote GPU -> Local Private: " <<
+        std::cout << "  Remote GPU -> Local " << Private() << ": " <<
             (remote_gpu_to_local_private / double(nmsgs)) <<
             " s of latency" << std::endl;
     }
@@ -285,21 +293,21 @@ static void print_bandwidth_results(double local_gpu_to_remote_gpu,
             std::endl;
     }
     if (run_ps) {
-        std::cout << "  Local Private -> Remote Shared: " <<
+        std::cout << "  Local " << Private() << " -> Remote Shared: " <<
             (double(nmsgs) / local_private_to_remote_shared) << " msgs/s, " <<
             (double(gbytes) / local_private_to_remote_shared) << " GB/s" <<
             std::endl;
-        std::cout << "  Remote Shared -> Local Private: " <<
+        std::cout << "  Remote Shared -> Local " << Private() << ": " <<
             (double(nmsgs) / remote_shared_to_local_private) << " msgs/s, " <<
             (double(gbytes) / remote_shared_to_local_private) << " GB/s" <<
             std::endl;
     }
     if (run_pg) {
-        std::cout << "  Local Private -> Remote GPU: " <<
+        std::cout << "  Local " << Private() << " -> Remote GPU: " <<
             (double(nmsgs) / local_private_to_remote_gpu) << " msgs/s, " <<
             (double(gbytes) / local_private_to_remote_gpu) << " GB/s" <<
             std::endl;
-        std::cout << "  Remote GPU -> Local Private: " <<
+        std::cout << "  Remote GPU -> Local " << Private() << ": " <<
             (double(nmsgs) / remote_gpu_to_local_private) << " msgs/s, " <<
             (double(gbytes) / remote_gpu_to_local_private) << " GB/s" <<
             std::endl;
@@ -350,15 +358,23 @@ int main(int argc, char **argv) {
                run_ps = 1;
            } else if (strcmp(arg, "-pg") == 0) {
                run_pg = 1;
+           } else if (strcmp(arg, "-ds") == 0) {
+               use_downcast_self = 1;
+           } else if (strcmp(arg, "-dp") == 0) {
+               use_downcast_peer = 1;
            } else {
                if (!rank_me()) {
                    fprintf(stderr, "usage: %s [-t trials] [-w window] [-gg] [-sg] [-gs] [-ss] [-ps] [-pg]\n", argv[0]);
+                   fprintf(stderr, "  Test selection:\n");
                    fprintf(stderr, "       -gg: Run tests between local and remote GPU segment\n");
                    fprintf(stderr, "       -sg: Run tests between the local shared segment and remote GPU segment\n");
                    fprintf(stderr, "       -gs: Run tests between local GPU and the remote shared segment\n");
                    fprintf(stderr, "       -ss: Run tests between local and remote shared segments\n");
                    fprintf(stderr, "       -ps: Run tests between the local private segment and remote shared segment\n");
                    fprintf(stderr, "       -pg: Run tests between the local private segment and remote GPU segment\n");
+                   fprintf(stderr, "  Buffer options:\n");
+                   fprintf(stderr, "       -ds: Replace 'private' buffers with downcast shared memory owned by self\n");
+                   fprintf(stderr, "       -dp: Replace 'private' buffers with downcast shared memory owned by peer\n");
                }
                upcxx::finalize();
                return 1;
@@ -387,8 +403,28 @@ int main(int argc, char **argv) {
        global_ptr<uint8_t, memory_kind::cuda_device> remote_gpu_array =
            gpu_dobj.fetch(partner).wait();
 
-       uint8_t *private_array = new uint8_t[max_msg_size];
-       assert(private_array);
+       assert(!(use_downcast_self && use_downcast_peer));
+       uint8_t *private_array = nullptr;
+       uint8_t *private_array_free = nullptr;
+       global_ptr<uint8_t> gp_downcast_area = nullptr;
+       if (use_downcast_self) {
+         gp_downcast_area = new_array<uint8_t>(max_msg_size);
+         private_array = gp_downcast_area.local();
+       } else if (use_downcast_peer) {
+         gp_downcast_area = new_array<uint8_t>(max_msg_size);
+         dist_object<global_ptr<uint8_t>> dd(gp_downcast_area, local_team());
+         if (local_team().rank_n() == 1) {
+           std::cerr << "WARNING: singleton local team, -dp is equivalent to -ds\n" << std::flush;
+         }
+         global_ptr<uint8_t> peer_downcast_area = dd.fetch((local_team().rank_me() + 1) % local_team().rank_n()).wait();
+         assert(peer_downcast_area.is_local());
+         private_array = peer_downcast_area.local();
+         upcxx::barrier();
+       } else {
+         private_array = new uint8_t[max_msg_size];
+         assert(private_array);
+         private_array_free = private_array;
+       }
 
        global_ptr<uint8_t, memory_kind::host> shared_array =
            upcxx::new_array<uint8_t>(max_msg_size);
@@ -539,7 +575,8 @@ int main(int argc, char **argv) {
 
        gpu_alloc.deallocate(local_gpu_array);
        upcxx::delete_array(shared_array);
-       delete[] private_array;
+       upcxx::delete_array(gp_downcast_area);
+       delete[] private_array_free;
        gpu_device.destroy();
 
        upcxx::barrier();
