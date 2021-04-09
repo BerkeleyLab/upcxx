@@ -439,6 +439,51 @@ namespace upcxx {
   }
 
   //////////////////////////////////////////////////////////////////////
+  // cx_event_done: used to inform completions_returner what event has
+  // already completed, allowing eager futures to be optimized
+
+  namespace detail {
+    namespace help {
+      enum cx_event_flag: int {
+        none_event_flag = 0,
+        source_event_flag = 1 << 0,
+        remote_event_flag = 1 << 1,
+        operation_event_flag = 1 << 2
+      };
+    }
+
+    enum class cx_event_done: int {
+      none = 0,
+      source = help::source_event_flag,
+      remote = help::source_event_flag | // remote implies source
+               help::remote_event_flag,
+      operation = help::source_event_flag | // operation implies source
+                  help::remote_event_flag | // operation implies remote
+                  help::operation_event_flag
+    };
+
+    template<help::cx_event_flag category = help::none_event_flag>
+    struct cx_event_is_done_base {
+      bool operator()(cx_event_done value) {
+        return static_cast<bool>(static_cast<int>(value) &
+                                 static_cast<int>(category));
+      }
+    };
+
+    template<typename Event>
+    struct cx_event_is_done: cx_event_is_done_base<> {};
+    template<>
+    struct cx_event_is_done<source_cx_event>:
+      cx_event_is_done_base<help::source_event_flag> {};
+    template<>
+    struct cx_event_is_done<remote_cx_event>:
+      cx_event_is_done_base<help::remote_event_flag> {};
+    template<>
+    struct cx_event_is_done<operation_cx_event>:
+      cx_event_is_done_base<help::operation_event_flag> {};
+  }
+
+  //////////////////////////////////////////////////////////////////////
   // cx_non_future_return, cx_result_combine, and cx_remote_dispatch:
   // Collect results of as_rpc invocations. The purpose is to ensure
   // that returned futures are propagated all the way out to the
@@ -624,12 +669,12 @@ namespace upcxx {
 
       // completions_returner_head handles cx_state<future_cx> specially and requires
       // this additional method.
-      future<T...> get_future(bool sync_completion) /*const*/ {
+      future<T...> get_future(cx_event_done value) /*const*/ {
         #if UPCXX_ASSERT_ENABLED
           get_future_invoked = true;
         #endif
 
-        if (eager && sizeof...(T) == 0 && sync_completion) {
+        if (eager && sizeof...(T) == 0 && cx_event_is_done<Event>()(value)) {
           // indirection allows this to type check when T... is non-empty
           return *static_cast<future<T...>*>(backend::ready_empty_future_addr);
         }
@@ -1224,7 +1269,7 @@ namespace upcxx {
       template<int ordinal>
       completions_returner(
           completions_state<EventPredicate, EventValues, completions<>, ordinal>&,
-          bool sync_completion = false
+          cx_event_done completed = cx_event_done::none
         ) {
       }
       
@@ -1263,10 +1308,10 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail &&tail, bool sync_completion):
+      completions_returner_head(CxState &s, Tail &&tail, cx_event_done completed):
         ans_{
           std::tuple_cat(
-            std::make_tuple(s.head().state_.get_future(sync_completion)),
+            std::make_tuple(s.head().state_.get_future(completed)),
             tail()
           )
         } {
@@ -1297,10 +1342,10 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail &&tail, bool sync_completion):
+      completions_returner_head(CxState &s, Tail &&tail, cx_event_done completed):
         ans_(
           std::make_tuple(
-            s.head().state_.get_future(sync_completion),
+            s.head().state_.get_future(completed),
             tail()
           )
         ) {
@@ -1327,9 +1372,9 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail&&, bool sync_completion):
+      completions_returner_head(CxState &s, Tail&&, cx_event_done completed):
         ans_(
-          s.head().state_.get_future(sync_completion)
+          s.head().state_.get_future(completed)
         ) {
       }
     };
@@ -1353,7 +1398,7 @@ namespace upcxx {
           completions_returner<
             EventPredicate, EventValues, completions<CxT...>
           > &&tail,
-          bool sync_completion
+          cx_event_done completed
         ):
         completions_returner<
             EventPredicate, EventValues, completions<CxT...>
@@ -1381,7 +1426,7 @@ namespace upcxx {
           completions_state<
               EventPredicate, EventValues, completions<CxH,CxT...>, ordinal
             > &s,
-          bool sync_completion = false
+          cx_event_done completed = cx_event_done::none
         ):
         completions_returner_head<
           EventPredicate, EventValues,
@@ -1392,8 +1437,8 @@ namespace upcxx {
         >{s,
           completions_returner<
               EventPredicate, EventValues, completions<CxT...>
-            >{s.tail(), sync_completion},
-          sync_completion
+            >{s.tail(), completed},
+          completed
         } {
       }
     };

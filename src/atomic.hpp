@@ -243,7 +243,9 @@ namespace upcxx {
         // destroy cb->state_here
         auto returner = detail::completions_returner<detail::event_is_here,
             fetch_aop_event_values, CxsDecayed>{cb->state_here,
-                                                h == GEX_EVENT_INVALID};
+                                                h == GEX_EVENT_INVALID ?
+                                                detail::cx_event_done::operation :
+                                                detail::cx_event_done::none};
 
         if (h != GEX_EVENT_INVALID) { // asynchronous AMO in-flight
           cb->handle = reinterpret_cast<uintptr_t>(h);
@@ -305,7 +307,9 @@ namespace upcxx {
 
         auto returner = detail::completions_returner<detail::event_is_here,
             nofetch_aop_event_values, CxsDecayed>{cb.state_here,
-                                                  h == GEX_EVENT_INVALID};
+                                                  h == GEX_EVENT_INVALID ?
+                                                  detail::cx_event_done::operation :
+                                                  detail::cx_event_done::none};
 
         if (h != GEX_EVENT_INVALID) { // asynchronous AMO in-flight
           cb.handle = reinterpret_cast<uintptr_t>(h);

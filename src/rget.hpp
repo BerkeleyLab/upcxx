@@ -228,7 +228,10 @@ namespace upcxx {
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rget_byval_event_values<T>,
         CxsDecayed
-      >{cb->state_here, done == rma_get_done::operation};
+      >{cb->state_here,
+        done == rma_get_done::operation ?
+        detail::cx_event_done::operation :
+        detail::cx_event_done::none};
 
     switch(done) {
     case rma_get_done::none:
@@ -310,7 +313,10 @@ namespace upcxx {
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rget_byref_event_values,
         CxsDecayed
-      >{cb.state_here, done == rma_get_done::operation};
+      >{cb.state_here,
+        done == rma_get_done::operation ?
+        detail::cx_event_done::operation :
+        detail::cx_event_done::none};
 
     switch(done) {
     case rma_get_done::none:

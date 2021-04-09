@@ -481,7 +481,10 @@ namespace upcxx {
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rput_event_values,
         CxsDecayed
-      > returner(o->cx_state_here, sync_done >= detail::rma_put_sync::op_now);
+      > returner(o->cx_state_here,
+                 sync_done >= detail::rma_put_sync::op_now ?
+                 detail::cx_event_done::operation :
+                 detail::cx_event_done::none);
 
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
@@ -516,13 +519,20 @@ namespace upcxx {
         ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
 
+    detail::cx_event_done completed = detail::cx_event_done::none;
+    if (sync_done >= detail::rma_put_sync::op_now) {
+      completed = detail::cx_event_done::operation;
+    } else if (sync_done >= detail::rma_put_sync::src_now) {
+      completed = detail::cx_event_done::source;
+    }
+
     // construct returner before rput_post_inject potentially destroys
     // cx_state_here
     detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rput_event_values,
         CxsDecayed
-      > returner(o->cx_state_here, sync_done >= detail::rma_put_sync::op_now);
+      > returner(o->cx_state_here, completed);
 
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
