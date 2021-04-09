@@ -10,6 +10,8 @@
 
 #include <tuple>
 
+#define UPCXX_EAGER_DEFAULT false
+
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////////////
   /* Event names for common completion events as used by rput/rget etc. This
@@ -350,7 +352,10 @@ namespace upcxx {
   namespace detail {
     template<typename Event>
     struct support_as_future {
-      static constexpr completions<future_cx<Event, false>> as_future() {
+      static constexpr completions<future_cx<Event, UPCXX_EAGER_DEFAULT>> as_future() {
+        return {future_cx<Event, UPCXX_EAGER_DEFAULT>{}};
+      }
+      static constexpr completions<future_cx<Event, false>> as_defer_future() {
         return {future_cx<Event, false>{}};
       }
       static constexpr completions<future_cx<Event, true>> as_eager_future() {
@@ -361,13 +366,22 @@ namespace upcxx {
     template<typename Event>
     struct support_as_promise {
       template<typename ...T>
-      static constexpr completions<promise_cx<Event, false, T...>> as_promise(promise<T...> pro) {
+      static constexpr completions<promise_cx<Event, UPCXX_EAGER_DEFAULT, T...>>
+      as_promise(promise<T...> pro) {
+        return {promise_cx<Event, UPCXX_EAGER_DEFAULT, T...>{
+          static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
+        }};
+      }
+      template<typename ...T>
+      static constexpr completions<promise_cx<Event, false, T...>>
+      as_defer_promise(promise<T...> pro) {
         return {promise_cx<Event, false, T...>{
           static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
         }};
       }
       template<typename ...T>
-      static constexpr completions<promise_cx<Event, true, T...>> as_eager_promise(promise<T...> pro) {
+      static constexpr completions<promise_cx<Event, true, T...>>
+      as_eager_promise(promise<T...> pro) {
         return {promise_cx<Event, true, T...>{
           static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
         }};
