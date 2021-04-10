@@ -998,8 +998,6 @@ GASNET_CONDUIT=$(tr '[A-Z]' '[a-z]' <<<$GASNET_CONDUIT)
 if [[ -z $GASNET_CONDUIT ]]; then
   if [[ "$UPCXX_CROSS" =~ -aries- ]]; then
     GASNET_CONDUIT=aries
-  else
-    GASNET_CONDUIT=smp
   fi
 elif [[ " $UNOFFICIAL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
   warnings+="\nWARNING: $GASNET_CONDUIT is not an officially supported network.\n"
@@ -1009,9 +1007,14 @@ elif [[ " $ALL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
 else
   echo_and_die "ERROR: --with-default-network='$GASNET_CONDUIT' is not a valid network.\nValid networks include:$OFFICIAL_CONDUITS"
 fi
-# Complain if last of enabled/disable flags for the default network is disable
-if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
-  echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '--disable-$GASNET_CONDUIT'."
+if [[ -n $GASNET_CONDUIT ]]; then
+  # Complain if last of enabled/disable flags for the default network is disable
+  if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) \
+         =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
+    echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '${BASH_REMATCH[1]}'."
+  fi
+  # Ensure GASNet configure fails if default network is not available
+  GASNET_CONFIGURE_ARGS+=" --enable-$GASNET_CONDUIT"
 fi
 
 #
@@ -1051,7 +1054,7 @@ export UPCXX_MPSC_QUEUE=UPCXX_MPSC_QUEUE_$(tr '[a-z]' '[A-Z]' <<<$UPCXX_MPSC_QUE
 export UPCXX_DBGOPT=$UPCXX_DBGOPT
 export GASNET_UNPACKED=$GASNET_UNPACKED
 export GASNET_CONFIGURE_ARGS=$GASNET_CONFIGURE_ARGS
-export UPCXX_DEFAULT_NETWORK=$GASNET_CONDUIT
+export UPCXX_CONFIGURE_NETWORK=$GASNET_CONDUIT
 export UPCXX_CUDA=$UPCXX_CUDA
 export UPCXX_CUDA_NVCC=$UPCXX_CUDA_NVCC
 export UPCXX_CUDA_CPPFLAGS=$UPCXX_CUDA_CPPFLAGS
