@@ -9,6 +9,8 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* Performance improvements to `upcxx::copy()`, especially for cases not involving
+  device memory and/or amenable to shared-memory bypass optimizations.
 * `bench/cuda_microbenchmark` performance test expanded and improved
 
 Infrastructure changes:
