@@ -221,6 +221,11 @@ namespace upcxx {
   copy_general(const int heap_s, const intrank_t rank_s, void *const buf_s,
                const int heap_d, const intrank_t rank_d, void *const buf_d,
                const std::size_t size, Cxs &&cxs) {
+
+    #if UPCXX_COPY_OPTIMIZEHOST
+      // only reach this function for calls involving device memory
+      UPCXX_ASSERT(heap_s > 0 || heap_d > 0);
+    #endif
     
     using copy_traits = detail::copy_traits<Cxs>;
     using deserialized_cxs_remote_bound_t = typename copy_traits::deserialized_cxs_remote_bound_t;
@@ -564,7 +569,7 @@ namespace upcxx {
         intrank_t rank_d = upcxx::rank_me();
         T * buf_d = dest;
         #if UPCXX_COPY_PROMOTEPRIVATE
-          if (src.UPCXX_INTERNAL_ONLY(rank_) != rank_d) { // not loopback
+          if (src.UPCXX_INTERNAL_ONLY(rank_) != rank_d) { // not loopback (where promotion not profitable)
             // upcxx::try_global_ptr(buf_d), with less overheads
             intrank_t p_rank;
             std::uintptr_t p_raw;
@@ -611,7 +616,7 @@ namespace upcxx {
         intrank_t rank_s = upcxx::rank_me();
         T * buf_s = const_cast<T*>(src);
         #if UPCXX_COPY_PROMOTEPRIVATE
-          if (dest.UPCXX_INTERNAL_ONLY(rank_) != rank_s) { // not loopback
+          if (dest.UPCXX_INTERNAL_ONLY(rank_) != rank_s) { // not loopback (where promotion not profitable)
             // upcxx::try_global_ptr(buf_s), with less overheads
             intrank_t p_rank;
             std::uintptr_t p_raw;
@@ -646,9 +651,8 @@ namespace upcxx {
     copy_traits::template assert_sane<T>();
 
     #if UPCXX_COPY_OPTIMIZEHOST
-      if ( ( Ks == memory_kind::host && Kd == memory_kind::host ) ||
-           (  src.dynamic_kind() == memory_kind::host && 
-             dest.dynamic_kind() == memory_kind::host ) ) {
+      if ( ( Ks == memory_kind::host || src.dynamic_kind()  == memory_kind::host ) &&
+           ( Kd == memory_kind::host || dest.dynamic_kind() == memory_kind::host ) ) {
         // generalized host-to-host copy
         // Here we use is_local/local to leverage shared-memory bypass for pointers that
         // happen to reference shared objects owned by a co-located peer.
