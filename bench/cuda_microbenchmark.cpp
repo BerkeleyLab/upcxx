@@ -41,27 +41,87 @@ long trials_for_size(long msg_sz) {
   }
 }
 
+template<typename T>
+intrank_t owner(T*) { return rank_me(); }
+template<typename T, memory_kind K>
+intrank_t owner(global_ptr<T,K> p) { return p.where(); }
+
 enum class sync_type {
   blocking_op,
-  flood_op
+  flood_op,
+  flood_remote
 };
 
 template<sync_type sync, typename src_ptr_type, typename dst_ptr_type>
-static double helper(long len, src_ptr_type &src_ptr, dst_ptr_type &dst_ptr) {
+static double helper(long len, src_ptr_type src_ptr, dst_ptr_type dst_ptr) {
     double elapsed = 0.0;
     long trials = trials_for_size(len);
     long warmup = std::min(max_warmup, trials);
     //if (!rank_me()) std::cout << len << ":" << trials << std::endl;
 
-    upcxx::barrier();
 
-    if (is_active_rank) {
+    if (sync == sync_type::flood_remote) {
+      static promise<> data_arrival; 
+      static promise<> ack;
+      static int my_sender;  my_sender = -1;
+
+      upcxx::barrier();
+      if (is_active_rank) { // inform target ranks of their sender
+        rpc(owner(dst_ptr), [](int me) { 
+           assert(my_sender == -1); 
+           my_sender = me;              // register sender
+           data_arrival = promise<>();  // setup for first window
+           data_arrival.require_anonymous(window_size);
+        }, rank_me()).wait();
+      }
+      upcxx::barrier();
+
+      std::chrono::steady_clock::time_point start;
+
+      for (long i = 0; i < warmup+trials; i++) { // all ranks run trial loop
+        if (i == warmup) { // done with warmup
+          upcxx::barrier();
+          start = std::chrono::steady_clock::now(); // begin timed region
+        }
+
+        if (is_active_rank) {
+          static auto rem_cx = remote_cx::as_rpc([](){ data_arrival.fulfill_anonymous(1); });
+          ack = promise<>(); // prepare for ack
+          ack.require_anonymous(1);
+          for (long j = 0; j < window_size; j++) { // send copies
+            upcxx::copy(src_ptr, dst_ptr, len, rem_cx);
+          }
+        }
+        if (my_sender >= 0) { // this process is a target
+          data_arrival.finalize().wait(); // await arrival of all copies
+          data_arrival = promise<>();     // reset for next window
+          data_arrival.require_anonymous(window_size);
+          rpc_ff(my_sender, []() { ack.fulfill_anonymous(1); }); // send ack
+        }
+        if (is_active_rank) {
+          ack.finalize().wait(); // await acknowledgment
+        }
+      }
+
+      upcxx::barrier(); // ensure timed region includes comms from all ranks
+
+      std::chrono::steady_clock::time_point end =
+            std::chrono::steady_clock::now();
+      elapsed = std::chrono::duration<double>(end - start).count();
+
+      return elapsed;
+
+    } else { // blocking_op, flood_op
+
+      upcxx::barrier();
+
+      if (is_active_rank) {
         std::chrono::steady_clock::time_point start;
 
         for (long i = 0; i < warmup+trials; i++) {
-            if (i == warmup) { // begin timed region
+            if (i == warmup) { // done with warmup
               upcxx::barrier();
-              start = std::chrono::steady_clock::now();
+              start = std::chrono::steady_clock::now(); // begin timed region
             }
 
             upcxx::promise<> prom;
@@ -76,14 +136,15 @@ static double helper(long len, src_ptr_type &src_ptr, dst_ptr_type &dst_ptr) {
             prom.finalize().wait();
         }
 
+        upcxx::barrier(); // ensure timed region includes comms from all ranks
+
         std::chrono::steady_clock::time_point end =
             std::chrono::steady_clock::now();
         elapsed = std::chrono::duration<double>(end - start).count();
-    } else { upcxx::barrier(); } 
+      } else { upcxx::barrier(); upcxx::barrier(); } 
 
-    upcxx::barrier();
-
-    return elapsed;
+      return elapsed;
+    }
 }
 
 static double local_gpu_to_remote_gpu, remote_gpu_to_local_gpu,
@@ -334,7 +395,7 @@ int do_main(int argc, char **argv) {
        // that "Remote" memory regions are over a network (if one exists)
        // The special case of shared-memory pairing can be measured
        // by running all processes on a single node.
-       int partner;
+       intrank_t partner;
        bool active_half = false;
        if (rank_n()%2 && rank_me()==rank_n()-1) {
          partner = rank_me();
@@ -496,35 +557,50 @@ int do_main(int argc, char **argv) {
 
        if (rank_me() == 0) print_latency_results();
 
-       test_header("Uni-directional blocking bandwidth (GiB/s)"); 
+       test_header("Uni-directional blocking op bandwidth (GiB/s)"); 
        for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
            run_all_copies<sync_type::blocking_op>(msg_len);
 
            if (rank_me() == 0) print_bandwidth_results( msg_len, false );
        }    
 
-       test_header("Uni-directional flood bandwidth (GiB/s)"); 
+       test_header("Uni-directional flood op bandwidth (GiB/s)"); 
        for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
            run_all_copies<sync_type::flood_op>(msg_len);
 
            if (rank_me() == 0) print_bandwidth_results( msg_len, false );
        }
 
+       test_header("Uni-directional flood remote_cx bandwidth (GiB/s)"); 
+       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+           run_all_copies<sync_type::flood_remote>(msg_len);
+
+           if (rank_me() == 0) print_bandwidth_results( msg_len, false );
+       }
+
        if (use_firstlast) is_active_rank = (rank_me() == 0 || rank_me() == rank_n()-1);
        else is_active_rank = true;
-       test_header("Bi-directional blocking bandwidth (GiB/s)"); 
+       test_header("Bi-directional blocking op bandwidth (GiB/s)"); 
        for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
            run_all_copies<sync_type::blocking_op>(msg_len);
 
            if (rank_me() == 0) print_bandwidth_results( msg_len, true );
        }
 
-       test_header("Bi-directional flood bandwidth (GiB/s)"); 
+       test_header("Bi-directional flood op bandwidth (GiB/s)"); 
        for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
            run_all_copies<sync_type::flood_op>(msg_len);
 
            if (rank_me() == 0) print_bandwidth_results( msg_len, true );
        }
+
+       test_header("Bi-directional flood remote_cx bandwidth (GiB/s)"); 
+       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+           run_all_copies<sync_type::flood_remote>(msg_len);
+
+           if (rank_me() == 0) print_bandwidth_results( msg_len, true );
+       }
+
 
        gpu_alloc.deallocate(local_gpu_array);
        upcxx::delete_array(local_shared_array);
