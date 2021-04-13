@@ -211,6 +211,7 @@ EOF
   $CXX --help
   exit 0
 elif [[ $doversion ]] ; then
+ if [[ ! $UPCXX_VERSION_CLEAN ]] ; then # allow silencing our version prepend
   header="$prefix/upcxx.*/include/upcxx/version.hpp $prefix/include/upcxx/version.hpp" # build-tree or installed
   version=$(grep "# *define  *UPCXX_VERSION " ${header} 2>/dev/null| head -1)
   if [[ "$version" =~ ([0-9]{4})([0-9]{2})([0-9]{2}) ]]; then
@@ -228,6 +229,7 @@ elif [[ $doversion ]] ; then
   echo "through Lawrence Berkeley National Laboratory."
   echo "https://upcxx.lbl.gov"
   echo ""
+ fi
   $CXX --version
   exit 0
 fi
