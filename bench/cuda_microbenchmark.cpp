@@ -12,6 +12,11 @@ bool run_gs = false;
 bool run_ss = false;
 bool run_ps = false;
 bool run_pg = false;
+bool run_uni = false;
+bool run_bi = false;
+bool run_block = false;
+bool run_flood = false;
+bool run_remote = false;
 bool use_downcast_self = false;
 bool use_downcast_peer = false;
 bool use_concise = false;
@@ -153,6 +158,14 @@ static double local_gpu_to_remote_gpu, remote_gpu_to_local_gpu,
               local_shared_to_remote_shared, remote_shared_to_local_shared,
               local_private_to_remote_shared, remote_shared_to_local_private,
               local_private_to_remote_gpu, remote_gpu_to_local_private;
+static double row_time() {
+  return local_gpu_to_remote_gpu + remote_gpu_to_local_gpu +
+              local_shared_to_remote_gpu + remote_gpu_to_local_shared +
+              local_gpu_to_remote_shared + remote_shared_to_local_gpu +
+              local_shared_to_remote_shared + remote_shared_to_local_shared +
+              local_private_to_remote_shared + remote_shared_to_local_private +
+              local_private_to_remote_gpu + remote_gpu_to_local_private;
+}
 
 using gp_cuda_t = global_ptr<uint8_t, memory_kind::cuda_device>;
 using gp_host_t = global_ptr<uint8_t, memory_kind::host>;
@@ -214,6 +227,7 @@ static void legend() {
   if (!use_concise || rank_me()) return;
   std::cout << "\n=== Output Legend ===\n" << std::endl;
   std::cout << "Copy-Size : Size of each copy() operation payload, in bytes" << std::endl;
+  std::cout << "Row-Time : Sum of timed region durations for this row (at this Copy-Size), in seconds" << std::endl;
   std::cout << "X->Y : Performance measured for copy from memory region X to memory region Y" << std::endl;
   std::cout << "LGpu : Local GPU memory (owned by this process)" << std::endl;
   std::cout << "RGpu : Remote GPU memory (owned by another process)" << std::endl;
@@ -243,7 +257,7 @@ static void test_header(const char *_desc) {
       if (run_ss) std::cout << col << "LSh->RSh"   << col << "RSh->LSh";
       if (run_ps) std::cout << col << Priv() + "->RSh"  << col << "RSh->" + Priv();
       if (run_pg) std::cout << col << Priv() + "->RGpu" << col << "RGpu->" + Priv();
-      std::cout << std::endl;
+      std::cout << col << "Row-Time" << std::endl;
       return;
   }
 }
@@ -261,7 +275,7 @@ static void print_latency_results() {
       if (run_ss) std::cout << col << local_shared_to_remote_shared/Mmsgs << col << remote_shared_to_local_shared/Mmsgs;
       if (run_ps) std::cout << col << local_private_to_remote_shared/Mmsgs << col << remote_shared_to_local_private/Mmsgs;
       if (run_pg) std::cout << col << local_private_to_remote_gpu/Mmsgs << col << remote_gpu_to_local_private/Mmsgs;
-      std::cout << std::endl;
+      std::cout << col << row_time() << std::endl;
       return;
     }
 
@@ -319,7 +333,7 @@ static void print_bandwidth_results(long msg_len, bool bidirectional) {
       if (run_ss) std::cout << col << gbytes/local_shared_to_remote_shared << col << gbytes/remote_shared_to_local_shared;
       if (run_ps) std::cout << col << gbytes/local_private_to_remote_shared << col << gbytes/remote_shared_to_local_private;
       if (run_pg) std::cout << col << gbytes/local_private_to_remote_gpu << col << gbytes/remote_gpu_to_local_private;
-      std::cout << std::endl;
+      std::cout << col << row_time() << std::endl;
       return;
     }
 
@@ -467,6 +481,16 @@ int do_main(int argc, char **argv) {
                use_concise = true;
            } else if (strcmp(arg, "-f") == 0) {
                use_firstlast = true;
+           } else if (strcmp(arg, "-uni") == 0) {
+               run_uni = true;
+           } else if (strcmp(arg, "-bi") == 0) {
+               run_bi = true;
+           } else if (strcmp(arg, "-block") == 0) {
+               run_block = true;
+           } else if (strcmp(arg, "-flood") == 0) {
+               run_flood = true;
+           } else if (strcmp(arg, "-remote") == 0) {
+               run_remote = true;
            } else {
                if (!rank_me()) {
                    fprintf(stderr, "usage: %s ...\n", argv[0]);
@@ -476,7 +500,13 @@ int do_main(int argc, char **argv) {
                    fprintf(stderr, "       -m <max_msg_size>: Cap copy payloads at `max_msg_size` bytes\n");
                    fprintf(stderr, "       -v <max_volume>: Cap trials at larger payloads so each rank sends only enough windows to reach `max_volume` bytes\n");
                    fprintf(stderr, "       -f: First/last mode, where ranks 1..(ranks-2) remain idle\n");
-                   fprintf(stderr, "  Memory type selection:\n");
+                   fprintf(stderr, "  Test pattern selection: (default all)\n");
+                   fprintf(stderr, "       -uni: Run unidirectional tests (each proc is either initiator or target)\n");
+                   fprintf(stderr, "       -bi:  Run bidirectional tests (initiator procs are also target procs)\n");
+                   fprintf(stderr, "       -block:  Run one-copy-at-a-time blocking test\n");
+                   fprintf(stderr, "       -flood:  Run many-copy-at-a-time flood test synchronized with operation_cx\n");
+                   fprintf(stderr, "       -remote: Run many-copy-at-a-time flood test synchronized with remote_cx\n");
+                   fprintf(stderr, "  Memory type selection: (default all)\n");
                    fprintf(stderr, "       -gg: Run tests between local and remote GPU segment\n");
                    fprintf(stderr, "       -sg: Run tests between the local shared segment and remote GPU segment\n");
                    fprintf(stderr, "       -gs: Run tests between local GPU and the remote shared segment\n");
@@ -497,6 +527,12 @@ int do_main(int argc, char **argv) {
        if (!run_gg && !run_sg && !run_gs && !run_ss && !run_ps && !run_pg) {
            // If no tests are selected at the command line, run them all
            run_gg = run_sg = run_gs = run_ss = run_ps = run_pg = true;
+       }
+       if (!run_uni && !run_bi) {
+         run_uni = run_bi = true;
+       }
+       if (!run_block && !run_flood && !run_remote) {
+         run_block = run_flood = run_remote = true;
        }
 
        if (rank_me() == 0) {
@@ -550,56 +586,70 @@ int do_main(int argc, char **argv) {
        remote_shared_array = host_dobj.fetch(partner).wait();
 
        legend();
-       if (use_firstlast) is_active_rank = !rank_me();
-       else               is_active_rank = active_half;
-       test_header("Uni-directional blocking 8-byte round-trip latency (microseconds)"); 
-       run_all_copies<sync_type::blocking_op>(8);
+       if (run_uni) {
+         if (use_firstlast) is_active_rank = !rank_me();
+         else               is_active_rank = active_half;
 
-       if (rank_me() == 0) print_latency_results();
+         if (run_block) {
+           test_header("Uni-directional blocking 8-byte round-trip latency (microseconds)"); 
+           run_all_copies<sync_type::blocking_op>(8);
 
-       test_header("Uni-directional blocking op bandwidth (GiB/s)"); 
-       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
-           run_all_copies<sync_type::blocking_op>(msg_len);
+           if (rank_me() == 0) print_latency_results();
 
-           if (rank_me() == 0) print_bandwidth_results( msg_len, false );
-       }    
+           test_header("Uni-directional blocking op bandwidth (GiB/s)"); 
+           for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+               run_all_copies<sync_type::blocking_op>(msg_len);
 
-       test_header("Uni-directional flood op bandwidth (GiB/s)"); 
-       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
-           run_all_copies<sync_type::flood_op>(msg_len);
+               if (rank_me() == 0) print_bandwidth_results( msg_len, false );
+           }
+         }
+         if (run_flood) {
+           test_header("Uni-directional flood op bandwidth (GiB/s)"); 
+           for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+               run_all_copies<sync_type::flood_op>(msg_len);
 
-           if (rank_me() == 0) print_bandwidth_results( msg_len, false );
-       }
+               if (rank_me() == 0) print_bandwidth_results( msg_len, false );
+           }
+         }
+         if (run_remote) {
+           test_header("Uni-directional flood remote_cx bandwidth (GiB/s)"); 
+           for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+               run_all_copies<sync_type::flood_remote>(msg_len);
 
-       test_header("Uni-directional flood remote_cx bandwidth (GiB/s)"); 
-       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
-           run_all_copies<sync_type::flood_remote>(msg_len);
+               if (rank_me() == 0) print_bandwidth_results( msg_len, false );
+           }
+         }
+       } // run uni
 
-           if (rank_me() == 0) print_bandwidth_results( msg_len, false );
-       }
+       if (run_bi) {
+         if (use_firstlast) is_active_rank = (rank_me() == 0 || rank_me() == rank_n()-1);
+         else is_active_rank = true;
 
-       if (use_firstlast) is_active_rank = (rank_me() == 0 || rank_me() == rank_n()-1);
-       else is_active_rank = true;
-       test_header("Bi-directional blocking op bandwidth (GiB/s)"); 
-       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
-           run_all_copies<sync_type::blocking_op>(msg_len);
+         if (run_block) {
+           test_header("Bi-directional blocking op bandwidth (GiB/s)"); 
+           for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+               run_all_copies<sync_type::blocking_op>(msg_len);
 
-           if (rank_me() == 0) print_bandwidth_results( msg_len, true );
-       }
+               if (rank_me() == 0) print_bandwidth_results( msg_len, true );
+           }
+         }
+         if (run_flood) {
+           test_header("Bi-directional flood op bandwidth (GiB/s)"); 
+           for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+               run_all_copies<sync_type::flood_op>(msg_len);
 
-       test_header("Bi-directional flood op bandwidth (GiB/s)"); 
-       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
-           run_all_copies<sync_type::flood_op>(msg_len);
+               if (rank_me() == 0) print_bandwidth_results( msg_len, true );
+           }
+         }
+         if (run_remote) {
+           test_header("Bi-directional flood remote_cx bandwidth (GiB/s)"); 
+           for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
+               run_all_copies<sync_type::flood_remote>(msg_len);
 
-           if (rank_me() == 0) print_bandwidth_results( msg_len, true );
-       }
-
-       test_header("Bi-directional flood remote_cx bandwidth (GiB/s)"); 
-       for (long msg_len = 1; msg_len <= max_msg_size; msg_len *= 2) {
-           run_all_copies<sync_type::flood_remote>(msg_len);
-
-           if (rank_me() == 0) print_bandwidth_results( msg_len, true );
-       }
+               if (rank_me() == 0) print_bandwidth_results( msg_len, true );
+           }
+         }
+       } // run bi
 
 
        gpu_alloc.deallocate(local_gpu_array);
