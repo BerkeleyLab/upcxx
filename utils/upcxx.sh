@@ -30,7 +30,12 @@ function set_upcxx_var {
       case $val in
         opt|o|o[1-9]) val=opt ; ;;
         debug|g|o0) val=debug ;;
-        *) error "Unrecognized -codemode value, must be 'opt' or 'debug'" ;; 
+        *) if [[ $doversion || $dohelp ]] ; then
+             val=opt # treat invalid settings as "opt" for the purposes of -help/-version
+           else
+             error "Unrecognized -codemode value, must be 'opt' or 'debug'" 
+           fi
+           ;;
       esac
       codemode_override=1
     ;;
@@ -127,11 +132,14 @@ if [[ $codemode_override ]] ; then
   :  # -codemode is highest priority and ignores other args
 elif [[ $dodebug && ! $doopt ]] ; then
   UPCXX_CODEMODE=debug
-elif [[ ( $doopt && ! $dodebug ) || $doversion || $dohelp ]] ; then
+elif [[ $doopt && ! $dodebug ]] ; then
   UPCXX_CODEMODE=opt
 elif [[ $UPCXX_CODEMODE ]] ; then
   : # last resort : user environment
   eval set_upcxx_var UPCXX_CODEMODE "$UPCXX_CODEMODE"
+elif [[ $doversion || $dohelp ]] ; then
+  # we have no codemode indications from anywhere, so just assume opt for the purposes of help/version
+  UPCXX_CODEMODE=opt
 else
   error "please specify one of the -O or -g options supported by your C++ compiler, otherwise pass -codemode={opt,debug} or set UPCXX_CODEMODE={opt,debug} to select the production or development version of the library."
 fi
