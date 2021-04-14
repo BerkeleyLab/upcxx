@@ -574,11 +574,25 @@ namespace upcxx {
             intrank_t p_rank;
             std::uintptr_t p_raw;
             std::tie(p_rank, p_raw) = backend::globalize_memory(buf_d, std::make_tuple(0, 0x0));
-            if (p_raw && // promotion succeeded
-               ( !copy_traits::want_remote || rank_d == p_rank ) ) { // can't promote to co-located peer with RC
-              rank_d = p_rank; // possibly a co-located peer
-              buf_d = reinterpret_cast<T*>(p_raw);
-              heap_d = detail::host_heap;
+            // Performance tuning of Private Promotion (Remote GPU to Local Host) "get-like"
+            // * Once we've paid the cost of the promotion check, private
+            //   promotion to self-segment is never harmful and often helpful.
+            // * Currently private promotion to a local_team peer segment is never
+            //   profitable for "get-like" copy, because it activates 3rd party copy
+            //   and triggers two extra AM hops in the critical path.
+            if (p_raw) { // promotion succeeded
+              #if 1
+                if (rank_d == p_rank) { // performance, see above
+                  UPCXX_ASSERT(buf_d == reinterpret_cast<T*>(p_raw));
+                  heap_d = detail::host_heap;
+                 }
+              #else
+                if ( !copy_traits::want_remote || rank_d == p_rank ) { // correctness: can't promote to co-located peer with RC
+                  rank_d = p_rank; // possibly a co-located peer
+                  buf_d = reinterpret_cast<T*>(p_raw);
+                  heap_d = detail::host_heap;
+                }
+              #endif
             }
           }
         #endif
@@ -621,10 +635,24 @@ namespace upcxx {
             intrank_t p_rank;
             std::uintptr_t p_raw;
             std::tie(p_rank, p_raw) = backend::globalize_memory(buf_s, std::make_tuple(0, 0x0));
+            // Performance tuning of Private Promotion (Local Host to Remote GPU) "put-like"
+            // * Once we've paid the cost of the promotion check, private
+            //   promotion to self-segment is never harmful and often helpful.
+            // * Currently private promotion to a local_team peer segment is only
+            //   profitable for "put-like" copy using GEX memory kinds (where put-as-get already
+            //   imposes 2 extra AMs and promotion saves a local-side bounce buffer alloc/copy/free).
+            // * Promotion to peer segment for reference kinds hurts performance, because it activates 
+            //   3rd party copy and triggers two extra AM hops in the critical path.
             if (p_raw) { // promotion succeeded
-              rank_s = p_rank; // possibly a co-located peer
-              buf_s = reinterpret_cast<T*>(p_raw);
-              heap_s = detail::host_heap;
+              if (rank_s == p_rank) { // self-segment, never harmful, often helpful
+                UPCXX_ASSERT(buf_s == reinterpret_cast<T*>(p_raw));
+                heap_s = detail::host_heap;
+              }
+              else if (backend::heap_state::use_mk()) { // performance: peer-segment only profitable for MK, see above
+                rank_s = p_rank; // a co-located peer
+                buf_s = reinterpret_cast<T*>(p_raw);
+                heap_s = detail::host_heap;
+              }
             }
           }
         #endif
