@@ -2,6 +2,8 @@
 #include <iostream>
 #include <chrono>
 #include <iomanip>
+#include <sstream>
+#include <unistd.h>
 
 using namespace std;
 using namespace upcxx;
@@ -499,7 +501,7 @@ int do_main(int argc, char **argv) {
                    fprintf(stderr, "       -w <window>: Issue `window` number of copies per window\n");
                    fprintf(stderr, "       -m <max_msg_size>: Cap copy payloads at `max_msg_size` bytes\n");
                    fprintf(stderr, "       -v <max_volume>: Cap trials at larger payloads so each rank sends only enough windows to reach `max_volume` bytes\n");
-                   fprintf(stderr, "       -f: First/last mode, where ranks 1..(ranks-2) remain idle\n");
+                   fprintf(stderr, "       -f: First/last mode, where ranks other than 0 and its partner remain idle\n");
                    fprintf(stderr, "  Test pattern selection: (default all)\n");
                    fprintf(stderr, "       -uni: Run unidirectional tests (each proc is either initiator or target)\n");
                    fprintf(stderr, "       -bi:  Run bidirectional tests (initiator procs are also target procs)\n");
@@ -570,10 +572,16 @@ int do_main(int argc, char **argv) {
          dist_object<gp_host_t> dd(gp_downcast_area, local_team());
          if (local_team().rank_n() == 1) {
            std::cerr << "WARNING: singleton local team, -dp is equivalent to -ds\n" << std::flush;
+           local_private_array = gp_downcast_area.local();
+         } else {
+           int lpeer = (local_team().rank_me() + 1) % local_team().rank_n(); // select a downcast peer
+           if (local_team()[lpeer] == partner && local_team().rank_n() > 2) { // avoid partner when possible
+             lpeer = (local_team().rank_me() + 2) % local_team().rank_n();
+           }
+           gp_host_t peer_downcast_area = dd.fetch(lpeer).wait();
+           assert(peer_downcast_area.is_local());
+           local_private_array = peer_downcast_area.local();
          }
-         gp_host_t peer_downcast_area = dd.fetch((local_team().rank_me() + 1) % local_team().rank_n()).wait();
-         assert(peer_downcast_area.is_local());
-         local_private_array = peer_downcast_area.local();
          upcxx::barrier();
        } else {
          local_private_array = new uint8_t[max_msg_size];
@@ -585,10 +593,37 @@ int do_main(int argc, char **argv) {
        upcxx::dist_object<gp_host_t> host_dobj(local_shared_array);
        remote_shared_array = host_dobj.fetch(partner).wait();
 
+       bool active_uni;
+       bool active_bi;
+       if (use_firstlast) {
+         active_uni = !rank_me();
+         active_bi = (rank_me() == 0 || partner == 0);
+       } else {
+         active_uni = active_half;
+         active_bi = true;
+       }
+
+       barrier();
+       { std::ostringstream oss;
+         auto col = std::setw(2);
+         oss << "Rank " << col << rank_me() << "/" << col << rank_n();
+         if (active_uni || active_bi) {
+           oss << " : partner = " << col << partner;
+           if (use_downcast_peer)
+             oss << ", downcast peer = " << col << try_global_ptr(local_private_array).where();
+         }
+         if (active_uni) oss << " (active for ALL tests)";
+         else if (active_bi) oss << " (active for BIdirectional tests)";
+         else oss << " (passive rank)";
+         oss << '\n';
+         std::cout << oss.str() << std::flush;
+       }
+       sleep(1); // help ensure clean output
+       barrier();
+
        legend();
        if (run_uni) {
-         if (use_firstlast) is_active_rank = !rank_me();
-         else               is_active_rank = active_half;
+         is_active_rank = active_uni;
 
          if (run_block) {
            test_header("Uni-directional blocking 8-byte round-trip latency (microseconds)"); 
@@ -622,8 +657,7 @@ int do_main(int argc, char **argv) {
        } // run uni
 
        if (run_bi) {
-         if (use_firstlast) is_active_rank = (rank_me() == 0 || rank_me() == rank_n()-1);
-         else is_active_rank = true;
+         is_active_rank = active_bi;
 
          if (run_block) {
            test_header("Bi-directional blocking op bandwidth (GiB/s)"); 
