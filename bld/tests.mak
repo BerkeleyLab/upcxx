@@ -61,6 +61,7 @@ test_dirs = \
 	test/neg \
 	test/uts \
 	bench \
+	example \
 	example/prog-guide \
 	example/serialization
 
