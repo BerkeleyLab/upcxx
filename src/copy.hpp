@@ -194,22 +194,29 @@ namespace upcxx {
       initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
     }
 
-    global_ptr<char> src(detail::internal_only(), rank_s, reinterpret_cast<char*>(buf_s));
+    auto signal_completion = [=]() {
+      cxs_here->template operator()<source_cx_event>();
+      cxs_here->template operator()<operation_cx_event>();
+      delete cxs_here;
 
-    auto operation_cx_as_internal_future = detail::operation_cx_as_internal_future_t{{}};
-    upcxx::rget<char>(src, reinterpret_cast<char*>(buf_d), size, 
+      if (copy_traits::want_remote) {
+        initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
+        std::move(*cxs_remote)(); // deserialized_bound_function only invocable on an rvalue
+        delete cxs_remote;
+      }
+    };
+    #if 0
+      // using rget directly works, but imposes some future overheads with no real benefit:
+      auto operation_cx_as_internal_future = detail::operation_cx_as_internal_future_t{{}};
+      global_ptr<char> src(detail::internal_only(), rank_s, reinterpret_cast<char*>(buf_s));
+      upcxx::rget<char>(src, reinterpret_cast<char*>(buf_d), size, 
                       operation_cx_as_internal_future) // TODO: as_eager_future
-      .then([=]() {
-         cxs_here->template operator()<source_cx_event>();
-         cxs_here->template operator()<operation_cx_event>();
-         delete cxs_here;
-
-         if (copy_traits::want_remote) {
-           initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
-           std::move(*cxs_remote)(); // deserialized_bound_function only invocable on an rvalue
-           delete cxs_remote;
-         }
-      });
+        .then(std::move(signal_completion));
+    #else
+      // this is simpler and faster:
+      detail::rma_copy_get(buf_d, rank_s, buf_s, size,
+                  backend::gasnet::make_handle_cb(std::move(signal_completion)));
+    #endif
 
     return returner();
   } // detail::copy_as_rget
