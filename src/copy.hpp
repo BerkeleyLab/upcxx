@@ -180,6 +180,26 @@ namespace upcxx {
 
     using copy_traits = detail::copy_traits<Cxs>;
 
+    if (backend::rank_is_local(rank_s)) { // fully local/synchronous case
+      void *src = backend::localize_memory_nonnull(rank_s, reinterpret_cast<std::uintptr_t>(buf_s));
+      std::memcpy(buf_d, src, size);
+
+      // do the completions goop
+      typename copy_traits::cxs_here_t cxs_here(std::forward<Cxs>(cxs));
+      auto returner = typename copy_traits::returner(cxs_here);
+      cxs_here.template operator()<source_cx_event>();
+      cxs_here.template operator()<operation_cx_event>();
+      if (copy_traits::want_remote) {
+        typename copy_traits::deserialized_cxs_remote_bound_t cxs_remote(
+            copy_traits::cxs_remote_deserialized_value(
+              typename copy_traits::cxs_remote_t(std::forward<Cxs>(cxs)).template bind_event<remote_cx_event>()
+            ));
+        std::move(cxs_remote)(); // deserialized_bound_function only invocable on an rvalue
+      }
+
+      return returner();
+    } // fully local/synchronous case
+
     auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
     auto returner = typename copy_traits::returner(*cxs_here);
 
