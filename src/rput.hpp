@@ -235,7 +235,6 @@ namespace upcxx {
           RemoteFn &&remote
         ) {
         //upcxx::experimental::say()<<"amlong with reply";
-        auto *o = static_cast<Obj*>(this);
 
         auto sync_out = backend::gasnet::template rma_put_then_am_master<sync_lb1>(
           rank_d, buf_d, buf_s, buf_size,
@@ -284,7 +283,6 @@ namespace upcxx {
           RemoteFn &&remote
         ) {
         //upcxx::experimental::say()<<"amlong with reply blocking";
-        auto *o = static_cast<Obj*>(this);
         
         auto sync_out = backend::gasnet::template rma_put_then_am_master<
             backend::gasnet::rma_put_then_am_sync::src_now

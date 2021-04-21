@@ -162,7 +162,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   assert(d4->is_active());
   try {
     Allocator *a4 = new Allocator(*d4, 1ULL<<60);
-    say() << "ERROR: Failed to generate device bad_alloc exn!";
+    say() << "ERROR: Failed to generate device bad_alloc exn!" << a4;
   } catch (std::bad_alloc &e) {
     say() << "got expected exn: " << e.what();
   }

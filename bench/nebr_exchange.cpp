@@ -109,7 +109,6 @@ void obtain_mesh_remote(mesh_t &m) {
   int unacks = (int)m.out_nebrs.size();
     
   for(int i=0; i < (int)m.out_nebrs.size(); i++) {
-    intrank_t origin = upcxx::rank_me();
     
     upcxx::rpc(m.out_nebrs[i].rank,
       [](upcxx::dist_object<mesh_t*> &dm) {

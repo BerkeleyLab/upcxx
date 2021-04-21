@@ -98,8 +98,7 @@ vertex *get_vertex_from_store(int vertex_id) {
 }
 
 void create_edge(vertex* local, int other_id) {
-    int local_id = local->get_id();
-    vertex *other = get_vertex_from_store(other_id);
+    get_vertex_from_store(other_id); // ensure existence
 
     /*
      * Add a vertex* for this ID to our neighbors list. This should
