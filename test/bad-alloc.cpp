@@ -9,7 +9,7 @@ int main() {
     try {
       std::cout << "Making an absurd shared heap request..." << std::endl;
       upcxx::global_ptr<double> p = upcxx::new_array<double>((size_t)-4);
-      std::cout << "ERROR: upcxx::new_array failed to throw exception!" << std::endl;
+      std::cout << "ERROR: upcxx::new_array failed to throw exception!" << p << std::endl;
     } catch (std::bad_alloc const &e) {
       std::cout << "\nCaught exception: \n" << e.what() << std::endl;
     }

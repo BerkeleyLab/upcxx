@@ -126,6 +126,7 @@ void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCE
 template<typename T1, typename T2>
 struct assert_same {
   static_assert(std::is_same<T1, T2>::value, "types differ");
+  assert_same(){} // this helps avoid unused-value warnings on use (issue #468)
 };
 
 #endif

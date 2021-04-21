@@ -10,11 +10,13 @@ struct check {
   static_assert(upcxx::is_trivially_serializable<T>::value == TS, "ERROR");
   static_assert(upcxx::is_serializable<T>::value == S, "ERROR");
   static_assert(std::is_same<upcxx::deserialized_type_t<T>, DT>::value, "ERROR");
+  check(){} // this helps avoid unused-value warnings on use (issue #468)
 };
 template<typename T>
 struct check<T, false, false, void> {
   static_assert(!upcxx::is_trivially_serializable<T>::value, "ERROR");
   static_assert(!upcxx::is_serializable<T>::value, "ERROR");
+  check(){} // this helps avoid unused-value warnings on use (issue #468)
 };
 
 struct D {

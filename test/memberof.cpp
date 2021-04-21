@@ -73,7 +73,7 @@ struct C {  // NOT standard layout, trivial, NOT POD
   char f1;
   char f2;
   tricksy z;
-  private:
+  protected:
   double x;
 };
 
@@ -137,14 +137,16 @@ namespace perverse {
     void declval();
   }
   template<typename C, typename GP>
-  void check(GP gp) {
+  bool check(GP gp) {
     upcxx::global_ptr<C> gp_f1 = upcxx_memberof(gp, f1);
     upcxx::global_ptr<C> gp_f2 = upcxx_memberof_unsafe(gp, f2);
+    return gp_f1 && gp_f2;
   }
   template<typename C, typename GP>
-  void check_general(GP gp) {
+  bool check_general(GP gp) {
     auto fut1 = upcxx_memberof_general(gp, f1);
     upcxx::global_ptr<C> gp_f1 = fut1.wait();
+    return !!gp_f1;
   }
 } // perverse
 
@@ -197,7 +199,7 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
   int se = 0; // test for single-evaluation
   auto func = [&](){se++; return gp_o;};
   upcxx::global_ptr<char_t> se_test = upcxx_memberof(func(), f0);
-  assert(se == 1);
+  assert(se == 1 && se_test);
   upcxx::barrier();
   #endif
 
@@ -244,7 +246,7 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
 template<typename T>
 struct calc<T,false>{ static void _(upcxx::global_ptr<T> gp_o){
   using char_t = typename match_const<T>::char_type;
-  using tricksy_t = typename match_const<T>::tricksy_type;
+  //using tricksy_t = typename match_const<T>::tricksy_type;
 
   if (!upcxx::rank_me()) std::cout << "Testing non-standard layout..." << std::endl;
   // upcxx_memberof_unsafe is deliberately unspecified
