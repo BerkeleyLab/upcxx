@@ -76,7 +76,7 @@ namespace detail {
 #define UPCXX_INVOKE_UB() UPCXX_ASSERT(false, "Undefined behavior!")
 
 // static assert that is permitted in expression context
-#define UPCXX_STATIC_ASSERT(cnd, msg) ([=](){static_assert(cnd, msg);})
+#define UPCXX_STATIC_ASSERT(cnd, msg) ([=](){static_assert(cnd, msg);}())
 
 // asserting master persona
 #define UPCXX_ASSERT_ALWAYS_MASTER() \

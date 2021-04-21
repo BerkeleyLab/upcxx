@@ -167,8 +167,9 @@ namespace upcxx {
       UPCXX_ASSERT(gp.is_null() || gp.where() == upcxx::rank_me());
       if (!gp) return Device::invalid_device_id;
       else {
-        backend::heap_state *hs =
-          backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+        #if UPCXX_ASSERT_ENABLED // issue 468: avoid unused-variable warning
+          backend::heap_state *hs = backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+        #endif
         UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
           "device_allocator::device_id() invoked with a pointer from an inactive device.");
         return Device::device_id(detail::internal_only(),
@@ -182,8 +183,9 @@ namespace upcxx {
       UPCXX_GPTR_CHK(gp);
       if (!gp) return Device::template null_pointer<T>();
       UPCXX_ASSERT(gp.where() == upcxx::rank_me());
-      backend::heap_state *hs =
-        backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+      #if UPCXX_ASSERT_ENABLED // issue 468: avoid unused-variable warning
+        backend::heap_state *hs = backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+      #endif
       UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
         "device_allocator::device_id() invoked with a pointer from an inactive device.");
       return gp.UPCXX_INTERNAL_ONLY(raw_ptr_);
