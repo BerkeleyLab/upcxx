@@ -264,11 +264,12 @@ namespace upcxx {
         return returner();
       }
 
-      // generic non-fetching atomic operation
+      // generic non-fetching/fetch-into atomic operation
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
       NOFETCH_RTYPE<Cxs> op(atomic_op aop, global_ptr<T> gptr, std::memory_order order,
-                            T val1 = 0, T val2 = 0, Cxs &&cxs = Cxs{{}}) const {
+                            T val1 = 0, T val2 = 0, T *dst = nullptr,
+                            Cxs &&cxs = Cxs{{}}) const {
         using CxsDecayed = typename std::decay<Cxs>::type;
         UPCXX_ASSERT_INIT();
         UPCXX_ASSERT(this->atomic_gex_ops || this->ad_gex_handle, "Atomic domain is not constructed");
@@ -304,7 +305,7 @@ namespace upcxx {
         
         // execute the backend gasnet function
         gex_Event_t h = this->inject( this->ad_gex_handle,
-          nullptr, gptr.UPCXX_INTERNAL_ONLY(rank_),
+          dst, gptr.UPCXX_INTERNAL_ONLY(rank_),
           gptr.UPCXX_INTERNAL_ONLY(raw_ptr_), 
           aop, static_cast<proxy_type>(val1), static_cast<proxy_type>(val2), 
           detail::memory_order_flags(order) | GEX_FLAG_RANK_IS_JOBRANK
@@ -383,7 +384,7 @@ namespace upcxx {
       NOFETCH_RTYPE<Cxs> store(global_ptr<T> gptr, T val, std::memory_order order,
                                Cxs &&cxs = Cxs{{}}) const {
         UPCXX_ASSERT_INIT();
-        return op(atomic_op::store, gptr, order, val, (T)0, std::forward<Cxs>(cxs));
+        return op(atomic_op::store, gptr, order, val, (T)0, nullptr, std::forward<Cxs>(cxs));
       }
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
@@ -393,15 +394,25 @@ namespace upcxx {
       }
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
+      NOFETCH_RTYPE<Cxs> load_into(global_ptr<const T> gptr, T *dst,
+                                   std::memory_order order,
+                                   Cxs &&cxs = Cxs{{}}) const {
+        UPCXX_ASSERT_INIT();
+        UPCXX_ASSERT(dst != nullptr, "Destination for atomic operation is null");
+        return op(atomic_op::load, const_pointer_cast<T>(gptr), order, (T)0, (T)0,
+                  dst, std::forward<Cxs>(cxs));
+      }
+      template<typename Cxs = FUTURE_CX>
+      UPCXX_NODISCARD
       NOFETCH_RTYPE<Cxs> inc(global_ptr<T> gptr, std::memory_order order, Cxs &&cxs = Cxs{{}}) const {
         UPCXX_ASSERT_INIT();
-        return op(atomic_op::inc, gptr, order, (T)0, (T)0, std::forward<Cxs>(cxs));
+        return op(atomic_op::inc, gptr, order, (T)0, (T)0, nullptr, std::forward<Cxs>(cxs));
       }
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
       NOFETCH_RTYPE<Cxs> dec(global_ptr<T> gptr, std::memory_order order, Cxs &&cxs = Cxs{{}}) const {
         UPCXX_ASSERT_INIT();
-        return op(atomic_op::dec,gptr, order, (T)0, (T)0, std::forward<Cxs>(cxs));
+        return op(atomic_op::dec,gptr, order, (T)0, (T)0, nullptr, std::forward<Cxs>(cxs));
       }
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
@@ -411,9 +422,29 @@ namespace upcxx {
       }
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
+      NOFETCH_RTYPE<Cxs> fetch_inc_into(global_ptr<T> gptr, T *dst,
+                                        std::memory_order order,
+                                        Cxs &&cxs = Cxs{{}}) const {
+        UPCXX_ASSERT_INIT();
+        UPCXX_ASSERT(dst != nullptr, "Destination for atomic operation is null");
+        return op(atomic_op::fetch_inc, gptr, order, (T)0, (T)0, dst,
+                  std::forward<Cxs>(cxs));
+      }
+      template<typename Cxs = FUTURE_CX>
+      UPCXX_NODISCARD
       FETCH_RTYPE<Cxs> fetch_dec(global_ptr<T> gptr, std::memory_order order, Cxs &&cxs = Cxs{{}}) const {
         UPCXX_ASSERT_INIT();
         return fop(atomic_op::fetch_dec, gptr, order, (T)0, (T)0, std::forward<Cxs>(cxs));
+      }
+      template<typename Cxs = FUTURE_CX>
+      UPCXX_NODISCARD
+      NOFETCH_RTYPE<Cxs> fetch_dec_into(global_ptr<T> gptr, T *dst,
+                                        std::memory_order order,
+                                        Cxs &&cxs = Cxs{{}}) const {
+        UPCXX_ASSERT_INIT();
+        UPCXX_ASSERT(dst != nullptr, "Destination for atomic operation is null");
+        return op(atomic_op::fetch_dec, gptr, order, (T)0, (T)0, dst,
+                  std::forward<Cxs>(cxs));
       }
       template<typename Cxs = FUTURE_CX>
       UPCXX_NODISCARD
@@ -421,6 +452,16 @@ namespace upcxx {
                                         Cxs &&cxs = Cxs{{}}) const {
         UPCXX_ASSERT_INIT();
         return fop(atomic_op::compare_exchange, gptr, order, val1, val2, std::forward<Cxs>(cxs));
+      }
+      template<typename Cxs = FUTURE_CX>
+      UPCXX_NODISCARD
+      NOFETCH_RTYPE<Cxs> compare_exchange_into(global_ptr<T> gptr, T val1, T val2,
+                                               T *dst, std::memory_order order,
+                                               Cxs &&cxs = Cxs{{}}) const {
+        UPCXX_ASSERT_INIT();
+        UPCXX_ASSERT(dst != nullptr, "Destination for atomic operation is null");
+        return op(atomic_op::compare_exchange, gptr, order, val1, val2, dst,
+                  std::forward<Cxs>(cxs));
       }
       
       #define UPCXX_AD_METHODS(name, constraint)\
@@ -435,10 +476,19 @@ namespace upcxx {
         template<typename Cxs = FUTURE_CX>\
         UPCXX_NODISCARD \
         constraint(NOFETCH_RTYPE<Cxs>) \
+        fetch_##name##_into(global_ptr<T> gptr, T val, T *dst, std::memory_order order, \
+                                      Cxs &&cxs = Cxs{{}}) const {\
+          UPCXX_ASSERT_INIT(); \
+          UPCXX_ASSERT(dst != nullptr, "Destination for atomic operation is null"); \
+          return op(atomic_op::fetch_##name, gptr, order, val, (T)0, dst, std::forward<Cxs>(cxs)); \
+        }\
+        template<typename Cxs = FUTURE_CX>\
+        UPCXX_NODISCARD \
+        constraint(NOFETCH_RTYPE<Cxs>) \
 	name(global_ptr<T> gptr, T val, std::memory_order order,\
                                 Cxs &&cxs = Cxs{{}}) const {\
           UPCXX_ASSERT_INIT(); \
-          return op(atomic_op::name, gptr, order, val, (T)0, std::forward<Cxs>(cxs));\
+          return op(atomic_op::name, gptr, order, val, (T)0, nullptr, std::forward<Cxs>(cxs));\
         }
       // sfinae helpers to disable unsupported type/op combos
       #define UPCXX_AD_INTONLY(R) typename std::enable_if<std::is_integral<T>::value,R>::type

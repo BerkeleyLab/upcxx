@@ -55,17 +55,33 @@ void test_fetch_add(const team &tm, global_ptr<T> target_counter,
       case 0: {
         // This should cause an assert failure
         //auto prev = dom.fetch_sub(target_counter, (T)1, memory_order_relaxed).wait();
-        auto prevT = dom.fetch_add(target_counter, (T)1, memory_order_relaxed).wait();
-        int prev = int(prevT);
+        int prev;
+        if (i % 2) {
+          auto prevT = dom.fetch_add(target_counter, (T)1, memory_order_relaxed).wait();
+          prev = int(prevT);
+        } else {
+          T prevT;
+          dom.fetch_add_into(target_counter, (T)1, &prevT, memory_order_relaxed).wait();
+          prev = int(prevT);
+        }
         UPCXX_ASSERT_ALWAYS(prev >= 0 && prev < tm.rank_n() * ITERS, 
               "atomic::fetch_add result out of range");
         break;
       }
       case 1: {
-        upcxx::promise<T> p;
-        dom.fetch_add(target_counter, (T)1, memory_order_relaxed, upcxx::operation_cx::as_promise(p));
-        auto prevT = p.finalize().wait();
-        int prev = int(prevT);
+        int prev;
+        if (i % 2) {
+          upcxx::promise<T> p;
+          dom.fetch_add(target_counter, (T)1, memory_order_relaxed, upcxx::operation_cx::as_promise(p));
+          auto prevT = p.finalize().wait();
+          prev = int(prevT);
+        } else {
+          upcxx::promise<> p;
+          T prevT;
+          dom.fetch_add_into(target_counter, (T)1, &prevT, memory_order_relaxed, upcxx::operation_cx::as_promise(p));
+          p.finalize().wait();
+          prev = int(prevT);
+        }
         UPCXX_ASSERT_ALWAYS(prev >= 0 && prev < tm.rank_n() * ITERS, 
               "atomic::fetch_add result out of range");
         break;
@@ -112,7 +128,14 @@ void test_put_get(const team &tm, global_ptr<T> target_counter, const upcxx::ato
   upcxx::barrier(tm);
   
   for (int i = 0; i < ITERS * 10; i++) {
-    int v = int(dom.load(target_counter, memory_order_relaxed).wait());
+    int v;
+    if (i % 2) {
+      v = int(dom.load(target_counter, memory_order_relaxed).wait());
+    } else {
+      T result;
+      dom.load_into(target_counter, &result, memory_order_relaxed).wait();
+      v = int(result);
+    }
     UPCXX_ASSERT_ALWAYS(v >=0 && v < tm.rank_n(), "atomic_get out of range: " << v);
     dom.store(target_counter, (T)tm.rank_me(), memory_order_relaxed).wait();
   }
@@ -155,6 +178,27 @@ void test_all_ops(const team &tm, global_ptr<T> target_counter, const upcxx::ato
     v = dom.compare_exchange(target_counter, 49, 42, memory_order_relaxed).wait();
     CHECK_ATOMIC_VAL(v, 49);
     v = dom.compare_exchange(target_counter, 0, 3, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 42);
+
+    dom.load_into(target_counter, &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 42);
+    dom.load_into(const_pointer_cast<const T>(target_counter), &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 42);
+    dom.inc(target_counter, memory_order_relaxed).wait();
+    dom.fetch_inc_into(target_counter, &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 43);
+    dom.dec(target_counter, memory_order_relaxed).wait();
+    dom.fetch_dec_into(target_counter, &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 43);
+    dom.add(target_counter, 7, memory_order_relaxed).wait();
+    dom.fetch_add_into(target_counter, 5, &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 49);
+    dom.sub(target_counter, 3, memory_order_relaxed).wait();
+    dom.fetch_sub_into(target_counter, 2, &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 51);
+    dom.compare_exchange_into(target_counter, 49, 42, &v, memory_order_relaxed).wait();
+    CHECK_ATOMIC_VAL(v, 49);
+    dom.compare_exchange_into(target_counter, 0, 3, &v, memory_order_relaxed).wait();
     CHECK_ATOMIC_VAL(v, 42);
   }
   upcxx::barrier(tm);
