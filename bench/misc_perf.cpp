@@ -272,7 +272,8 @@ void doit3() {
     TIME_OPERATION("upcxx::rpc(peer,lamb 512b unbounded)",upcxx::rpc(peer,
         [](const myarr<512> &){}, a512).wait());
 
-    TIME_OPERATION("upcxx::rput<double>(peer)",upcxx::rput(0.,gp_peer).wait());
+    TIME_OPERATION("upcxx::rput<double>(peer, as_defer_future)",upcxx::rput(0.,gp_peer, upcxx::operation_cx::as_defer_future()).wait());
+    TIME_OPERATION("upcxx::rput<double>(peer, as_eager_future)",upcxx::rput(0.,gp_peer, upcxx::operation_cx::as_eager_future()).wait());
     {
       static std::int64_t sent=0,recv=0;
       TIME_OPERATION_FULL("upcxx::rput<double>(peer, RC)", {},
