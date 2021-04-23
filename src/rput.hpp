@@ -67,11 +67,13 @@ namespace upcxx {
         /*EventValues=*/detail::rput_event_values,
         Cxs>;
 
-      using return_t = typename detail::completions_returner<
+      using completions_returner_t = detail::completions_returner<
           /*EventPredicate=*/detail::event_is_here,
           /*EventValues=*/detail::rput_event_values,
           Cxs
-        >::return_t;
+        >;
+
+      using return_t = typename completions_returner_t::return_t;
 
       template<typename T>
       static void assert_sane() {
@@ -475,11 +477,8 @@ namespace upcxx {
       *buf_d_local = value_s;
 
       typename traits_t::cx_state_here_t cx_state_here(std::forward<Cxs>(cxs));
-      detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-        > returner(cx_state_here, detail::cx_event_done::operation);
+      typename traits_t::completions_returner_t
+        returner(cx_state_here, detail::cx_event_done::operation);
       // no source completion
       if (traits_t::want_remote) {
         backend::send_am_master<progress_level::user>(
@@ -505,11 +504,8 @@ namespace upcxx {
 
     // construct returner before rput_post_inject potentially destroys
     // cx_state_here
-    detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      > returner(o->cx_state_here,
+    typename traits_t::completions_returner_t
+      returner(o->cx_state_here,
                  sync_done >= detail::rma_put_sync::op_now ?
                  detail::cx_event_done::operation :
                  detail::cx_event_done::none);
@@ -547,11 +543,8 @@ namespace upcxx {
       std::memcpy(buf_d_local, buf_s, n*sizeof(T));
 
       typename traits_t::cx_state_here_t cx_state_here(std::forward<Cxs>(cxs));
-      detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-        > returner(cx_state_here, detail::cx_event_done::operation);
+      typename traits_t::completions_returner_t
+        returner(cx_state_here, detail::cx_event_done::operation);
       if (traits_t::want_src) {
         cx_state_here.template operator()<source_cx_event>();
       }
@@ -586,11 +579,8 @@ namespace upcxx {
 
     // construct returner before rput_post_inject potentially destroys
     // cx_state_here
-    detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      > returner(o->cx_state_here, completed);
+    typename traits_t::completions_returner_t
+      returner(o->cx_state_here, completed);
 
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();

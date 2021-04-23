@@ -215,6 +215,7 @@ namespace upcxx {
         gp_s.UPCXX_INTERNAL_ONLY(rank_),
         reinterpret_cast<std::uintptr_t>(gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_))
       );
+      // data passed directly to operation-completion trigger below
 
       cxs_here_t cx_state_here(std::forward<Cxs>(cxs));
       detail::completions_returner<
