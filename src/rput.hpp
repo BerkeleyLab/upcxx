@@ -482,7 +482,7 @@ namespace upcxx {
         > returner(cx_state_here, detail::cx_event_done::operation);
       // no source completion
       if (traits_t::want_remote) {
-        backend::send_am_master<progress_level::internal>(
+        backend::send_am_master<progress_level::user>(
           gp_d.UPCXX_INTERNAL_ONLY(rank_),
           traits_t::cx_state_remote_t
           ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
@@ -556,7 +556,7 @@ namespace upcxx {
         cx_state_here.template operator()<source_cx_event>();
       }
       if (traits_t::want_remote) {
-        backend::send_am_master<progress_level::internal>(
+        backend::send_am_master<progress_level::user>(
           gp_d.UPCXX_INTERNAL_ONLY(rank_),
           traits_t::cx_state_remote_t
           ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
