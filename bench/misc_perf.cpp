@@ -231,10 +231,10 @@ void doit2() {
       TIME_OPERATION("atomic_domain<int64>::fetch_add(relaxed, as_eager_future) loopback latency",
                      ad_fa.fetch_add(gpi64, 1, std::memory_order_relaxed, upcxx::operation_cx::as_eager_future()).wait());
       std::int64_t dst;
-      TIME_OPERATION("atomic_domain<int64>::fetch_add_into(relaxed, as_defer_future) loopback latency",
-                     ad_fa.fetch_add_into(gpi64, 1, &dst, std::memory_order_relaxed, upcxx::operation_cx::as_defer_future()).wait());
-      TIME_OPERATION("atomic_domain<int64>::fetch_add_into(relaxed, as_eager_future) loopback latency",
-                     ad_fa.fetch_add_into(gpi64, 1, &dst, std::memory_order_relaxed, upcxx::operation_cx::as_eager_future()).wait());
+      TIME_OPERATION("atomic_domain<int64>::fetch_add(T*, relaxed, as_defer_future) loopback latency",
+                     ad_fa.fetch_add(gpi64, 1, &dst, std::memory_order_relaxed, upcxx::operation_cx::as_defer_future()).wait());
+      TIME_OPERATION("atomic_domain<int64>::fetch_add(T*, relaxed, as_eager_future) loopback latency",
+                     ad_fa.fetch_add(gpi64, 1, &dst, std::memory_order_relaxed, upcxx::operation_cx::as_eager_future()).wait());
       ad_fa.destroy();
     }
 
@@ -295,11 +295,20 @@ void doit3() {
     { upcxx::promise<> p;
       upcxx::team &ad_team = (all_local ? upcxx::local_team() : upcxx::world());
       upcxx::atomic_domain<std::int64_t> ad_fa({atomic_op::fetch_add, atomic_op::add}, ad_team);
-      TIME_OPERATION("atomic_domain<int64>::add(relaxed) peer overhead", 
-                     ad_fa.add(gpi64_peer, 1, std::memory_order_relaxed, upcxx::operation_cx::as_promise(p)));
+      TIME_OPERATION("atomic_domain<int64>::add(relaxed, as_defer_promise) peer overhead",
+                     ad_fa.add(gpi64_peer, 1, std::memory_order_relaxed, upcxx::operation_cx::as_defer_promise(p)));
+      TIME_OPERATION("atomic_domain<int64>::add(relaxed, as_eager_promise) peer overhead",
+                     ad_fa.add(gpi64_peer, 1, std::memory_order_relaxed, upcxx::operation_cx::as_eager_promise(p)));
       p.finalize().wait();
-      TIME_OPERATION("atomic_domain<int64>::fetch_add(relaxed) peer latency", 
-                     ad_fa.fetch_add(gpi64_peer, 1, std::memory_order_relaxed).wait());
+      TIME_OPERATION("atomic_domain<int64>::fetch_add(relaxed, as_defer_future) peer latency",
+                     ad_fa.fetch_add(gpi64_peer, 1, std::memory_order_relaxed, upcxx::operation_cx::as_defer_future()).wait());
+      TIME_OPERATION("atomic_domain<int64>::fetch_add(relaxed, as_eager_future) peer latency",
+                     ad_fa.fetch_add(gpi64_peer, 1, std::memory_order_relaxed, upcxx::operation_cx::as_eager_future()).wait());
+      std::int64_t dst;
+      TIME_OPERATION("atomic_domain<int64>::fetch_add(T*, relaxed, as_defer_future) peer latency",
+                     ad_fa.fetch_add(gpi64_peer, 1, &dst, std::memory_order_relaxed, upcxx::operation_cx::as_defer_future()).wait());
+      TIME_OPERATION("atomic_domain<int64>::fetch_add(T*, relaxed, as_eager_future) peer latency",
+                     ad_fa.fetch_add(gpi64_peer, 1, &dst, std::memory_order_relaxed, upcxx::operation_cx::as_eager_future()).wait());
       ad_fa.destroy();
     }
   }
