@@ -208,6 +208,30 @@ namespace upcxx {
       CxsDecayed>;
     
     using detail::rma_get_done;
+
+    if (backend::rank_is_local(gp_s.UPCXX_INTERNAL_ONLY(rank_))) {
+      // local case does copy directly without involving backend
+      T *buf_s_local = (T*) backend::localize_memory_nonnull(
+        gp_s.UPCXX_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_))
+      );
+
+      cxs_here_t cx_state_here(std::forward<Cxs>(cxs));
+      detail::completions_returner<
+        /*EventPredicate=*/detail::event_is_here,
+        /*EventValues=*/detail::rget_byval_event_values<T>,
+        CxsDecayed
+        > returner(cx_state_here, detail::cx_event_done::operation);
+      // no source completion
+      if (!cxs_remote_t::empty) {
+        backend::send_am_master<progress_level::user>(
+          gp_s.UPCXX_INTERNAL_ONLY(rank_),
+          cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+        );
+      }
+      cx_state_here.template operator()<operation_cx_event>(*buf_s_local);
+      return returner();
+    }
     
     auto *cb = new detail::rget_cb_byval<T,cxs_here_t,cxs_remote_t>{
       gp_s.UPCXX_INTERNAL_ONLY(rank_),
@@ -299,6 +323,31 @@ namespace upcxx {
       /*EventPredicate=*/detail::event_is_remote,
       /*EventValues=*/detail::rget_byref_event_values,
       CxsDecayed>;
+
+    if (backend::rank_is_local(gp_s.UPCXX_INTERNAL_ONLY(rank_))) {
+      // local case does copy directly without involving backend
+      void *buf_s_local = backend::localize_memory_nonnull(
+        gp_s.UPCXX_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_))
+      );
+      std::memcpy(buf_d, buf_s_local, n*sizeof(T));
+
+      cxs_here_t cx_state_here(std::forward<Cxs>(cxs));
+      detail::completions_returner<
+        /*EventPredicate=*/detail::event_is_here,
+        /*EventValues=*/detail::rget_byref_event_values,
+        CxsDecayed
+        > returner(cx_state_here, detail::cx_event_done::operation);
+      // no source completion
+      if (!cxs_remote_t::empty) {
+        backend::send_am_master<progress_level::user>(
+          gp_s.UPCXX_INTERNAL_ONLY(rank_),
+          cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+        );
+      }
+      cx_state_here.template operator()<operation_cx_event>();
+      return returner();
+    }
     
     detail::rget_cb_byref<cxs_here_t,cxs_remote_t> cb(
       gp_s.UPCXX_INTERNAL_ONLY(rank_),
