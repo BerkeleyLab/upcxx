@@ -10,7 +10,14 @@
 
 #include <tuple>
 
-#define UPCXX_EAGER_DEFAULT false
+#ifndef UPCXX_DEFER_COMPLETION
+  #define UPCXX_DEFER_COMPLETION 1 // default is defer for now
+#endif
+#if UPCXX_DEFER_COMPLETION
+  #define UPCXX_EAGER_DEFAULT false
+#else
+  #define UPCXX_EAGER_DEFAULT true
+#endif
 
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////////////
@@ -447,9 +454,10 @@ namespace upcxx {
   // operation_cx_as_future_t: default completions for most operations
   namespace detail {
     using operation_cx_as_future_t =
-      completions<future_cx<operation_cx_event, false>>;
+      completions<future_cx<operation_cx_event, UPCXX_EAGER_DEFAULT>>;
     using operation_cx_as_internal_future_t =
-      completions<future_cx<operation_cx_event, false, progress_level::internal>>;
+      completions<future_cx<operation_cx_event, UPCXX_EAGER_DEFAULT,
+                            progress_level::internal>>;
   }
 
   //////////////////////////////////////////////////////////////////////
