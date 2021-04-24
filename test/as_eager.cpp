@@ -4,8 +4,6 @@
   UPCXX_ASSERT_ALWAYS(fut.ready() == expected)
 #define CHECK_RESULT(fut, eager, expected) \
   UPCXX_ASSERT_ALWAYS((eager ? fut.result() : fut.wait()) == expected)
-#define WAIT_IF_NECESSARY(fut, eager) \
-  if (!eager) fut.wait()
 
 template<typename SrcFutCxFn, typename OpFutCxFn,
          typename OpEmptyPromCxFn, typename OpIntPromCxFn>
@@ -14,7 +12,7 @@ void test(bool eager, SrcFutCxFn src_fut_cx_fn, OpFutCxFn op_fut_cx_fn,
   upcxx::global_ptr<int> gptr = upcxx::new_<int>();
   auto fut1 = upcxx::rput(3, gptr, op_fut_cx_fn());
   CHECK_READY(fut1, eager);
-  WAIT_IF_NECESSARY(fut1, eager);
+  fut1.wait();
 
   auto fut2 = upcxx::rget(gptr, op_fut_cx_fn());
   CHECK_READY(fut2, eager);
@@ -23,7 +21,7 @@ void test(bool eager, SrcFutCxFn src_fut_cx_fn, OpFutCxFn op_fut_cx_fn,
   upcxx::promise<> pro3;
   upcxx::rput(-7, gptr, empty_prom_fn(pro3));
   CHECK_READY(pro3.finalize(), eager);
-  WAIT_IF_NECESSARY(pro3.get_future(), eager);
+  pro3.get_future().wait();
 
   upcxx::promise<int> pro4;
   upcxx::rget(gptr, int_prom_fn(pro4));
@@ -36,26 +34,28 @@ void test(bool eager, SrcFutCxFn src_fut_cx_fn, OpFutCxFn op_fut_cx_fn,
                            op_fut_cx_fn() | src_fut_cx_fn());
   CHECK_READY(std::get<0>(futs5), eager);
   CHECK_READY(std::get<1>(futs5), eager);
-  WAIT_IF_NECESSARY(std::get<0>(futs5), eager);
-  WAIT_IF_NECESSARY(std::get<1>(futs5), eager);
+  std::get<0>(futs5).wait();
+  std::get<1>(futs5).wait();
 
   auto fut6 = upcxx::rget(gptr2, gptr.local(), 1, op_fut_cx_fn());
   CHECK_READY(fut6, eager);
-  WAIT_IF_NECESSARY(fut6, eager);
+  fut6.wait();
 
-  // atomics
-  upcxx::atomic_domain<std::int64_t> ad({upcxx::atomic_op::load,
-                                         upcxx::atomic_op::store});
-  upcxx::global_ptr<std::int64_t> aptr = upcxx::new_<std::int64_t>(0);
-  auto fut7 = ad.store(aptr, 3, std::memory_order_relaxed, op_fut_cx_fn());
-  CHECK_READY(fut7, eager);
-  WAIT_IF_NECESSARY(fut7, eager);
+  // atomics -- cannot assume synchronous completion
+  if (!eager) {
+    upcxx::atomic_domain<std::int64_t> ad({upcxx::atomic_op::load,
+                                           upcxx::atomic_op::store});
+    upcxx::global_ptr<std::int64_t> aptr = upcxx::new_<std::int64_t>(0);
+    auto fut7 = ad.store(aptr, 3, std::memory_order_relaxed, op_fut_cx_fn());
+    CHECK_READY(fut7, eager);
+    fut7.wait();
 
-  auto fut8 = ad.load(aptr, std::memory_order_relaxed, op_fut_cx_fn());
-  CHECK_READY(fut8, eager);
-  CHECK_RESULT(fut8, eager, 3);
+    auto fut8 = ad.load(aptr, std::memory_order_relaxed, op_fut_cx_fn());
+    CHECK_READY(fut8, eager);
+    CHECK_RESULT(fut8, eager, 3);
 
-  ad.destroy();
+    ad.destroy();
+  }
 }
 
 int main(int argc, char **argv) {
