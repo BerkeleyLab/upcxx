@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
   upcxx::init();
   print_test_header();
 
-  test(false, // default currently defer
+  test(!UPCXX_DEFER_COMPLETION,
        upcxx::source_cx::as_future,
        upcxx::operation_cx::as_future,
        upcxx::operation_cx::as_promise<>,
