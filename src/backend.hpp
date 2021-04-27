@@ -66,11 +66,15 @@ namespace backend {
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_vbase;
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_size;
   
+#if UPCXX_BACKEND_GASNET_SEQ
   //////////////////////////////////////////////////////////////////////////////
   // Canonical ready empty future, allowing us to avoid creating a
-  // promise cell in some cases.
+  // promise cell in some cases. Only globals in SEQ mode, when they
+  // are implicitly owned by the master persona. In PAR mode, each
+  // persona has its own ready empty future to ensure thread safety.
   extern future<> ready_empty_future;
   extern void *ready_empty_future_addr;
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   // fulfill_during_<level=internal>

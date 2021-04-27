@@ -109,8 +109,10 @@ unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_local_minus_remote;
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_vbase;
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_size;
 
-upcxx::future<> backend::ready_empty_future;
-void *backend::ready_empty_future_addr = &ready_empty_future;
+#if UPCXX_BACKEND_GASNET_SEQ
+  upcxx::future<> backend::ready_empty_future;
+  void *backend::ready_empty_future_addr = &ready_empty_future;
+#endif
 
 ////////////////////////////////////////////////////////////////////////
 // from: upcxx/backend/gasnet/runtime.hpp
@@ -842,8 +844,10 @@ void upcxx::init() {
   // Setup local peer address translation tables
   init_localheap_tables();
 
-  // Set canonical ready empty future
-  backend::ready_empty_future = upcxx::make_future();
+  #if UPCXX_BACKEND_GASNET_SEQ
+    // Set canonical ready empty future
+    backend::ready_empty_future = upcxx::make_future();
+  #endif
 
   noise.show();
 

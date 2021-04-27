@@ -698,7 +698,19 @@ namespace upcxx {
 
         if (eager && sizeof...(T) == 0 && cx_event_is_done<Event>()(value)) {
           // indirection allows this to type check when T... is non-empty
-          return *static_cast<future<T...>*>(backend::ready_empty_future_addr);
+          #if UPCXX_BACKEND_GASNET_SEQ
+            return *static_cast<future<T...>*>(backend::ready_empty_future_addr);
+          #else
+            // must check whether current persona's ready empty future
+            // has been created
+            if (!current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr)) {
+              current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr) =
+                new future<>(make_future());
+            }
+            return *static_cast<future<T...>*>(
+              current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr)
+            );
+          #endif
         }
 
         pro_ = new future_header_promise<T...>;
