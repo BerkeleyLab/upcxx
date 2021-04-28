@@ -90,6 +90,10 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
+      #if !UPCXX_BACKEND_GASNET_SEQ
+        UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
+        UPCXX_INTERNAL_ONLY(ready_empty_future_addr)(0),
+      #endif
       UPCXX_INTERNAL_ONLY(backend_state_)(),
       UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
