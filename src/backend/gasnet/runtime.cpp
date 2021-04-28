@@ -111,7 +111,6 @@ unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_size;
 
 #if UPCXX_BACKEND_GASNET_SEQ
   upcxx::future<> backend::ready_empty_future;
-  void *backend::ready_empty_future_addr = &ready_empty_future;
 #endif
 
 ////////////////////////////////////////////////////////////////////////

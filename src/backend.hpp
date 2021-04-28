@@ -66,15 +66,39 @@ namespace backend {
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_vbase;
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_size;
   
-#if UPCXX_BACKEND_GASNET_SEQ
   //////////////////////////////////////////////////////////////////////////////
   // Canonical ready empty future, allowing us to avoid creating a
-  // promise cell in some cases. Only globals in SEQ mode, when they
-  // are implicitly owned by the master persona. In PAR mode, each
+  // promise cell in some cases. Only global in SEQ mode, when it
+  // is implicitly owned by the master persona. In PAR mode, each
   // persona has its own ready empty future to ensure thread safety.
+#if UPCXX_BACKEND_GASNET_SEQ
   extern future<> ready_empty_future;
-  extern void *ready_empty_future_addr;
 #endif
+
+  template<typename ...T>
+  inline future<T...> get_ready_empty_future() {
+    // this should never be used
+    UPCXX_ASSERT_ALWAYS(false, "internal error");
+    return {};
+  }
+
+  template<>
+  inline future<> get_ready_empty_future<>() {
+    #if UPCXX_BACKEND_GASNET_SEQ
+      UPCXX_ASSERT_MASTER();
+      return ready_empty_future;
+    #else
+      // must check whether current persona's ready empty future has
+      // been created
+      if (!current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr)) {
+        current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr) =
+          ::new(&current_persona().UPCXX_INTERNAL_ONLY(
+            ready_empty_future_storage
+          )) future<>{make_future()};
+      }
+      return *current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr);
+    #endif
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // fulfill_during_<level=internal>
