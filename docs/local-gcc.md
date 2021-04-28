@@ -23,7 +23,7 @@ UPC++ application may not run.  This is a problem with how shared libraries are
 handled, and not unique to UPC++.  An example of the kind of error one might
 see: 
 
-```
+```text
 ./a.out: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found (required by ./a.out)
 ```
 
@@ -35,7 +35,7 @@ shared library directory of your compiler installation.  In most cases it will
 be the *directory portion* of the output of the following, where g++ should be
 the compiler you intend to use:
 
-```
+```text
 g++ --print-file-name libstdc++.so
 ```
 
@@ -55,7 +55,7 @@ achieving the same inseparability as the previous option.  The following
 two-line script (with appropriate substitutions for g++ and GXXLIBDIR) should
 work:  
 
-```
+```bash
 #!/bin/sh  
 exec g++ -Wl,-rpath=GXXLIBDIR "$@"  
 ```

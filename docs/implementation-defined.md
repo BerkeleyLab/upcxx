@@ -76,8 +76,7 @@ Types of communication that do not experience restriction:
 The legality of lpc and progress from the non-primordial thread permits users
 to orchestrate their own "funneling" strategy, e.g.:
 
-```
-#!c++
+```c++
 
 // How a non-primordial thread can tell the master persona to put an rpc on the
 // wire on its behalf.
@@ -103,8 +102,7 @@ upcxx and thread B is blocking for a upcxx condition before servicing OpenMP.
 
 The following example has such a deadlock:
 
-```
-#!c++
+```c++
 
 #pragma omp parallel num_threads(2)
 {
@@ -136,8 +134,7 @@ RPCs from other processes.
 Another deadlock issue can arise from failing to discharge personas before
 they cease to be attentive:
 
-```
-#!c++
+```c++
 
 int got = -1;
 
