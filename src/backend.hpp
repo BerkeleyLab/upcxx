@@ -78,14 +78,14 @@ namespace backend {
   template<typename ...T>
   inline future<T...> get_ready_empty_future() {
     // this should never be used
-    UPCXX_ASSERT_ALWAYS(false, "internal error");
+    UPCXX_FATAL_ERROR("get_ready_empty_future<T...>() called with nonempty T");
     return {};
   }
 
   template<>
   inline future<> get_ready_empty_future<>() {
     #if UPCXX_BACKEND_GASNET_SEQ
-      UPCXX_ASSERT_MASTER();
+      UPCXX_ASSERT_MASTER_IFSEQ();
       return ready_empty_future;
     #else
       // must check whether current persona's ready empty future has
