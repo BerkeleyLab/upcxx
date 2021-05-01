@@ -1077,10 +1077,12 @@ if [[ \$vars =~ UPCXX_THREADMODE=([^\$IFS]*) ]]; then
   esac
 fi
 if [[ \$vars =~ UPCXX_NETWORK=([^\$IFS]*) ]]; then
-  value="\${BASH_REMATCH[1]}"
-  if [[ ! " $ALL_CONDUITS " =~ " \$value " ]]; then
-    die "invalid UPCXX_NETWORK='\$value'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
-  fi
+  network="\${BASH_REMATCH[1]}"
+else
+  network="$GASNET_CONDUIT"
+fi
+if [[ ! " $ALL_CONDUITS " =~ " \$network " ]]; then
+  die "invalid UPCXX_NETWORK='\$network'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
 fi
 vars=\${vars/UPCXX_NETWORK/GASNET_CONDUIT}
 vars=\${vars/UPCXX_THREADMODE=/UPCXX_BACKEND=gasnet_}
