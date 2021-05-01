@@ -1066,7 +1066,7 @@ EOF
 mkdir -p bin
 cat >| bin/upcxx <<EOF
 #!$BASH
-function die { echo "upcxx: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx: ERROR: \$*" >&2; exit 1; }
 vars=\$(env UPCXX_META=BUILDDIR $BASH $UPCXX_SRC/utils/upcxx.sh "\$@")
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 if [[ \$vars =~ UPCXX_THREADMODE=([^\$IFS]*) ]]; then
@@ -1095,7 +1095,7 @@ exec \${tmp##*\$'\n'} "\$@"
 EOF
 cat >| bin/upcxx-run <<EOF
 #!$BASH
-function die { echo "upcxx-run: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx-run: ERROR: \$*" >&2; exit 1; }
 conduit=\$(\${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -info "\$@" | grep ^GASNetConduitName: | cut -d' ' -f2 | tr '[A-Z]' '[a-z]'; exit \${PIPESTATUS[0]})
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 codemode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-${UPCXX_DBGOPT% *}})
@@ -1111,7 +1111,7 @@ exec \${tmp##*\$'\n'} "\$@"
 EOF
 cat >| bin/upcxx-meta <<EOF
 #!$BASH
-function die { echo "upcxx-meta: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx-meta: ERROR: \$*" >&2; exit 1; }
 cmode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-opt})
 case \$cmode in
   debug)   export DBGSYM=1 ASSERT=1 OPTLEV=0;;
