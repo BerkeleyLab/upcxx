@@ -98,7 +98,7 @@ list-networks: force
 configure_opt=--disable-debug
 configure_debug=--enable-debug
 do-gasnet-configure: force
-	@dir=$(GASNETDIR);                                                            \
+	@+dir=$(GASNETDIR);                                                            \
 	 if test \! -f "$$dir/gasnet_config.h" ; then                                 \
 	   echo "Configuring $(GASNET_CODEMODE)-mode build of GASNet";                \
 	   export GASNET_SUPPRESS_DEBUG_WARNING=1 ;                                   \
@@ -113,8 +113,12 @@ do-gasnet-configure: force
 	   cmd="$$cmd $(configure_$(GASNET_CODEMODE))";                               \
 	   cmd="$$cmd --with-cc='$(CONFIG_CC)' --with-cxx='$(CONFIG_CXX)'";           \
 	   echo "$$cmd";                                                              \
-	   mkdir -p "$$dir" && cd "$$dir" &&                                          \
-	     eval "$$cmd" 2>&1 | tee config.txt; exit $${PIPESTATUS[0]};              \
+	   mkdir -p "$$dir" && cd "$$dir" && eval "$$cmd" 2>&1 | tee config.txt;      \
+	   rc=$${PIPESTATUS[0]}; (( $$rc )) && exit $$rc;                             \
+	   if ! $(SHELL) $(top_srcdir)/bld/mpi_link_check.sh; then                    \
+	     rm -f gasnet_config.h;                                                   \
+	     exit 1;                                                                  \
+	   fi                                                                         \
 	 fi
 	@if test \! -f "$(GASNET_CONFIG_FRAGMENT)"; then                              \
 	   $(MAKE) do-gasnet-mak UPCXX_FRAGMENTS="$(builddir)/$(GASNETDIR)";          \
