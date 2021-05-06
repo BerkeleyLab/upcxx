@@ -16,6 +16,8 @@ bool run_ps = false;
 bool run_pg = false;
 bool run_uni = false;
 bool run_bi = false;
+bool run_put = false;
+bool run_get = false;
 bool run_block = false;
 bool run_flood = false;
 bool run_remote = false;
@@ -181,46 +183,46 @@ template<sync_type sync>
 static void run_all_copies(long msg_len) {
 
     if (run_gg) {
-        local_gpu_to_remote_gpu =
+        if (run_put) local_gpu_to_remote_gpu =
             helper<sync>(msg_len, local_gpu_array, remote_gpu_array);
-        remote_gpu_to_local_gpu =
+        if (run_get) remote_gpu_to_local_gpu =
             helper<sync>(msg_len, remote_gpu_array, local_gpu_array);
     }
 
     if (run_sg) {
-        local_shared_to_remote_gpu =
+        if (run_put) local_shared_to_remote_gpu =
             helper<sync>(
                     msg_len, local_shared_array, remote_gpu_array);
-        remote_gpu_to_local_shared =
+        if (run_get) remote_gpu_to_local_shared =
             helper<sync>(
                     msg_len, remote_gpu_array, local_shared_array);
     }
 
     if (run_gs) {
-        local_gpu_to_remote_shared =
+        if (run_put) local_gpu_to_remote_shared =
             helper<sync>(msg_len, local_gpu_array, remote_shared_array);
-        remote_shared_to_local_gpu =
+        if (run_get) remote_shared_to_local_gpu =
             helper<sync>(msg_len, remote_shared_array, local_gpu_array);
     }
 
     if (run_ss) {
-        local_shared_to_remote_shared =
+        if (run_put) local_shared_to_remote_shared =
             helper<sync>(msg_len, local_shared_array, remote_shared_array);
-        remote_shared_to_local_shared =
+        if (run_get) remote_shared_to_local_shared =
             helper<sync>(msg_len, remote_shared_array, local_shared_array);
     }
 
     if (run_ps) {
-        local_private_to_remote_shared =
+        if (run_put) local_private_to_remote_shared =
             helper<sync>(msg_len, local_private_array, remote_shared_array);
-        remote_shared_to_local_private =
+        if (run_get) remote_shared_to_local_private =
             helper<sync>(msg_len, remote_shared_array, local_private_array);
     }
 
     if (run_pg) {
-        local_private_to_remote_gpu =
+        if (run_put) local_private_to_remote_gpu =
             helper<sync>(msg_len, local_private_array, remote_gpu_array);
-        remote_gpu_to_local_private =
+        if (run_get) remote_gpu_to_local_private =
             helper<sync>(msg_len, remote_gpu_array, local_private_array);
     }
 }
@@ -253,12 +255,30 @@ static void test_header(const char *_desc) {
   if (use_concise) {
       auto col = std::setw(12);
       std::cout << col << "Copy-Size";
-      if (run_gg) std::cout << col << "LGpu->RGpu" << col << "RGpu->LGpu";
-      if (run_sg) std::cout << col << "LSh->RGpu"  << col << "RGpu->LSh";
-      if (run_gs) std::cout << col << "LGpu->RSh"  << col << "RSh->LGpu";
-      if (run_ss) std::cout << col << "LSh->RSh"   << col << "RSh->LSh";
-      if (run_ps) std::cout << col << Priv() + "->RSh"  << col << "RSh->" + Priv();
-      if (run_pg) std::cout << col << Priv() + "->RGpu" << col << "RGpu->" + Priv();
+      if (run_gg) {
+        if (run_put) std::cout << col << "LGpu->RGpu";
+        if (run_get) std::cout << col << "RGpu->LGpu";
+      }
+      if (run_sg) {
+        if (run_put) std::cout << col << "LSh->RGpu";
+        if (run_get) std::cout << col << "RGpu->LSh";
+      }
+      if (run_gs) {
+        if (run_put) std::cout << col << "LGpu->RSh";
+        if (run_get) std::cout << col << "RSh->LGpu";
+      }
+      if (run_ss) {
+        if (run_put) std::cout << col << "LSh->RSh";
+        if (run_get) std::cout << col << "RSh->LSh";
+      }
+      if (run_ps) {
+        if (run_put) std::cout << col << Priv() + "->RSh";
+        if (run_get) std::cout << col << "RSh->" + Priv();
+      }
+      if (run_pg) {
+        if (run_put) std::cout << col << Priv() + "->RGpu";
+        if (run_get) std::cout << col << "RGpu->" + Priv();
+      }
       std::cout << col << "Row-Time" << std::endl;
       return;
   }
@@ -271,50 +291,68 @@ static void print_latency_results() {
     if (use_concise) {
       auto col = std::setw(12);
       std::cout << col << 8;
-      if (run_gg) std::cout << col << local_gpu_to_remote_gpu/Mmsgs << col << remote_gpu_to_local_gpu/Mmsgs;
-      if (run_sg) std::cout << col << local_shared_to_remote_gpu/Mmsgs << col << remote_gpu_to_local_shared/Mmsgs;
-      if (run_gs) std::cout << col << local_gpu_to_remote_shared/Mmsgs << col << remote_shared_to_local_gpu/Mmsgs;
-      if (run_ss) std::cout << col << local_shared_to_remote_shared/Mmsgs << col << remote_shared_to_local_shared/Mmsgs;
-      if (run_ps) std::cout << col << local_private_to_remote_shared/Mmsgs << col << remote_shared_to_local_private/Mmsgs;
-      if (run_pg) std::cout << col << local_private_to_remote_gpu/Mmsgs << col << remote_gpu_to_local_private/Mmsgs;
+      if (run_gg) {
+        if (run_put) std::cout << col << local_gpu_to_remote_gpu/Mmsgs;
+        if (run_get) std::cout << col << remote_gpu_to_local_gpu/Mmsgs;
+      }
+      if (run_sg) {
+        if (run_put) std::cout << col << local_shared_to_remote_gpu/Mmsgs;
+        if (run_get) std::cout << col << remote_gpu_to_local_shared/Mmsgs;
+      }
+      if (run_gs) {
+        if (run_put) std::cout << col << local_gpu_to_remote_shared/Mmsgs;
+        if (run_get) std::cout << col << remote_shared_to_local_gpu/Mmsgs;
+      }
+      if (run_ss) {
+        if (run_put) std::cout << col << local_shared_to_remote_shared/Mmsgs;
+        if (run_get) std::cout << col << remote_shared_to_local_shared/Mmsgs;
+      }
+      if (run_ps) {
+        if (run_put) std::cout << col << local_private_to_remote_shared/Mmsgs;
+        if (run_get) std::cout << col << remote_shared_to_local_private/Mmsgs;
+      }
+      if (run_pg) {
+        if (run_put) std::cout << col << local_private_to_remote_gpu/Mmsgs;
+        if (run_get) std::cout << col << remote_gpu_to_local_private/Mmsgs;
+      }
       std::cout << col << row_time() << std::endl;
       return;
     }
 
     if (run_gg) {
-        std::cout << "  Local GPU -> Remote GPU: " <<
+        if (run_put) std::cout << "  Local GPU -> Remote GPU: " <<
             (local_gpu_to_remote_gpu / Mmsgs) << " us" << std::endl;
-        std::cout << "  Remote GPU -> Local GPU: " <<
+        if (run_get) std::cout << "  Remote GPU -> Local GPU: " <<
             (remote_gpu_to_local_gpu / Mmsgs) << " us" << std::endl;
     }
     if (run_sg) {
-        std::cout << "  Local Shared -> Remote GPU: " <<
+        if (run_put) std::cout << "  Local Shared -> Remote GPU: " <<
             (local_shared_to_remote_gpu / Mmsgs) << " us" << std::endl;
-        std::cout << "  Remote GPU -> Local Shared: " <<
+        if (run_get) std::cout << "  Remote GPU -> Local Shared: " <<
             (remote_gpu_to_local_shared / Mmsgs) << " us" << std::endl;
     }
     if (run_gs) {
-        std::cout << "  Local GPU -> Remote Shared: " <<
+        if (run_put) std::cout << "  Local GPU -> Remote Shared: " <<
             (local_gpu_to_remote_shared / Mmsgs) << " us" << std::endl;
-        std::cout << "  Remote Shared -> Local GPU: " <<
+        if (run_get) std::cout << "  Remote Shared -> Local GPU: " <<
             (remote_shared_to_local_gpu / Mmsgs) << " us" << std::endl;
     }
     if (run_ss) {
-        std::cout << "  Local Shared -> Remote Shared: " <<
+        if (run_put) std::cout << "  Local Shared -> Remote Shared: " <<
             (local_shared_to_remote_shared / Mmsgs) << " us" << std::endl;
-        std::cout << "  Remote Shared -> Local Shared: " <<
+        if (run_get) std::cout << "  Remote Shared -> Local Shared: " <<
             (remote_shared_to_local_shared / Mmsgs) << " us" << std::endl;
     }
     if (run_ps) {
-        std::cout << "  Local " << Private() << " -> Remote Shared: " <<
+        if (run_put) std::cout << "  Local " << Private() << " -> Remote Shared: " <<
             (local_private_to_remote_shared / Mmsgs) << " us" << std::endl;
-        std::cout << "  Remote Shared -> Local " << Private() << ": " <<
+        if (run_get) std::cout << "  Remote Shared -> Local " << Private() << ": " <<
             (remote_shared_to_local_private / Mmsgs) << " us" << std::endl;
     }
     if (run_pg) {
-        std::cout << "  Local " << Private() << " -> Remote GPU: " <<
+        if (run_put) std::cout << "  Local " << Private() << " -> Remote GPU: " <<
             (local_private_to_remote_gpu / Mmsgs) << " us" << std::endl;
-        std::cout << "  Remote GPU -> Local " << Private() << ": " <<
+        if (run_get) std::cout << "  Remote GPU -> Local " << Private() << ": " <<
             (remote_gpu_to_local_private / Mmsgs) << " us" << std::endl;
     }
 }
@@ -329,12 +367,30 @@ static void print_bandwidth_results(long msg_len, bool bidirectional) {
     if (use_concise) {
       auto col = std::setw(12);
       std::cout << col << msg_len;
-      if (run_gg) std::cout << col << gbytes/local_gpu_to_remote_gpu << col << gbytes/remote_gpu_to_local_gpu;
-      if (run_sg) std::cout << col << gbytes/local_shared_to_remote_gpu << col << gbytes/remote_gpu_to_local_shared;
-      if (run_gs) std::cout << col << gbytes/local_gpu_to_remote_shared << col << gbytes/remote_shared_to_local_gpu;
-      if (run_ss) std::cout << col << gbytes/local_shared_to_remote_shared << col << gbytes/remote_shared_to_local_shared;
-      if (run_ps) std::cout << col << gbytes/local_private_to_remote_shared << col << gbytes/remote_shared_to_local_private;
-      if (run_pg) std::cout << col << gbytes/local_private_to_remote_gpu << col << gbytes/remote_gpu_to_local_private;
+      if (run_gg) {
+        if (run_put) std::cout << col << gbytes/local_gpu_to_remote_gpu;
+        if (run_get) std::cout << col << gbytes/remote_gpu_to_local_gpu;
+      }
+      if (run_sg) {
+        if (run_put) std::cout << col << gbytes/local_shared_to_remote_gpu;
+        if (run_get) std::cout  << col << gbytes/remote_gpu_to_local_shared;
+      }
+      if (run_gs) {
+        if (run_put) std::cout << col << gbytes/local_gpu_to_remote_shared;
+        if (run_get) std::cout  << col << gbytes/remote_shared_to_local_gpu;
+      }
+      if (run_ss) {
+        if (run_put) std::cout << col << gbytes/local_shared_to_remote_shared;
+        if (run_get) std::cout  << col << gbytes/remote_shared_to_local_shared;
+      }
+      if (run_ps) {
+        if (run_put) std::cout << col << gbytes/local_private_to_remote_shared;
+        if (run_get) std::cout  << col << gbytes/remote_shared_to_local_private;
+      }
+      if (run_pg) {
+        if (run_put) std::cout << col << gbytes/local_private_to_remote_gpu;
+        if (run_get) std::cout  << col << gbytes/remote_gpu_to_local_private;
+      }
       std::cout << col << row_time() << std::endl;
       return;
     }
@@ -343,61 +399,61 @@ static void print_bandwidth_results(long msg_len, bool bidirectional) {
         "message size = " << msg_len << " byte(s)" << std::endl;
 
     if (run_gg) {
-        std::cout << "  Local GPU -> Remote GPU: " <<
+        if (run_put) std::cout << "  Local GPU -> Remote GPU: " <<
             (double(nmsgs) / local_gpu_to_remote_gpu) << " msgs/s, " <<
             (double(gbytes) / local_gpu_to_remote_gpu) << " GiB/s" <<
             std::endl;
-        std::cout << "  Remote GPU -> Local GPU: " <<
+        if (run_get) std::cout << "  Remote GPU -> Local GPU: " <<
             (double(nmsgs) / remote_gpu_to_local_gpu) << " msgs/s, " <<
             (double(gbytes) / remote_gpu_to_local_gpu) << " GiB/s" <<
             std::endl;
     }
     if (run_sg) {
-        std::cout << "  Local Shared -> Remote GPU: " <<
+        if (run_put) std::cout << "  Local Shared -> Remote GPU: " <<
             (double(nmsgs) / local_shared_to_remote_gpu) << " msgs/s, " <<
             (double(gbytes) / local_shared_to_remote_gpu) << " GiB/s" <<
             std::endl;
-        std::cout << "  Remote GPU -> Local Shared: " <<
+        if (run_get) std::cout << "  Remote GPU -> Local Shared: " <<
             (double(nmsgs) / remote_gpu_to_local_shared) << " msgs/s, " <<
             (double(gbytes) / remote_gpu_to_local_shared) << " GiB/s" <<
             std::endl;
     }
     if (run_gs) {
-        std::cout << "  Local GPU -> Remote Shared: " <<
+        if (run_put) std::cout << "  Local GPU -> Remote Shared: " <<
             (double(nmsgs) / local_gpu_to_remote_shared) << " msgs/s, " <<
             (double(gbytes) / local_gpu_to_remote_shared) << " GiB/s" <<
             std::endl;
-        std::cout << "  Remote Shared -> Local GPU: " <<
+        if (run_get) std::cout << "  Remote Shared -> Local GPU: " <<
             (double(nmsgs) / remote_shared_to_local_gpu) << " msgs/s, " <<
             (double(gbytes) / remote_shared_to_local_gpu) << " GiB/s" <<
             std::endl;
     }
     if (run_ss) {
-        std::cout << "  Local Shared -> Remote Shared: " <<
+        if (run_put) std::cout << "  Local Shared -> Remote Shared: " <<
             (double(nmsgs) / local_shared_to_remote_shared) << " msgs/s, " <<
             (double(gbytes) / local_shared_to_remote_shared) << " GiB/s" <<
             std::endl;
-        std::cout << "  Remote Shared -> Local Shared: " <<
+        if (run_get) std::cout << "  Remote Shared -> Local Shared: " <<
             (double(nmsgs) / remote_shared_to_local_shared) << " msgs/s, " <<
             (double(gbytes) / remote_shared_to_local_shared) << " GiB/s" <<
             std::endl;
     }
     if (run_ps) {
-        std::cout << "  Local " << Private() << " -> Remote Shared: " <<
+        if (run_put) std::cout << "  Local " << Private() << " -> Remote Shared: " <<
             (double(nmsgs) / local_private_to_remote_shared) << " msgs/s, " <<
             (double(gbytes) / local_private_to_remote_shared) << " GiB/s" <<
             std::endl;
-        std::cout << "  Remote Shared -> Local " << Private() << ": " <<
+        if (run_get) std::cout << "  Remote Shared -> Local " << Private() << ": " <<
             (double(nmsgs) / remote_shared_to_local_private) << " msgs/s, " <<
             (double(gbytes) / remote_shared_to_local_private) << " GiB/s" <<
             std::endl;
     }
     if (run_pg) {
-        std::cout << "  Local " << Private() << " -> Remote GPU: " <<
+        if (run_put) std::cout << "  Local " << Private() << " -> Remote GPU: " <<
             (double(nmsgs) / local_private_to_remote_gpu) << " msgs/s, " <<
             (double(gbytes) / local_private_to_remote_gpu) << " GiB/s" <<
             std::endl;
-        std::cout << "  Remote GPU -> Local " << Private() << ": " <<
+        if (run_get) std::cout << "  Remote GPU -> Local " << Private() << ": " <<
             (double(nmsgs) / remote_gpu_to_local_private) << " msgs/s, " <<
             (double(gbytes) / remote_gpu_to_local_private) << " GiB/s" <<
             std::endl;
@@ -487,6 +543,10 @@ int do_main(int argc, char **argv) {
                run_uni = true;
            } else if (strcmp(arg, "-bi") == 0) {
                run_bi = true;
+           } else if (strcmp(arg, "-p") == 0) {
+               run_put = true;
+           } else if (strcmp(arg, "-g") == 0) {
+               run_get = true;
            } else if (strcmp(arg, "-block") == 0) {
                run_block = true;
            } else if (strcmp(arg, "-flood") == 0) {
@@ -505,6 +565,8 @@ int do_main(int argc, char **argv) {
                    fprintf(stderr, "  Test pattern selection: (default all)\n");
                    fprintf(stderr, "       -uni: Run unidirectional tests (each proc is either initiator or target)\n");
                    fprintf(stderr, "       -bi:  Run bidirectional tests (initiator procs are also target procs)\n");
+                   fprintf(stderr, "       -p:   Run \"put-like\" tests (data movement away from local buffer)\n");
+                   fprintf(stderr, "       -g:   Run \"get-like\" tests (data movement towards local buffer)\n");
                    fprintf(stderr, "       -block:  Run one-copy-at-a-time blocking test\n");
                    fprintf(stderr, "       -flood:  Run many-copy-at-a-time flood test synchronized with operation_cx\n");
                    fprintf(stderr, "       -remote: Run many-copy-at-a-time flood test synchronized with remote_cx\n");
@@ -532,6 +594,9 @@ int do_main(int argc, char **argv) {
        }
        if (!run_uni && !run_bi) {
          run_uni = run_bi = true;
+       }
+       if (!run_put && !run_get) {
+         run_put = run_get = true;
        }
        if (!run_block && !run_flood && !run_remote) {
          run_block = run_flood = run_remote = true;
