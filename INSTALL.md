@@ -367,18 +367,34 @@ control over how UPC\+\+ is configured can be found in the
 [Advanced Configuration](#markdown-header-advanced-configuration) section below.
 
 By default ibv-conduit (InfiniBand support) will use MPI for job spawning if a
-working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  When this
-occurs, one must pass `--with-cxx=mpicxx` (or similar) to `configure` to ensure
-correct linkage of ibv-conduit executables.  It is then important that GASNet's
-MPI support use a corresponding/compatible `mpicc` and `mpirun`.  In the common
-case, the un-prefixed `mpicc` and `mpirun` in `$PATH` are compatible (ie. same
-vendor/version/ABI) with the provided `--with-cxx=mpicxx`, in which case
-nothing more should be required.  Otherwise, one may need to additionally pass
-options like `--with-mpi-cc='/path/to/compatible/mpicc -options'` and/or
-`--with-mpirun-cmd='/path/to/compatible/mpirun -np %N %C'`.  Please see
-GASNet's mpi-conduit documentation for details.  Alternatively, one may pass
-`--disable-mpi-compat` to disable support for MPI as a job spawner, eliminating
-the need to use an MPI C\+\+ compiler.
+working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  The same is
+true for MPI, OFI and UCX conduits, if these have been enabled.  To ensure that
+UPC\+\+ applications will link when one of these conduits are used, one of three
+options must be chosen.  Failure to do so will typically result in an error
+message at UPC\+\+ build time, directing you to this documentation.
+
+Option 1. The most direct solution is to configure using `--with-cxx=mpicxx` (or
+similar) to ensure correct linking of UPC\+\+ applications which use MPI for job
+spawning.  When one *is* using MPI for job spawning, it is important that
+GASNet's MPI support use a corresponding/compatible `mpicc` and `mpirun`.  In
+the common case, the un-prefixed `mpicc` and `mpirun` in `$PATH` are compatible
+(ie. same vendor/version/ABI) with the provided `--with-cxx=mpicxx`, in which
+case nothing more should be required.  Otherwise, one may need to additionally
+pass options like `--with-mpi-cc='/path/to/compatible/mpicc -options'` and/or
+`--with-mpirun-cmd='/path/to/compatible/mpirun -np %N %C'`.  
+Please see GASNet's mpi-conduit documentation for details.
+
+Option 2. If any of these networks are enabled but are not necessary, one can
+configure using `--disable-[network]` to disable it.  One may wish to select
+this option if there is no corresponding network hardware or no interest in
+using the given network API.  The case of missing hardware can often occur for
+IBV when Linux distros install the corresponding development packages as
+dependencies of other packages.
+
+Option 3. If one does not require MPI for job spawning (because SSH- or
+PMI-based spawning in GASNet are sufficient), then one may configure using
+`--disable-mpi-compat` to eliminate the link-time dependence on MPI.
+Note that this particular option does NOT work for mpi-conduit.
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
