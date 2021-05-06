@@ -104,7 +104,17 @@ exe run: force
 %: force; @$(MAKE) -C $(BLDDIR) $@
 
 failure: force
-	@echo -e '\n********\nUPC++ $(TARGET) failed. Please report the ENTIRE log above to: upcxx@googlegroups.com\n********\n' >&2
+	@( \
+	  echo '********'; \
+	  echo 'UPC++ $(TARGET) failed.'; \
+	  echo 'Please examine the log above for intructions which may resolve this problem.'; \
+	  jopt='$(filter -j%,$(MAKEFLAGS))'; \
+	  if [[ -n "$$jopt" ]]; then \
+	    echo "Please try again without '$$jopt', which may resolve the problem or at least produce clearer messages."; \
+	  fi; \
+	  echo 'If you still cannot resolve this problem, then please report the ENTIRE output to: upcxx@googlegroups.com'; \
+	  echo '********'; \
+	 ) >&2
 	@exit 1
 
 .PHONY: force echovar failure
