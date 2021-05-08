@@ -9,7 +9,7 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
-* ...
+* `bench/cuda_microbenchmark` performance test expanded and improved
 
 Notable bug fixes:
 
