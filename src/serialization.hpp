@@ -546,7 +546,7 @@ namespace upcxx {
             (elt_ub.size % elt_ub.align == 0 ? 0 :
              elt_ub.align - elt_ub.size % elt_ub.align);
           
-          std::size_t n0 = (edge_ - size0)/elt_size;
+          std::size_t n0 = elt_size ? (edge_ - size0)/elt_size : n;
           n0 = n < n0 ? n : n0;
           
           beg = this->template write_elts_bounded_<T,Iter>(beg, n0, trivial_and_contiguous);
