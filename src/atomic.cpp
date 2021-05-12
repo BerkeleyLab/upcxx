@@ -62,7 +62,8 @@ extern std::string opset_to_string(gex_OP_t opset) {
   else {
     #define DO_OP(tok) \
       if (opset & (gex_OP_t)atomic_op::tok) { \
-        if (n++) ss << ", "; ss << #tok; \
+        if (n++) ss << ", "; \
+        ss << #tok; \
         opset &= ~(gex_OP_t)atomic_op::tok; \
       }
     FORALL_OPS(DO_OP)
