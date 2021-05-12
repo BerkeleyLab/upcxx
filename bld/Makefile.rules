@@ -52,6 +52,7 @@ install-hook: force
 	@echo; \
 	 echo 'UPC++ installation complete.'; \
 	 echo '  Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 if [[ -n '$(UPCXX_CONDUIT_WARNINGS)' ]]; then echo '  $(UPCXX_CONDUIT_WARNINGS)'; fi; \
 	 echo '  One may reinstall setting NETWORK=... to override the default.'; \
 	 echo 'Recommended next steps:'; \
 	 echo '  See "Post-install recommendations" in'; \
@@ -68,7 +69,8 @@ all-hook: force
 	 echo "  1. '$(GMAKE_SHORT) check'";    \
 	 echo "  2. '$(GMAKE_SHORT) install [NETWORK=...]'"; \
 	 echo '     One may optionally set NETWORK=... to override the default.'; \
-	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'
+	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 if [[ -n '$(UPCXX_CONDUIT_WARNINGS)' ]]; then echo '     $(UPCXX_CONDUIT_WARNINGS)'; fi
 
 distclean-hook: force
 	-[[ $(upcxx_src) = $(upcxx_bld) ]] || rm -R $(BLDDIR)/Makefile
@@ -137,7 +139,8 @@ check-hook = \
 	@echo 'Recommended next steps:';  \
 	 echo "  If you have not already, you may now '$(GMAKE_SHORT) install [NETWORK=...]'"; \
 	 echo '     One may optionally set NETWORK=... to override the default.'; \
-	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).';
+	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 if [[ -n '$(UPCXX_CONDUIT_WARNINGS)' ]]; then echo '     $(UPCXX_CONDUIT_WARNINGS)'; fi
 
 ## GASNet pass-through
 # usage: make gasnet [DO_WHAT=target] [NETWORK=xyz] [UPCXX_CODEMODE={opt,debug}]
