@@ -401,6 +401,11 @@ After running `configure`, return to
 
 ### Configuration: Apple macOS
 
+On macOS, the default network is "smp": multiple processes running on a single
+host, communicating over shared memory.  One may specify a different default
+using `--with-default-network=...` at configure time.  However, you will also
+have the opportunity to make such a selection at the `make install` step.
+
 On macOS, UPC++ defaults to using the Apple LLVM clang compiler that is part
 of the Xcode Command Line Tools.
 

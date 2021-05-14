@@ -998,6 +998,8 @@ GASNET_CONDUIT=$(tr '[A-Z]' '[a-z]' <<<$GASNET_CONDUIT)
 if [[ -z $GASNET_CONDUIT ]]; then
   if [[ "$UPCXX_CROSS" =~ -aries- ]]; then
     GASNET_CONDUIT=aries
+  elif [[ $(uname -s) = 'Darwin' ]]; then
+    GASNET_CONDUIT=smp
   fi
 elif [[ " $UNOFFICIAL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
   warnings+="\nWARNING: $GASNET_CONDUIT is not an officially supported network.\n"
