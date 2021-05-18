@@ -16,6 +16,8 @@ Notable bug fixes:
 * issue #299: de-duplication of installed headers
 * issue #464: assert when calling `global_ptr<T,kind>::local()` on device pointers
 * issue #468: Harmless unused variable warnings on clang with -O -Wall
+* issue #473: Divide by zero in serialization when writing a sequence of
+  objects that have empty UPCXX_SERIALIZED_{FIELDS,VALUES}
 
 Breaking changes:
 
