@@ -129,10 +129,14 @@ int main(int argc, char *argv[]) {
     val_t *priv_dst = new val_t[maxelems];
     const int bufcnt = ptrs.size();
 
-
     uint64_t step = 0;
     static uint64_t rc_count = 0;
     for (int round = 0; round < iters; round++) {
+     #if UPCXX_THREADMODE
+     persona p;
+     persona_scope ps(p);
+     #endif
+
      bool talk = !me && (iters <= 10 || round % ((iters+9)/10) == 0);
      if (talk) {
         say("") << "Round "<< round << " (" << round*100/iters << " %)";
@@ -169,6 +173,9 @@ int main(int argc, char *argv[]) {
           auto rc = [](int rank) { 
             UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &upcxx::master_persona());
             UPCXX_ASSERT_ALWAYS(rank == upcxx::rank_me());
+            #if UPCXX_SPEC_VERSION >= 20201000
+            UPCXX_ASSERT_ALWAYS(upcxx::in_progress());
+            #endif
             rc_count++;
           };
           future<> of, sf;
@@ -270,12 +277,15 @@ int main(int argc, char *argv[]) {
         step++;
       }} // A/B bufs
 
-      do { upcxx::progress(); } while (rc_count < 3 * uint64_t(bufcnt)*bufcnt);
+      uint64_t rc_expected = 3 * uint64_t(bufcnt)*bufcnt;
+      do { upcxx::progress(); } while (rc_count < rc_expected);
+      UPCXX_ASSERT_ALWAYS(rc_count == rc_expected);
       rc_count = 0;
       upcxx::barrier();
      } // bufelems
     } // round
     
+    UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &upcxx::master_persona());
     upcxx::barrier();
 
     // cleanup
