@@ -204,7 +204,7 @@ fi
 
 # Preserve env vars which options processing may clobber
 UPCXX_CONFIG_ENVVARS=( CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS LIBS\
-                       GASNET GASNET_CONFIGURE_ARGS UPCXX_CROSS \
+                       GASNET GASNET_CONDUIT GASNET_CONFIGURE_ARGS UPCXX_CROSS \
                        GMAKE UPCXX_PYTHON \
                        UPCXX_CUDA{,_NVCC,_CPPFLAGS,_LIBFLAGS} )
 for var in ${UPCXX_CONFIG_ENVVARS[*]} ; do
