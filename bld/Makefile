@@ -98,7 +98,7 @@ list-networks: force
 configure_opt=--disable-debug
 configure_debug=--enable-debug
 do-gasnet-configure: force
-	@dir=$(GASNETDIR);                                                            \
+	@+dir=$(GASNETDIR);                                                            \
 	 if test \! -f "$$dir/gasnet_config.h" ; then                                 \
 	   echo "Configuring $(GASNET_CODEMODE)-mode build of GASNet";                \
 	   export GASNET_SUPPRESS_DEBUG_WARNING=1 ;                                   \
@@ -110,15 +110,17 @@ do-gasnet-configure: force
 	   cmd="$$cmd $$GASNET_CONFIGURE_ARGS";                                       \
 	   cmd="$$cmd --disable-parsync --enable-seq --enable-par";                   \
 	   cmd="$$cmd --enable-pthreads --disable-segment-everything";                \
-	   cmd="$$cmd --enable-$(GASNET_CONDUIT) $(configure_$(GASNET_CODEMODE))";    \
+	   cmd="$$cmd $(configure_$(GASNET_CODEMODE))";                               \
 	   cmd="$$cmd --with-cc='$(CONFIG_CC)' --with-cxx='$(CONFIG_CXX)'";           \
 	   echo "$$cmd";                                                              \
-	   mkdir -p "$$dir" && cd "$$dir" &&                                          \
-	     eval "$$cmd" 2>&1 | tee config.txt; exit $${PIPESTATUS[0]};              \
+	   mkdir -p "$$dir" && cd "$$dir" && eval "$$cmd" 2>&1 | tee config.txt;      \
+	   rc=$${PIPESTATUS[0]}; (( $$rc )) && exit $$rc;                             \
+	   if ! $(SHELL) $(top_srcdir)/bld/mpi_link_check.sh; then                    \
+	     rm -f gasnet_config.h;                                                   \
+	     exit 1;                                                                  \
+	   fi                                                                         \
 	 fi
 	@if test \! -f "$(GASNET_CONFIG_FRAGMENT)"; then                              \
-	   $(MAKE) -C $(GASNETDIR)/$(GASNET_CONDUIT)-conduit                          \
-			$(GASNET_CONDUIT)-$(GASNET_THREADMODE).mak &&                 \
 	   $(MAKE) do-gasnet-mak UPCXX_FRAGMENTS="$(builddir)/$(GASNETDIR)";          \
 	 fi
 
@@ -289,7 +291,7 @@ endif
 ##
 
 ifneq ($(UPCXX_FRAGMENTS),)
-include $(UPCXX_FRAGMENTS)/$(GASNET_CONDUIT)-conduit/$(GASNET_CONDUIT)-$(GASNET_THREADMODE).mak
+-include $(UPCXX_FRAGMENTS)/$(GASNET_CONDUIT)-conduit/$(GASNET_CONDUIT)-$(GASNET_THREADMODE).mak
 endif
 
 include $(top_srcdir)/bld/compiler.mak
@@ -401,10 +403,33 @@ GASNET_CONFIG_SCRIPTS_FULL = \
 	$(addprefix $(top_srcdir)/utils/config/gasnet/, $(GASNET_CONFIG_SCRIPTS))
 
 do-gasnet-mak: force
+	@if [[ -n '$(UPCXX_CONFIGURE_NETWORK)' ]]; then                    \
+	   conduit=$(UPCXX_CONFIGURE_NETWORK);                             \
+	 else                                                              \
+	   : find last supported conduit found in CONDUITS;                \
+	   unset conduit;                                                  \
+	   eval $$($(MAKE) -C $(UPCXX_FRAGMENTS) echovar VARNAME=CONDUITS);\
+	   for x in $$CONDUITS; do                                         \
+	     [[ " $(filter-out $(UNOFFICIAL_CONDUITS),$(ALL_CONDUITS)) " =~ " $$x " ]] && conduit=$$x; \
+	   done;                                                           \
+	   if [[ -z $$conduit ]]; then                                     \
+	     echo "ERROR: failed to find a supported network" >&2;         \
+	     exit 1;                                                       \
+	   fi                                                              \
+	 fi;                                                               \
+	 : generate fragment for the default network;                      \
+	 $(MAKE) -C $(UPCXX_FRAGMENTS)/$${conduit}-conduit                 \
+			$${conduit}-$(GASNET_THREADMODE).mak &&            \
+	 : recurse to read the newly generated fragment;                   \
+	 $(MAKE) do-gasnet-mak-pt2 GASNET_CONDUIT=$$conduit
+do-gasnet-mak-pt2: force
 	@export $(UPCXX_CONFIG_VARS)                          \
 	        $(foreach var,$(UPCXX_CONFIG_FRAG_VARS),GASNET_$(var)='$(GASNET_$(var))'); \
 	 cd $(UPCXX_FRAGMENTS);                               \
 	 ( echo '# This file is auto-generated. Do not edit.';\
+	   echo ;                                             \
+	   echo '# Default network conduit';                  \
+	   echo 'UPCXX_DEFAULT_NETWORK=$(GASNET_CONDUIT)';    \
 	   echo ;                                             \
 	   for script in $(GASNET_CONFIG_SCRIPTS_FULL); do    \
 	     $(SHELL) $$script;                               \
@@ -415,7 +440,7 @@ do-gasnet-mak: force
 	     fi;                                              \
 	   done;                                              \
 	 ) >| $(GASNET_CONFIG_FRAGMENT)
-.PHONY: do-gasnet-mak
+.PHONY: do-gasnet-mak do-gasnet-mak-pt2
 
 # Panic button to zap generated upcxx_config.hpp files
 .PHONY: upcxx-unconfig

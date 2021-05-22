@@ -15,6 +15,7 @@ UPCXX_CONFIG_SCRIPTS = \
 	issue400_workaround.sh
 # Scripts (in $(upcxx_src)/utils/config/gasnet) to be run IN ORDER
 GASNET_CONFIG_SCRIPTS = \
+	conduit_warnings.sh \
 	config_status.sh \
 	openmp.sh
 

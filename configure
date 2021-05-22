@@ -998,7 +998,7 @@ GASNET_CONDUIT=$(tr '[A-Z]' '[a-z]' <<<$GASNET_CONDUIT)
 if [[ -z $GASNET_CONDUIT ]]; then
   if [[ "$UPCXX_CROSS" =~ -aries- ]]; then
     GASNET_CONDUIT=aries
-  else
+  elif [[ $(uname -s) = 'Darwin' ]]; then
     GASNET_CONDUIT=smp
   fi
 elif [[ " $UNOFFICIAL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
@@ -1009,9 +1009,14 @@ elif [[ " $ALL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
 else
   echo_and_die "ERROR: --with-default-network='$GASNET_CONDUIT' is not a valid network.\nValid networks include:$OFFICIAL_CONDUITS"
 fi
-# Complain if last of enabled/disable flags for the default network is disable
-if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
-  echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '--disable-$GASNET_CONDUIT'."
+if [[ -n $GASNET_CONDUIT ]]; then
+  # Complain if last of enabled/disable flags for the default network is disable
+  if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) \
+         =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
+    echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '${BASH_REMATCH[1]}'."
+  fi
+  # Ensure GASNet configure fails if default network is not available
+  GASNET_CONFIGURE_ARGS+=" --enable-$GASNET_CONDUIT"
 fi
 
 #
@@ -1051,7 +1056,7 @@ export UPCXX_MPSC_QUEUE=UPCXX_MPSC_QUEUE_$(tr '[a-z]' '[A-Z]' <<<$UPCXX_MPSC_QUE
 export UPCXX_DBGOPT=$UPCXX_DBGOPT
 export GASNET_UNPACKED=$GASNET_UNPACKED
 export GASNET_CONFIGURE_ARGS=$GASNET_CONFIGURE_ARGS
-export UPCXX_DEFAULT_NETWORK=$GASNET_CONDUIT
+export UPCXX_CONFIGURE_NETWORK=$GASNET_CONDUIT
 export UPCXX_CUDA=$UPCXX_CUDA
 export UPCXX_CUDA_NVCC=$UPCXX_CUDA_NVCC
 export UPCXX_CUDA_CPPFLAGS=$UPCXX_CUDA_CPPFLAGS
@@ -1066,7 +1071,7 @@ EOF
 mkdir -p bin
 cat >| bin/upcxx <<EOF
 #!$BASH
-function die { echo "upcxx: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx: ERROR: \$*" >&2; exit 1; }
 vars=\$(env UPCXX_META=BUILDDIR $BASH $UPCXX_SRC/utils/upcxx.sh "\$@")
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 if [[ \$vars =~ UPCXX_THREADMODE=([^\$IFS]*) ]]; then
@@ -1077,10 +1082,12 @@ if [[ \$vars =~ UPCXX_THREADMODE=([^\$IFS]*) ]]; then
   esac
 fi
 if [[ \$vars =~ UPCXX_NETWORK=([^\$IFS]*) ]]; then
-  value="\${BASH_REMATCH[1]}"
-  if [[ ! " $ALL_CONDUITS " =~ " \$value " ]]; then
-    die "invalid UPCXX_NETWORK='\$value'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
-  fi
+  network="\${BASH_REMATCH[1]}"
+else
+  network="$GASNET_CONDUIT"
+fi
+if [[ ! " $ALL_CONDUITS " =~ " \$network " ]]; then
+  die "invalid UPCXX_NETWORK='\$network'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
 fi
 vars=\${vars/UPCXX_NETWORK/GASNET_CONDUIT}
 vars=\${vars/UPCXX_THREADMODE=/UPCXX_BACKEND=gasnet_}
@@ -1093,7 +1100,7 @@ exec \${tmp##*\$'\n'} "\$@"
 EOF
 cat >| bin/upcxx-run <<EOF
 #!$BASH
-function die { echo "upcxx-run: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx-run: ERROR: \$*" >&2; exit 1; }
 conduit=\$(\${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -info "\$@" | grep ^GASNetConduitName: | cut -d' ' -f2 | tr '[A-Z]' '[a-z]'; exit \${PIPESTATUS[0]})
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 codemode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-${UPCXX_DBGOPT% *}})
@@ -1109,7 +1116,7 @@ exec \${tmp##*\$'\n'} "\$@"
 EOF
 cat >| bin/upcxx-meta <<EOF
 #!$BASH
-function die { echo "upcxx-meta: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx-meta: ERROR: \$*" >&2; exit 1; }
 cmode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-opt})
 case \$cmode in
   debug)   export DBGSYM=1 ASSERT=1 OPTLEV=0;;

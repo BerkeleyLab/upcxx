@@ -52,6 +52,7 @@ install-hook: force
 	@echo; \
 	 echo 'UPC++ installation complete.'; \
 	 echo '  Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 if [[ -n '$(UPCXX_CONDUIT_WARNINGS)' ]]; then echo '  $(UPCXX_CONDUIT_WARNINGS)'; fi; \
 	 echo '  One may reinstall setting NETWORK=... to override the default.'; \
 	 echo 'Recommended next steps:'; \
 	 echo '  See "Post-install recommendations" in'; \
@@ -68,7 +69,8 @@ all-hook: force
 	 echo "  1. '$(GMAKE_SHORT) check'";    \
 	 echo "  2. '$(GMAKE_SHORT) install [NETWORK=...]'"; \
 	 echo '     One may optionally set NETWORK=... to override the default.'; \
-	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'
+	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 if [[ -n '$(UPCXX_CONDUIT_WARNINGS)' ]]; then echo '     $(UPCXX_CONDUIT_WARNINGS)'; fi
 
 distclean-hook: force
 	-[[ $(upcxx_src) = $(upcxx_bld) ]] || rm -R $(BLDDIR)/Makefile
@@ -104,7 +106,17 @@ exe run: force
 %: force; @$(MAKE) -C $(BLDDIR) $@
 
 failure: force
-	@echo -e '\n********\nUPC++ $(TARGET) failed. Please report the ENTIRE log above to: upcxx@googlegroups.com\n********\n' >&2
+	@( \
+	  echo '********'; \
+	  echo 'UPC++ $(TARGET) failed.'; \
+	  echo 'Please examine the log above for intructions which may resolve this problem.'; \
+	  jopt='$(filter -j%,$(MAKEFLAGS))'; \
+	  if [[ -n "$$jopt" ]]; then \
+	    echo "Please try again without '$$jopt', which may resolve the problem or at least produce clearer messages."; \
+	  fi; \
+	  echo 'If you still cannot resolve this problem, then please report the ENTIRE output to: upcxx@googlegroups.com'; \
+	  echo '********'; \
+	 ) >&2
 	@exit 1
 
 .PHONY: force echovar failure
@@ -127,7 +139,8 @@ check-hook = \
 	@echo 'Recommended next steps:';  \
 	 echo "  If you have not already, you may now '$(GMAKE_SHORT) install [NETWORK=...]'"; \
 	 echo '     One may optionally set NETWORK=... to override the default.'; \
-	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).';
+	 echo '     Default network: $(DFLT_CONDUIT).  Available networks: $(HAVE_CONDUIT).'; \
+	 if [[ -n '$(UPCXX_CONDUIT_WARNINGS)' ]]; then echo '     $(UPCXX_CONDUIT_WARNINGS)'; fi
 
 ## GASNet pass-through
 # usage: make gasnet [DO_WHAT=target] [NETWORK=xyz] [UPCXX_CODEMODE={opt,debug}]
