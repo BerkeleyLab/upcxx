@@ -11,9 +11,26 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 * `bench/cuda_microbenchmark` performance test expanded and improved
 
+Infrastructure changes:
+
+* Multiple improvements to default network selection
+    - In addition to selection at configure time, the default network can now
+      be selected as late as the `make install` step.
+    - In support of the behavior above, the `make all` and `make install`
+      steps now report the default and available networks.
+    - The build logic for Linux now makes an effort to perform more intelligent
+      selection of a default network, rather than always defaulting to `smp`.  
+    - The default networks for macOS and Cray XC remain unchanged:
+      `smp` and `aries`, respectively.
+* The build logic now diagnoses conditions in which `CXX` must be a
+  MPI-compatible (wrapper) compiler rather than deferring discovery of the
+  problem until `make check`, `make test_install` or even to user application
+  link time.
+
 Notable bug fixes:
 
 * issue #299: de-duplication of installed headers
+* issue #354: improve default network selection
 * issue #464: assert when calling `global_ptr<T,kind>::local()` on device pointers
 * issue #468: Harmless unused variable warnings on clang with -O -Wall
 * issue #473: Divide by zero in serialization when writing a sequence of
