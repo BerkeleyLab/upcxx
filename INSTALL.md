@@ -208,6 +208,22 @@ with eight concurrent processes.  This may significantly reduce the time
 required. However parallel make can also obscure error messages, so if you
 encounter a failure you should retry without a `-j` option.
 
+Some combinations of network and `configure` options require that `CXX` be
+capable of linking MPI applications.  If that requirement exists but is unmet,
+then this step will fail with output giving instructions to read the section
+[Configuration: Linux](#markdown-header-configuration-linux) in this document,
+where this issue is described in more detail.
+
+The output generated at the successful conclusion of this step gives the
+default network and a list of available networks.  This is an appropriate time
+to verify that the default network is the one you expect to use.  If it is
+not, but it is listed as available, you can specify your preferred network
+to the later `make install` step _without_ starting over.  However, if your
+preferred network is not listed as available, then you will need to return
+to the previous (`configure`) step, where additional arguments or environment
+modules may be required to enable detection of the appropriate headers and/or
+libraries.
+
 #### 3. Testing the UPC\+\+ build (optional)
 
 Though it is not required, we recommend testing the completeness and correctness
