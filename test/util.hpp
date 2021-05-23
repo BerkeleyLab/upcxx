@@ -34,8 +34,11 @@ using upcxx::say;
 using upcxx::os_env;
 #else // before 2020.3.8
 using say_ = upcxx::say;
+#define say util_say
 say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); } 
-using upcxx::os_env;
+  #if UPCXX_VERSION >= 20190900 
+  using upcxx::os_env;
+  #endif
 #endif
 
 template<typename=void>
