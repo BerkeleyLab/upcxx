@@ -172,6 +172,7 @@ namespace upcxx {
   } // detail::copy_as_rput
 
   // special case: host-to-host copy-get
+  // Precondition: (want_remote && rank_d == rank_me) || (!want_remote && dest.is_local())
   template<typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
   copy_as_rget(const intrank_t rank_s, void *const buf_s,
