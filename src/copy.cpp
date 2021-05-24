@@ -134,9 +134,6 @@ void upcxx::detail::rma_copy_get(
     void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXX_CUDA_USE_MK
-    UPCXX_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
-  #endif
   gex_Event_t h = gex_RMA_GetNB(
     gasnet::handle_of(upcxx::world()),
     buf_d, rank_s, const_cast<void*>(buf_s), size,

@@ -281,7 +281,7 @@ namespace upcxx {
 
       template<typename T, intru_queue_intruder<T> T::*next>
       template<typename Fn>
-      int __attribute__((noinline))
+      int UPCXX_NOINLINE
       intru_queue<T, intru_queue_safety::mpsc, next>::burst_something(int max_n, Fn &&fn, T *head) {
         int exec_n = 0;
         T *p = head;

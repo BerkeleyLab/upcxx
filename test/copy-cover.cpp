@@ -34,6 +34,7 @@ using val_t = std::uint32_t;
 #define VAL(rank, step, idx) ((val_t)(((rank)&0xFFFF << 16) | ((step)&0xFF << 8) | ((idx)&0xFF) ))
 
 using any_ptr = global_ptr<val_t, memory_kind::any>;
+long errs = 0;
 
 int main(int argc, char *argv[]) {
   upcxx::init();
@@ -263,6 +264,7 @@ int main(int argc, char *argv[]) {
                 <<" B="<<B<<"("<<Bwhere<<Bheap<<")"
                 <<mismatch
                 <<(kill1?", kill1":"")<<(kill2?", kill2":"")<<(kill3?", kill3":"");
+          errs++;
         }
 
         step++;
@@ -300,7 +302,7 @@ int main(int argc, char *argv[]) {
   }
     
   UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &upcxx::master_persona());
-  print_test_success();
+  print_test_success(errs == 0);
   
   upcxx::finalize();
   return 0;
