@@ -636,7 +636,7 @@ namespace upcxx {
         tls.flip_burstable(level);
         {
           persona_scope_redundant tmp(p, tls);
-          fn();
+          std::forward<Fn>(fn)();
         }
         tls.flip_burstable(level);
       }
