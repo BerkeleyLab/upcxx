@@ -833,15 +833,18 @@ namespace upcxx {
     if(-1 != tls.get_progressing())
       return 0;
     tls.set_progressing((int)progress_level::user);
-    tls.flip_burstable(progress_level::user);
+    UPCXX_ASSERT(!tls.is_burstable(progress_level::user));
+    tls.flip_burstable(progress_level::user); // enable
     
     int exec_n = 0;
     tls.foreach_active_as_top([&](persona &p) {
       exec_n += tls.burst_internal(p);
-      exec_n += tls.burst_user(p);
+      tls.flip_burstable(progress_level::user); // disable
+        exec_n += tls.burst_user(p);
+      tls.flip_burstable(progress_level::user); // enable
     });
     
-    tls.flip_burstable(progress_level::user);
+    tls.flip_burstable(progress_level::user); // disable
     tls.set_progressing(-1);
     return exec_n;
   }

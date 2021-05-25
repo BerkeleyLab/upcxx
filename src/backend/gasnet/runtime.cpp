@@ -2066,9 +2066,10 @@ void upcxx::progress(progress_level level) {
   if(tls.get_progressing() >= 0)
     return;
   tls.set_progressing((int)level);
-  
-  if(level == progress_level::user)
-    tls.flip_burstable(progress_level::user);
+ 
+  UPCXX_ASSERT(!tls.is_burstable(progress_level::user));
+  if (level == progress_level::user)
+    tls.flip_burstable(progress_level::user); // enable
   
   int total_exec_n = 0;
   int exec_n;
@@ -2092,9 +2093,9 @@ void upcxx::progress(progress_level level) {
       exec_n += tls.burst_internal(p);
       
       if(level == progress_level::user) {
-        tls.flip_burstable(progress_level::user);
+        tls.flip_burstable(progress_level::user); // disable
         exec_n += tls.burst_user(p);
-        tls.flip_burstable(progress_level::user);
+        tls.flip_burstable(progress_level::user); // enable
       }
     });
     
@@ -2125,7 +2126,8 @@ void upcxx::progress(progress_level level) {
     }
   }
   
-  tls.flip_burstable(progress_level::user);
+  if(level == progress_level::user)
+    tls.flip_burstable(progress_level::user); // disable
   tls.set_progressing(-1);
 }
 
