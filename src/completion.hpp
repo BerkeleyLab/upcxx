@@ -778,12 +778,16 @@ namespace upcxx {
 
       cx_state(promise_cx<Event,eager,T...> &&cx):
         pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {
-        detail::promise_require_anonymous(pro_, 1);
+        // when eager, avoid incrementing the dependency count unless
+        // this completion ends up being deferred by a call to
+        // to_lpc_dormant()
+        if (!eager) detail::promise_require_anonymous(pro_, 1);
       }
       cx_state(const promise_cx<Event,eager,T...> &cx):
         cx_state(promise_cx<Event,eager,T...>(cx)) {}
       
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
+        if (eager) detail::promise_require_anonymous(pro_, 1);
         future_header_promise<T...> *pro = /*move ref*/pro_;
         return detail::make_lpc_dormant(
           upcxx::current_persona(), progress_level::user,
@@ -795,9 +799,9 @@ namespace upcxx {
       }
       
       void operator()() {
-        if (eager) {
-          backend::fulfill_now(/*move ref*/pro_, 1);
-        } else {
+        // when eager, dependency count was not incremented, so
+        // nothing to do here
+        if (!eager) {
           backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
         }
       }
@@ -809,12 +813,16 @@ namespace upcxx {
 
       cx_state(promise_cx<Event,eager> &&cx):
         pro_(static_cast<promise_cx<Event,eager>&&>(cx).pro_.steal_header()) {
-        detail::promise_require_anonymous(pro_, 1);
+        // when eager, avoid incrementing the dependency count unless
+        // this completion ends up being deferred by a call to
+        // to_lpc_dormant()
+        if (!eager) detail::promise_require_anonymous(pro_, 1);
       }
       cx_state(const promise_cx<Event,eager> &cx):
         cx_state(promise_cx<Event,eager>(cx)) {}
 
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
+        if (eager) detail::promise_require_anonymous(pro_, 1);
         future_header_promise<> *pro = /*move ref*/pro_;
         return detail::make_lpc_dormant<>(
           upcxx::current_persona(), progress_level::user,
@@ -826,9 +834,9 @@ namespace upcxx {
       }
       
       void operator()() {
-        if (eager) {
-          backend::fulfill_now(/*move ref*/pro_, 1);
-        } else {
+        // when eager, dependency count was not incremented, so
+        // nothing to do here
+        if (!eager) {
           backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
         }
       }
