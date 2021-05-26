@@ -880,7 +880,7 @@ namespace upcxx {
       // Same as the above, but create the callable directly from a completions
       // without needing to create a completions_state first.
       template<typename Event>
-      static SomeCallable bind_event(const Cxs &);
+      static SomeCallable bind_event_static(const Cxs &);
 
       // Convert states of actions associated with given Event to dormant lpc list
       template<typename Event>
@@ -916,7 +916,7 @@ namespace upcxx {
       }
 
       template<typename Event>
-      static event_bound bind_event(completions<>) {
+      static event_bound bind_event_static(completions<>) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
                       "supported for remote_cx_event");
@@ -1126,7 +1126,7 @@ namespace upcxx {
       }
 
       template<typename Event>
-      static auto bind_event(const completions<CxH,CxT...> &cxs)
+      static auto bind_event_static(const completions<CxH,CxT...> &cxs)
         UPCXX_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns(cxs))) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
