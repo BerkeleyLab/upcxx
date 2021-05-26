@@ -266,6 +266,9 @@ necessary to add new header files to any manually-maintained list.  If there are
 headers missing from an install, then it is appropriate to update
 `src/upcxx_headers.cpp` to ensure then are reached in the crawl.
 
+To generate the unique include guards used in the UPC\+\+ headers, use the
+script `utils/uuifdef.sh`.
+
 #### To add a configure probe
 
 Configure probes run after GASNet has been configured can generate content in
