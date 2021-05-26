@@ -643,7 +643,12 @@ namespace upcxx {
   // Specializations should look like:
   template<typename Event, typename ...T>
   struct cx_state<whatever_cx<Event>, std::tuple<T...>> {
-    // There will be exatcly one call to one of the following functions before
+    void set_done(cx_event_done) {
+      // This function sets the done state of this completion for eager
+      // optimization.
+    }
+
+    // There will be exactly one call to one of the following functions before
     // this state destructs...
 
     void operator()(T...) {
@@ -668,12 +673,14 @@ namespace upcxx {
     
     template<typename Event>
     struct cx_state<buffered_cx<Event>, std::tuple<>> {
+      void set_done(cx_event_done) {}
       cx_state(buffered_cx<Event>) {}
       void operator()() {}
     };
     
     template<typename Event>
     struct cx_state<blocking_cx<Event>, std::tuple<>> {
+      void set_done(cx_event_done) {}
       cx_state(blocking_cx<Event>) {}
       void operator()() {}
     };
@@ -690,7 +697,7 @@ namespace upcxx {
       }
 
       // completions_returner_head handles cx_state<future_cx> specially and requires
-      // this additional method.
+      // this additional method rather than set_done().
       future<T...> get_future(cx_event_done value) /*const*/ {
         #if UPCXX_ASSERT_ENABLED
           get_future_invoked = true;
@@ -746,6 +753,8 @@ namespace upcxx {
       cx_state(const promise_cx<Event,eager,T...> &cx):
         cx_state(promise_cx<Event,eager,T...>(cx)) {}
 
+      void set_done(cx_event_done) {}
+
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
         future_header_promise<T...> *pro = /*move ref*/pro_;
         return detail::make_lpc_dormant(
@@ -777,17 +786,21 @@ namespace upcxx {
       future_header_promise<T...> *pro_; // holds ref
 
       cx_state(promise_cx<Event,eager,T...> &&cx):
-        pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {
-        // when eager, avoid incrementing the dependency count unless
-        // this completion ends up being deferred by a call to
-        // to_lpc_dormant()
-        if (!eager) detail::promise_require_anonymous(pro_, 1);
-      }
+        pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {}
       cx_state(const promise_cx<Event,eager,T...> &cx):
         cx_state(promise_cx<Event,eager,T...>(cx)) {}
       
+      void set_done(cx_event_done value) {
+        if (eager && cx_event_is_done<Event>()(value)) {
+          // when eager and done, avoid incrementing the dependency count
+          pro_ = nullptr;
+        } else {
+          detail::promise_require_anonymous(pro_, 1);
+        }
+      }
+
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
-        if (eager) detail::promise_require_anonymous(pro_, 1);
+        UPCXX_ASSERT(pro_, "internal error: pro_ null in to_lpc_dormant");
         future_header_promise<T...> *pro = /*move ref*/pro_;
         return detail::make_lpc_dormant(
           upcxx::current_persona(), progress_level::user,
@@ -799,9 +812,9 @@ namespace upcxx {
       }
       
       void operator()() {
-        // when eager, dependency count was not incremented, so
+        // when pro_ is null, dependency count was not incremented, so
         // nothing to do here
-        if (!eager) {
+        if (pro_) {
           backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
         }
       }
@@ -812,17 +825,21 @@ namespace upcxx {
       future_header_promise<> *pro_; // holds ref
 
       cx_state(promise_cx<Event,eager> &&cx):
-        pro_(static_cast<promise_cx<Event,eager>&&>(cx).pro_.steal_header()) {
-        // when eager, avoid incrementing the dependency count unless
-        // this completion ends up being deferred by a call to
-        // to_lpc_dormant()
-        if (!eager) detail::promise_require_anonymous(pro_, 1);
-      }
+        pro_(static_cast<promise_cx<Event,eager>&&>(cx).pro_.steal_header()) {}
       cx_state(const promise_cx<Event,eager> &cx):
         cx_state(promise_cx<Event,eager>(cx)) {}
 
+      void set_done(cx_event_done value) {
+        if (eager && cx_event_is_done<Event>()(value)) {
+          // when eager and done, avoid incrementing the dependency count
+          pro_ = nullptr;
+        } else {
+          detail::promise_require_anonymous(pro_, 1);
+        }
+      }
+
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
-        if (eager) detail::promise_require_anonymous(pro_, 1);
+        UPCXX_ASSERT(pro_, "internal error: pro_ null in to_lpc_dormant");
         future_header_promise<> *pro = /*move ref*/pro_;
         return detail::make_lpc_dormant<>(
           upcxx::current_persona(), progress_level::user,
@@ -834,9 +851,9 @@ namespace upcxx {
       }
       
       void operator()() {
-        // when eager, dependency count was not incremented, so
+        // when pro_ is null, dependency count was not incremented, so
         // nothing to do here
-        if (!eager) {
+        if (pro_) {
           backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
         }
       }
@@ -857,6 +874,8 @@ namespace upcxx {
         fn_(cx.fn_) {
         upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
       }
+
+      void set_done(cx_event_done) {}
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
         upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
@@ -884,6 +903,8 @@ namespace upcxx {
       cx_state(const rpc_cx<Event,Fn> &cx):
         fn_(cx.fn_) {
       }
+
+      void set_done(cx_event_done) {}
     };
   }
 
@@ -1096,6 +1117,9 @@ namespace upcxx {
 
       std::tuple<> get_remote_fn() const { return {}; }
       static std::tuple<> get_remote_fn(const Cx &) { return {}; }
+
+      // Set the done state of this completion for eager optimization.
+      void set_done(cx_event_done) {}
     };
 
     template<typename Cx>
@@ -1146,6 +1170,11 @@ namespace upcxx {
       static auto get_remote_fn(const Cx &cx)
         UPCXX_RETURN_DECLTYPE(cx_get_remote_fn(cx)) {
         return cx_get_remote_fn(cx);
+      }
+
+      // Set the done state of this completion for eager optimization.
+      void set_done(cx_event_done value) {
+        state_.set_done(value);
       }
       
       template<typename Event, typename Lpc>
@@ -1424,7 +1453,7 @@ namespace upcxx {
       
       template<typename CxState>
       completions_returner_head(
-          CxState&,
+          CxState& s,
           completions_returner<
             EventPredicate, EventValues, completions<CxT...>
           > &&tail,
@@ -1433,6 +1462,7 @@ namespace upcxx {
         completions_returner<
             EventPredicate, EventValues, completions<CxT...>
           >{std::move(tail)} {
+        s.head().set_done(completed);
       }
     };
 
