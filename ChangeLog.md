@@ -37,6 +37,7 @@ Notable bug fixes:
 * issue #468: Harmless unused variable warnings on clang with `-O -Wall`
 * issue #473: Divide by zero in serialization when writing a sequence of
   objects that have empty `UPCXX_SERIALIZED_{FIELDS,VALUES}`
+* issue #477: `copy(remote_cx::as_rpc)` may invoke callback in the wrong context
 
 Breaking changes:
 
