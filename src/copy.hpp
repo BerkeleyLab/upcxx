@@ -58,6 +58,8 @@ namespace upcxx {
       using cxs_remote_bound_t = decltype(cxs_remote_t::template bind_event_static<remote_cx_event>(std::declval<CxsDecayed>()));
       using deserialized_cxs_remote_bound_t = deserialized_type_t<cxs_remote_bound_t>;
 
+      static constexpr auto& bind_remote =  cxs_remote_t::template bind_event_static<remote_cx_event>;
+
       static constexpr bool want_op = completions_has_event<CxsDecayed, operation_cx_event>::value;
       static constexpr bool want_remote = completions_has_event<CxsDecayed, remote_cx_event>::value;
       static constexpr bool want_source = completions_has_event<CxsDecayed, source_cx_event>::value;
@@ -152,7 +154,7 @@ namespace upcxx {
             }
           });
       }, 
-      copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs)) )
+      copy_traits::bind_remote(std::forward<Cxs>(cxs)) )
     );
     // initiator
     if (!copy_traits::want_initevt) delete cxs_here;
@@ -194,7 +196,7 @@ namespace upcxx {
       if (copy_traits::want_remote) {
         typename copy_traits::deserialized_cxs_remote_bound_t cxs_remote(
             copy_traits::cxs_remote_deserialized_value(
-              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
         detail::the_persona_tls.during(backend::master, progress_level::user, std::move(cxs_remote),
                                        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
@@ -212,7 +214,7 @@ namespace upcxx {
     if (copy_traits::want_remote) {
       cxs_remote = new typename copy_traits::deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
       initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
     }
@@ -280,7 +282,7 @@ namespace upcxx {
         copy_traits::want_remote ?
           new deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             )
           ) : nullptr);
       if (copy_traits::want_remote) initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
@@ -356,7 +358,7 @@ namespace upcxx {
             }) // gasnet::make_handle_cb
           ); // rma_copy_remote
         }, 
-        copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs)) ) // bind
+        copy_traits::bind_remote(std::forward<Cxs>(cxs)) ) // bind
       ); // AM to target
 
       // initiator
@@ -375,11 +377,11 @@ namespace upcxx {
         if (rank_d == initiator) { // in-place RC
           cxs_remote_heaped_local = new deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
         } else { // initiator-chained RC, serialize remote_cx now to ensure synchronous source_cx for as_rpc arguments
           cxs_remote_am = new cxs_remote_am_t(backend::prepare_deferred_am_master(rank_d,
-                              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs)) ));
+                              copy_traits::bind_remote(std::forward<Cxs>(cxs)) ));
         }
 
         initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
@@ -412,7 +414,7 @@ namespace upcxx {
         copy_traits::want_remote ?
           new deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             )
           ) : nullptr);
       
@@ -543,7 +545,7 @@ namespace upcxx {
                   }) // make_handle_cb
                 ); // rma_copy_get
               }, 
-              copy_traits::cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ) // bind
         ); // prepare_deferred_am_master
       }; // make_am
