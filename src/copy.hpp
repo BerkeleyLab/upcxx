@@ -58,7 +58,7 @@ namespace upcxx {
       using cxs_remote_bound_t = decltype(cxs_remote_t::template bind_event_static<remote_cx_event>(std::declval<CxsDecayed>()));
       using deserialized_cxs_remote_bound_t = deserialized_type_t<cxs_remote_bound_t>;
 
-      static constexpr auto& bind_remote =  cxs_remote_t::template bind_event_static<remote_cx_event>;
+      static constexpr auto bind_remote = cxs_remote_t::template bind_event_static<remote_cx_event>;
 
       static constexpr bool want_op = completions_has_event<CxsDecayed, operation_cx_event>::value;
       static constexpr bool want_remote = completions_has_event<CxsDecayed, remote_cx_event>::value;
