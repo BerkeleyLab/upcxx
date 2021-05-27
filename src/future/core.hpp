@@ -865,6 +865,12 @@ namespace upcxx {
       return b;
     }
   } // namespace detail
+
+  namespace backend {
+    // defined in either upcxx/backend.hpp or future1.hpp
+    template<typename ...T>
+    future<T...> get_ready_empty_future();
+  }
 }
 
 #endif
