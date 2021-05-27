@@ -26,6 +26,35 @@ namespace upcxx {
     
     template<typename ArgFu>
     struct future_body_identity;
+
+    ////////////////////////////////////////////////////////////////////
+    // future_when_all_representative: If all the T... for a
+    // future_impl_when_all<ArgTuple, T...> come from a single
+    // underlying future, determine the index of that future in
+    // ArgTuple. Otherwise produces -1.
+
+    template<typename Indices, typename ArgTuple, typename ...T>
+    struct future_when_all_representative {
+      static constexpr int value = -1;
+    };
+    template<int i1, int ...i, typename FuArg1, typename ...FuArgs,
+             typename ...T>
+    struct future_when_all_representative<
+      detail::index_sequence<i1, i...>, std::tuple<FuArg1, FuArgs...>, T...
+    > {
+      static constexpr int value =
+        future_when_all_representative<
+          detail::index_sequence<i...>, std::tuple<FuArgs...>, T...
+        >::value;
+    };
+    template<int i1, int ...i, typename Kind, typename ...FuArgs,
+             typename ...T>
+    struct future_when_all_representative<
+      detail::index_sequence<i1, i...>,
+      std::tuple<future1<Kind, T...>, FuArgs...>, T...
+    > {
+      static constexpr int value = i1;
+    };
     
     ////////////////////////////////////////////////////////////////////
     // future_impl_when_all: Future implementation concatenating
@@ -68,6 +97,29 @@ namespace upcxx {
           std::get<i>(std::move(this->args_)).impl_.result_refs_or_vals()...
         );
       }
+
+      // Optimization for when all T... come from a single underlying
+      // future. We can steal the header from that future if the other
+      // futures are ready, since they do not contribute any values to
+      // the result.
+      template<int rep, int ...i>
+      bool ready_all_but_rep_(detail::index_sequence<i...>) const {
+        return all_((i == rep || std::get<i>(this->args_).impl_.ready())...);
+      }
+
+      template<int rep>
+      future_header* steal_rep_header_(std::integral_constant<int,rep>) {
+        if (ready_all_but_rep_<rep>(
+              detail::make_index_sequence<sizeof...(FuArg)>())
+           ) {
+           return std::move(std::get<rep>(args_)).impl_.steal_header();
+        }
+        return nullptr;
+      }
+
+      future_header* steal_rep_header_(std::integral_constant<int,-1>) {
+        return nullptr;
+      }
       
     public:
       template<typename ...FuArg1>
@@ -91,6 +143,14 @@ namespace upcxx {
       typedef future_header_ops_general header_ops;
       
       future_header* steal_header() && {
+        constexpr int rep = future_when_all_representative<
+          detail::make_index_sequence<sizeof...(FuArg)>,
+          std::tuple<FuArg...>, T...
+        >::value;
+        future_header *rep_header =
+          steal_rep_header_(std::integral_constant<int,rep>());
+        if (rep_header) return rep_header;
+
         future_header_dependent *hdr = new future_header_dependent;
         
         using body_type = future_body_identity<future1<future_kind_when_all<FuArg...>,T...>>;

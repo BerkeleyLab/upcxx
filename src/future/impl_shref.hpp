@@ -103,17 +103,6 @@ namespace upcxx {
       future_impl_shref(Impl &&that) noexcept {
         this->hdr_ = static_cast<Impl&&>(that).steal_header();
       }
-
-      // optimization for ready when_all with no values
-      template<typename ArgTuple, typename ...U,
-               typename = typename std::enable_if<sizeof...(U) == 0>::type>
-      future_impl_shref(future_impl_when_all<ArgTuple, U...> &&that) noexcept {
-        if (that.ready()) {
-          this->hdr_ = backend::get_ready_empty_future<>().impl_.steal_header();
-        } else {
-          this->hdr_ = std::move(that).steal_header();
-        }
-      }
       
       ~future_impl_shref() {
         HeaderOps::template dropref<T...>(this->hdr_, /*maybe_nil=*/std::true_type());
