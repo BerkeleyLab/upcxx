@@ -68,22 +68,6 @@ namespace upcxx {
     template<typename Kind, typename ...T>
     struct is_future1<future1<Kind,T...>>: std::true_type {};
   }
-
-  #ifndef UPCXX_BACKEND
-    namespace backend {
-      template<typename ...T>
-      inline future<T...> get_ready_empty_future() {
-        // this should never be used
-        UPCXX_FATAL_ERROR("get_ready_empty_future<T...>() called with nonempty T");
-        return {};
-      }
-
-      template<>
-      inline future<> get_ready_empty_future<>() {
-        return make_future();
-      }
-    }
-  #endif
   
   //////////////////////////////////////////////////////////////////////
   // future1: The actual type users get (aliased as future<>).
