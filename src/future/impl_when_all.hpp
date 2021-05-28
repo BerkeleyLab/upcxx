@@ -120,6 +120,60 @@ namespace upcxx {
       future_header* steal_rep_header_(std::integral_constant<int,-1>) {
         return nullptr;
       }
+
+      // Special-case optimization for when T... is empty. We see if
+      // there is at most one non-ready future, and if so, steal its
+      // header (or the first future's header if all of them are
+      // ready).
+      // We have to do two passes, since we can't call steal_header()
+      // speculatively -- we have to first ensure that this
+      // optimization is applicable, then do another pass to steal the
+      // actual header.
+
+      // Pass 1: simultaneously find the index of a non-ready future
+      // and count the number of non-ready futures. The resulting
+      // index is 0 if all futures are ready.
+      template<typename Pair0, typename ...Pairs>
+      static std::pair<int,int> find_empty_rep_(Pair0 x0, Pairs ...xs) {
+        std::pair<int,int> rest = find_empty_rep_(xs...);
+        return std::pair<int,int>{
+          rest.second ? rest.first : x0.first,
+          x0.second + rest.second
+        };
+      }
+      static std::pair<int,int> find_empty_rep_() {
+        return std::pair<int,int>{0,0};
+      }
+
+      // Pass 2: dynamically index into the set of futures and steal
+      // the right header.
+      template<typename Fu0, typename ...Fus>
+      static future_header* steal_index_(int index, Fu0 &&f0, Fus&& ...fs) {
+        return index ? steal_index_(index-1, fs...) :
+          std::move(f0).impl_.steal_header();
+      }
+      static future_header* steal_index_(int index) {
+        return nullptr;
+      }
+
+      // Overall logic for finding and stealing a header when all
+      // futures are empty.
+      template<int ...i>
+      future_header* steal_rep_header_all_empty_(detail::index_sequence<i...>) {
+        std::pair<int,int> index_count = find_empty_rep_(
+          std::pair<int,int>{i, int(!std::get<i>(args_).impl_.ready())}...
+        );
+        if (index_count.second <= 1) {
+          return steal_index_(index_count.first, std::get<i>(args_)...);
+        }
+        return nullptr;
+      }
+
+      // Special-case of no futures to avoid compilation errors in
+      // that case.
+      future_header* steal_rep_header_all_empty_(detail::index_sequence<>) {
+        return nullptr;
+      }
       
     public:
       template<typename ...FuArg1>
@@ -143,12 +197,18 @@ namespace upcxx {
       typedef future_header_ops_general header_ops;
       
       future_header* steal_header() && {
-        constexpr int rep = future_when_all_representative<
-          detail::make_index_sequence<sizeof...(FuArg)>,
-          std::tuple<FuArg...>, T...
-        >::value;
-        future_header *rep_header =
-          steal_rep_header_(std::integral_constant<int,rep>());
+        future_header *rep_header = nullptr;
+        if (sizeof...(T) == 0 && sizeof...(FuArg) >= 1) {
+          rep_header = steal_rep_header_all_empty_(
+            detail::make_index_sequence<sizeof...(FuArg)>()
+          );
+        } else {
+          constexpr int rep = future_when_all_representative<
+            detail::make_index_sequence<sizeof...(FuArg)>,
+            std::tuple<FuArg...>, T...
+          >::value;
+          rep_header = steal_rep_header_(std::integral_constant<int,rep>());
+        }
         if (rep_header) return rep_header;
 
         future_header_dependent *hdr = new future_header_dependent;
