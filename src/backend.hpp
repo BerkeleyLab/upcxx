@@ -75,6 +75,24 @@ namespace backend {
   extern future<> ready_empty_future;
 #endif
 
+  inline future<> get_ready_empty_future_threadsafe() {
+    // must check whether current persona's ready empty future has
+    // been created; we use get_top_persona() to be safe to use before
+    // upcxx::init()
+    if (!detail::the_persona_tls.get_top_persona()
+          ->UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)) {
+      // make_future() calls this, so we need to use make_fast_future()
+      // instead here
+      ::new(&detail::the_persona_tls.get_top_persona()->UPCXX_INTERNAL_ONLY(
+        ready_empty_future_storage
+      )) future<>{detail::make_fast_future()};
+      detail::the_persona_tls.get_top_persona()
+        ->UPCXX_INTERNAL_ONLY(ready_empty_future_initialized) = true;
+    }
+    return detail::the_persona_tls.get_top_persona()
+      ->UPCXX_INTERNAL_ONLY(ready_empty_future_storage).value();
+  }
+
   template<typename ...T>
   inline future<T...> get_ready_empty_future() {
     // this should never be used
@@ -84,27 +102,12 @@ namespace backend {
 
   template<>
   inline future<> get_ready_empty_future<>() {
-     // make_future() calls this, so we need to use make_fast_future()
-     // instead here and in initializing ready_empty_future in
-     // backend/gasnet/runtime.cpp
     #if UPCXX_BACKEND_GASNET_SEQ
       UPCXX_ASSERT_MASTER_IFSEQ();
       return ready_empty_future;
     #else
-      // must check whether current persona's ready empty future has
-      // been created
-      if (!current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)) {
-        ::new(&current_persona().UPCXX_INTERNAL_ONLY(
-          ready_empty_future_storage
-        )) future<>{detail::make_fast_future()};
-        current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_initialized) = true;
-      }
-      return current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_storage).value();
+      return get_ready_empty_future_threadsafe();
     #endif
-  }
-
-  inline future<> get_ready_empty_future_wrapper() {
-    return get_ready_empty_future<>();
   }
 
   //////////////////////////////////////////////////////////////////////////////

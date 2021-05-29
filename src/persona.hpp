@@ -54,12 +54,10 @@ namespace upcxx {
       pros_deferred_trivial_;
     
   public: //private!
-    #if !UPCXX_BACKEND_GASNET_SEQ
-      // Persona-specific ready empty future, allowing us to avoid
-      // creating a promise cell in some cases.
-      detail::raw_storage<future<>> UPCXX_INTERNAL_ONLY(ready_empty_future_storage);
-      bool UPCXX_INTERNAL_ONLY(ready_empty_future_initialized);
-    #endif
+    // Persona-specific ready empty future, allowing us to avoid
+    // creating a promise cell in some cases.
+    detail::raw_storage<future<>> UPCXX_INTERNAL_ONLY(ready_empty_future_storage);
+    bool UPCXX_INTERNAL_ONLY(ready_empty_future_initialized);
     backend::persona_state UPCXX_INTERNAL_ONLY(backend_state_);
     cuda::persona_state UPCXX_INTERNAL_ONLY(cuda_state_);
     std::intptr_t UPCXX_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
@@ -75,10 +73,8 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      #if !UPCXX_BACKEND_GASNET_SEQ
-        UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
-        UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)(0),
-      #endif
+      UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
+      UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)(0),
       UPCXX_INTERNAL_ONLY(backend_state_)(),
       UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
@@ -90,10 +86,8 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      #if !UPCXX_BACKEND_GASNET_SEQ
-        UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
-        UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)(0),
-      #endif
+      UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
+      UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)(0),
       UPCXX_INTERNAL_ONLY(backend_state_)(),
       UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
     }
