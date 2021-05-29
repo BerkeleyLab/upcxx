@@ -4,6 +4,9 @@
 #include <upcxx/future/impl_result.hpp>
 #include <upcxx/future/impl_shref.hpp>
 #include <upcxx/utility.hpp>
+#if UPCXX_BACKEND
+  #include <upcxx/backend_fwd.hpp>
+#endif
 
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////
@@ -21,6 +24,20 @@ namespace upcxx {
       detail::internal_only{}
     );
   }
+
+  #ifdef UPCXX_BACKEND
+    // Use canonical ready empty future rather than creating a new one.
+    template<>
+    inline future<> make_future<>() {
+      // current_persona() invoked in par mode, which requires upcxx
+      // to be initialized
+      UPCXX_ASSERT_INIT();
+      // we go through a wrapper rather than
+      // backend::get_ready_empty_future<>() to avoid a circular
+      // dependency between futures and personas
+      return detail::get_ready_empty_future_wrapper();
+    }
+  #endif
   
   //////////////////////////////////////////////////////////////////////
   // detail::make_fast_future()

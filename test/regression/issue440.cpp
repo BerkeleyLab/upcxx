@@ -8,7 +8,7 @@ struct P {
   int x,y,z;
 };
 
-future<> sf = make_future();
+future<> sf;
 
 struct A {
   global_ptr<P> g;
@@ -46,6 +46,8 @@ struct A {
 
 int main() {
   upcxx::init();
+
+  sf = make_future();
   
     auto f = upcxx::rpc(0,[]() {
       global_ptr<P> gp = upcxx::new_<P>();

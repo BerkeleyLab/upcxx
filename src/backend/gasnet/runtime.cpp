@@ -845,7 +845,7 @@ void upcxx::init() {
 
   #if UPCXX_BACKEND_GASNET_SEQ
     // Set canonical ready empty future
-    backend::ready_empty_future = upcxx::make_future();
+    backend::ready_empty_future = upcxx::detail::make_fast_future();
   #endif
 
   noise.show();

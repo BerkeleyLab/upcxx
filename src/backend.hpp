@@ -84,6 +84,9 @@ namespace backend {
 
   template<>
   inline future<> get_ready_empty_future<>() {
+     // make_future() calls this, so we need to use make_fast_future()
+     // instead here and in initializing ready_empty_future in
+     // backend/gasnet/runtime.cpp
     #if UPCXX_BACKEND_GASNET_SEQ
       UPCXX_ASSERT_MASTER_IFSEQ();
       return ready_empty_future;
@@ -94,7 +97,7 @@ namespace backend {
         current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr) =
           ::new(&current_persona().UPCXX_INTERNAL_ONLY(
             ready_empty_future_storage
-          )) future<>{make_future()};
+          )) future<>{detail::make_fast_future()};
       }
       return *current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr);
     #endif

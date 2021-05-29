@@ -171,6 +171,7 @@ namespace upcxx {
   
   namespace detail {
     int progressing();
+    future<> get_ready_empty_future_wrapper();
   }
 }
 
