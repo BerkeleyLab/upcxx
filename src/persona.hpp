@@ -58,7 +58,7 @@ namespace upcxx {
       // Persona-specific ready empty future, allowing us to avoid
       // creating a promise cell in some cases.
       detail::raw_storage<future<>> UPCXX_INTERNAL_ONLY(ready_empty_future_storage);
-      future<>* UPCXX_INTERNAL_ONLY(ready_empty_future_addr);
+      bool UPCXX_INTERNAL_ONLY(ready_empty_future_initialized);
     #endif
     backend::persona_state UPCXX_INTERNAL_ONLY(backend_state_);
     cuda::persona_state UPCXX_INTERNAL_ONLY(cuda_state_);
@@ -77,7 +77,7 @@ namespace upcxx {
       pros_deferred_trivial_(),
       #if !UPCXX_BACKEND_GASNET_SEQ
         UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
-        UPCXX_INTERNAL_ONLY(ready_empty_future_addr)(0),
+        UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)(0),
       #endif
       UPCXX_INTERNAL_ONLY(backend_state_)(),
       UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
@@ -92,7 +92,7 @@ namespace upcxx {
       pros_deferred_trivial_(),
       #if !UPCXX_BACKEND_GASNET_SEQ
         UPCXX_INTERNAL_ONLY(ready_empty_future_storage)(),
-        UPCXX_INTERNAL_ONLY(ready_empty_future_addr)(0),
+        UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)(0),
       #endif
       UPCXX_INTERNAL_ONLY(backend_state_)(),
       UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {

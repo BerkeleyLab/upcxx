@@ -93,13 +93,13 @@ namespace backend {
     #else
       // must check whether current persona's ready empty future has
       // been created
-      if (!current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr)) {
-        current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr) =
-          ::new(&current_persona().UPCXX_INTERNAL_ONLY(
-            ready_empty_future_storage
-          )) future<>{detail::make_fast_future()};
+      if (!current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)) {
+        ::new(&current_persona().UPCXX_INTERNAL_ONLY(
+          ready_empty_future_storage
+        )) future<>{detail::make_fast_future()};
+        current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_initialized) = true;
       }
-      return *current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_addr);
+      return current_persona().UPCXX_INTERNAL_ONLY(ready_empty_future_storage).value();
     #endif
   }
 
