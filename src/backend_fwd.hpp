@@ -171,7 +171,6 @@ namespace upcxx {
   
   namespace detail {
     int progressing();
-    future<> get_ready_empty_future_wrapper();
   }
 }
 
@@ -268,6 +267,8 @@ namespace backend {
   void quiesce(const team &tm, entry_barrier eb);
 
   void warn_collective_in_progress(const char *fnname, entry_barrier eb=entry_barrier::none);
+
+  future<> get_ready_empty_future_wrapper();
 
   // during_level and during_user removed post 2021.3.0 release
 

@@ -29,13 +29,15 @@ namespace upcxx {
     // Use canonical ready empty future rather than creating a new one.
     template<>
     inline future<> make_future<>() {
-      // current_persona() invoked in par mode, which requires upcxx
-      // to be initialized
+      // in seq mode, backend::ready_empty_future is initialized in
+      // upcxx::init()
+      // in par mode, current_persona() is invoked, which also
+      // requires upcxx to be initialized
       UPCXX_ASSERT_INIT();
       // we go through a wrapper rather than
       // backend::get_ready_empty_future<>() to avoid a circular
       // dependency between futures and personas
-      return detail::get_ready_empty_future_wrapper();
+      return backend::get_ready_empty_future_wrapper();
     }
   #endif
   

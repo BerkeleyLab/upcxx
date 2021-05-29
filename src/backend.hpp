@@ -103,6 +103,10 @@ namespace backend {
     #endif
   }
 
+  inline future<> get_ready_empty_future_wrapper() {
+    return get_ready_empty_future<>();
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // fulfill_during_<level=internal>
   
