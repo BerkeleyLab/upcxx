@@ -268,8 +268,6 @@ namespace backend {
 
   void warn_collective_in_progress(const char *fnname, entry_barrier eb=entry_barrier::none);
 
-  future<> get_ready_empty_future_threadsafe();
-
   // during_level and during_user removed post 2021.3.0 release
 
   /* fulfill_during: enlists a promise to be fulfilled in the given persona's

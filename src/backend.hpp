@@ -67,50 +67,6 @@ namespace backend {
   extern std::unique_ptr<std::uintptr_t[/*local_team.size()*/]> pshm_size;
   
   //////////////////////////////////////////////////////////////////////////////
-  // Canonical ready empty future, allowing us to avoid creating a
-  // promise cell in some cases. Only global in SEQ mode, when it
-  // is implicitly owned by the master persona. In PAR mode, each
-  // persona has its own ready empty future to ensure thread safety.
-#if UPCXX_BACKEND_GASNET_SEQ
-  extern future<> ready_empty_future;
-#endif
-
-  inline future<> get_ready_empty_future_threadsafe() {
-    // must check whether current persona's ready empty future has
-    // been created; we use get_top_persona() to be safe to use before
-    // upcxx::init()
-    if (!detail::the_persona_tls.get_top_persona()
-          ->UPCXX_INTERNAL_ONLY(ready_empty_future_initialized)) {
-      // make_future() calls this, so we need to use make_fast_future()
-      // instead here
-      ::new(&detail::the_persona_tls.get_top_persona()->UPCXX_INTERNAL_ONLY(
-        ready_empty_future_storage
-      )) future<>{detail::make_fast_future()};
-      detail::the_persona_tls.get_top_persona()
-        ->UPCXX_INTERNAL_ONLY(ready_empty_future_initialized) = true;
-    }
-    return detail::the_persona_tls.get_top_persona()
-      ->UPCXX_INTERNAL_ONLY(ready_empty_future_storage).value();
-  }
-
-  template<typename ...T>
-  inline future<T...> get_ready_empty_future() {
-    // this should never be used
-    UPCXX_FATAL_ERROR("get_ready_empty_future<T...>() called with nonempty T");
-    return {};
-  }
-
-  template<>
-  inline future<> get_ready_empty_future<>() {
-    #if UPCXX_BACKEND_GASNET_SEQ
-      UPCXX_ASSERT_MASTER_IFSEQ();
-      return ready_empty_future;
-    #else
-      return get_ready_empty_future_threadsafe();
-    #endif
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   // fulfill_during_<level=internal>
   
   template<typename ...T>

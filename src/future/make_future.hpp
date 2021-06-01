@@ -25,15 +25,15 @@ namespace upcxx {
     );
   }
 
-  #ifdef UPCXX_BACKEND
-    // Use canonical ready empty future rather than creating a new one.
-    template<>
-    inline future<> make_future<>() {
-      // make_future() can be called by any thread in seq mode, so we
-      // have to unconditionally use the thread-safe version
-      return backend::get_ready_empty_future_threadsafe();
-    }
-  #endif
+  template<>
+  inline future<> make_future<>() {
+    return future<>(
+      detail::future_impl_shref<detail::future_header_ops_general, /*unique=*/false>(
+        &detail::future_header_result<>::the_always // skip header allocation
+      ),
+      detail::internal_only{}
+    );
+  }
   
   //////////////////////////////////////////////////////////////////////
   // detail::make_fast_future()

@@ -685,6 +685,19 @@ namespace upcxx {
       void operator()() {}
     };
     
+    // wrapper around make_future<>() that type checks when T... is
+    // nonempty
+    template<typename ...T>
+    future<T...> make_ready_empty_future() {
+      // this should never be used
+      UPCXX_FATAL_ERROR("make_ready_empty_future<T...>() called with nonempty T");
+      return {};
+    }
+    template<>
+    inline future<> make_ready_empty_future() {
+      return make_future<>();
+    }
+
     template<typename Event, bool eager, progress_level level, typename ...T>
     struct cx_state<future_cx<Event,eager,level>, std::tuple<T...>> {
       future_header_promise<T...> *pro_; // holds ref, no need to drop it in destructor since we move out it in either operator() ro to_lpc_dormant
@@ -704,8 +717,8 @@ namespace upcxx {
         #endif
 
         if (eager && sizeof...(T) == 0 && cx_event_is_done<Event>()(value)) {
-          // return canonical empty future rather than creating new one
-          return backend::get_ready_empty_future<T...>();
+          // return ready empty future rather than creating a promise
+          return make_ready_empty_future<T...>();
         }
 
         pro_ = new future_header_promise<T...>;
