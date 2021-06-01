@@ -4,9 +4,6 @@
 #include <upcxx/future/impl_result.hpp>
 #include <upcxx/future/impl_shref.hpp>
 #include <upcxx/utility.hpp>
-#if UPCXX_BACKEND
-  #include <upcxx/backend_fwd.hpp>
-#endif
 
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////
