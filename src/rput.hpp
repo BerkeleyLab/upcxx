@@ -477,7 +477,7 @@ namespace upcxx {
       gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
       &value_s, sizeof(T),
       traits_t::cx_state_remote_t
-        ::template bind_event<remote_cx_event>(std::forward<Cxs>(cxs))
+        ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
@@ -514,7 +514,7 @@ namespace upcxx {
       gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
       buf_s, n*sizeof(T),
       traits_t::cx_state_remote_t
-        ::template bind_event<remote_cx_event>(std::forward<Cxs>(cxs))
+        ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();

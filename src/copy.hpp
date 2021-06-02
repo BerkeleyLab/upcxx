@@ -55,8 +55,10 @@ namespace upcxx {
             /*EventValues=*/detail::rput_event_values,
             CxsDecayed>;
 
-      using cxs_remote_bound_t = decltype(std::declval<cxs_remote_t>().template bind_event<remote_cx_event>());
+      using cxs_remote_bound_t = decltype(cxs_remote_t::template bind_event_static<remote_cx_event>(std::declval<CxsDecayed>()));
       using deserialized_cxs_remote_bound_t = deserialized_type_t<cxs_remote_bound_t>;
+
+      static constexpr auto bind_remote = cxs_remote_t::template bind_event_static<remote_cx_event>;
 
       static constexpr bool want_op = completions_has_event<CxsDecayed, operation_cx_event>::value;
       static constexpr bool want_remote = completions_has_event<CxsDecayed, remote_cx_event>::value;
@@ -134,7 +136,8 @@ namespace upcxx {
           } 
           f.then([=]() {
             if (copy_traits::want_remote) {
-              std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
+              detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
+                                             /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
               delete cxs_remote_heaped;
             }
 
@@ -151,7 +154,7 @@ namespace upcxx {
             }
           });
       }, 
-      typename copy_traits::cxs_remote_t(std::forward<Cxs>(cxs)).template bind_event<remote_cx_event>())
+      copy_traits::bind_remote(std::forward<Cxs>(cxs)) )
     );
     // initiator
     if (!copy_traits::want_initevt) delete cxs_here;
@@ -193,9 +196,10 @@ namespace upcxx {
       if (copy_traits::want_remote) {
         typename copy_traits::deserialized_cxs_remote_bound_t cxs_remote(
             copy_traits::cxs_remote_deserialized_value(
-              typename copy_traits::cxs_remote_t(std::forward<Cxs>(cxs)).template bind_event<remote_cx_event>()
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
-        std::move(cxs_remote)(); // deserialized_bound_function only invocable on an rvalue
+        detail::the_persona_tls.during(backend::master, progress_level::user, std::move(cxs_remote),
+                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
       }
 
       return returner();
@@ -210,7 +214,7 @@ namespace upcxx {
     if (copy_traits::want_remote) {
       cxs_remote = new typename copy_traits::deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              typename copy_traits::cxs_remote_t(std::forward<Cxs>(cxs)).template bind_event<remote_cx_event>()
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
       initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
     }
@@ -222,7 +226,8 @@ namespace upcxx {
 
       if (copy_traits::want_remote) {
         initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
-        std::move(*cxs_remote)(); // deserialized_bound_function only invocable on an rvalue
+        detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote),
+                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
         delete cxs_remote;
       }
     };
@@ -265,7 +270,6 @@ namespace upcxx {
     }
 
     auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
-    typename copy_traits::cxs_remote_t cxs_remote(std::forward<Cxs>(cxs));
 
     persona *initiator_per = &upcxx::current_persona();
 
@@ -278,7 +282,7 @@ namespace upcxx {
         copy_traits::want_remote ?
           new deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              cxs_remote.template bind_event<remote_cx_event>()
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             )
           ) : nullptr);
       if (copy_traits::want_remote) initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
@@ -289,7 +293,8 @@ namespace upcxx {
           delete cxs_here;
           if (copy_traits::want_remote) {
             initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
-            std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
+            detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
+                                           /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
             delete cxs_remote_heaped;
           }
         })
@@ -329,7 +334,8 @@ namespace upcxx {
             backend::gasnet::make_handle_cb([=]() {
               // RMA complete at target
               if (copy_traits::want_remote) {
-                std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
+                detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
+                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
                 delete cxs_remote_heaped;
               }
 
@@ -351,7 +357,8 @@ namespace upcxx {
               }
             }) // gasnet::make_handle_cb
           ); // rma_copy_remote
-        }, cxs_remote.template bind_event<remote_cx_event>()) // bind
+        }, 
+        copy_traits::bind_remote(std::forward<Cxs>(cxs)) ) // bind
       ); // AM to target
 
       // initiator
@@ -363,18 +370,18 @@ namespace upcxx {
       
       deserialized_cxs_remote_bound_t *cxs_remote_heaped_local = nullptr;
       using cxs_remote_am_t = decltype(backend::prepare_deferred_am_master(rank_d, 
-                                       cxs_remote.template bind_event<remote_cx_event>()));
+                                       std::declval<typename copy_traits::cxs_remote_bound_t>()));
       cxs_remote_am_t *cxs_remote_am = nullptr;
 
       if (copy_traits::want_remote) {
         if (rank_d == initiator) { // in-place RC
           cxs_remote_heaped_local = new deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              cxs_remote.template bind_event<remote_cx_event>()
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
         } else { // initiator-chained RC, serialize remote_cx now to ensure synchronous source_cx for as_rpc arguments
           cxs_remote_am = new cxs_remote_am_t(backend::prepare_deferred_am_master(rank_d,
-                                       cxs_remote.template bind_event<remote_cx_event>()));
+                              copy_traits::bind_remote(std::forward<Cxs>(cxs)) ));
         }
 
         initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
@@ -389,10 +396,11 @@ namespace upcxx {
               if (copy_traits::want_remote) {
                 initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
                 if (rank_d == initiator) { // in-place RC
-                  std::move(*cxs_remote_heaped_local)(); // deserialized_bound_function only invocable on an rvalue
+                  detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped_local),
+                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
                   delete cxs_remote_heaped_local;
                 } else { // initiator-chained RC
-                  backend::send_prepared_am_master(progress_level::internal, rank_d, std::move(*cxs_remote_am));
+                  backend::send_prepared_am_master(progress_level::user, rank_d, std::move(*cxs_remote_am));
                   delete cxs_remote_am;
                 }
               } // want_remote
@@ -406,7 +414,7 @@ namespace upcxx {
         copy_traits::want_remote ?
           new deserialized_cxs_remote_bound_t(
             copy_traits::cxs_remote_deserialized_value(
-              cxs_remote.template bind_event<remote_cx_event>()
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             )
           ) : nullptr);
       
@@ -442,7 +450,8 @@ namespace upcxx {
 
                         if (copy_traits::want_remote) {
                           initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
-                          std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
+                          detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
+                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
                           delete cxs_remote_heaped;
                         }
                         cxs_here->template operator()<operation_cx_event>();
@@ -500,7 +509,8 @@ namespace upcxx {
                         backend::gasnet::deallocate(bounce_d, &backend::gasnet::sheap_footprint_rdzv);
                       
                       if (copy_traits::want_remote) {
-                        std::move(*cxs_remote_heaped)(); // deserialized_bound_function only invocable on an rvalue
+                        detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
+                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
                         delete cxs_remote_heaped;
                       }
 
@@ -534,7 +544,8 @@ namespace upcxx {
                       detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(std::move(bounce_d_cont)));
                   }) // make_handle_cb
                 ); // rma_copy_get
-              }, cxs_remote.template bind_event<remote_cx_event>()
+              }, 
+              copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ) // bind
         ); // prepare_deferred_am_master
       }; // make_am
