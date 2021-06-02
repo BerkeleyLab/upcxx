@@ -1,3 +1,6 @@
+// None of the internal invariants evaluated by this test are
+// specified, and as such they are subject to change without notice.
+
 #include "../util.hpp"
 
 using namespace upcxx;
@@ -23,9 +26,11 @@ int main() {
   future<int,int> nonready_nonempty2 = prom3.get_future();
 
   {
-    // make_future()
+    // make_future() and when_all()
     future<> f1 = make_future();
     ASSERT_SAME(f1, ready_empty);
+    future<> f2 = when_all();
+    ASSERT_SAME(f2, ready_empty);
   }
 
   {
