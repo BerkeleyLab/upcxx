@@ -806,6 +806,7 @@ namespace upcxx {
       void set_done(cx_event_done value) {
         if (eager && cx_event_is_done<Event>()(value)) {
           // when eager and done, avoid incrementing the dependency count
+          pro_->dropref();
           pro_ = nullptr;
         } else {
           detail::promise_require_anonymous(pro_, 1);
@@ -845,6 +846,7 @@ namespace upcxx {
       void set_done(cx_event_done value) {
         if (eager && cx_event_is_done<Event>()(value)) {
           // when eager and done, avoid incrementing the dependency count
+          pro_->dropref();
           pro_ = nullptr;
         } else {
           detail::promise_require_anonymous(pro_, 1);
