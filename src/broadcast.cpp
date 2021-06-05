@@ -13,6 +13,7 @@ void detail::broadcast_trivial(
     backend::gasnet::handle_cb *cb
   ) {
   UPCXX_ASSERT_MASTER();
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
   
   gex_Event_t e = gex_Coll_BroadcastNB(
     gasnet::handle_of(tm),

@@ -434,6 +434,7 @@ namespace upcxx {
 
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one(value)", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "reduce_one(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
@@ -459,6 +460,7 @@ namespace upcxx {
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one(bulk)", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "reduce_one(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
@@ -551,6 +553,7 @@ namespace upcxx {
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one_nontrivial()", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "reduce_one_nontrivial(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
@@ -582,6 +585,7 @@ namespace upcxx {
     UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_all); // issue 392: prevent large types by-value
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all(value)", entry_barrier::internal);
     return detail::reduce_one_or_all_trivial<T1,BinaryOp,Cxs,T>(
         std::move(value), std::move(op), /*all=*/-1, tm, std::forward<Cxs>(cxs)
@@ -604,6 +608,7 @@ namespace upcxx {
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all(bulk)", entry_barrier::internal);
     return detail::reduce_one_or_all_trivial<T,BinaryOp,Cxs>(
         src, dst, n, std::move(op), /*all=*/-1, tm, std::forward<Cxs>(cxs)
@@ -698,6 +703,7 @@ namespace upcxx {
     ) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all_nontrivial()", entry_barrier::internal);
     return detail::reduce_all_nontrivial(
         std::forward<T1>(value), std::move(op), tm, std::forward<Cxs>(cxs),

@@ -458,6 +458,7 @@ namespace upcxx {
     UPCXX_STATIC_ASSERT_VALUE_SIZE(T, rput); // issue 392: prevent large types by-value
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_GPTR_CHK(gp_d);
     UPCXX_ASSERT(gp_d, "pointer arguments to rput may not be null");
     UPCXX_ASSERT_ALWAYS(
@@ -499,6 +500,7 @@ namespace upcxx {
     traits_t::template assert_sane<T>();
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_GPTR_CHK(gp_d);
     UPCXX_ASSERT(buf_s && gp_d, "pointer arguments to rput may not be null");
     

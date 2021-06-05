@@ -142,6 +142,7 @@ template<std::size_t size, int bit_flavor>
 upcxx::detail::atomic_domain_untyped<size,bit_flavor>::atomic_domain_untyped(
   std::vector<atomic_op> const &ops, const team &tm) {
   UPCXX_ASSERT_MASTER();
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_OP_t opmask = 0;
   for (auto next_op : ops) opmask |= static_cast<gex_OP_t>(next_op);
@@ -175,6 +176,7 @@ upcxx::detail::atomic_domain_untyped<size,bit_flavor>::atomic_domain_untyped(
 template<std::size_t size, int bit_flavor>
 void upcxx::detail::atomic_domain_untyped<size,bit_flavor>::destroy(entry_barrier eb) {
   UPCXX_ASSERT_MASTER();
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
   
   backend::quiesce(*parent_tm_, eb);
 
