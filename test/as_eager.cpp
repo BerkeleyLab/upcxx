@@ -5,11 +5,28 @@
 #define CHECK_RESULT(fut, eager, expected) \
   UPCXX_ASSERT_ALWAYS((eager ? fut.result() : fut.wait()) == expected)
 
+struct A {
+  static int live_count;
+  A() {
+    ++live_count;
+  }
+  A(const A&) {
+    ++live_count;
+  }
+  ~A() {
+    --live_count;
+  }
+};
+
+int A::live_count = 0;
+
 template<typename SrcFutCxFn, typename OpFutCxFn,
-         typename OpEmptyPromCxFn, typename OpIntPromCxFn>
+         typename OpEmptyPromCxFn, typename OpIntPromCxFn,
+         typename OpAPromCxFn>
 void test(bool eager_bypass, bool src_eager,
           SrcFutCxFn src_fut_cx_fn, OpFutCxFn op_fut_cx_fn,
           OpEmptyPromCxFn empty_prom_fn, OpIntPromCxFn int_prom_fn,
+          OpAPromCxFn a_prom_fn,
           upcxx::global_ptr<std::int64_t> gptr,
           upcxx::global_ptr<std::int64_t> aptr,
           upcxx::atomic_domain<std::int64_t> &ad) {
@@ -60,6 +77,17 @@ void test(bool eager_bypass, bool src_eager,
   auto fut8 = ad.load(aptr, std::memory_order_relaxed, op_fut_cx_fn());
   if (!eager_bypass) CHECK_READY(fut8, eager_bypass);
   CHECK_RESULT(fut8, false, 3);
+
+  // check promise ref counting
+  {
+    upcxx::promise<A> pro5(2);
+    pro5.fulfill_result(A{});
+    UPCXX_ASSERT_ALWAYS(A::live_count);
+    rput(std::int64_t(3), gptr, a_prom_fn(pro5));
+    pro5.finalize().wait();
+    UPCXX_ASSERT_ALWAYS(A::live_count);
+  }
+  UPCXX_ASSERT_ALWAYS(!A::live_count);
 }
 
 void test_all(bool bypass,
@@ -71,18 +99,21 @@ void test_all(bool bypass,
        upcxx::operation_cx::as_future,
        upcxx::operation_cx::as_promise<>,
        upcxx::operation_cx::as_promise<std::int64_t>,
+       upcxx::operation_cx::as_promise<A>,
        gptr, aptr, ad);
   test(false, false,
        upcxx::source_cx::as_defer_future,
        upcxx::operation_cx::as_defer_future,
        upcxx::operation_cx::as_defer_promise<>,
        upcxx::operation_cx::as_defer_promise<std::int64_t>,
+       upcxx::operation_cx::as_defer_promise<A>,
        gptr, aptr, ad);
   test(bypass, true,
        upcxx::source_cx::as_eager_future,
        upcxx::operation_cx::as_eager_future,
        upcxx::operation_cx::as_eager_promise<>,
        upcxx::operation_cx::as_eager_promise<std::int64_t>,
+       upcxx::operation_cx::as_eager_promise<A>,
        gptr, aptr, ad);
 }
 
