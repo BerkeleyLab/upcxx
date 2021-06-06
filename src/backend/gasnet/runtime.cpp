@@ -1132,8 +1132,7 @@ int64_t upcxx::shared_segment_used() {
   
 void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
   UPCXX_ASSERT(shared_heap_isinit);
-  // UPCXX_ASSERT_MASTER_IFSEQ(); // temporarily disabled for issue #482
-  UPCXX_ASSERT(master_persona().active_with_caller());
+  UPCXX_ASSERT_MASTER_HELD_IFSEQ();
 
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
@@ -1177,8 +1176,7 @@ void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
 
 void gasnet::deallocate(void *p, sheap_footprint_t *foot) {
   UPCXX_ASSERT(shared_heap_isinit);
-  // UPCXX_ASSERT_MASTER_IFSEQ(); // temporarily disabled for issue #482
-  UPCXX_ASSERT(master_persona().active_with_caller());
+  UPCXX_ASSERT_MASTER_HELD_IFSEQ();
 
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
@@ -1205,7 +1203,7 @@ void gasnet::deallocate(void *p, sheap_footprint_t *foot) {
 // from: upcxx/backend.hpp
 
 void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
   switch(eb) {
   case entry_barrier::none:
     break;
@@ -1604,7 +1602,7 @@ namespace {
       Fn fn
     ) {
     
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
 
     auto *cb = gasnet::make_handle_cb(std::move(fn));
     

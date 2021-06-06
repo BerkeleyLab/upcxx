@@ -11,7 +11,7 @@ detail::rma_put_sync detail::rma_put(
     gasnet::handle_cb *src_cb,
     gasnet::handle_cb *op_cb
   ) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
 
   if(sync_lb != rma_put_sync::op_now) {
     gex_Event_t src_h = GEX_EVENT_INVALID, *src_ph;
