@@ -194,6 +194,7 @@ namespace upcxx {
     );
   
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_GPTR_CHK(gp_s);
     UPCXX_ASSERT(gp_s, "pointer arguments to rget may not be null");
     
@@ -277,6 +278,7 @@ namespace upcxx {
     );
     
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_GPTR_CHK(gp_s);
     UPCXX_ASSERT(buf_d && gp_s, "pointer arguments to rget may not be null");
 

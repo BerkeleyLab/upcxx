@@ -78,20 +78,40 @@ namespace detail {
 // static assert that is permitted in expression context
 #define UPCXX_STATIC_ASSERT(cnd, msg) ([=](){static_assert(cnd, msg);}())
 
-// asserting master persona
+// Asserting master persona - note the subtle semantic differences!
+//
+// * UPCXX_ASSERT_(ALWAYS_)MASTER():
+//   Assert the master persona is held by this thread in DEBUG mode (or always, ie also when assertions disabled)
+//   Used for operations the *spec* says require holding the master persona (regardless of threadmode)
+// 
+// * UPCXX_ASSERT_MASTER_HELD_IFSEQ():
+//   Iff we are in SEQ mode, assert the master persona is held by this thread in DEBUG mode
+//   Used for operations docs/implementation-defined.md says require *holding* master persona in SEQ
+//
+// * UPCXX_ASSERT_MASTER_CURRENT_IFSEQ():
+//   Iff we are in SEQ mode, assert the master persona is current_persona() for this thread in DEBUG mode
+//   Used for operations docs/implementation-defined.md says require master persona *current* in SEQ
+//
+// For operations requiring two of the above, the more generic UPCXX_ASSERT_(ALWAYS_)MASTER() should appear first.
 #define UPCXX_ASSERT_ALWAYS_MASTER() \
         UPCXX_ASSERT_ALWAYS(backend::master.active_with_caller(), \
-                     "This operation requires the calling thread to have the master persona")
+                     "This operation requires the master persona to appear in the persona stack of the calling thread")
 #if UPCXX_ASSERT_ENABLED
   #define UPCXX_ASSERT_MASTER() UPCXX_ASSERT_ALWAYS_MASTER()
-  #define UPCXX_ASSERT_MASTER_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
+  #define UPCXX_ASSERT_MASTER_HELD_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
+          UPCXX_ASSERT(::upcxx::master_persona().active_with_caller(), \
+               "When compiled in threadmode=seq, this operation requires the primordial thread with the master persona in the persona stack.\n" \
+               "Invoking certain UPC++ functions from multiple threads requires compiling with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
+               "For details, please see `docs/implementation-defined.md`"))
+  #define UPCXX_ASSERT_MASTER_CURRENT_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
           UPCXX_ASSERT(&::upcxx::current_persona() == &::upcxx::master_persona(), \
-               "This operation requires the primordial thread using the master persona, when compiled in threadmode=seq.\n" \
-               "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
+               "When compiled in threadmode=seq, this operation requires the primordial thread using the master persona as the current persona.\n" \
+               "Applications with multi-threaded communication requirements should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
                "For details, please see `docs/implementation-defined.md`"))
 #else
   #define UPCXX_ASSERT_MASTER() ((void)0)
-  #define UPCXX_ASSERT_MASTER_IFSEQ() ((void)0)
+  #define UPCXX_ASSERT_MASTER_HELD_IFSEQ() ((void)0)
+  #define UPCXX_ASSERT_MASTER_CURRENT_IFSEQ() ((void)0)
 #endif
 
 // asserting collective-safe context

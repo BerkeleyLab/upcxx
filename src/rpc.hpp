@@ -148,6 +148,7 @@ namespace upcxx {
     );
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
@@ -165,6 +166,7 @@ namespace upcxx {
        >::type {
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc_ff(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -231,6 +233,7 @@ namespace upcxx {
     );
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
@@ -273,6 +276,7 @@ namespace upcxx {
        >::type {
   
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc_ff(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -503,6 +507,7 @@ namespace upcxx {
        >::type {
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -522,6 +527,7 @@ namespace upcxx {
        >::type {
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
@@ -542,6 +548,7 @@ namespace upcxx {
        >::type {
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -561,6 +568,7 @@ namespace upcxx {
        >::type {
 
     UPCXX_ASSERT_INIT();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 

@@ -11,6 +11,7 @@ detail::rma_get_done detail::rma_get_nb(
     std::size_t buf_size,
     gasnet::handle_cb *cb
   ) {
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Event_t h = gex_RMA_GetNB(
     gasnet::handle_of(upcxx::world()),
@@ -30,6 +31,7 @@ void upcxx::detail::rma_get_b(
     const void *buf_s,
     std::size_t buf_size
   ) {
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
 
   (void)gex_RMA_GetBlocking(
     gasnet::handle_of(upcxx::world()),

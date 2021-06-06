@@ -172,6 +172,7 @@ namespace upcxx {
     UPCXX_NODISCARD
     future<deserialized_type_t<T>> fetch(intrank_t rank) const {
       UPCXX_ASSERT_INIT();
+      UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
       static_assert(
         is_serializable<T>::value,
         "T must be Serializable for dist_object<T>::fetch."

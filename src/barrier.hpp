@@ -35,6 +35,7 @@ namespace upcxx {
     using CxsDecayed = typename std::decay<Cxs>::type;
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT_MASTER();
+    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::barrier_async()", entry_barrier::internal);
     UPCXX_ASSERT_ALWAYS(
       (detail::completions_has_event<CxsDecayed, operation_cx_event>::value),

@@ -43,6 +43,7 @@ void upcxx::detail::reduce_one_or_all_trivial_erased(
   ) {
   
   UPCXX_ASSERT_MASTER();
+  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
   
   #if 0
     if(&tm == &upcxx::world() && tm.rank_me()==0)

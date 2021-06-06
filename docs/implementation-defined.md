@@ -53,7 +53,8 @@ additional restrictions on the client application:
 
   * Shared-heap allocation/deallocation (e.g. `upcxx::allocate/deallocate/new_/
     new_array/delete_/delete_array`) must be called from the primordial thread
-    while holding the master persona.
+    while holding the master persona. The same applies to `device_allocator`
+    functions that manipulate a device heap.
 
 Note that these restrictions must be respected by all object files linked into
 the final executable, as they are all sharing the same libupcxx.

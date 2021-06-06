@@ -72,20 +72,27 @@ namespace upcxx {
 
     device_allocator(Device &dev, typename Device::template pointer<void> base, std::size_t size):
       detail::device_allocator_core<Device>(
-        (UPCXX_ASSERT_INIT(),UPCXX_ASSERT_ALWAYS_MASTER(),dev), base, size) { }
+        (UPCXX_ASSERT_INIT(),
+         UPCXX_ASSERT_ALWAYS_MASTER(),
+         UPCXX_ASSERT_MASTER_CURRENT_IFSEQ(),
+         dev), base, size) { }
 
     device_allocator(Device &dev, std::size_t size):
       detail::device_allocator_core<Device>(
-        (UPCXX_ASSERT_INIT(),UPCXX_ASSERT_ALWAYS_MASTER(),dev),
-        Device::template null_pointer<void>(), size) { }
+        (UPCXX_ASSERT_INIT(),
+         UPCXX_ASSERT_ALWAYS_MASTER(),
+         UPCXX_ASSERT_MASTER_CURRENT_IFSEQ(),
+         dev), Device::template null_pointer<void>(), size) { }
     
     device_allocator(device_allocator &&that):
       // base class move ctor
       detail::device_allocator_core<Device>::device_allocator_core(
         static_cast<detail::device_allocator_core<Device>&&>(
-          // use comma operator to create a temporary lock_guard surrounding
-          // the invocation of our base class's move ctor
-          (std::lock_guard<detail::par_mutex>(that.lock_), that)
+          ( UPCXX_ASSERT_MASTER_HELD_IFSEQ(), // required to ensure thread-safety wrt allocate
+            // use comma operator to create a temporary lock_guard surrounding
+            // the invocation of our base class's move ctor
+            std::lock_guard<detail::par_mutex>(that.lock_), 
+            that)
         )
       ) {
     }
@@ -96,6 +103,7 @@ namespace upcxx {
                                         std::size_t align = Device::template default_alignment<T>()) {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(this->is_active(), "device_allocator::allocate() invoked on an inactive device.");
+      UPCXX_ASSERT_MASTER_HELD_IFSEQ();
       lock_.lock();
       void *ptr = this->seg_.allocate(
           n*sizeof(T),
@@ -122,6 +130,7 @@ namespace upcxx {
         UPCXX_ASSERT(this->is_active(), "device_allocator::daallocate() invoked on an inactive device.");
         UPCXX_ASSERT(p.UPCXX_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
                      p.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me());
+        UPCXX_ASSERT_MASTER_HELD_IFSEQ();
         lock_.lock();
         this->seg_.deallocate(p.UPCXX_INTERNAL_ONLY(raw_ptr_));
         lock_.unlock();
