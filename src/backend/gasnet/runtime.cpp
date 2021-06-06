@@ -1132,7 +1132,8 @@ int64_t upcxx::shared_segment_used() {
   
 void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
   UPCXX_ASSERT(shared_heap_isinit);
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  // UPCXX_ASSERT_MASTER_IFSEQ(); // temporarily disabled for issue #482
+  UPCXX_ASSERT(master_persona().active_with_caller());
 
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
@@ -1176,7 +1177,8 @@ void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
 
 void gasnet::deallocate(void *p, sheap_footprint_t *foot) {
   UPCXX_ASSERT(shared_heap_isinit);
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  // UPCXX_ASSERT_MASTER_IFSEQ(); // temporarily disabled for issue #482
+  UPCXX_ASSERT(master_persona().active_with_caller());
 
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
