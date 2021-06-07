@@ -8,6 +8,7 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <numeric> // accumulate
 
 //  I'm not sure we will have a Vector-Index-Strided interface that is
 //  not GASNet-based, so if an application wants to make use of the VIS
@@ -479,7 +480,9 @@ namespace upcxx
     
     UPCXX_ASSERT(dstsize==srcsize, 
        "rput_irregular: destination size (" << dstsize << "bytes ) does not match source size (" << srcsize << " bytes)");
-    
+
+    UPCXX_WARN_EMPTY("upcxx::rput_irregular", srcsize);
+
     detail::rput_cbs_irreg<cxs_here_t, cxs_remote_t> cbs_static{
       gpdrank,
         cxs_here_t(std::forward<Cxs>(cxs)),
@@ -586,6 +589,8 @@ namespace upcxx
     UPCXX_ASSERT(dstsize==srcsize, 
        "rget_irregular: destination size (" << dstsize << " bytes) does not match source size (" << srcsize << " bytes)");
 
+    UPCXX_WARN_EMPTY("upcxx::rget_irregular", srcsize);
+
     auto *cb = new detail::rget_cb_irreg<cxs_here_t,cxs_remote_t>{
       rank_s,
       cxs_here_t{std::forward<Cxs>(cxs)},
@@ -689,6 +694,8 @@ namespace upcxx
     UPCXX_ASSERT(src_ptrs.size()*src_run_length == dst_ptrs.size()*dst_run_length,
        "rput_regular: destination size (" << dst_ptrs.size()*dst_run_length 
        << " bytes) does not match source size (" << src_ptrs.size()*src_run_length << " bytes)");
+
+    UPCXX_WARN_EMPTY("upcxx::rput_regular", src_ptrs.size()*src_run_length);
 
     detail::rput_cbs_reg<cxs_here_t, cxs_remote_t> cbs_static{
       dst_rank,
@@ -801,6 +808,7 @@ namespace upcxx
        "rget_regular: destination size (" << dst_ptrs.size()*dst_run_length 
        << " bytes) does not match source size (" << src_ptrs.size()*src_run_length << " bytes)");
 
+    UPCXX_WARN_EMPTY("upcxx::rget_regular", src_ptrs.size()*src_run_length);
     
     auto *cb = new detail::rget_cb_reg<cxs_here_t,cxs_remote_t>{
       src_rank,
@@ -853,6 +861,9 @@ namespace upcxx
     
     UPCXX_GPTR_CHK(dest_base);
     UPCXX_ASSERT(src_base && dest_base, "pointer arguments to rput_strided may not be null");
+
+    UPCXX_WARN_EMPTY("upcxx::rput_strided", 
+                     std::accumulate(extents, extents+Dim, (size_t)1, std::multiplies<size_t>()));
 
     using cxs_here_t = detail::completions_state<
       /*EventPredicate=*/detail::event_is_here,
@@ -938,6 +949,9 @@ namespace upcxx
  
     UPCXX_GPTR_CHK(src_base);
     UPCXX_ASSERT(src_base && dest_base, "pointer arguments to rget_strided may not be null");
+
+    UPCXX_WARN_EMPTY("upcxx::rget_strided", 
+                     std::accumulate(extents, extents+Dim, (size_t)1, std::multiplies<size_t>()));
 
     using cxs_here_t = detail::completions_state<
       /*EventPredicate=*/detail::event_is_here,

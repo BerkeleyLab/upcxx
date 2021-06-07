@@ -267,6 +267,7 @@ namespace backend {
   void quiesce(const team &tm, entry_barrier eb);
 
   void warn_collective_in_progress(const char *fnname, entry_barrier eb=entry_barrier::none);
+  void warn_empty_rma(const char *fnname);
 
   // during_level and during_user removed post 2021.3.0 release
 

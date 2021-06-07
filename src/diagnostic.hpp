@@ -134,6 +134,15 @@ namespace detail {
 #define UPCXX_ASSERT_COLLECTIVE_SAFE(eb) UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED(UPCXX_FUNC, eb)
 #endif
 
+#ifndef UPCXX_WARN_EMPTY_RMA
+#define UPCXX_WARN_EMPTY_RMA UPCXX_ASSERT_ENABLED
+#endif
+#if UPCXX_WARN_EMPTY_RMA
+#define UPCXX_WARN_EMPTY(fnname, count) ( (count) == 0 ? backend::warn_empty_rma(fnname) : (void)0 )
+#else
+#define UPCXX_WARN_EMPTY(fnname, count) ((void)0)
+#endif
+
 // UPCXX_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled
 // Auto-detection can be overridden by -DUPCXX_USE_NODISCARD=1/0
 #ifndef UPCXX_USE_NODISCARD

@@ -593,6 +593,7 @@ namespace upcxx {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
+    UPCXX_WARN_EMPTY("upcxx::copy", n);
     UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     using copy_traits = detail::copy_traits<Cxs>;
     copy_traits::template assert_sane<T>();
@@ -655,6 +656,7 @@ namespace upcxx {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
+    UPCXX_WARN_EMPTY("upcxx::copy", n);
     UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     detail::copy_traits<Cxs>::template assert_sane<T>();
 
@@ -716,6 +718,7 @@ namespace upcxx {
     UPCXX_ASSERT_INIT();
     UPCXX_GPTR_CHK(src); UPCXX_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
+    UPCXX_WARN_EMPTY("upcxx::copy", n);
     UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     using copy_traits = detail::copy_traits<Cxs>;
     copy_traits::template assert_sane<T>();

@@ -315,6 +315,7 @@ namespace upcxx {
     UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_GPTR_CHK(gp_s);
     UPCXX_ASSERT(buf_d && gp_s, "pointer arguments to rget may not be null");
+    UPCXX_WARN_EMPTY("upcxx::rget", n);
 
     using cxs_here_t = detail::completions_state<
       /*EventPredicate=*/detail::event_is_here,
