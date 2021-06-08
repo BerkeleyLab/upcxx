@@ -1269,6 +1269,17 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
   }
 }
 
+void backend::warn_empty_rma(const char *fnname) {
+  static bool warn = os_env<bool>("UPCXX_WARN_EMPTY_RMA", true);
+  if (warn) {
+    say() << "WARNING: Issued a zero-length " << fnname << " operation. "
+          << "This is semantically permitted, but the implementation is currently sub-optimal. "
+          << "If performance of zero-length RMA matters to you, please let us know in issue 484!\n"
+          << "This warning is issued at most once, and may be silenced by setting envvar: UPCXX_WARN_EMPTY_RMA=0";
+    warn = false;
+  }
+}
+
 tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const *addr) {
   intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);

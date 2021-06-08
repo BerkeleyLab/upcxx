@@ -534,6 +534,8 @@ namespace upcxx {
     UPCXX_GPTR_CHK(gp_d);
     UPCXX_ASSERT(buf_s && gp_d, "pointer arguments to rput may not be null");
 
+    UPCXX_WARN_EMPTY("upcxx::rput", n);
+    
     if (backend::rank_is_local(gp_d.UPCXX_INTERNAL_ONLY(rank_))) {
       // local case does copy directly without involving backend
       void *buf_d_local = backend::localize_memory_nonnull(
@@ -560,7 +562,7 @@ namespace upcxx {
       }
       return returner();
     }
-    
+
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
     detail::rma_put_sync sync_done = o->inject(
