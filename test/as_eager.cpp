@@ -61,8 +61,9 @@ void test(bool eager_bypass, bool src_eager,
   // source completion may happen in non-bypass case if eager requested
   if (eager_bypass) CHECK_READY(std::get<1>(futs5), eager_bypass);
   else if (!src_eager) CHECK_READY(std::get<1>(futs5), src_eager);
-  std::get<0>(futs5).wait();
   std::get<1>(futs5).wait();
+  val = 0; // clear val before reading back into it below
+  std::get<0>(futs5).wait();
 
   auto fut6 = upcxx::rget(gptr, &val, 1, op_fut_cx_fn());
   CHECK_READY(fut6, eager_bypass);
