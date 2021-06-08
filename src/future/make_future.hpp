@@ -21,6 +21,18 @@ namespace upcxx {
       detail::internal_only{}
     );
   }
+
+  template<>
+  inline future<> make_future<>() {
+    // double check that the_always was properly constant initialized
+    UPCXX_ASSERT(detail::future_header_result<>::the_always.ref_n_ == -1);
+    return future<>(
+      detail::future_impl_shref<detail::future_header_ops_general, /*unique=*/false>(
+        &detail::future_header_result<>::the_always // skip header allocation
+      ),
+      detail::internal_only{}
+    );
+  }
   
   //////////////////////////////////////////////////////////////////////
   // detail::make_fast_future()

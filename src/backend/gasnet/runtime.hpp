@@ -729,20 +729,10 @@ namespace gasnet {
     ) {
     UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
 
-    bool rank_d_is_local = backend::rank_is_local(rank_d);
-    
     constexpr std::size_t arg_size = sizeof(std::int32_t);
 
-    if(rank_d_is_local) {
-      auto am(backend::prepare_am<1,/*knownLocality=*/1>
-                                 (std::forward<AmFn>(am_fn), rank_d));
+    UPCXX_ASSERT(!backend::rank_is_local(rank_d)); // rput now does this case directly
 
-      void *buf_d_local = backend::localize_memory_nonnull(rank_d, reinterpret_cast<std::uintptr_t>(buf_d));
-      std::memcpy(buf_d_local, buf_s, buf_size);
-      backend::send_prepared_am_master(am_level, rank_d, std::move(am));
-      return rma_put_then_am_sync::op_now;
-    }
-    else {
       auto am(backend::prepare_am<-1/*disableNPAM*/,/*knownLocality=*/0,/*forceEager=*/true>
                                  (std::forward<AmFn>(am_fn), rank_d));
 
@@ -760,7 +750,6 @@ namespace gasnet {
           src_cb, rem_cb
         );
       }
-    }
   }
 }}}
 

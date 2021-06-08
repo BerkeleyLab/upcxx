@@ -66,6 +66,10 @@ namespace upcxx {
     auto when_all_fast(ArgFu &&arg) -> decltype(to_fast_future(arg)) {
       return to_fast_future(static_cast<ArgFu&&>(arg));
     }
+    // zero component optimization
+    inline auto when_all() -> decltype(detail::make_fast_future()) {
+      return detail::make_fast_future();
+    }
   }
 
 
@@ -92,6 +96,10 @@ namespace upcxx {
   template<typename ArgFu>
   auto when_all(ArgFu &&arg) -> decltype(detail::to_fast_future(arg)) {
     return detail::to_fast_future(static_cast<ArgFu&&>(arg));
+  }
+  // zero component optimization
+  inline auto when_all() -> decltype(detail::make_fast_future()) {
+    return detail::make_fast_future();
   }
   
 }
