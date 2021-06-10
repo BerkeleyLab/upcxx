@@ -87,6 +87,11 @@ namespace detail {
     constexpr T* launder(T *p) {
       return std::launder(p);
     }
+  #elif UPCXX_HAVE___BUILTIN_LAUNDER
+    template<typename T>
+    constexpr T* launder(T *p) {
+      return __builtin_launder(p);
+    }
   #else
     template<typename T>
     T* launder(T *p) noexcept {
