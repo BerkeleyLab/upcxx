@@ -108,6 +108,7 @@ namespace upcxx {
     template<typename T, intru_queue_intruder<T> T::*next>
     inline T* intru_queue<T, intru_queue_safety::none, next>::dequeue() {
       T *ans = this->head_;
+      UPCXX_ASSERT(ans, "intru_queue::dequeue<none> called on empty queue");
       this->head_ = (ans->*next).p.load(std::memory_order_relaxed);
       if(this->head_ == nullptr)
         this->tailp_xor_head_ = 0;
@@ -154,6 +155,7 @@ namespace upcxx {
     template<typename T, intru_queue_intruder<T> T::*next>
     template<typename Fn>
     int intru_queue<T, intru_queue_safety::none, next>::burst_something(int max_n, Fn &&fn, T *head1) {
+      UPCXX_ASSERT(max_n > 0);
       T **tailp1 = reinterpret_cast<T**>(UINTPTR_OF(&this->head_) ^ this->tailp_xor_head_);
       
       this->head_ = nullptr;
@@ -168,7 +170,8 @@ namespace upcxx {
         n -= 1;
       } while(head1 != nullptr && n != 0);
       
-      if(head1 != nullptr) {
+      if(head1 != nullptr) { // need to "push front" remaining items
+        // being careful to preserve any intervening enqueues
         *tailp1 = this->head_;
         if(this->head_ == nullptr)
           this->tailp_xor_head_ = UINTPTR_OF(tailp1) ^ UINTPTR_OF(&this->head_);
@@ -230,19 +233,23 @@ namespace upcxx {
       template<typename T, intru_queue_intruder<T> T::*next>
       inline void intru_queue<T, intru_queue_safety::mpsc, next>::enqueue(T *x) {
         (x->*next).p.store(nullptr, std::memory_order_relaxed);
-        
+      
+        // atomic swap this queue entry into the queue's tail pointer
+        // this exchange operation includes release semantics, ensuring both
+        // the write above and prior writes to the entry data are published
         std::atomic<T*> *got = this->decode_tailp(
                                  this->tailp_xor_head_.exchange(
                                    this->encode_tailp(&(x->*next).p)
                                  )
                                );
+        // link the prior tail pointer target (ie the previous tail entry, if any) to this entry
         got->store(x, std::memory_order_relaxed);
       }
       
       template<typename T, intru_queue_intruder<T> T::*next>
       template<typename Fn>
       inline int intru_queue<T, intru_queue_safety::mpsc, next>::burst(Fn &&fn) {
-        return this->burst(std::numeric_limits<int>::min(), static_cast<Fn&&>(fn));
+        return this->burst(std::numeric_limits<int>::max(), static_cast<Fn&&>(fn));
       }
       
       template<typename T, intru_queue_intruder<T> T::*next>
@@ -259,19 +266,24 @@ namespace upcxx {
       template<typename T, intru_queue_intruder<T> T::*next>
       T* intru_queue<T, intru_queue_safety::mpsc, next>::dequeue() {
         T *head = this->head_.load(std::memory_order_relaxed);
+        UPCXX_ASSERT(head, "intru_queue::dequeue<mpsc> called on empty queue");
         T *head_next = (head->*next).p.load(std::memory_order_relaxed);
 
         this->head_.store(head_next, std::memory_order_relaxed);
 
         if(head_next == nullptr) {
+          // looks like we may have dequeued the last entry, 
+          // try to reset the tail pointer back to empty position
           std::uintptr_t expected = this->encode_tailp(&(head->*next).p);
-          std::uintptr_t desired = this->encode_tailp(&this->head_);
+          std::uintptr_t desired = this->encode_tailp(&this->head_); // == 0
           if(!this->tailp_xor_head_.compare_exchange_weak(expected, desired)) {
+            // failed => another thread is racing to enqueue, wait for them to finish
             do {
               // TODO: pause instruction here
               head_next = (head->*next).p.load(std::memory_order_relaxed);
             } while(head_next == nullptr);
 
+            // update the head pointer to that new element
             this->head_.store(head_next, std::memory_order_relaxed);
           }
         }
@@ -283,6 +295,7 @@ namespace upcxx {
       template<typename Fn>
       int UPCXX_NOINLINE
       intru_queue<T, intru_queue_safety::mpsc, next>::burst_something(int max_n, Fn &&fn, T *head) {
+        UPCXX_ASSERT(max_n > 0);
         int exec_n = 0;
         T *p = head;
         
@@ -322,9 +335,11 @@ namespace upcxx {
         //     won't be successors of the last element from 1.
         this->head_.store(nullptr, std::memory_order_relaxed);
         
+        // this exchange operation includes release semantics, 
+        // ensuring the head_ store above is published
         std::atomic<T*> *last_next = this->decode_tailp(
                                        this->tailp_xor_head_.exchange(
-                                         this->encode_tailp(&this->head_)
+                                         this->encode_tailp(&this->head_) // == 0
                                        )
                                      );
         
@@ -335,7 +350,7 @@ namespace upcxx {
           // virtue of this not being the tail element.
           T *p_next = (p->*next).p.load(std::memory_order_relaxed);
           while(p_next == nullptr) {
-            // TODO: add pause instruction here
+            // TODO: add pause instruction and branch prediction here
             // asm volatile("pause\n": : :"memory");
             p_next = (p->*next).p.load(std::memory_order_relaxed);
           }
@@ -392,6 +407,13 @@ namespace upcxx {
           std::lock_guard<std::mutex> locked(the_lock_);
           q_.enqueue(x);
         }
+
+        T* peek() const { return q_.peek(); }
+
+        T* dequeue() {
+          std::lock_guard<std::mutex> locked(the_lock_);
+          return q_.dequeue();
+        }
         
         template<typename Fn>
         int burst(Fn &&fn) {
@@ -412,6 +434,7 @@ namespace upcxx {
         
         template<typename Fn>
         int burst(int max_n, Fn &&fn) {
+          UPCXX_ASSERT(max_n > 0);
           // issue 245: Cannot safely support max_n here with the current strategy, 
           // without grabbing the lock again and re-enqueuing any entries beyond max_n
           // So instead, just ignore max_n and process a snapshot of the entire queue
