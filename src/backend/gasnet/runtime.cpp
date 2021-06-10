@@ -95,12 +95,6 @@ bool backend::heap_state::bug4148_workaround_ = false; // set by heap_state::ini
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
 
-#if GASNET_CONDUIT_SMP
-  const bool backend::all_ranks_definitely_local = true;
-#else
-  const bool backend::all_ranks_definitely_local = false;
-#endif
-
 intrank_t backend::pshm_peer_lb;
 intrank_t backend::pshm_peer_ub;
 intrank_t backend::pshm_peer_n;
