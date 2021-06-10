@@ -55,7 +55,13 @@ namespace upcxx {
 namespace upcxx {
 namespace backend {
   // inclusive lower and exclusive upper bounds for local_team ranks
-  extern intrank_t pshm_peer_lb, pshm_peer_ub, pshm_peer_n;
+  extern intrank_t pshm_peer_lb_;
+  #if UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+    constexpr intrank_t pshm_peer_lb = 0;
+  #else
+    static constexpr intrank_t const& pshm_peer_lb = pshm_peer_lb_;
+  #endif
+  extern intrank_t pshm_peer_ub, pshm_peer_n;
   
   // Given index in local_team:
   //   local_minus_remote: Encodes virtual address translation which is added
