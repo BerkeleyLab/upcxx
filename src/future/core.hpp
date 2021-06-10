@@ -158,6 +158,27 @@ namespace upcxx {
 
     using future_header_nil = future_header_nil1<>;
     
+    template<typename=void>
+    struct future_header_always1 {
+      // The "always" future, not to be used. Optimization for
+      // always-ready empty futures.
+      static constexpr future_header the_always = {
+        /*ref_n_*/-1,
+        /*status_*/future_header::status_ready,
+        /*sucs_head_*/nullptr,
+        {/*result_*/const_cast<future_header*>(&the_always)}
+      };
+
+      static constexpr future_header* always() {
+        return const_cast<future_header*>(&the_always);
+      }
+    };
+
+    template<typename VoidThanks>
+    constexpr future_header future_header_always1<VoidThanks>::the_always;
+
+    using future_header_always = future_header_always1<>;
+
     ////////////////////////////////////////////////////////////////////
     // future_header_dependent: dependent headers are those that...
     // - Wait for other futures to finish and then fire some specific action.
@@ -451,8 +472,6 @@ namespace upcxx {
     template<>
     struct future_header_result<> {
       UPCXX_OPNEW_AS_STD
-      
-      static future_header the_always;
       
       enum {
         status_not_ready = future_header::status_active + 1
