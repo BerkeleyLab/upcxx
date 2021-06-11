@@ -158,8 +158,9 @@ namespace upcxx {
 
     using future_header_nil = future_header_nil1<>;
     
-    // The "always" future, not to be used. Optimization for
-    // always-ready empty futures.
+    // The "always" future, not to be used by anything other than
+    // future_header_always::always(). Optimization for always-ready
+    // empty futures.
     struct future_header_always2 final: future_header {
       // This is a separate class so that we can constexpr initialize
       // the_always.result_ to point to the_always itself. This way
