@@ -91,6 +91,7 @@ detail::rma_put_sync detail::rma_put<
     gasnet::handle_cb *op_cb
   );
 
+// only used when UPCXX_HAS_OPERATION_CX_AS_BLOCKING=1
 template
 detail::rma_put_sync detail::rma_put<
   /*mode=*/detail::rma_put_sync::op_now

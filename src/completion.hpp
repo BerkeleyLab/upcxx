@@ -442,7 +442,9 @@ namespace upcxx {
     detail::support_as_promise<source_cx_event> {};
   
   struct operation_cx:
-    detail::support_as_blocking<operation_cx_event>,
+    #if UPCXX_HAS_OPERATION_CX_AS_BLOCKING
+      detail::support_as_blocking<operation_cx_event>,
+    #endif
     detail::support_as_future<operation_cx_event>,
     detail::support_as_lpc<operation_cx_event>,
     detail::support_as_promise<operation_cx_event> {};

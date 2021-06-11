@@ -197,6 +197,9 @@ namespace upcxx {
     template<typename Obj, typename Traits,
              bool want_remote = Traits::want_remote,
              bool want_op = Traits::want_op,
+             // op_is_sync is only true for operation_cx::as_blocking(),
+             // which is only conditionally enabled by
+             // UPCXX_HAS_OPERATION_CX_AS_BLOCKING (see completion.hpp)
              bool op_is_sync = Traits::op_is_sync,
              bool want_src = Traits::want_src>
     struct rput_obj_base;
@@ -260,7 +263,8 @@ namespace upcxx {
         return rma_put_sync::op_now;
       }
     };
-    
+
+    // only used when UPCXX_HAS_OPERATION_CX_AS_BLOCKING=1
     template<typename Obj, typename Traits, bool want_src>
     struct rput_obj_base<Obj, Traits,
         /*want_remote=*/true,
