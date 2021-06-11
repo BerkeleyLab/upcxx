@@ -144,6 +144,7 @@ namespace upcxx {
     bool is_local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
+      UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
       return 
         // is static host kind or dynamic host kind or null:
         (KindSet == memory_kind::host || UPCXX_INTERNAL_ONLY(heap_idx_) == 0) 

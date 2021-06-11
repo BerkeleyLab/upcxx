@@ -320,6 +320,12 @@ namespace backend {
   #else
     constexpr bool all_ranks_definitely_local = false;
   #endif
+  #define UPCXX_ASSERT_VALID_DEFINITELY_LOCAL() \
+          UPCXX_ASSERT(!::upcxx::backend::all_ranks_definitely_local || \
+                       (::upcxx::backend::pshm_peer_lb_ == 0 && \
+                        ::upcxx::backend::pshm_peer_n == ::upcxx::backend::rank_n), \
+                       "Invalid UPCXX_ALL_RANKS_DEFINITELY_LOCAL setting!");
+
 
   bool rank_is_local(intrank_t r);
   
