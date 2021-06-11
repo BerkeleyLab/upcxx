@@ -1,4 +1,7 @@
 // tools-lite mode, to minimize resources for recompiling this TU
+#if GASNET_PAR
+#define GASNETT_USE_TRUE_MUTEXES 1 // silence a harmless warning from LTO
+#endif
 #undef GASNET_SEQ
 #undef GASNET_PAR
 #define GASNETT_LITE_MODE 1
