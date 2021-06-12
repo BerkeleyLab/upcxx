@@ -55,7 +55,7 @@ namespace upcxx {
       typedef future_header_ops_result_ready header_ops;
       
       future_header* steal_header() && {
-        return &future_header_result<>::the_always;
+        return future_header_result<>::always();
       }
     };
     

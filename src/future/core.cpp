@@ -13,16 +13,20 @@ using upcxx::detail::future_body_proxy_;
 template<typename ...T>
 using future_header_result = upcxx::detail::future_header_result<T...>;
 
+#if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
 // IMPORTANT NOTE: We rely on this to be constant initialized so that
 // functions like make_future() work correctly during dynamic
 // initialization. The initializers here must all be constant
 // expressions.
-future_header future_header_result<>::the_always = {
+const future_header future_header_result<>::the_always = {
   /*ref_n_*/-1,
   /*status_*/upcxx::detail::future_header::status_ready,
   /*sucs_head_*/nullptr,
-  {/*result_*/&upcxx::detail::future_header_result<>::the_always}
+  {/*result_*/const_cast<future_header*>(
+                &upcxx::detail::future_header_result<>::the_always
+              )}
 };
+#endif
 
 #if UPCXX_PROMISE_VTABLE_HACK
 const detail::promise_vtable detail::the_promise_vtable<>::vtbl{

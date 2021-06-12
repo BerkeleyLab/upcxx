@@ -37,6 +37,11 @@
   #define UPCXX_PROMISE_VTABLE_HACK 1
 #endif
 
+#ifndef UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+// Old intel needs a suboptimal hack, see issue 485 and PR 357
+#define UPCXX_ISSUE_485_SLOW_THE_ALWAYS (__INTEL_COMPILER && __INTEL_COMPILER < 1900)
+#endif
+
 namespace upcxx {
   namespace detail {
     //////////////////////////////////////////////////////////////////////
@@ -158,6 +163,31 @@ namespace upcxx {
 
     using future_header_nil = future_header_nil1<>;
     
+    #if !UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+    // The "always" future, not to be used by anything other than
+    // future_header_result<>::always(). Optimization for always-ready
+    // empty futures.
+    struct future_header_always2 final: future_header {
+      // This is a separate class so that we can constexpr initialize
+      // the_always.result_ to point to the_always itself. This way
+      // things like drop_for_result() work correctly.
+      constexpr future_header_always2(): future_header{
+        /*ref_n_*/-1,
+        /*status_*/future_header::status_ready,
+        /*sucs_head_*/nullptr,
+        {/*result_*/this}
+      } {}
+    };
+
+    template<typename=void>
+    struct future_header_always1 {
+      static constexpr future_header_always2 the_always{};
+    };
+
+    template<typename VoidThanks>
+    constexpr future_header_always2 future_header_always1<VoidThanks>::the_always;
+    #endif // !UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+
     ////////////////////////////////////////////////////////////////////
     // future_header_dependent: dependent headers are those that...
     // - Wait for other futures to finish and then fire some specific action.
@@ -451,8 +481,22 @@ namespace upcxx {
     template<>
     struct future_header_result<> {
       UPCXX_OPNEW_AS_STD
-      
-      static future_header the_always;
+
+      #if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+      static const future_header the_always;
+      #endif
+
+      static constexpr future_header* always() {
+        #if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+          return const_cast<future_header*>(&the_always);
+        #else
+          return const_cast<future_header*>(
+            static_cast<const future_header*>(
+              &future_header_always1<>::the_always
+            )
+          );
+        #endif
+      }
       
       enum {
         status_not_ready = future_header::status_active + 1
