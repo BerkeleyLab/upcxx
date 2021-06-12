@@ -13,8 +13,7 @@ using upcxx::detail::future_body_proxy_;
 template<typename ...T>
 using future_header_result = upcxx::detail::future_header_result<T...>;
 
-#if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1900
-// workaround for Intel 2018 and earlier; see PR 357 for details
+#if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
 // IMPORTANT NOTE: We rely on this to be constant initialized so that
 // functions like make_future() work correctly during dynamic
 // initialization. The initializers here must all be constant

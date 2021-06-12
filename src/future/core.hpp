@@ -37,6 +37,11 @@
   #define UPCXX_PROMISE_VTABLE_HACK 1
 #endif
 
+#ifndef UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+// Old intel needs a suboptimal hack, see issue 485 and PR 357
+#define UPCXX_ISSUE_485_SLOW_THE_ALWAYS (__INTEL_COMPILER && __INTEL_COMPILER < 1900)
+#endif
+
 namespace upcxx {
   namespace detail {
     //////////////////////////////////////////////////////////////////////
@@ -158,7 +163,7 @@ namespace upcxx {
 
     using future_header_nil = future_header_nil1<>;
     
-    #if !defined(__INTEL_COMPILER) || __INTEL_COMPILER >= 1900
+    #if !UPCXX_ISSUE_485_SLOW_THE_ALWAYS
     // The "always" future, not to be used by anything other than
     // future_header_result<>::always(). Optimization for always-ready
     // empty futures.
@@ -181,7 +186,7 @@ namespace upcxx {
 
     template<typename VoidThanks>
     constexpr future_header_always2 future_header_always1<VoidThanks>::the_always;
-    #endif // !defined(__INTEL_COMPILER) || __INTEL_COMPILER >= 1900
+    #endif // !UPCXX_ISSUE_485_SLOW_THE_ALWAYS
 
     ////////////////////////////////////////////////////////////////////
     // future_header_dependent: dependent headers are those that...
@@ -477,13 +482,12 @@ namespace upcxx {
     struct future_header_result<> {
       UPCXX_OPNEW_AS_STD
 
-      #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1900
-      // workaround for Intel 2018 and earlier; see PR 357 for details
+      #if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
       static const future_header the_always;
       #endif
 
       static constexpr future_header* always() {
-        #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1900
+        #if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
           return const_cast<future_header*>(&the_always);
         #else
           return const_cast<future_header*>(
