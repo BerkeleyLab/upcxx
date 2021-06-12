@@ -25,10 +25,10 @@ namespace upcxx {
   template<>
   inline future<> make_future<>() {
     // double check that the_always is sane
-    UPCXX_ASSERT(detail::future_header_always::always()->ref_n_ == -1);
+    UPCXX_ASSERT(detail::future_header_result<>::always()->ref_n_ == -1);
     return future<>(
       detail::future_impl_shref<detail::future_header_ops_general, /*unique=*/false>(
-        detail::future_header_always::always() // skip header allocation
+        detail::future_header_result<>::always() // skip header allocation
       ),
       detail::internal_only{}
     );

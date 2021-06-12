@@ -158,8 +158,9 @@ namespace upcxx {
 
     using future_header_nil = future_header_nil1<>;
     
+    #if !defined(__INTEL_COMPILER) || __INTEL_COMPILER >= 1900
     // The "always" future, not to be used by anything other than
-    // future_header_always::always(). Optimization for always-ready
+    // future_header_result<>::always(). Optimization for always-ready
     // empty futures.
     struct future_header_always2 final: future_header {
       // This is a separate class so that we can constexpr initialize
@@ -176,18 +177,11 @@ namespace upcxx {
     template<typename=void>
     struct future_header_always1 {
       static constexpr future_header_always2 the_always{};
-
-      static constexpr future_header* always() {
-        return const_cast<future_header*>(
-          static_cast<const future_header*>(&the_always)
-        );
-      }
     };
 
     template<typename VoidThanks>
     constexpr future_header_always2 future_header_always1<VoidThanks>::the_always;
-
-    using future_header_always = future_header_always1<>;
+    #endif // !defined(__INTEL_COMPILER) || __INTEL_COMPILER >= 1900
 
     ////////////////////////////////////////////////////////////////////
     // future_header_dependent: dependent headers are those that...
@@ -482,6 +476,23 @@ namespace upcxx {
     template<>
     struct future_header_result<> {
       UPCXX_OPNEW_AS_STD
+
+      #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1900
+      // workaround for Intel 2018 and earlier; see PR 357 for details
+      static const future_header the_always;
+      #endif
+
+      static constexpr future_header* always() {
+        #if defined(__INTEL_COMPILER) && __INTEL_COMPILER < 1900
+          return const_cast<future_header*>(&the_always);
+        #else
+          return const_cast<future_header*>(
+            static_cast<const future_header*>(
+              &future_header_always1<>::the_always
+            )
+          );
+        #endif
+      }
       
       enum {
         status_not_ready = future_header::status_active + 1
