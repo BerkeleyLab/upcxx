@@ -144,8 +144,14 @@ namespace upcxx {
     bool is_local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
-      return UPCXX_INTERNAL_ONLY(heap_idx_) == 0 &&
-        (UPCXX_INTERNAL_ONLY(raw_ptr_) == nullptr ||
+      UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
+      return 
+        // is static host kind or dynamic host kind or null:
+        (KindSet == memory_kind::host || UPCXX_INTERNAL_ONLY(heap_idx_) == 0) 
+        &&
+        // statically one local_team or is null or rank in my local_team:
+        (/*constexpr*/backend::all_ranks_definitely_local || 
+         UPCXX_INTERNAL_ONLY(raw_ptr_) == nullptr ||
          backend::rank_is_local(UPCXX_INTERNAL_ONLY(rank_)));
     }
 

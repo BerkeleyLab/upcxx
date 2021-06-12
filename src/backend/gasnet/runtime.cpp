@@ -95,13 +95,7 @@ bool backend::heap_state::bug4148_workaround_ = false; // set by heap_state::ini
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
 
-#if GASNET_CONDUIT_SMP
-  const bool backend::all_ranks_definitely_local = true;
-#else
-  const bool backend::all_ranks_definitely_local = false;
-#endif
-
-intrank_t backend::pshm_peer_lb;
+intrank_t backend::pshm_peer_lb_;
 intrank_t backend::pshm_peer_ub;
 intrank_t backend::pshm_peer_n;
 
@@ -711,7 +705,7 @@ void upcxx::init() {
     if(backend::verbose_noise)
       noise.line() << "Whole world is in same local team.";
     
-    backend::pshm_peer_lb = 0;
+    backend::pshm_peer_lb_ = 0;
     backend::pshm_peer_ub = backend::rank_n;
     UPCXX_ASSERT_ALWAYS((intrank_t)peer_n == backend::rank_n);
     UPCXX_ASSERT_ALWAYS((intrank_t)peer_me == backend::rank_me);
@@ -720,14 +714,14 @@ void upcxx::init() {
   } else { // !local_is_world
     if(!contiguous_nbhd) {
       // Discontiguous rank-set is collapsed to singleton set of "me"
-      backend::pshm_peer_lb = backend::rank_me;
+      backend::pshm_peer_lb_ = backend::rank_me;
       backend::pshm_peer_ub = backend::rank_me + 1;
       peer_n = 1;
       peer_me = 0;
     }
     else {
       // True subset local team
-      backend::pshm_peer_lb = nbhd[0].gex_jobrank;
+      backend::pshm_peer_lb_ = nbhd[0].gex_jobrank;
       backend::pshm_peer_ub = nbhd[0].gex_jobrank + peer_n;
     }
   }

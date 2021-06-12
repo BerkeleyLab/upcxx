@@ -55,7 +55,13 @@ namespace upcxx {
 namespace upcxx {
 namespace backend {
   // inclusive lower and exclusive upper bounds for local_team ranks
-  extern intrank_t pshm_peer_lb, pshm_peer_ub, pshm_peer_n;
+  extern intrank_t pshm_peer_lb_;
+  #if UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+    constexpr intrank_t pshm_peer_lb = 0;
+  #else
+    static constexpr intrank_t const& pshm_peer_lb = pshm_peer_lb_;
+  #endif
+  extern intrank_t pshm_peer_ub, pshm_peer_n;
   
   // Given index in local_team:
   //   local_minus_remote: Encodes virtual address translation which is added
@@ -192,7 +198,10 @@ namespace backend {
   
   inline bool rank_is_local(intrank_t r) {
     UPCXX_ASSERT(r >= 0 && r < backend::rank_n, "Invalid argument to rank_is_local: " << r);
-    return all_ranks_definitely_local || std::uintptr_t(r) - std::uintptr_t(pshm_peer_lb) < std::uintptr_t(pshm_peer_n);
+    UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
+
+    return /*constexpr*/all_ranks_definitely_local || 
+           std::uintptr_t(r) - std::uintptr_t(pshm_peer_lb) < std::uintptr_t(pshm_peer_n);
     // Is equivalent to...
     // return pshm_peer_lb <= r && r < pshm_peer_ub;
   }
@@ -202,6 +211,7 @@ namespace backend {
       pshm_peer_lb <= rank && rank < pshm_peer_ub,
       "Rank "<<rank<<" is not local with current rank ("<<upcxx::rank_me()<<")."
     );
+    UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
 
     intrank_t peer = rank - pshm_peer_lb;
     std::uintptr_t u = raw + pshm_local_minus_remote[peer];
@@ -226,6 +236,7 @@ namespace backend {
       pshm_peer_lb <= rank && rank < pshm_peer_ub,
       "Rank "<<rank<<" is not local with current rank ("<<upcxx::rank_me()<<")."
     );
+    UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
     
     std::uintptr_t u = reinterpret_cast<std::uintptr_t>(addr);
     intrank_t peer = rank - pshm_peer_lb;

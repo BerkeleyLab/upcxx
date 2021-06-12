@@ -311,7 +311,22 @@ namespace backend {
   intrank_t team_rank_from_world(const team &tm, intrank_t rank, intrank_t otherwise);
   intrank_t team_rank_to_world(const team &tm, intrank_t peer);
 
-  extern const bool all_ranks_definitely_local;
+  #ifndef UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+  // smp-conduit statically has exactly one local_team()
+  #define UPCXX_ALL_RANKS_DEFINITELY_LOCAL UPCXX_NETWORK_SMP
+  #endif
+  #if UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+    constexpr bool all_ranks_definitely_local = true;
+  #else
+    constexpr bool all_ranks_definitely_local = false;
+  #endif
+  #define UPCXX_ASSERT_VALID_DEFINITELY_LOCAL() \
+          UPCXX_ASSERT(!::upcxx::backend::all_ranks_definitely_local || \
+                       (::upcxx::backend::pshm_peer_lb_ == 0 && \
+                        ::upcxx::backend::pshm_peer_n == ::upcxx::backend::rank_n), \
+                       "Invalid UPCXX_ALL_RANKS_DEFINITELY_LOCAL setting!");
+
+
   bool rank_is_local(intrank_t r);
   
   void* localize_memory(intrank_t rank, std::uintptr_t raw);
