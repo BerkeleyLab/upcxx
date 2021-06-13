@@ -9,6 +9,7 @@
 UPCXX_CONFIG_SCRIPTS = \
 	upcxx_defines.sh \
 	builtin_assume_aligned.sh \
+	builtin_launder.sh \
 	hidden_am_concurrency_level.sh \
 	maxeps.sh \
 	noinline.sh \
