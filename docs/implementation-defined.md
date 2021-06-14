@@ -46,6 +46,75 @@ the macro to 0 makes the default eager (so that `as_future()` and
 `as_promise(p)` are equivalent to `as_eager_future()` and `as_eager_promise(p)`,
 respectively), while defining it to a non-zero value makes the default deferred.
 
+## Experimental Features ##
+
+Several undocumented, experimental features are implemented in the
+`upcxx::experimental` namespace. These include the following:
+
+  * broadcast of Serializable but non-TriviallySerializable values:
+
+    ```
+    template<typename T, typename Cx=/*unspecified*/>
+    RType broadcast(T &&value, intrank_t root, const team &team=world(),
+                    Cx &&completions=operation_cx::as_future());
+    ```
+
+  * reduction of Serializable but non-TriviallySerializable values:
+
+    ```
+    constexpr /*unspecified*/ op_add;
+    constexpr /*unspecified*/ op_mul;
+    constexpr /*unspecified*/ op_min;
+    constexpr /*unspecified*/ op_max;
+    constexpr /*unspecified*/ op_bit_and;
+    constexpr /*unspecified*/ op_bit_or;
+    constexpr /*unspecified*/ op_bit_xor;
+
+    template<typename T, typename Cx=/*unspecified*/>
+    RType broadcast(T &&value, intrank_t root, const team &team=world(),
+                    Cx &&completions=operation_cx::as_future());
+    template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
+    RType reduce_one(T &&value, BinaryOp &&op, intrank_t root,
+                     const team &team = world(),
+                     Cx &&completions=operation_cx::as_future());
+    template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
+    RType reduce_all(T &&value, BinaryOp &&op, const team &team = world(),
+                     Cx &&completions=operation_cx::as_future());
+    ```
+
+  * utilities for reading environment variables:
+
+    ```
+    template<class T>
+    T os_env(const std::string &name);
+    template<class T>
+    T os_env(const std::string &name, const T &otherwise);
+    std::int64_t os_env(const std::string &name, const std::int64_t &otherwise,
+                        std::size_t mem_size_multiplier);
+    ```
+
+  * `ostream`-like class that prints to a stream with an optional prefix and as
+    much atomicity as possible:
+
+    ```
+    class say {
+    public:
+      say(std::ostream &output, const char *prefix="[%d] ");
+      say(const char *prefix="[%d] ");
+      ~say();
+      template<typename T>
+      say& operator<<(T const &that);
+    };
+    ```
+
+These features are subject to change or removal at any time. If you find any of
+them useful, please send an email to `upcxx@googlegroups.com`, and we will
+consider adding them to the specification proper.
+
+Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
+are intended solely for internal use by the implementation (e.g.
+`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`).
+
 ## UPCXX_THREADMODE=seq Restrictions ##
 
 The "seq" build of libupcxx is performance-optimized for single-threaded
