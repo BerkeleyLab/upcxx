@@ -14,7 +14,7 @@ General features/enhancements: (see specification and programmer's guide for ful
   future and promise completions.
 * New `UPCXX_DEFER_COMPLETION` macro for controlling whether `as_future()` and
   `as_promise()` request eager or deferred notification (see
-  [implementation-defined.md](docs/implementation.md) for details).
+  [implementation-defined.md](docs/implementation-defined.md) for details).
 * New overloads of fetching atomics that avoid overheads of non-empty futures
   and promises.
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
