@@ -29,6 +29,23 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     networks are undefined.  Examples include `UPCXX_NETWORK_IBV` and
     `UPCXX_NETWORK_ARIES`.
 
+## Eagerness of Future and Promise Completions ##
+
+Future and promise completions currently default to deferred notification. Thus:
+
+  * `source_cx::as_future()` and `operation_cx::as_future()` are equivalent to
+    `source_cx::as_defer_future()` and `operation_cx::as_defer_future()`,
+    respectively
+  * `source_cx::as_promise(p)` and `operation_cx::as_promise(p)` are equivalent
+    to `source_cx::as_defer_promise(p)` and `operation_cx::as_defer_promise(p)`,
+    respectively
+
+The default can be changed on a per-translation-unit basis by defining the
+`UPCXX_DEFER_COMPLETION` macro prior to including `upcxx/upcxx.hpp`. Defining
+the macro to 0 makes the default eager (so that `as_future()` and
+`as_promise(p)` are equivalent to `as_eager_future()` and `as_eager_promise(p)`,
+respectively), while defining it to a non-zero value makes the default deferred.
+
 ## UPCXX_THREADMODE=seq Restrictions ##
 
 The "seq" build of libupcxx is performance-optimized for single-threaded

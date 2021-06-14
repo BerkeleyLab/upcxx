@@ -9,6 +9,14 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* New `as_eager_future()`, `as_defer_future()`, `as_eager_promise()`, and
+  `as_defer_promise()` calls for requesting eager or deferred notification of
+  future and promise completions.
+* New `UPCXX_DEFER_COMPLETION` macro for controlling whether `as_future()` and
+  `as_promise()` request eager or deferred notification (see
+  [implementation-defined.md](docs/implementation.md) for details).
+* New overloads of fetching atomics that avoid overheads of non-empty futures
+  and promises.
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
   device memory and/or amenable to shared-memory bypass optimizations.
 * Performance improvements to contiguous RMA (`rput`, `rget`) using shared-memory bypass.
