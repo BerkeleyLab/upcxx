@@ -53,7 +53,7 @@ Several undocumented, experimental features are implemented in the
 
   * broadcast of Serializable but non-TriviallySerializable values:
 
-    ```
+    ```c++
     template<typename T, typename Cx=/*unspecified*/>
     RType broadcast(T &&value, intrank_t root, const team &team=world(),
                     Cx &&completions=operation_cx::as_future());
@@ -61,7 +61,7 @@ Several undocumented, experimental features are implemented in the
 
   * reduction of Serializable but non-TriviallySerializable values:
 
-    ```
+    ```c++
     constexpr /*unspecified*/ op_add;
     constexpr /*unspecified*/ op_mul;
     constexpr /*unspecified*/ op_min;
@@ -84,7 +84,7 @@ Several undocumented, experimental features are implemented in the
 
   * utilities for reading environment variables:
 
-    ```
+    ```c++
     template<class T>
     T os_env(const std::string &name);
     template<class T>
@@ -96,7 +96,7 @@ Several undocumented, experimental features are implemented in the
   * `ostream`-like class that prints to a stream with an optional prefix and as
     much atomicity as possible:
 
-    ```
+    ```c++
     class say {
     public:
       say(std::ostream &output, const char *prefix="[%d] ");
@@ -109,7 +109,7 @@ Several undocumented, experimental features are implemented in the
 
   * teardown and re-initialization of the UPC++ shared heap:
 
-    ```
+    ```c++
     void destroy_heap();
     void restore_heap();
     ```
