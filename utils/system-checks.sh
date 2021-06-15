@@ -240,7 +240,7 @@ _EOF
         CXXSTDFLAG="-std=c++11"
     fi
     # check C compilation
-    trap "rm -f conftest-cc.c conftest-cc.o conftest-cxx.cpp conftest-cxx.o conftest.o" RETURN
+    trap "rm -f conftest-std.cpp conftest-cc.c conftest-cc.o conftest-cxx.cpp conftest-cxx.o conftest.o" RETURN
     cat >conftest-cc.c <<_EOF
       #include <math.h>
       #include <stdio.h>
