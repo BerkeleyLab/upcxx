@@ -31,20 +31,21 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
 
 ## Eagerness of Future and Promise Completions ##
 
-Future and promise completions currently default to deferred notification. Thus:
+Future and promise completions default to eager notification. Thus:
 
   * `source_cx::as_future()` and `operation_cx::as_future()` are equivalent to
-    `source_cx::as_defer_future()` and `operation_cx::as_defer_future()`,
+    `source_cx::as_eager_future()` and `operation_cx::as_eager_future()`,
     respectively
   * `source_cx::as_promise(p)` and `operation_cx::as_promise(p)` are equivalent
-    to `source_cx::as_defer_promise(p)` and `operation_cx::as_defer_promise(p)`,
+    to `source_cx::as_eager_promise(p)` and `operation_cx::as_eager_promise(p)`,
     respectively
 
 The default can be changed on a per-translation-unit basis by defining the
 `UPCXX_DEFER_COMPLETION` macro prior to including `upcxx/upcxx.hpp`. Defining
-the macro to 0 makes the default eager (so that `as_future()` and
-`as_promise(p)` are equivalent to `as_eager_future()` and `as_eager_promise(p)`,
-respectively), while defining it to a non-zero value makes the default deferred.
+the macro to a non-zero value makes the default deferred (so that `as_future()`
+and `as_promise(p)` are equivalent to `as_defer_future()` and
+`as_defer_promise(p)`, respectively), while defining it to 0 makes the default
+eager.
 
 ## Experimental Features ##
 

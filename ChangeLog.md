@@ -12,6 +12,8 @@ General features/enhancements: (see specification and programmer's guide for ful
 * New `as_eager_future()`, `as_defer_future()`, `as_eager_promise()`, and
   `as_defer_promise()` calls for requesting eager or deferred notification of
   future and promise completions.
+* Existing `as_future()` and `as_promise()` calls now default to eager
+  notification for improved performance.
 * New `UPCXX_DEFER_COMPLETION` macro for controlling whether `as_future()` and
   `as_promise()` request eager or deferred notification (see
   [implementation-defined.md](docs/implementation-defined.md) for details).
@@ -53,7 +55,12 @@ Notable bug fixes:
 
 Breaking changes:
 
-* ...
+* Existing `as_future()` and `as_promise()` calls now default to eager
+  notification for improved performance. Deferred notification can be requested
+  on a per-call basis by changing `as_future()`/`as_promise()` calls to
+  `as_defer_future()`/`as_defer_promise()`, or on a translation-unit basis by
+  defining the `UPCXX_DEFER_COMPLETION` macro to 1 prior to including
+  `upcxx/upcxx.hpp`.
 
 
 ### 2021.03.31: Release 2021.3.0
