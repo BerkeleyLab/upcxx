@@ -200,6 +200,18 @@ check_intel_compiler() {
     fi
 }
 
+# check whether $CXX might be a C compiler
+check_maybe_c_compiler() {
+    local c_compiler=
+    case $(basename "$CXX") in
+        gcc|gcc-*|clang|icc|icx|pgcc|mpicc|cc) c_compiler=1;;
+    esac
+    if test -n "$c_compiler" ; then
+        echo "ERROR: It looks like CXX=$CXX may be a C compiler."\
+             "Please use a C++ compiler instead."
+    fi
+}
+
 # compile_check(): checks that $CXX can compile C++ code and is
 #   link-compatible with $CC.
 compile_check() {
@@ -245,7 +257,7 @@ _EOF
         return res;
       }
 _EOF
-    if ! eval $CC $CCFLAGS -c conftest-cc.c >& /dev/null ; then
+    if ! eval $CC $CFLAGS -c conftest-cc.c >& /dev/null ; then
         echo "ERROR: CC=$CC failed to compile test C file"
         return 1
     fi
@@ -298,9 +310,11 @@ _EOF
 _EOF
     if ! eval $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp >& /dev/null ; then
         echo "ERROR: CXX=$CXX failed to compile test C++ file"
+        check_maybe_c_compiler
         return 2
-    elif ! eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o >& /dev/null ; then
+    elif ! eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm >& /dev/null ; then
         echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
+        check_maybe_c_compiler
         return 3
     fi
 }
