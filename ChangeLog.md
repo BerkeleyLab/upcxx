@@ -54,6 +54,7 @@ Notable bug fixes:
 * issue #473: Divide by zero in serialization when writing a sequence of
   objects that have empty `UPCXX_SERIALIZED_{FIELDS,VALUES}`
 * issue #477: `copy(remote_cx::as_rpc)` may invoke callback in the wrong context
+* issue #479: intermittent lpc-stress/opt failures on ARM64
 * issue #482: SEQ mode incorrectly requires master as current_persona for shared allocation
 
 Breaking changes:
