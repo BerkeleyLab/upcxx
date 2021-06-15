@@ -215,6 +215,7 @@ check_maybe_c_compiler() {
 # compile_check(): checks that $CXX can compile C++ code and is
 #   link-compatible with $CC.
 compile_check() {
+    local DETAIL_LOG=config-detail.log
     # check if we need to inject -std=c++11 flag
     trap "rm -f conftest-std.cpp" RETURN
     local TOKEN1='_reYBrfDyyWZ76wwb_'
@@ -257,8 +258,10 @@ _EOF
         return res;
       }
 _EOF
-    if ! eval $CC $CFLAGS -c conftest-cc.c >& /dev/null ; then
+    if ! eval $CC $CFLAGS -c conftest-cc.c >& $DETAIL_LOG ; then
         echo "ERROR: CC=$CC failed to compile test C file"
+        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
+        head -2 $DETAIL_LOG
         return 1
     fi
     # check C++ compilation
@@ -308,15 +311,28 @@ _EOF
         return 0;
       }
 _EOF
-    if ! eval $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp >& /dev/null ; then
+    if ! eval $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp >& $DETAIL_LOG ; then
         echo "ERROR: CXX=$CXX failed to compile test C++ file"
+        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
+        head -2 $DETAIL_LOG
         check_maybe_c_compiler
         return 2
-    elif ! eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm >& /dev/null ; then
+    elif ! eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm >& $DETAIL_LOG ; then
         echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
+        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
+        head -2 $DETAIL_LOG
         check_maybe_c_compiler
         return 3
     fi
+    # actually run the test if not cross compiling
+    if test -z "$UPCXX_CROSS" && ! ./conftest.o >& $DETAIL_LOG ; then
+        echo "ERROR: Test program successfully compiled with CC=$CC and CXX=$CXX but failed to"\
+             "run correctly. The required dynamic libraries may be missing."
+        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
+        head -2 $DETAIL_LOG
+        return 5
+    fi
+    rm -f $DETAIL_LOG
 }
 
 # platform_sanity_checks(): defaults $CC and $CXX if they are unset
