@@ -216,6 +216,7 @@ check_maybe_c_compiler() {
 #   link-compatible with $CC.
 compile_check() {
     local DETAIL_LOG=config-detail.log
+    rm -f $DETAIL_LOG
     # check if we need to inject -std=c++11 flag
     trap "rm -f conftest-std.cpp" RETURN
     local TOKEN1='_reYBrfDyyWZ76wwb_'
@@ -258,10 +259,10 @@ _EOF
         return res;
       }
 _EOF
-    if ! eval $CC $CFLAGS -c conftest-cc.c >& $DETAIL_LOG ; then
+    if ! (set -x; $CC $CFLAGS -c conftest-cc.c) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CC=$CC failed to compile test C file"
-        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
-        head -2 $DETAIL_LOG
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
         return 1
     fi
     # check C++ compilation
@@ -308,28 +309,35 @@ _EOF
         std::vector<double> *ptr = new(&v) std::vector<double>({ -4.4, 5.5 });
         std::tuple<double, std::vector<double>::size_type> t = lambda(*ptr);
         std::cout << "(" << std::get<0>(t) << "," << std::get<1>(t) << ")" << std::endl;
+        std::tuple<> empty;
+        auto t2 = std::tuple_cat(t, empty);
+        double d;
+        std::vector<double>::size_type s;
+        std::tie(d, s) = t2;
+        std::cout << d << " " << s << std::endl;
         return 0;
       }
 _EOF
-    if ! eval $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp >& $DETAIL_LOG ; then
+    if ! (set -x; $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CXX=$CXX failed to compile test C++ file"
-        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
-        head -2 $DETAIL_LOG
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
         check_maybe_c_compiler
         return 2
-    elif ! eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm >& $DETAIL_LOG ; then
+    fi
+    if ! (set -x; $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
-        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
-        head -2 $DETAIL_LOG
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
         check_maybe_c_compiler
         return 3
     fi
     # actually run the test if not cross compiling
-    if test -z "$UPCXX_CROSS" && ! ./conftest.o >& $DETAIL_LOG ; then
+    if test -z "$UPCXX_CROSS" && ! (set -x; ./conftest.o) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: Test program successfully compiled with CC=$CC and CXX=$CXX but failed to"\
              "run correctly. The required dynamic libraries may be missing."
-        echo "ERROR: See $DETAIL_LOG for details. First two lines are as follows:"
-        head -2 $DETAIL_LOG
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
         return 5
     fi
     rm -f $DETAIL_LOG
