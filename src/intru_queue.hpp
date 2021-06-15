@@ -255,7 +255,8 @@ namespace upcxx {
       template<typename T, intru_queue_intruder<T> T::*next>
       template<typename Fn>
       inline int intru_queue<T, intru_queue_safety::mpsc, next>::burst(int max_n, Fn &&fn) {
-        T *head = this->head_.load(std::memory_order_relaxed);
+        // acquire protects subsequent load of head->next and reads of queued entry
+        T *head = this->head_.load(std::memory_order_acquire);
         
         if(head == nullptr)
           return 0;
@@ -265,7 +266,8 @@ namespace upcxx {
       
       template<typename T, intru_queue_intruder<T> T::*next>
       T* intru_queue<T, intru_queue_safety::mpsc, next>::dequeue() {
-        T *head = this->head_.load(std::memory_order_relaxed);
+        // acquire protects subsequent load of head->next and reads of queued entry
+        T *head = this->head_.load(std::memory_order_acquire);
         UPCXX_ASSERT(head, "intru_queue::dequeue<mpsc> called on empty queue");
         T *head_next = (head->*next).p.load(std::memory_order_relaxed);
 
@@ -276,11 +278,11 @@ namespace upcxx {
           // try to reset the tail pointer back to empty position
           std::uintptr_t expected = this->encode_tailp(&(head->*next).p);
           std::uintptr_t desired = this->encode_tailp(&this->head_); // == 0
-          if(!this->tailp_xor_head_.compare_exchange_weak(expected, desired)) {
+          if(!this->tailp_xor_head_.compare_exchange_strong(expected, desired)) {
             // failed => another thread is racing to enqueue, wait for them to finish
             do {
               // TODO: pause instruction here
-              head_next = (head->*next).p.load(std::memory_order_relaxed);
+              head_next = (head->*next).p.load(std::memory_order_acquire);
             } while(head_next == nullptr);
 
             // update the head pointer to that new element
@@ -302,7 +304,9 @@ namespace upcxx {
         // Execute as many elements as we can until we reach one that looks
         // like it may be the last in the list.
         while(true) {
-          T *p_next = (p->*next).p.load(std::memory_order_relaxed);
+          // acquire protects reads of queued entry in fn(), and the load of
+          // p_next->next from this same line in the next loop iteration
+          T *p_next = (p->*next).p.load(std::memory_order_acquire);
           if(p_next == nullptr)
             break; // Element has no `next`, so it looks like the last.
           
@@ -348,11 +352,12 @@ namespace upcxx {
           // Get next pointer, and must spin for it. Spin should be of
           // extremely short duration since we know that it's on the way by
           // virtue of this not being the tail element.
-          T *p_next = (p->*next).p.load(std::memory_order_relaxed);
+          // acquire protects reads of queued entry in fn()
+          T *p_next = (p->*next).p.load(std::memory_order_acquire);
           while(p_next == nullptr) {
             // TODO: add pause instruction and branch prediction here
             // asm volatile("pause\n": : :"memory");
-            p_next = (p->*next).p.load(std::memory_order_relaxed);
+            p_next = (p->*next).p.load(std::memory_order_acquire);
           }
           
           fn(p);
