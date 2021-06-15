@@ -200,6 +200,149 @@ check_intel_compiler() {
     fi
 }
 
+# check whether $CXX might be a C compiler
+check_maybe_c_compiler() {
+    local c_compiler=
+    case $(basename "$CXX") in
+        gcc|gcc-*|clang|icc|icx|pgcc|mpicc|cc) c_compiler=1;;
+    esac
+    if test -n "$c_compiler" ; then
+        echo "ERROR: It looks like CXX=$CXX may be a C compiler."\
+             "Please use a C++ compiler instead."
+    fi
+}
+
+# compile_check(): checks that $CXX can compile C++ code and is
+#   link-compatible with $CC.
+compile_check() {
+    local DETAIL_LOG=config-detail.log
+    rm -f $DETAIL_LOG
+    # check if we need to inject -std=c++11 flag
+    trap "rm -f conftest-std.cpp" RETURN
+    local TOKEN1='_reYBrfDyyWZ76wwb_'
+    local TOKEN2='_unnBZgmdLe3ADU4F_'
+    cat >conftest-std.cpp <<_EOF
+      #undef  _REPORT
+      #undef  _REPORT_HELPER
+      #define _REPORT(a) _REPORT_HELPER(a)
+      #define _REPORT_HELPER(a) $TOKEN1 ## a ## $TOKEN2
+      #if __cplusplus < 201103L
+      _REPORT(1)
+      #else
+      _REPORT(0)
+      #endif
+_EOF
+    if ! [[ $(eval $CXX $CXXFLAGS -E conftest-std.cpp) =~ ${TOKEN1}([0-9]+)${TOKEN2} ]]; then
+        echo "ERROR: regex match failed probing \$$1 for C++ standard version"
+        return 4
+    fi
+    local cxx_pre11=${BASH_REMATCH[1]}
+    local CXXSTDFLAG=
+    if [[ $cxx_pre11 -ne 0 ]]; then
+        CXXSTDFLAG="-std=c++11"
+    fi
+    # check C compilation
+    trap "rm -f conftest-std.cpp conftest-cc.c conftest-cc.o conftest-cxx.cpp conftest-cxx.o conftest.o" RETURN
+    cat >conftest-cc.c <<_EOF
+      #include <math.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      extern int cppextfunc(double);
+
+      int cfunc(double x) {
+        printf("[from C] cfunc(%f)\n", x);
+        double *ptr = malloc(sizeof(double)); // okay in C, not in C++
+        *ptr = sqrt(x);
+        int res = abs(cppextfunc(*ptr));
+        free(ptr);
+        return res;
+      }
+_EOF
+    if ! (set -x; $CC $CFLAGS -c conftest-cc.c) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: CC=$CC failed to compile test C file"
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        return 1
+    fi
+    # check C++ compilation
+    cat >conftest-cxx.cpp <<_EOF
+      #include <iostream>
+      #include <new>
+      #include <tuple>
+      #include <type_traits>
+      #include <vector>
+
+      extern "C" int cfunc(double);
+
+      extern "C" int cppextfunc(double x) {
+        return static_cast<int>(x);
+      }
+
+      namespace cppnamespace {
+        template<typename T>
+        auto func(T&& x) -> typename std::enable_if<std::is_same<T,int>::value,int>::type {
+          if (x != 0) throw 0;
+          return 0;
+        }
+
+        template<typename T>
+        auto func(T&&) -> typename std::enable_if<!std::is_same<T,int>::value,int>::type {
+          return 1;
+        }
+      }
+
+      int main() {
+        std::cout << "[from C++] cfunc(7.3)" << std::endl;
+        std::cout << cfunc(7.3) << std::endl;
+        try {
+          std::cout << cppnamespace::func(3) << std::endl;
+        } catch (int i) {
+          std::cout << "caught " << i << std::endl;
+        }
+        std::cout << cppnamespace::func(3.1) << std::endl;
+        auto lambda = [](std::vector<double> &vec) {
+                        return std::make_tuple(vec[0], vec.size());
+                      };
+        std::vector<double> v = { 1.1, -2.2, 3.3 };
+        v.~vector();
+        std::vector<double> *ptr = new(&v) std::vector<double>({ -4.4, 5.5 });
+        std::tuple<double, std::vector<double>::size_type> t = lambda(*ptr);
+        std::cout << "(" << std::get<0>(t) << "," << std::get<1>(t) << ")" << std::endl;
+        std::tuple<> empty;
+        auto t2 = std::tuple_cat(t, empty);
+        double d;
+        std::vector<double>::size_type s;
+        std::tie(d, s) = t2;
+        std::cout << d << " " << s << std::endl;
+        return 0;
+      }
+_EOF
+    if ! (set -x; $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: CXX=$CXX failed to compile test C++ file"
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        check_maybe_c_compiler
+        return 2
+    fi
+    if ! (set -x; $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        check_maybe_c_compiler
+        return 3
+    fi
+    # actually run the test if not cross compiling
+    if test -z "$UPCXX_CROSS" && ! (set -x; ./conftest.o) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: Test program successfully compiled with CC=$CC and CXX=$CXX but failed to"\
+             "run correctly. The required dynamic libraries may be missing."
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        return 5
+    fi
+    rm -f $DETAIL_LOG
+}
+
 # platform_sanity_checks(): defaults $CC and $CXX if they are unset
 #   validates the compiler and system versions for compatibility
 #   setting UPCXX_INSTALL_NOCHECK=1 disables this function *completely*.
@@ -368,6 +511,11 @@ platform_sanity_checks() {
             fi
         fi
 
+        local COMPILER_FAIL=
+        if ! compile_check ; then
+            COMPILER_FAIL=1
+        fi
+
         local RECOMMEND
         read -r -d '' RECOMMEND<<'EOF'
 We recommend one of the following C++ compilers (or any later versions):
@@ -387,6 +535,11 @@ EOF
         elif test -n "$COMPILER_BAD" ; then
             echo 'ERROR: Your C++ compiler is known to lack the support needed to build UPC++. '\
                  'Please set $CC and $CXX to point to a newer C/C++ compiler suite.'
+            echo "ERROR: $RECOMMEND$EXTRA_RECOMMEND"
+            exit 1
+        elif test -n "$COMPILER_FAIL" ; then
+            echo 'ERROR: Your C and C++ compilers failed to compile and link C/C++ code. '\
+                 'Please set $CC and $CXX to ABI-compatible C and C++ compilers, respectively.'
             echo "ERROR: $RECOMMEND$EXTRA_RECOMMEND"
             exit 1
         elif test -z "$COMPILER_GOOD" || test -z "$KERNEL_GOOD" || test -z "$ARCH_GOOD" ; then
