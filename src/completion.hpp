@@ -11,7 +11,7 @@
 #include <tuple>
 
 #ifndef UPCXX_DEFER_COMPLETION
-  #define UPCXX_DEFER_COMPLETION 1 // default is defer for now
+  #define UPCXX_DEFER_COMPLETION 0 // default is eager
 #endif
 #if UPCXX_DEFER_COMPLETION
   #define UPCXX_EAGER_DEFAULT false
