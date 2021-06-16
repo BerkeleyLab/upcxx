@@ -25,6 +25,8 @@ General features/enhancements: (see specification and programmer's guide for ful
 * Performance improvements to global_ptr localization queries and operations,
   especially for smp-conduit.
 * `bench/cuda_microbenchmark` performance test expanded and improved
+* Future creation (`make_future()`, `to_future()`, `when_all()`, copy/move) now
+  allowed before UPC++ initialization.
 
 Infrastructure changes:
 
