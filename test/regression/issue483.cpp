@@ -22,7 +22,7 @@ static int do_assignment();
 future<> f0;
 future<> f1 = make_future();
 future<int> f2 = make_future(3);
-future<double, char> f3 = make_future(3.14, 'x');
+future<double, char> f3 = make_future(3.5, 'x');
 future<int> f4 = to_future(f2);
 future<int> f5 = to_future(-2);
 future<> f6 = when_all();
@@ -60,7 +60,7 @@ static void check(const future<int, double, char, int, int, int> &fut) {
   UPCXX_ASSERT_ALWAYS(j == 3);
   UPCXX_ASSERT_ALWAYS(k == -2);
   UPCXX_ASSERT_ALWAYS(m == 3);
-  UPCXX_ASSERT_ALWAYS(d == 3.14);
+  UPCXX_ASSERT_ALWAYS(d == 3.5);
   UPCXX_ASSERT_ALWAYS(c == 'x');
 }
 
