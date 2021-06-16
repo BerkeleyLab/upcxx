@@ -108,13 +108,6 @@ Several undocumented, experimental features are implemented in the
     };
     ```
 
-  * teardown and re-initialization of the UPC++ shared heap:
-
-    ```c++
-    void destroy_heap();
-    void restore_heap();
-    ```
-
 These features are subject to change or removal at any time. If you find any of
 them useful, please send an email to `upcxx@googlegroups.com`, and we will
 consider adding them to the specification proper.
