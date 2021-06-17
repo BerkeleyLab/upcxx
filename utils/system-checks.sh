@@ -180,6 +180,7 @@ check_intel_compiler() {
 
     # same for C compiler, allowing (gasp) that it might be different
     # note that no floor is imposed ($? = 0,1 both considered success)
+  if [[ $CCVERS =~ ( \(ICC\) ) ]]; then  # skip probe of $CC if not Intel C
     check_gnu_version CC
     if [[ $? -gt 1 ]]; then
         return 1   # error was already printed
@@ -198,6 +199,7 @@ check_intel_compiler() {
     if [[ -n $gcc_name && ! "$CC $CFLAGS " =~ " $gcc_name " ]]; then
         CFLAGS+="${CFLAGS+ }$gcc_name"
     fi
+  fi
 }
 
 # check whether $CXX might be a C compiler
