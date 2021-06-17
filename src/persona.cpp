@@ -1,4 +1,5 @@
 #include <upcxx/persona.hpp>
+#include <upcxx/backend.hpp>
 
 namespace upcxx {
   persona_scope persona_scope::the_default_dummy_;

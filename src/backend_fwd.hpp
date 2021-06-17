@@ -151,7 +151,7 @@ namespace upcxx {
   std::int64_t shared_segment_size();
   std::int64_t shared_segment_used();
   
-  void progress(progress_level level = progress_level::user);
+  inline void progress(progress_level level = progress_level::user);
   
   persona& master_persona();
   void liberate_master_persona();

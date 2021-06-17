@@ -22,6 +22,21 @@ namespace upcxx {
     UPCXX_ASSERT_INIT();
     return backend::master;
   }
+ 
+  namespace detail {
+    void progress_user();
+    void progress_internal();
+  }
+  inline void progress(progress_level level) {
+    UPCXX_ASSERT_INIT();
+
+    if (level == progress_level::user)
+      detail::progress_user();
+    else {
+      UPCXX_ASSERT(level == progress_level::internal);
+      detail::progress_internal();
+    }
+  }
 
   inline bool in_progress() {
     UPCXX_ASSERT_INIT();

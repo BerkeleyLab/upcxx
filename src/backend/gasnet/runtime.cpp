@@ -2063,9 +2063,8 @@ int upcxx::detail::progressing() {
   return the_persona_tls.get_progressing();
 }
 
-void upcxx::progress(progress_level level) {
-  UPCXX_ASSERT_INIT();
-
+template<upcxx::progress_level level>
+static inline void do_progress() {
   detail::persona_tls &tls = detail::the_persona_tls;
   
   if(tls.get_progressing() >= 0)
@@ -2134,6 +2133,13 @@ void upcxx::progress(progress_level level) {
   if(level == progress_level::user)
     tls.flip_burstable(progress_level::user); // disable
   tls.set_progressing(-1);
+}
+
+void upcxx::detail::progress_user() {
+  do_progress<progress_level::user>();
+}
+void upcxx::detail::progress_internal() {
+  do_progress<progress_level::internal>();
 }
 
 ////////////////////////////////////////////////////////////////////////
