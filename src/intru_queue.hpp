@@ -127,6 +127,7 @@ namespace upcxx {
     template<typename T, intru_queue_intruder<T> T::*next>
     template<typename Fn>
     int intru_queue<T, intru_queue_safety::none, next>::burst_something(Fn &&fn, T *head1) {
+      UPCXX_ASSERT(head1);
       this->head_ = nullptr;
       this->tailp_xor_head_ = 0;
       
@@ -146,7 +147,8 @@ namespace upcxx {
     template<typename Fn>
     inline int intru_queue<T, intru_queue_safety::none, next>::burst(int max_n, Fn &&fn) {
       T *head = this->head_;
-      if(max_n == 0 || head == nullptr)
+      UPCXX_ASSERT(max_n > 0);
+      if (head == nullptr)
         return 0;
       else
         return this->burst_something(max_n, static_cast<Fn&&>(fn), head);
@@ -170,7 +172,7 @@ namespace upcxx {
         n -= 1;
       } while(head1 != nullptr && n != 0);
       
-      if(head1 != nullptr) { // need to "push front" remaining items
+      UPCXX_IF_PF (head1 != nullptr) { // need to "push front" remaining items
         // being careful to preserve any intervening enqueues
         *tailp1 = this->head_;
         if(this->head_ == nullptr)
@@ -326,7 +328,7 @@ namespace upcxx {
           fn(p);
           p = p_next;
           
-          if(max_n == ++exec_n) {
+          UPCXX_IF_PF (max_n == ++exec_n) {
             this->head_.store(p, std::memory_order_relaxed);
             return exec_n;
           }
@@ -367,10 +369,12 @@ namespace upcxx {
           // virtue of this not being the tail element.
           // acquire protects reads of queued entry in fn()
           T *p_next = (p->*next).p.load(std::memory_order_acquire);
-          while(p_next == nullptr) {
-            // TODO: add pause instruction and branch prediction here
-            // asm volatile("pause\n": : :"memory");
-            p_next = (p->*next).p.load(std::memory_order_acquire);
+          UPCXX_IF_PF (p_next == nullptr) {
+            do {
+              // TODO: add pause instruction and branch prediction here
+              // asm volatile("pause\n": : :"memory");
+              p_next = (p->*next).p.load(std::memory_order_acquire);
+            } while (p_next == nullptr);
           }
           
           fn(p);

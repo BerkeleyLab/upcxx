@@ -2082,8 +2082,7 @@ template<upcxx::progress_level level>
 static inline void do_progress() {
   detail::persona_tls &tls = detail::the_persona_tls;
   
-  if(tls.get_progressing() >= 0)
-    return;
+  if_pf (tls.get_progressing() >= 0) return;
   tls.set_progressing((int)level);
  
   UPCXX_ASSERT(!tls.is_burstable(progress_level::user));
