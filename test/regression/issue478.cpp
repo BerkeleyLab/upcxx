@@ -11,6 +11,21 @@ using namespace upcxx;
 #define ASSERT_NOT_SAME(f1, f2) \
   UPCXX_ASSERT_ALWAYS((f1).impl_.hdr_ != (f2).impl_.hdr_)
 
+future<> global_ready_empty = make_future();
+future<> global_nonready_empty;
+future<int> global_ready_nonempty = make_future(3);
+future<int> global_nonready_nonempty;
+future<> global_ready_empty2 =
+  when_all(global_ready_empty, global_ready_empty);
+future<> global_nonready_empty2 =
+  when_all(global_ready_empty, global_nonready_empty);
+future<int> global_ready_nonempty2 =
+  when_all(global_ready_empty, global_ready_nonempty);
+future<int> global_nonready_nonempty2 =
+  when_all(global_ready_empty, global_nonready_nonempty);
+future<> global_ready_empty3 = when_all();
+future<> global_ready_empty4 = to_future(global_ready_empty3);
+
 int main() {
   upcxx::init();
   print_test_header();
@@ -140,6 +155,19 @@ int main() {
     ASSERT_SAME(f11, nonready_nonempty2);
     future<int,int> f12 = when_all(ready_empty, ready_empty, nonready_nonempty2);
     ASSERT_SAME(f12, nonready_nonempty2);
+  }
+
+  {
+    // dynamic initialization
+    ASSERT_SAME(global_ready_empty, ready_empty);
+    ASSERT_NOT_SAME(global_nonready_empty, ready_empty);
+    ASSERT_NOT_SAME(global_nonready_empty, nonready_empty);
+    ASSERT_SAME(global_ready_empty2, ready_empty);
+    ASSERT_SAME(global_nonready_empty2, global_nonready_empty);
+    ASSERT_SAME(global_ready_nonempty2, global_ready_nonempty);
+    ASSERT_SAME(global_nonready_nonempty2, global_nonready_nonempty);
+    ASSERT_SAME(global_ready_empty3, ready_empty);
+    ASSERT_SAME(global_ready_empty4, ready_empty);
   }
 
   print_test_success();
