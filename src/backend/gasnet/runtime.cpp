@@ -305,6 +305,7 @@ namespace {
   void  *shared_heap_base = nullptr;
   size_t shared_heap_sz = 0;
 
+  GASNETT_COLD
   void heap_init_internal(size_t &size, noise_log &noise) {
     UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
 
@@ -409,6 +410,7 @@ namespace {
 // creation have undefined behavior. The list of such functions is
 // implementation-defined.
 
+GASNETT_COLD
 void upcxx::experimental::destroy_heap() {
   noise_log noise("upcxx::destroy_heap()");
   
@@ -449,6 +451,7 @@ void upcxx::experimental::destroy_heap() {
 // This collective call over all processes re-initializes the shared heap of 
 // all processes, returning them to a live state.
 
+GASNETT_COLD
 void upcxx::experimental::restore_heap(void) {
   UPCXX_ASSERT_ALWAYS_MASTER();
   UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
@@ -469,6 +472,7 @@ void upcxx::experimental::restore_heap(void) {
 ////////////////////////////////////////////////////////////////////////
 // from: upcxx/backend.hpp
 
+GASNETT_COLD
 void upcxx::init() {
   UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
   if(0 != backend::init_count++)
@@ -850,6 +854,7 @@ void upcxx::init() {
 }
 
 namespace {
+GASNETT_COLD
 void init_localheap_tables(void) {
   const gex_Rank_t peer_n = backend::pshm_peer_n;
 
@@ -926,6 +931,7 @@ void init_localheap_tables(void) {
 }
 
 namespace {
+  GASNETT_COLD
   void quiesce_rdzv(bool in_finalize, noise_log &noise) {
     int64_t iters = 0;
     int64_t n;
@@ -969,6 +975,7 @@ namespace {
   }
 }
 
+GASNETT_COLD
 void upcxx::finalize() {
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_ALWAYS_MASTER();
@@ -1095,6 +1102,7 @@ void  upcxx::deallocate(void *p) {
   gasnet::deallocate(p, &gasnet::sheap_footprint_user);
 }
 
+GASNETT_COLD
 std::string upcxx::detail::shared_heap_stats() {
   std::stringstream ss;
   ss
@@ -1233,6 +1241,7 @@ void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
   }
 }
 
+GASNETT_COLD
 void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) {
   UPCXX_ASSERT_MASTER();
   UPCXX_ASSERT(upcxx::in_progress());
@@ -1263,6 +1272,7 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
   }
 }
 
+GASNETT_COLD
 void backend::warn_empty_rma(const char *fnname) {
   static bool warn = os_env<bool>("UPCXX_WARN_EMPTY_RMA", true);
   if (warn) {
@@ -1348,6 +1358,7 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
   return gex_TM_TranslateRankToJobrank(gasnet::handle_of(tm), peer);
 }
 
+GASNETT_COLD
 void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
                                   memory_kind KindSet, size_t T_align, const char *T_name, 
                                   const char *short_context, const char *context) {
@@ -1676,6 +1687,7 @@ void gasnet::send_am_rdzv(
   );
 }
 
+GASNETT_COLD
 void gasnet::bcast_am_master_eager(
     progress_level level,
     const upcxx::team &tm,
@@ -1717,6 +1729,7 @@ void gasnet::bcast_am_master_eager(
   gasnet::after_gasnet();
 }
 
+GASNETT_COLD
 void gasnet::bcast_am_master_rdzv(
     progress_level level,
     const upcxx::team &tm,
@@ -2007,6 +2020,7 @@ RpcAsLpc* rpc_as_lpc::build_rdzv_lz(
 }
 
 namespace {
+  GASNETT_HOT
   void burst_cuda(persona *per) {
   #if UPCXX_CUDA_ENABLED
     while(cuda::event_cb *cb = per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
@@ -2022,6 +2036,7 @@ namespace {
   }
 }
 
+GASNETT_HOT
 void gasnet::after_gasnet() {
   detail::persona_tls &tls = detail::the_persona_tls;
   
@@ -2135,9 +2150,11 @@ static inline void do_progress() {
   tls.set_progressing(-1);
 }
 
+GASNETT_HOT
 void upcxx::detail::progress_user() {
   do_progress<progress_level::user>();
 }
+GASNETT_HOT
 void upcxx::detail::progress_internal() {
   do_progress<progress_level::internal>();
 }
@@ -2573,6 +2590,7 @@ namespace {
 
 ////////////////////////////////////////////////////////////////////////
 
+GASNETT_HOT
 inline int handle_cb_queue::burst(bool maybe_spinning) {
   // Gasnet present's its asynchrony through pollable handles which is
   // problematic for us since we need to guess a good strategy for choosing

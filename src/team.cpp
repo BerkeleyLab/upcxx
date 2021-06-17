@@ -16,6 +16,7 @@ raw_storage<team> detail::the_local_team;
 
 std::unordered_map<upcxx::detail::digest, void*> upcxx::detail::registry;
 
+GASNETT_COLD
 team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
            intrank_t n, intrank_t me):
   backend::team_base(std::move(base)),
@@ -27,6 +28,7 @@ team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
   detail::registry[id_] = this;
 }
 
+GASNETT_COLD
 team::team(team &&that):
   backend::team_base(std::move(that)),
   id_(that.id_),
@@ -43,6 +45,7 @@ team::team(team &&that):
   detail::registry[id_] = this;
 }
 
+GASNETT_COLD
 team::~team() {
   if(backend::init_count > 0) { // we don't assert on leaks after finalization
     if(this->handle != reinterpret_cast<uintptr_t>(GEX_TM_INVALID)) {
@@ -54,6 +57,7 @@ team::~team() {
   }
 }
 
+GASNETT_COLD
 team team::split(intrank_t color, intrank_t key) const {
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_MASTER();
@@ -94,6 +98,7 @@ team team::split(intrank_t color, intrank_t key) const {
     );
 }
 
+GASNETT_COLD
 void team::destroy(entry_barrier eb) {
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_MASTER();
@@ -105,6 +110,7 @@ void team::destroy(entry_barrier eb) {
   team::destroy(detail::internal_only(), eb);
 }
 
+GASNETT_COLD
 void team::destroy(detail::internal_only, entry_barrier eb) {
   UPCXX_ASSERT_MASTER();
   
