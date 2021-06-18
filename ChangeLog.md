@@ -56,6 +56,7 @@ Notable bug fixes:
 * issue #477: `copy(remote_cx::as_rpc)` may invoke callback in the wrong context
 * issue #479: intermittent lpc-stress/opt failures on ARM64
 * issue #482: SEQ mode incorrectly requires master as current_persona for shared allocation
+* issue #488: Configure-time failure when mixing GCC + Intel
 
 Breaking changes:
 
