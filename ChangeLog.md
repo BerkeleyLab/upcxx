@@ -353,7 +353,7 @@ Breaking changes:
 
 * Configure-time envvar `CROSS` has been renamed to `UPCXX_CROSS`.
   For backwards compat, the former is still accepted when the latter is unset.
-* Implementation of `upcxx::team_id` is no longer Trivial (was never guaranteed to be).
+* Construction of `upcxx::team_id` is no longer Trivial (was never guaranteed to be).
   It remains DefaultConstructible, TriviallyCopyable, StandardLayoutType, EqualityComparable
 
 ### 2020.03.12: Release 2020.3.0
