@@ -314,8 +314,10 @@ namespace upcxx {
                                             result_return_select_type<i, results_type>);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait()");
       
-      while(!impl_.ready())
+      while(!impl_.ready()) {
+        UPCXX_SPINLOOP_HINT();
         progress();
+      }
       
       return this->template result<i>();
     }
@@ -332,8 +334,10 @@ namespace upcxx {
                                             result_return_select_type<i, results_type>);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait()");
       
-      while(!impl_.ready())
+      while(!impl_.ready()) {
+        UPCXX_SPINLOOP_HINT();
         progress();
+      }
       
       return static_cast<future1&&>(*this).template result<i>();
     }
@@ -349,8 +353,10 @@ namespace upcxx {
       UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      while(!impl_.ready())
+      while(!impl_.ready()) {
+        UPCXX_SPINLOOP_HINT();
         progress();
+      }
       
       return this->result_tuple();
     }
@@ -366,8 +372,10 @@ namespace upcxx {
       UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      while(!impl_.ready())
+      while(!impl_.ready()) {
+        UPCXX_SPINLOOP_HINT();
         progress();
+      }
       
       return static_cast<future1&&>(*this).result_tuple();
     }
@@ -382,8 +390,10 @@ namespace upcxx {
       -> result_return_select_type<i, clref_results_refs_or_vals_type> {
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      while(!impl_.ready())
+      while(!impl_.ready()) {
+        UPCXX_SPINLOOP_HINT();
         progress();
+      }
       
       return this->template result_reference<i>();
     }
@@ -398,8 +408,10 @@ namespace upcxx {
       -> result_return_select_type<i, rref_results_refs_or_vals_type> {
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      while(!impl_.ready())
+      while(!impl_.ready()) {
+        UPCXX_SPINLOOP_HINT();
         progress();
+      }
       
       return static_cast<future1&&>(*this).template result_reference<i>();
     }

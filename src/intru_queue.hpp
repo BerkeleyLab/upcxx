@@ -296,7 +296,7 @@ namespace upcxx {
           if(!this->tailp_xor_head_.compare_exchange_strong(expected, desired)) {
             // failed => another thread is racing to enqueue, wait for them to finish
             do {
-              // TODO: pause instruction here
+              UPCXX_SPINLOOP_HINT();
               head_next = (head->*next).p.load(std::memory_order_acquire);
             } while(head_next == nullptr);
 
@@ -371,8 +371,7 @@ namespace upcxx {
           T *p_next = (p->*next).p.load(std::memory_order_acquire);
           UPCXX_IF_PF (p_next == nullptr) {
             do {
-              // TODO: add pause instruction and branch prediction here
-              // asm volatile("pause\n": : :"memory");
+              UPCXX_SPINLOOP_HINT();
               p_next = (p->*next).p.load(std::memory_order_acquire);
             } while (p_next == nullptr);
           }
