@@ -4,14 +4,20 @@
 #include <iostream>
 #include <sstream>
 
+#include <upcxx/upcxx_config.hpp>
+
 namespace upcxx {
 namespace detail {
+  UPCXX_ATTRIB_NORETURN
   void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0);
+  UPCXX_ATTRIB_NORETURN
   inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) {
     fatal_error(msg.c_str(), title, func, file, line);
   }
 
+  UPCXX_ATTRIB_NORETURN
   void assert_failed(const char *func, const char *file, int line, const char *msg=nullptr);
+  UPCXX_ATTRIB_NORETURN
   inline void assert_failed(const char *func, const char *file, int line, const std::string &str) {
     assert_failed(func, file, line, str.c_str());
   }
@@ -73,7 +79,11 @@ namespace detail {
 #define UPCXX_ASSERT_ALWAYS(...) UPCXX_ASSERT_DISPATCH(__VA_ARGS__, UPCXX_ASSERT_2, UPCXX_ASSERT_1, _DUMMY)(__VA_ARGS__)
 
 // In debug mode this will abort. In non-debug this is a nop.
-#define UPCXX_INVOKE_UB() UPCXX_ASSERT(false, "Undefined behavior!")
+#if UPCXX_ASSERT_ENABLED
+  #define UPCXX_INVOKE_UB() UPCXX_FATAL_ERROR("Undefined behavior!")
+#else
+  #define UPCXX_INVOKE_UB() UPCXX_UNREACHABLE()
+#endif
 
 // static assert that is permitted in expression context
 #define UPCXX_STATIC_ASSERT(cnd, msg) ([=](){static_assert(cnd, msg);}())
