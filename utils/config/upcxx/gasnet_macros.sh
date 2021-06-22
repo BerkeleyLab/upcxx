@@ -45,7 +45,7 @@ _EOF
   fi
 }
 
-probe_macro GASNETT_NEVER_INLINE "GASNETT_NEVER_INLINE(/*fnname*/,/*declarator*/)" UPCXX_NOINLINE
+probe_macro GASNETT_NEVER_INLINE "GASNETT_NEVER_INLINE(/*fnname*/,/*declarator*/)" UPCXX_ATTRIB_NOINLINE
 
 probe_macro GASNET_MAXEPS GASNET_MAXEPS UPCXX_MAXEPS
 

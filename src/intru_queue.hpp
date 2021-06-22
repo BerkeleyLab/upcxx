@@ -308,7 +308,7 @@ namespace upcxx {
 
       template<typename T, intru_queue_intruder<T> T::*next>
       template<typename Fn>
-      int UPCXX_NOINLINE
+      int UPCXX_ATTRIB_NOINLINE
       intru_queue<T, intru_queue_safety::mpsc, next>::burst_something(int max_n, Fn &&fn, T *head) {
         UPCXX_ASSERT(max_n > 0);
         int exec_n = 0;
