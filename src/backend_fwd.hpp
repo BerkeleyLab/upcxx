@@ -233,7 +233,9 @@ namespace backend {
 
   public:
     static void init();
+    UPCXX_ATTRIB_CONST
     static bool use_mk() { return use_mk_; }
+    UPCXX_ATTRIB_CONST
     static bool bug4148_workaround() { return bug4148_workaround_; }
     static int alloc_index() {
       UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
@@ -307,8 +309,11 @@ namespace backend {
   template<progress_level level, typename Fn>
   void bcast_am_master(const team &tm, Fn &&fn);
   
+  UPCXX_ATTRIB_PURE
   intrank_t team_rank_from_world(const team &tm, intrank_t rank);
+  UPCXX_ATTRIB_PURE
   intrank_t team_rank_from_world(const team &tm, intrank_t rank, intrank_t otherwise);
+  UPCXX_ATTRIB_PURE
   intrank_t team_rank_to_world(const team &tm, intrank_t peer);
 
   #ifndef UPCXX_ALL_RANKS_DEFINITELY_LOCAL
@@ -326,13 +331,17 @@ namespace backend {
                         ::upcxx::backend::pshm_peer_n == ::upcxx::backend::rank_n), \
                        "Invalid UPCXX_ALL_RANKS_DEFINITELY_LOCAL setting!");
 
-
+  UPCXX_ATTRIB_CONST
   bool rank_is_local(intrank_t r);
   
+  UPCXX_ATTRIB_PURE
   void* localize_memory(intrank_t rank, std::uintptr_t raw);
+  UPCXX_ATTRIB_PURE
   void* localize_memory_nonnull(intrank_t rank, std::uintptr_t raw);
   
+  UPCXX_ATTRIB_PURE
   std::tuple<intrank_t/*rank*/, std::uintptr_t/*raw*/> globalize_memory(void const *addr);
+  UPCXX_ATTRIB_PURE
   std::tuple<intrank_t/*rank*/, std::uintptr_t/*raw*/> globalize_memory(void const *addr, std::tuple<intrank_t,std::uintptr_t> otherwise);
   std::uintptr_t globalize_memory_nonnull(intrank_t rank, void const *addr);
 }}
@@ -351,10 +360,12 @@ namespace backend {
 #define UPCXX_ASSERT_INIT() UPCXX_ASSERT_INIT_NAMED("the library call shown above")
 
 namespace upcxx {
+  UPCXX_ATTRIB_CONST
   inline intrank_t rank_n() {
     UPCXX_ASSERT_INIT();
     return backend::rank_n;
   }
+  UPCXX_ATTRIB_CONST
   inline intrank_t rank_me() {
     UPCXX_ASSERT_INIT();
     return backend::rank_me;

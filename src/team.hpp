@@ -47,7 +47,8 @@ namespace upcxx {
       return thing;
     }
   }
-  
+ 
+  UPCXX_ATTRIB_CONST
   inline bool local_team_contains(intrank_t rank) {
     UPCXX_ASSERT_INIT();
     UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(),
