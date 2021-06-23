@@ -21,34 +21,32 @@
 
   namespace upcxx {
     namespace cuda {
+      UPCXX_ATTRIB_NORETURN
       void cu_failed(CUresult res, const char *file, int line, const char *expr);
+      UPCXX_ATTRIB_NORETURN
       void curt_failed(cudaError_t res, const char *file, int line, const char *expr);
     }
   }
   
-  #define CU_CHECK(expr) do { \
-      CUresult res_xxxxxx = (expr); \
-      if(UPCXX_ASSERT_ENABLED && res_xxxxxx != CUDA_SUCCESS) \
-        ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
-    } while(0)
-
   #define CU_CHECK_ALWAYS(expr) do { \
       CUresult res_xxxxxx = (expr); \
-      if(res_xxxxxx != CUDA_SUCCESS) \
+      if_pf (res_xxxxxx != CUDA_SUCCESS) \
         ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
-    } while(0)
-
-  #define CURT_CHECK(expr) do { \
-      cudaError_t res_xxxxxx = (expr); \
-      if(UPCXX_ASSERT_ENABLED && res_xxxxxx != cudaSuccess) \
-        ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
   #define CURT_CHECK_ALWAYS(expr) do { \
       cudaError_t res_xxxxxx = (expr); \
-      if(res_xxxxxx != cudaSuccess) \
+      if_pf (res_xxxxxx != cudaSuccess) \
         ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
+
+  #if UPCXX_ASSERT_ENABLED
+    #define CU_CHECK(expr)   CU_CHECK_ALWAYS(expr)
+    #define CURT_CHECK(expr) CURT_CHECK_ALWAYS(expr)
+  #else
+    #define CU_CHECK(expr)   ((void)(expr))
+    #define CURT_CHECK(expr) ((void)(expr))
+  #endif
 
   namespace upcxx {
     namespace cuda {
