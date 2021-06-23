@@ -90,7 +90,7 @@ namespace upcxx {
       backend::team_base /* defined by <backend>/runtime_fwd.hpp */ {
     detail::digest id_;
     std::uint64_t coll_counter_;
-    intrank_t n_, me_;
+    intrank_t const n_, me_;
     
   public:
     team(detail::internal_only, backend::team_base &&base, detail::digest id,

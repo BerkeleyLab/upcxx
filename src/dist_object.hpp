@@ -88,7 +88,7 @@ namespace std {
 namespace upcxx {
   template<typename T>
   class dist_object {
-    const upcxx::team *tm_;
+    const upcxx::team * const tm_;
     detail::digest id_;
     T value_;
     

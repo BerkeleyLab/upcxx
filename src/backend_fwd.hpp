@@ -224,7 +224,7 @@ namespace backend {
     memory_kind kind() { return my_kind; }
 
   protected:
-    memory_kind my_kind; // serves as both tag and magic
+    memory_kind const my_kind; // serves as both tag and magic
     static heap_state *heaps[max_heaps];
     static int heap_count;
     static bool recycle;
