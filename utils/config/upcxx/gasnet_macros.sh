@@ -17,6 +17,7 @@ function probe_macro {
   cat >conftest.cpp <<_EOF
 #include <gasnetex.h>
 #include <gasnet_tools.h>
+#include <gasnet_portable_platform.h>
 
 #ifdef $1
   $TOKEN1+$2+$TOKEN2
@@ -64,6 +65,12 @@ probe_macro gasneti_builtin_unreachable "gasneti_builtin_unreachable()" "UPCXX_U
 
 probe_macro GASNETT_PREDICT_TRUE  "GASNETT_PREDICT_TRUE(expr)"  "UPCXX_PREDICT_TRUE(expr)"
 probe_macro GASNETT_PREDICT_FALSE "GASNETT_PREDICT_FALSE(expr)" "UPCXX_PREDICT_FALSE(expr)"
+
+# probe platform identification macros
+for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ; do
+  name="PLATFORM_$feature"
+  probe_macro $name $name "UPCXX_$name" 1
+done
 
 cat <<_EOF
 
