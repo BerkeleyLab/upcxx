@@ -3,7 +3,7 @@
 
 // UPCXX_VERSION release identifier format:
 // YYYYMMPPL = [YEAR][MONTH][PATCH]
-#define UPCXX_VERSION 20210305L
+#define UPCXX_VERSION 20210306L
 
 // UPCXX_SPEC_VERSION release identifier format:
 // YYYYMM00L = [YEAR][MONTH]
