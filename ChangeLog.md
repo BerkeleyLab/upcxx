@@ -25,7 +25,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
   device memory and/or amenable to shared-memory bypass optimizations.
 * Performance improvements to contiguous RMA (`rput`, `rget`) using shared-memory bypass.
-* Performance improvements to global_ptr localization queries and operations,
+* Performance improvements to `global_ptr` localization queries and operations,
   especially for smp-conduit.
 * `bench/cuda_microbenchmark` performance test expanded and improved
 * The following future operations are now permitted before UPC++ initialization:
