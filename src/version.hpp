@@ -7,7 +7,7 @@
 
 // UPCXX_SPEC_VERSION release identifier format:
 // YYYYMM00L = [YEAR][MONTH]
-#define UPCXX_SPEC_VERSION 20210300L
+#define UPCXX_SPEC_VERSION 20210701L
 
 namespace upcxx {
   long release_version();

@@ -61,6 +61,11 @@ Notable bug fixes:
 * issue #482: SEQ mode incorrectly requires master as current_persona for shared allocation
 * issue #488: Configure-time failure when mixing GCC + Intel
 
+This library snapshot conforms to the
+[UPC++ v1.0 Specification, Revision 2021.7.1-draft](docs/spec.pdf).
+All currently specified features are fully implemented.
+See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
+
 Breaking changes:
 
 * Existing `as_future()` and `as_promise()` calls now default to eager
@@ -149,7 +154,7 @@ Fixes the following notable bugs in the GASNet library
 * bug4208: ibv: unfortunate multi-rail interactions with PSHM and XRC
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2021.3.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2021.3.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2021.3.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
