@@ -412,13 +412,16 @@ check_tool_path() {
 # Default GASNet source
 # Enable offline installers with an embedded GASNet-EX tarball
 #
-#GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz'
-GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2021.3.6.tar.gz' # Un-comment for release
+#GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz' # Un-comment for development
+#GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2021.3.0.tar.gz' # Un-comment for release
+GASNET_DEFAULT='NONE' # Un-comment for snapshots
 gex_offline=`/bin/ls "$UPCXX_SRC"/src/GASNet-{stable,2???.*}.tar.gz 2> /dev/null | sort -t. -k1,1 -k2,2n -k3n | tail -1`
 if [[ -n "$GASNET" ]]; then
   : # keep defn
 elif [[ -r "$gex_offline" ]]; then
   GASNET="$gex_offline"
+elif [[ $GASNET_DEFAULT == 'NONE' ]]; then
+  echo_and_die 'There is no GASNet tarball available for this UPC++ version. Please obtain a tarball of this UPC++ version containing an embedded GASNet archive.'
 else
   GASNET=$GASNET_DEFAULT
 fi
