@@ -348,3 +348,7 @@ However, build-related configuration specific to the compiler family is kept in
 `bld/compiler.mak`.  Current configuration variables in that file provide
 documentation of their purpose, as well as some good examples of how they can
 be set conditionally.
+
+User-facing lists of supported compiler families and versions need to be
+updated in both `INSTALL.md` (Under "Supported Platforms") and within
+`utils/system-checks.sh` (the `RECOMMEND` variable).
