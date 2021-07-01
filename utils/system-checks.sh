@@ -491,6 +491,11 @@ platform_sanity_checks() {
                 echo
               fi
             fi
+        elif [[ $CXXVERS =~ (oneAPI .* (20[0-9][0-9])\.([0-9]+)\.([0-9]+)) ]]; then
+            if ((BASH_REMATCH[2]*10000 + BASH_REMATCH[3]*100 + BASH_REMATCH[4] >= 20210102 )); then
+              COMPILER_GOOD=1
+            fi
+            # older versions unknown for now
         elif echo "$CXXVERS" | egrep 'Free Software Foundation' 2>&1 > /dev/null &&
              check_gnu_version CXX &> /dev/null; then
             COMPILER_GOOD=1
@@ -521,7 +526,8 @@ platform_sanity_checks() {
         local RECOMMEND
         read -r -d '' RECOMMEND<<'EOF'
 We recommend one of the following C++ compilers (or any later versions):
-           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1, Intel C 17.0.2
+           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1, Intel C 17.0.2,
+                              Intel oneAPI compilers 2021.1.2
            Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0

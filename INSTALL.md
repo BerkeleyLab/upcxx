@@ -23,6 +23,7 @@ The current release is known to work on the following configurations:
     - g++ 6.4.0 or newer    
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
     - Intel C++ 17.0.2 or newer (with libstdc++ from g++ 6.4.0 or newer)    
+    - Intel OneAPI compilers 2021.1.2 or newer (with libstdc++ from g++ 6.4.0 or newer)
     - PGI C++ 19.1 or newer (with libstdc++ from g++ 6.4.0 or newer), except that
       PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported  
 
