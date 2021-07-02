@@ -93,7 +93,7 @@ int main(int argc, char **argv)
         double pi = 4.0 * hits_rpc / trials;
         cout << "Computed pi to be " << pi << endl;
         UPCXX_ASSERT_ALWAYS(pi >= 3 && pi <= 3.5, "pi is out of range (3, 3.5)");
-        cout << KLGREEN << "SUCCESS" << KNORM << endl;
+        cout << "SUCCESS" << endl;
     }
 
     upcxx::finalize();
