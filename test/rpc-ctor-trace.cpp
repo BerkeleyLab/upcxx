@@ -5,7 +5,7 @@
 // This test measures the number of copies/moves invoked on objects passed to
 // various UPC++ routines. The results asserted by this test are only indicative
 // of the current implementation and should NOT be construed as a guarantee of
-// future copy/move behavior. 
+// copy/move behavior for past or subsequent revisions of the implementation. 
 // Consult the UPC++ Specification for guaranteed copy/move behaviors.
 
 #ifndef USE_CUDA
@@ -19,35 +19,60 @@
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 
+using std::uint64_t;
+
 struct T {
   static void show_stats(int line, char const *title, 
                          int expected_ctors, int expected_copies, int expected_moves) UTIL_ATTRIB_NOINLINE;
   static void reset_counts() { ctors = copies = moves = dtors = 0; }
 
-  T() { ctors++; }
+  private:
+  static constexpr uint64_t VALID   = 0x5555555555555555llu;
+  static constexpr uint64_t INVALID = 0xAAAAAAAAAAAAAAAAllu;
+  uint64_t valid = VALID;
+
+  public:
+  void check_corruption(const char *context) const {
+    UPCXX_ASSERT_ALWAYS(valid == VALID || valid == INVALID,
+                        context << " a corrupted object: " << std::hex << valid);
+  }
+  void check_op(const char *context) const {
+    check_corruption(context);
+    UPCXX_ASSERT_ALWAYS(valid == VALID,
+                        context << " an invalidated object: " << std::hex << valid);
+  }
+
+  T() { 
+    check_op("default constructing");
+    ctors++; 
+  }
   T(T const &that) {
-    UPCXX_ASSERT_ALWAYS(that.valid, "copying from an invalidated object");
+    check_op("copying");
     copies++;
   }
   T(T &&that) {
-    UPCXX_ASSERT_ALWAYS(that.valid, "moving from an invalidated object");
-    that.valid = false;
+    check_op("move constructing");
+    that.check_op("moving from");
+    that.valid = INVALID;
     moves++;
   }
   ~T() {
-    valid = false;
+    check_corruption("destroying");
+    valid = INVALID;
     dtors++;
   }
 
   private:
-  bool serialize() const {
-    UPCXX_ASSERT_ALWAYS(valid, "serializing an invalidated object");
+  uint64_t serialize() const {
+    check_op("serializing");
     return valid;
   }
-  T(bool v) : valid(v) { ctors++; } // deserialization
+  T(uint64_t v) : valid(v) { 
+    check_op("deserializing");
+    ctors++; 
+  }
 
   static int ctors, dtors, copies, moves;
-  bool valid = true;
 
   public:
   UPCXX_SERIALIZED_VALUES( serialize() )
@@ -113,10 +138,14 @@ void T::show_stats(int line, const char *title,
 T global;
 
 bool done = false;
+#define set_done() do { \
+  UPCXX_ASSERT_ALWAYS(done == false, "Duplicate call to set_done()"); \
+  done = true; \
+} while(0)
 
 struct Fn { // movable and copyable function object
   T t;
-  void operator()() { done = true; }
+  void operator()() { set_done(); }
   UPCXX_SERIALIZED_FIELDS(t)
 };
 
@@ -353,30 +382,27 @@ void UTIL_ATTRIB_NOINLINE test_rpc5() {
   upcxx::barrier();
 
   upcxx::rpc_ff(target,
-    [](T &&x) {
-      done = true;
-    },
-    T()
+    [](T &&x) { 
+      set_done(); 
+    }, T()
   );
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("(rpc_ff) T&& ->", 2, 0, 0);
 
   upcxx::rpc_ff(target,
-    [](T const &x) {
-      done = true;
-    },
-    global
+    [](T const &x) { 
+      set_done(); 
+    }, global
   );
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("(rpc_ff) T& ->", 1, 0, 0);
 
   upcxx::rpc_ff(target,
-    [](T const &x) {
-      done = true;
-    },
-    static_cast<T const&>(global)
+    [](T const &x) { 
+      set_done(); 
+    }, static_cast<T const&>(global)
   );
   while (!done) { upcxx::progress(); }
   done = false;
@@ -496,21 +522,21 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
 
     {
       T t;
-      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc() T& -> const T&", 2, 0, 0);
 
     {
-      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc() T&& -> const T&", 2, 0, 2);
 
     {
-      upcxx::rput(42, gp, remote_cx::as_rpc([](T&& t){ done=true; return std::move(t); }, T()));
+      upcxx::rput(42, gp, remote_cx::as_rpc([](T&& t){ set_done(); return std::move(t); }, T()));
     }
     while (!done) { upcxx::progress(); }
     done = false;
@@ -518,14 +544,14 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
 
     {
       T t;
-      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, t) | operation_cx::as_future());
+      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, t) | operation_cx::as_future());
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc()|... T& -> const T&", 2, 0, 0);
 
     {
-      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, T()) | operation_cx::as_future());
+      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, T()) | operation_cx::as_future());
     }
     while (!done) { upcxx::progress(); }
     done = false;
@@ -535,7 +561,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
 void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     {
       T t;
-      auto cx = remote_cx::as_rpc([](const T&){ done=true; }, t) | operation_cx::as_future();
+      auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, t) | operation_cx::as_future();
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -543,7 +569,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     SHOW("as_rpc()|...& T& -> const T&", 2, 0, 0);
 
     {
-      auto cx = remote_cx::as_rpc([](const T&){ done=true; }, T()) | operation_cx::as_future();
+      auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, T()) | operation_cx::as_future();
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -551,7 +577,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     SHOW("as_rpc()|...& T&& -> const T&", 2, 0, 3);
 
     {
-      auto cx = remote_cx::as_rpc([](const T&){ done=true; }, T());
+      auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, T());
       auto cx2 = cx | operation_cx::as_future();
       (void)upcxx::rput(42, gp, cx2);
     }
@@ -561,14 +587,14 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
 
     {
       T t;
-      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t));
+      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("...|as_rpc() T& -> const T&", 2, 0, 0);
 
     {
-      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, T()));
+      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     }
     while (!done) { upcxx::progress(); }
     done = false;
@@ -576,7 +602,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
 
     {
       T t;
-      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t);
+      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, t);
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -584,7 +610,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     SHOW("...|as_rpc()& T& -> const T&", 2, 0, 0);
 
     {
-      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, T());
+      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, T());
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -593,7 +619,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
 
     {
       auto cx = operation_cx::as_future();
-      auto cx2 = cx | remote_cx::as_rpc([](const T&){ done=true; }, T());
+      auto cx2 = cx | remote_cx::as_rpc([](const T&){ set_done(); }, T());
       (void)upcxx::rput(42, gp, cx2);
     }
     while (!done) { upcxx::progress(); }
@@ -612,14 +638,14 @@ void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     {
       T t;
       upcxx::rput_irregular(&lpp,&lpp+1,&gpp,&gpp+1, 
-                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+                            remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_irregular: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::rput_irregular(&lpp,&lpp+1,&gpp,&gpp+1,  
-                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+                          remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_irregular: as_rpc() T&& -> const T&", 2, 0, 3);
@@ -627,14 +653,14 @@ void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     {
       T t;
       upcxx::rput_regular(&lp,&lp+1,sz,&gp,&gp+1,sz,
-                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+                            remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_regular: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::rput_regular(&lp,&lp+1,sz,&gp,&gp+1,sz,
-                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+                          remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_regular: as_rpc() T&& -> const T&", 2, 0, 3);
@@ -642,14 +668,14 @@ void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     {
       T t;
       upcxx::rput_strided(lp, a_stride, gp, a_stride, a_ext,
-                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+                            remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_strided: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::rput_strided(lp, a_stride, gp, a_stride, a_ext,
-                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+                          remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_strided: as_rpc() T&& -> const T&", 2, 0, 3);
@@ -673,13 +699,13 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
 
     {
       T t;
-      upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-put: as_rpc() T& -> const T&", 2, 0, 0);
 
-    upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-put: as_rpc() T&& -> const T&", 2, 0, 2);
@@ -687,7 +713,7 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
     {
       upcxx::future<> f;
       { T t;
-        f = upcxx::copy(lp, gp, 1, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t));
+        f = upcxx::copy(lp, gp, 1, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, t));
       }
       f.wait();
     }
@@ -710,13 +736,13 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
 
     {
       T t;
-      upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-get: as_rpc() T& -> const T&", 2, 0, -2);
 
-    upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-get: as_rpc() T&& -> const T&", 2, 0, -4);
@@ -736,13 +762,13 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
 
     {
       T t;
-      upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-loopback: as_rpc() T& -> const T&", 2, 0, 2);
 
-    upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-loopback: as_rpc() T&& -> const T&", 2, 0, 4);
