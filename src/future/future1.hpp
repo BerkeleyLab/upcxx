@@ -311,7 +311,7 @@ namespace upcxx {
       // with signalling deferred to the first progress call.
       // So we peel off the first progress call and readiness check before entering
       // the pausing progress loop.
-      #define UPCXX_PROGRESS_UNTIL(cond, progress) do { \
+      #define UPCXXI_PROGRESS_UNTIL(cond, progress) do { \
         if (!(cond)) { \
           progress(); \
           while (!(cond)) { \
@@ -321,7 +321,7 @@ namespace upcxx {
         } \
       } while (0)
     #else
-      #define UPCXX_PROGRESS_UNTIL(cond, progress) do { \
+      #define UPCXXI_PROGRESS_UNTIL(cond, progress) do { \
         while (!(cond)) progress(); \
       } while (0)
     #endif
@@ -338,7 +338,7 @@ namespace upcxx {
                                             result_return_select_type<i, results_type>);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait()");
      
-      UPCXX_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return this->template result<i>();
     }
@@ -355,7 +355,7 @@ namespace upcxx {
                                             result_return_select_type<i, results_type>);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait()");
       
-      UPCXX_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return static_cast<future1&&>(*this).template result<i>();
     }
@@ -371,7 +371,7 @@ namespace upcxx {
       UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      UPCXX_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return this->result_tuple();
     }
@@ -387,7 +387,7 @@ namespace upcxx {
       UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      UPCXX_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return static_cast<future1&&>(*this).result_tuple();
     }
@@ -402,7 +402,7 @@ namespace upcxx {
       -> result_return_select_type<i, clref_results_refs_or_vals_type> {
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      UPCXX_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return this->template result_reference<i>();
     }
@@ -417,7 +417,7 @@ namespace upcxx {
       -> result_return_select_type<i, rref_results_refs_or_vals_type> {
       UPCXX_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      UPCXX_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return static_cast<future1&&>(*this).template result_reference<i>();
     }
