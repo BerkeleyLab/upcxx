@@ -141,7 +141,7 @@ namespace upcxx {
       UPCXX_GPTR_CHK(*this);
     }
     
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     bool is_local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
@@ -156,7 +156,7 @@ namespace upcxx {
          backend::rank_is_local(UPCXX_INTERNAL_ONLY(rank_)));
     }
 
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     bool is_null() const {
       UPCXX_GPTR_CHK(*this);
       return UPCXX_INTERNAL_ONLY(heap_idx_) == 0 &&
@@ -168,12 +168,12 @@ namespace upcxx {
     // or downconvert (to bool) the gp and use operator+(int,int). This is why
     // our operator+/- have overloads for all the integral types (those smaller
     // than `int` aren't necessary due to promotion).
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     explicit operator bool() const {
       return !is_null();
     }
     
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     const T* local() const {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(*this);
@@ -188,13 +188,13 @@ namespace upcxx {
       );
     }
 
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     intrank_t where() const {
       UPCXX_GPTR_CHK(*this);
       return UPCXX_INTERNAL_ONLY(rank_);
     }
 
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     memory_kind dynamic_kind() const {
       UPCXX_GPTR_CHK(*this);
       if(0 == (int(KindSet) & (int(KindSet)-1))) // determines if KindSet is a singleton set
@@ -203,7 +203,7 @@ namespace upcxx {
         return UPCXX_INTERNAL_ONLY(heap_idx_) == 0 ? memory_kind::host : memory_kind::cuda_device;
     }
     
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     std::ptrdiff_t operator-(global_ptr rhs) const {
       if (UPCXX_INTERNAL_ONLY(raw_ptr_) == rhs.UPCXX_INTERNAL_ONLY(raw_ptr_)) {
         UPCXX_GPTR_CHK(*this); UPCXX_GPTR_CHK(rhs);
@@ -221,51 +221,51 @@ namespace upcxx {
       return UPCXX_INTERNAL_ONLY(raw_ptr_) - rhs.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
 
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     friend bool operator==(global_ptr a, global_ptr b) {
       UPCXX_GPTR_CHK(a); UPCXX_GPTR_CHK(b); 
       return a.UPCXX_INTERNAL_ONLY(heap_idx_) == b.UPCXX_INTERNAL_ONLY(heap_idx_) &&
         a.UPCXX_INTERNAL_ONLY(rank_) == b.UPCXX_INTERNAL_ONLY(rank_) &&
         a.UPCXX_INTERNAL_ONLY(raw_ptr_) == b.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     friend bool operator==(global_ptr a, std::nullptr_t) {
       return a == global_ptr(nullptr);
     }
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     friend bool operator==(std::nullptr_t, global_ptr b) {
       return global_ptr(nullptr) == b;
     }
     
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     friend bool operator!=(global_ptr a, global_ptr b) {
       UPCXX_GPTR_CHK(a); UPCXX_GPTR_CHK(b); 
       return a.UPCXX_INTERNAL_ONLY(heap_idx_) != b.UPCXX_INTERNAL_ONLY(heap_idx_) ||
         a.UPCXX_INTERNAL_ONLY(rank_) != b.UPCXX_INTERNAL_ONLY(rank_) ||
         a.UPCXX_INTERNAL_ONLY(raw_ptr_) != b.UPCXX_INTERNAL_ONLY(raw_ptr_);
     }
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     friend bool operator!=(global_ptr a, std::nullptr_t) {
       return a != global_ptr(nullptr);
     }
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     friend bool operator!=(std::nullptr_t, global_ptr b) {
       return global_ptr(nullptr) != b;
     }
     
     // Comparison operators specify partial order
     #define UPCXX_COMPARE_OP(op) \
-      UPCXX_ATTRIB_CONST \
+      UPCXXI_ATTRIB_CONST \
       friend bool operator op(global_ptr a, global_ptr b) {\
         UPCXX_GPTR_CHK(a); UPCXX_GPTR_CHK(b); \
         return a.UPCXX_INTERNAL_ONLY(raw_ptr_) op b.UPCXX_INTERNAL_ONLY(raw_ptr_);\
       }\
-      UPCXX_ATTRIB_CONST \
+      UPCXXI_ATTRIB_CONST \
       friend bool operator op(global_ptr a, std::nullptr_t b) {\
         UPCXX_GPTR_CHK(a); \
         return a.UPCXX_INTERNAL_ONLY(raw_ptr_) op b;\
       }\
-      UPCXX_ATTRIB_CONST \
+      UPCXXI_ATTRIB_CONST \
       friend bool operator op(std::nullptr_t a, global_ptr b) {\
         UPCXX_GPTR_CHK(b); \
         return a op b.UPCXX_INTERNAL_ONLY(raw_ptr_);\
@@ -291,7 +291,7 @@ namespace upcxx {
   };
 
   template<typename T, typename U, memory_kind K>
-  UPCXX_ATTRIB_CONST
+  UPCXXI_ATTRIB_CONST
   global_ptr<T,K> static_pointer_cast(global_ptr<U,K> ptr) {
     UPCXX_GPTR_CHK(ptr);
     return global_ptr<T,K>(detail::internal_only(),
@@ -301,7 +301,7 @@ namespace upcxx {
   }
 
   template<typename T, typename U, memory_kind K>
-  UPCXX_ATTRIB_CONST
+  UPCXXI_ATTRIB_CONST
   global_ptr<T,K> reinterpret_pointer_cast(global_ptr<U,K> ptr) {
     UPCXX_GPTR_CHK(ptr);
     return global_ptr<T,K>(detail::internal_only(),
@@ -311,7 +311,7 @@ namespace upcxx {
   }
 
   template<typename T, typename U, memory_kind K>
-  UPCXX_ATTRIB_CONST
+  UPCXXI_ATTRIB_CONST
   global_ptr<T,K> const_pointer_cast(global_ptr<U,K> ptr) {
     UPCXX_GPTR_CHK(ptr);
     return global_ptr<T,K>(detail::internal_only(),
@@ -321,7 +321,7 @@ namespace upcxx {
   }
 
   template<memory_kind K, typename T, memory_kind K1>
-  UPCXX_ATTRIB_CONST
+  UPCXXI_ATTRIB_CONST
   // sfinae out if there is no overlap between the two KindSet's
   typename std::enable_if<(int(K) & int(K1)) != 0 , global_ptr<T,K>>::type
   static_kind_cast(global_ptr<T,K1> p) {
@@ -333,7 +333,7 @@ namespace upcxx {
   }
   
   template<memory_kind K, typename T, memory_kind K1>
-  UPCXX_ATTRIB_CONST
+  UPCXXI_ATTRIB_CONST
   // sfinae out if there is no overlap between the two KindSet's
   typename std::enable_if<(int(K) & int(K1)) != 0 , global_ptr<T,K>>::type
   dynamic_kind_cast(global_ptr<T,K1> p) {
@@ -355,7 +355,7 @@ namespace upcxx {
   }
 
   template<typename T>
-  UPCXX_ATTRIB_PURE
+  UPCXXI_ATTRIB_PURE
   global_ptr<T> to_global_ptr(T *p) {
     UPCXX_ASSERT_INIT();
     if(p == nullptr)
@@ -371,7 +371,7 @@ namespace upcxx {
   }
   
   template<typename T>
-  UPCXX_ATTRIB_PURE
+  UPCXXI_ATTRIB_PURE
   global_ptr<T> try_global_ptr(T *p) {
     UPCXX_ASSERT_INIT();
     intrank_t rank;
@@ -393,7 +393,7 @@ namespace std {
   // Comparators specify total order
   template<typename T, upcxx::memory_kind K>
   struct less<upcxx::global_ptr<T,K>> {
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
@@ -408,7 +408,7 @@ namespace std {
   
   template<typename T, upcxx::memory_kind K>
   struct less_equal<upcxx::global_ptr<T,K>> {
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
@@ -423,7 +423,7 @@ namespace std {
   
   template<typename T, upcxx::memory_kind K>
   struct greater<upcxx::global_ptr<T,K>> {
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
@@ -438,7 +438,7 @@ namespace std {
   
   template<typename T, upcxx::memory_kind K>
   struct greater_equal<upcxx::global_ptr<T,K>> {
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     bool operator()(upcxx::global_ptr<T,K> lhs,
                               upcxx::global_ptr<T,K> rhs) const {
       UPCXX_GPTR_CHK(lhs); UPCXX_GPTR_CHK(rhs); 
@@ -453,7 +453,7 @@ namespace std {
 
   template<typename T, upcxx::memory_kind K>
   struct hash<upcxx::global_ptr<T,K>> {
-    UPCXX_ATTRIB_CONST
+    UPCXXI_ATTRIB_CONST
     std::size_t operator()(upcxx::global_ptr<T,K> gptr) const {
       UPCXX_GPTR_CHK(gptr); 
       /** Utilities derived from Boost, subject to the following license:

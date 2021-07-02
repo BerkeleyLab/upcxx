@@ -41,8 +41,8 @@ say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); }
   #endif
 #endif
 
-#ifndef UPCXX_ATTRIB_NOINLINE
-#define UPCXX_ATTRIB_NOINLINE __attribute__((__noinline__))
+#ifndef UTIL_ATTRIB_NOINLINE
+#define UTIL_ATTRIB_NOINLINE __attribute__((__noinline__))
 #endif
 
 template<typename=void>

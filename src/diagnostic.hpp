@@ -8,16 +8,16 @@
 
 namespace upcxx {
 namespace detail {
-  UPCXX_ATTRIB_NORETURN
+  UPCXXI_ATTRIB_NORETURN
   void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0);
-  UPCXX_ATTRIB_NORETURN
+  UPCXXI_ATTRIB_NORETURN
   inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) {
     fatal_error(msg.c_str(), title, func, file, line);
   }
 
-  UPCXX_ATTRIB_NORETURN
+  UPCXXI_ATTRIB_NORETURN
   void assert_failed(const char *func, const char *file, int line, const char *msg=nullptr);
-  UPCXX_ATTRIB_NORETURN
+  UPCXXI_ATTRIB_NORETURN
   inline void assert_failed(const char *func, const char *file, int line, const std::string &str) {
     assert_failed(func, file, line, str.c_str());
   }
@@ -82,7 +82,7 @@ namespace detail {
 #if UPCXX_ASSERT_ENABLED
   #define UPCXX_INVOKE_UB() UPCXX_FATAL_ERROR("Undefined behavior!")
 #else
-  #define UPCXX_INVOKE_UB() UPCXX_UNREACHABLE()
+  #define UPCXX_INVOKE_UB() UPCXXI_UNREACHABLE()
 #endif
 
 // static assert that is permitted in expression context

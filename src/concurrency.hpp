@@ -9,7 +9,7 @@
 
 namespace upcxx {
   namespace detail {
-  #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXX_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXX_HIDDEN_AM_CONCURRENCY_LEVEL
+  #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
     using par_mutex = std::mutex;
   #else
     struct par_mutex {
@@ -18,7 +18,7 @@ namespace upcxx {
     };
   #endif
 
-  #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXX_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXX_HIDDEN_AM_CONCURRENCY_LEVEL
+  #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
     template<typename T>
     using par_atomic = std::atomic<T>;
   #else

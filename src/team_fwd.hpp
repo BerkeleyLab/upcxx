@@ -40,7 +40,7 @@ namespace upcxx {
   public:
     team_id() : dig_(detail::digest::zero()) {} // issue 343: disable trivial default construction
 
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     team& here() const {
       UPCXX_ASSERT_INIT();
       team *presult = static_cast<team*>(detail::registry[dig_]);
@@ -99,19 +99,19 @@ namespace upcxx {
     team(team &&that);
     ~team();
    
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     intrank_t rank_n() const { UPCXX_ASSERT_INIT(); return n_; }
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     intrank_t rank_me() const { UPCXX_ASSERT_INIT(); return me_; }
     
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     intrank_t from_world(intrank_t rank) const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(), 
                    "team::from_world(rank) requires rank in [0, world().rank_n()-1] == [0, " << upcxx::rank_n()-1 << "], but given: " << rank);
       return backend::team_rank_from_world(*this, rank);
     }
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     intrank_t from_world(intrank_t rank, intrank_t otherwise) const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(), 
@@ -119,7 +119,7 @@ namespace upcxx {
       return backend::team_rank_from_world(*this, rank, otherwise);
     }
     
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     intrank_t operator[](intrank_t peer) const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(peer >= 0 && peer < this->rank_n(), 
@@ -127,7 +127,7 @@ namespace upcxx {
       return backend::team_rank_to_world(*this, peer);
     }
     
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     team_id id() const {
       return team_id{id_};
     }

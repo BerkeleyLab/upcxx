@@ -46,37 +46,37 @@ _EOF
   fi
 }
 
-probe_macro GASNETT_NEVER_INLINE "GASNETT_NEVER_INLINE(/*fnname*/,/*declarator*/)" UPCXX_ATTRIB_NOINLINE
-probe_macro GASNETT_NORETURN GASNETT_NORETURN UPCXX_ATTRIB_NORETURN
-probe_macro GASNETT_PURE     GASNETT_PURE     UPCXX_ATTRIB_PURE
-probe_macro GASNETT_CONST    GASNETT_CONST    UPCXX_ATTRIB_CONST
-probe_macro GASNETT_HOT      GASNETT_HOT      UPCXX_ATTRIB_HOT
-probe_macro GASNETT_COLD     GASNETT_COLD     UPCXX_ATTRIB_COLD
+probe_macro GASNETT_NEVER_INLINE "GASNETT_NEVER_INLINE(/*fnname*/,/*declarator*/)" UPCXXI_ATTRIB_NOINLINE
+probe_macro GASNETT_NORETURN GASNETT_NORETURN UPCXXI_ATTRIB_NORETURN
+probe_macro GASNETT_PURE     GASNETT_PURE     UPCXXI_ATTRIB_PURE
+probe_macro GASNETT_CONST    GASNETT_CONST    UPCXXI_ATTRIB_CONST
+probe_macro GASNETT_HOT      GASNETT_HOT      UPCXXI_ATTRIB_HOT
+probe_macro GASNETT_COLD     GASNETT_COLD     UPCXXI_ATTRIB_COLD
 
-probe_macro GASNET_MAXEPS GASNET_MAXEPS UPCXX_MAXEPS
+probe_macro GASNET_MAXEPS GASNET_MAXEPS UPCXXI_MAXEPS
 
-probe_macro GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM UPCXX_NATIVE_NP_ALLOC_REQ_MEDIUM 1
+probe_macro GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM UPCXXI_NATIVE_NP_ALLOC_REQ_MEDIUM 1
 
-probe_macro GASNET_HIDDEN_AM_CONCURRENCY_LEVEL GASNET_HIDDEN_AM_CONCURRENCY_LEVEL UPCXX_HIDDEN_AM_CONCURRENCY_LEVEL 1
+probe_macro GASNET_HIDDEN_AM_CONCURRENCY_LEVEL GASNET_HIDDEN_AM_CONCURRENCY_LEVEL UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL 1
 
-probe_macro gasnett_spinloop_hint "gasnett_spinloop_hint()" "UPCXX_SPINLOOP_HINT()"
+probe_macro gasnett_spinloop_hint "gasnett_spinloop_hint()" "UPCXXI_SPINLOOP_HINT()"
 # must use bypass gasnett_builtin here to avoid a header dependence on gasneti_assert:
-probe_macro gasneti_builtin_unreachable "gasneti_builtin_unreachable()" "UPCXX_UNREACHABLE()"
+probe_macro gasneti_builtin_unreachable "gasneti_builtin_unreachable()" "UPCXXI_UNREACHABLE()"
 
-probe_macro GASNETT_PREDICT_TRUE  "GASNETT_PREDICT_TRUE(expr)"  "UPCXX_PREDICT_TRUE(expr)"
-probe_macro GASNETT_PREDICT_FALSE "GASNETT_PREDICT_FALSE(expr)" "UPCXX_PREDICT_FALSE(expr)"
+probe_macro GASNETT_PREDICT_TRUE  "GASNETT_PREDICT_TRUE(expr)"  "UPCXXI_PREDICT_TRUE(expr)"
+probe_macro GASNETT_PREDICT_FALSE "GASNETT_PREDICT_FALSE(expr)" "UPCXXI_PREDICT_FALSE(expr)"
 
 # probe platform identification macros
 for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ; do
   name="PLATFORM_$feature"
-  probe_macro $name $name "UPCXX_$name" 1
+  probe_macro $name $name "UPCXXI_$name" 1
 done
 
 cat <<_EOF
 
 // replacements for if statement, with branch prediction annotation
-#define UPCXX_IF_PT(expr) if (UPCXX_PREDICT_TRUE(expr))
-#define UPCXX_IF_PF(expr) if (UPCXX_PREDICT_FALSE(expr))
+#define UPCXXI_IF_PT(expr) if (UPCXXI_PREDICT_TRUE(expr))
+#define UPCXXI_IF_PF(expr) if (UPCXXI_PREDICT_FALSE(expr))
 
 _EOF
 

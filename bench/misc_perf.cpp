@@ -11,14 +11,14 @@
 #include <sstream>
 #include <vector>
 
-#ifndef UPCXX_ATTRIB_NOINLINE
-#define UPCXX_ATTRIB_NOINLINE __attribute__((__noinline__))
+#ifndef ATTRIB_NOINLINE
+#define ATTRIB_NOINLINE __attribute__((__noinline__))
 #endif
 
 gasnett_tick_t ticktime(void) { return gasnett_ticks_now(); }
 uint64_t tickcvt(gasnett_tick_t ticks) { return gasnett_ticks_to_ns(ticks); }
 static int accuracy = 6;
-void report(const char *desc, int64_t totaltime, int iters) UPCXX_ATTRIB_NOINLINE;
+void report(const char *desc, int64_t totaltime, int iters) ATTRIB_NOINLINE;
 void report(const char *desc, int64_t totaltime, int iters) {
   if (!upcxx::rank_me()) {
       char format[80];
@@ -31,7 +31,7 @@ void report(const char *desc, int64_t totaltime, int iters) {
 
 extern int volatile ctr;
 int volatile ctr = 0;
-void direct_inc(void) UPCXX_ATTRIB_NOINLINE;
+void direct_inc(void) ATTRIB_NOINLINE;
 void direct_inc(void) {
   ctr = 1 + ctr; // C++20 deprecates ++ and += on volatile
 }
@@ -42,10 +42,10 @@ void noop0(void) {
 void noop8(int d1, int d2, int d3, int d4, int d5, int d6, int d7, int d8) {
 }
 
-void doit() UPCXX_ATTRIB_NOINLINE;
-void doit1() UPCXX_ATTRIB_NOINLINE;
-void doit2() UPCXX_ATTRIB_NOINLINE;
-void doit3() UPCXX_ATTRIB_NOINLINE;
+void doit() ATTRIB_NOINLINE;
+void doit1() ATTRIB_NOINLINE;
+void doit2() ATTRIB_NOINLINE;
+void doit3() ATTRIB_NOINLINE;
 
 #define TIME_OPERATION_FULL(desc, preop, op, postop, fullduplex) do {  \
   if (self > peer && !fullduplex) for (int i=0;i<3;i++) upcxx::barrier(); \

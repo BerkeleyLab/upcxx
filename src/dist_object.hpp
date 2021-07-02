@@ -34,7 +34,7 @@ namespace upcxx {
   public:
     dist_id() : dig_(detail::digest::zero()) {}
 
-    UPCXX_ATTRIB_PURE
+    UPCXXI_ATTRIB_PURE
     dist_object<T>& here() const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(detail::registry[dig_],
@@ -56,7 +56,7 @@ namespace upcxx {
     }
     
     #define UPCXX_COMPARATOR(op) \
-      UPCXX_ATTRIB_CONST \
+      UPCXXI_ATTRIB_CONST \
       friend bool operator op(dist_id a, dist_id b) {\
         return a.dig_ op b.dig_; \
       }

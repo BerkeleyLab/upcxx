@@ -302,7 +302,7 @@ namespace upcxx {
       );
     }
 
-    #if UPCXX_PLATFORM_ARCH_X86_64
+    #if UPCXXI_PLATFORM_ARCH_X86_64
       // x86* has a pause instruction that we want to use inside the future::wait*() 
       // spin-loop to avoid a hazard stall when exiting after a long spin.
       // However the pause instruction itself incurs a measurable delay (up to ~140 cycles), 
@@ -315,7 +315,7 @@ namespace upcxx {
         if (!(cond)) { \
           progress(); \
           while (!(cond)) { \
-            UPCXX_SPINLOOP_HINT(); \
+            UPCXXI_SPINLOOP_HINT(); \
             progress(); \
           } \
         } \

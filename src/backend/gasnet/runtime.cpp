@@ -1226,7 +1226,7 @@ void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
         gex_Event_Wait(e);
       } else {
         while(0 != gex_Event_Test(e)) {
-          UPCXX_SPINLOOP_HINT();
+          UPCXXI_SPINLOOP_HINT();
           upcxx::progress(
             eb == entry_barrier::internal
               ? progress_level::internal

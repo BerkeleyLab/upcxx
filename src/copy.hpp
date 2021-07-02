@@ -65,7 +65,7 @@ namespace upcxx {
       static constexpr bool want_source = completions_has_event<CxsDecayed, source_cx_event>::value;
       static constexpr bool want_initevt = want_op || want_source;
 
-      static deserialized_cxs_remote_bound_t UPCXX_ATTRIB_NOINLINE
+      static deserialized_cxs_remote_bound_t UPCXXI_ATTRIB_NOINLINE
       cxs_remote_deserialized_value(cxs_remote_bound_t const &cxs_remote);
 
       template<typename T>
@@ -84,7 +84,7 @@ namespace upcxx {
     }; // detail::copy_traits
 
     template<typename Cxs>
-    typename copy_traits<Cxs>::deserialized_cxs_remote_bound_t UPCXX_ATTRIB_NOINLINE
+    typename copy_traits<Cxs>::deserialized_cxs_remote_bound_t UPCXXI_ATTRIB_NOINLINE
     copy_traits<Cxs>::cxs_remote_deserialized_value(typename copy_traits<Cxs>::cxs_remote_bound_t const &cxs_remote) {
       return serialization_traits<typename copy_traits<Cxs>::cxs_remote_bound_t>::deserialized_value(cxs_remote);
     }
@@ -98,7 +98,7 @@ namespace upcxx {
 
   // special case: 3rd party copy
   template<bool HostOnly, typename Cxs>
-  typename detail::copy_traits<Cxs>::return_t UPCXX_ATTRIB_NOINLINE
+  typename detail::copy_traits<Cxs>::return_t UPCXXI_ATTRIB_NOINLINE
   copy_3rdparty(const int heap_s, const intrank_t rank_s, void *const buf_s,
                 const int heap_d, const intrank_t rank_d, void *const buf_d,
                 const std::size_t size, Cxs &&cxs) {

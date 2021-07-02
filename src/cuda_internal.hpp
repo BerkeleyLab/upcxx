@@ -12,18 +12,18 @@
 
   // Decide whether GASNet has native memory kinds support
   #include <gasnet_mk.h>
-  #ifndef UPCXX_MAXEPS
-  #error Missing UPCXX_MAXEPS definition
+  #ifndef UPCXXI_MAXEPS
+  #error Missing UPCXXI_MAXEPS definition
   #endif
-  #if UPCXX_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
+  #if UPCXXI_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
     #define UPCXX_CUDA_USE_MK 1
   #endif
 
   namespace upcxx {
     namespace cuda {
-      UPCXX_ATTRIB_NORETURN
+      UPCXXI_ATTRIB_NORETURN
       void cu_failed(CUresult res, const char *file, int line, const char *expr);
-      UPCXX_ATTRIB_NORETURN
+      UPCXXI_ATTRIB_NORETURN
       void curt_failed(cudaError_t res, const char *file, int line, const char *expr);
     }
   }
