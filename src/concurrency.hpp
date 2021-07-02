@@ -10,18 +10,20 @@
 namespace upcxx {
   namespace detail {
   #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
+    // AM handlers may run concurrently wrt the primordial thread
+
     using par_mutex = std::mutex;
+
+    template<typename T>
+    using par_atomic = std::atomic<T>;
   #else
+    // AM handlers never run concurrently wrt the primordial thread
+
     struct par_mutex {
       void lock() {}
       void unlock() {}
     };
-  #endif
 
-  #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
-    template<typename T>
-    using par_atomic = std::atomic<T>;
-  #else
     template<typename T>
     class par_atomic {
       T val_;
