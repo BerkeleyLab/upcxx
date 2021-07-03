@@ -16,7 +16,7 @@ int main() {
 _EOF
 
 if eval ${GASNET_CXX} ${GASNET_CXXCPPFLAGS} ${GASNET_CXXFLAGS} -o conftest conftest.cpp &> /dev/null; then
-  echo '#define UPCXX_HAVE___BUILTIN_ASSUME_ALIGNED 1'
+  echo '#define UPCXXI_HAVE___BUILTIN_ASSUME_ALIGNED 1'
 else
-  echo '#undef UPCXX_HAVE___BUILTIN_ASSUME_ALIGNED'
+  echo '#undef UPCXXI_HAVE___BUILTIN_ASSUME_ALIGNED'
 fi

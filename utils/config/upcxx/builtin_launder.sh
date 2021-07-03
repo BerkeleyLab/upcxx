@@ -28,7 +28,7 @@ _EOF
 
 TEST="(${GASNET_CXX} ${GASNET_CXXCPPFLAGS} ${GASNET_CXXFLAGS} -o conftest conftest.cpp && ./conftest)"
 if eval $TEST &> /dev/null; then
-  echo '#define UPCXX_HAVE___BUILTIN_LAUNDER 1'
+  echo '#define UPCXXI_HAVE___BUILTIN_LAUNDER 1'
 else
-  echo '#undef UPCXX_HAVE___BUILTIN_LAUNDER'
+  echo '#undef UPCXXI_HAVE___BUILTIN_LAUNDER'
 fi

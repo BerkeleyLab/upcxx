@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <limits>
 
-#if UPCXX_MPSC_QUEUE_BIGLOCK
+#if UPCXXI_MPSC_QUEUE_BIGLOCK
   #include <mutex>
 #endif
 
@@ -186,7 +186,7 @@ namespace upcxx {
     ////////////////////////////////////////////////////////////////////////////
     // intru_queue<..., safety=mpsc> specialization:
     
-    #if UPCXX_MPSC_QUEUE_ATOMIC
+    #if UPCXXI_MPSC_QUEUE_ATOMIC
       template<typename T, intru_queue_intruder<T> T::*next>
       class intru_queue<T, intru_queue_safety::mpsc, next> {
         std::atomic<T*> head_;
@@ -395,7 +395,7 @@ namespace upcxx {
         return exec_n;
       }
     
-    #elif UPCXX_MPSC_QUEUE_BIGLOCK
+    #elif UPCXXI_MPSC_QUEUE_BIGLOCK
     
       /* This is the poorly performing but most likely bug-free implementation of
        * a mpsc intru_queue. There is a single global lock, yuck.
@@ -467,7 +467,7 @@ namespace upcxx {
       std::mutex intru_queue<T, intru_queue_safety::mpsc, next>::the_lock_;
     
     #else
-      #error "Invalid UPCXX_MPSC_QUEUE_xxx."
+      #error "Invalid UPCXXI_MPSC_QUEUE_xxx."
     #endif
   }
 }

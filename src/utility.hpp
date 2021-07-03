@@ -47,7 +47,7 @@ namespace detail {
   inline void memcpy_aligned(void *dst, void const *src, std::size_t sz) noexcept {
     UPCXX_ASSERT((uintptr_t)src % align == 0);
     UPCXX_ASSERT((uintptr_t)dst % align == 0);
-  #if UPCXX_HAVE___BUILTIN_ASSUME_ALIGNED
+  #if UPCXXI_HAVE___BUILTIN_ASSUME_ALIGNED
     std::memcpy(__builtin_assume_aligned(dst, align),
                 __builtin_assume_aligned(src, align), sz);
   #else
@@ -87,7 +87,7 @@ namespace detail {
     constexpr T* launder(T *p) {
       return std::launder(p);
     }
-  #elif UPCXX_HAVE___BUILTIN_LAUNDER
+  #elif UPCXXI_HAVE___BUILTIN_LAUNDER
     template<typename T>
     constexpr T* launder(T *p) {
       return __builtin_launder(p);
@@ -133,7 +133,7 @@ namespace detail {
       using T1 = typename std::remove_const<T>::type;
       T1 *ans = reinterpret_cast<T1*>(::new(dest) T1);
       detail::template memcpy_aligned<alignof(T1)>(ans, src, sizeof(T1));
-      #if UPCXX_ISSUE400_WORKAROUND
+      #if UPCXXI_ISSUE400_WORKAROUND
         // issue #400: memcpy of any type of object is always insufficient to construct a valid object, as it does not
         // perform any of the actions described in [intro.object]/1 that the standard specifies create an object, even in
         // the case of TriviallyCopyable types. P0593 would change this behavior, but has not been accepted into any
