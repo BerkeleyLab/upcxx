@@ -56,6 +56,8 @@ GASNETT_IDENT(UPCXXI_IdentString_GASNetVersion, "$UPCXXGASNetVersion: "
               _STRINGIFY(GASNET_RELEASE_VERSION_PATCH) " $");
 
 #if UPCXXI_CUDA_ENABLED
+  #include <upcxx/cuda.hpp>
+  GASNETT_IDENT(UPCXXI_IdentString_KindCUDA, "$UPCXXKindCUDA: " _STRINGIFY(UPCXX_KIND_CUDA) " $");
   GASNETT_IDENT(UPCXXI_IdentString_CUDAEnabled, "$UPCXXCUDAEnabled: 1 $");
 #else
   GASNETT_IDENT(UPCXXI_IdentString_CUDAEnabled, "$UPCXXCUDAEnabled: 0 $");
