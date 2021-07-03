@@ -2,13 +2,6 @@
 #include <queue>
 #include <cstdlib>
 
-#if UPCXX_BACKEND
-  #include <upcxx/upcxx.hpp>
-#else
-  #include <upcxx/diagnostic.hpp>
-  #include <upcxx/future.hpp>
-#endif
-
 #include "util.hpp"
 
 using namespace upcxx;
@@ -107,9 +100,7 @@ void say_type() {
 }
 
 int main() {
-#if UPCXX_BACKEND
   upcxx::init();
-#endif
 
   print_test_header();
     
@@ -243,8 +234,6 @@ int main() {
   
   print_test_success();
   
-#if UPCXX_BACKEND
   upcxx::finalize();
-#endif
   return 0;
 }

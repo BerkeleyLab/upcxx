@@ -1,9 +1,7 @@
 #ifndef _f0b217aa_607e_4aa4_8147_82a0d66d6303
 #define _f0b217aa_607e_4aa4_8147_82a0d66d6303
 
-#if UPCXX_BACKEND
-  #include <upcxx/upcxx.hpp>
-#endif
+#include <upcxx/upcxx.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -66,7 +64,6 @@ void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCE
         << success_msg;
 }
 
-#if UPCXX_BACKEND
   template<typename=void>
   void print_test_header_(const char *file) {
       if(!upcxx::initialized() || !upcxx::rank_me()) {
@@ -102,11 +99,6 @@ void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCE
           print_test_skipped_inner(reason, success_msg);
       }
   }
-#else
-  #define print_test_header()      print_test_header_inner(__FILE__)
-  #define print_test_success(...)  print_test_success_inner(__VA_ARGS__)
-  #define print_test_skipped(...)  print_test_skipped_inner(__VA_ARGS__)
-#endif
 
 #define main_test_skipped(.../* reason, success_msg */) \
   int main() { \

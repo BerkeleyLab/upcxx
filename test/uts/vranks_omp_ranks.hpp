@@ -10,7 +10,7 @@
 #include <omp.h>
 #include <sched.h>
 
-#if defined(UPCXX_BACKEND) && !UPCXX_THREADMODE
+#if !UPCXX_THREADMODE
   #error "UPCXX_THREADMODE must be par"
 #endif
 
