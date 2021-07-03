@@ -314,7 +314,7 @@ UPCXX_GIT_VERSION := $(shell cd "$(top_srcdir)" && git describe --dirty --long -
 ifneq ($(strip $(UPCXX_GIT_VERSION)),)
 upcxx_git_version_file = backend/gasnet/watermark.cpp # consumes UPCXX_GIT_VERSION
 upcxx_git_version_obj = $(notdir $(basename $(upcxx_git_version_file))).o
-$(basename $(upcxx_git_version_obj))_EXTRA_FLAGS = -DUPCXX_GIT_VERSION='$(UPCXX_GIT_VERSION)'
+$(basename $(upcxx_git_version_obj))_EXTRA_FLAGS = -DUPCXXI_GIT_VERSION='$(UPCXX_GIT_VERSION)'
 .INTERMEDIATE: $(upcxx_git_version_obj)
 endif
 endif
