@@ -8,10 +8,12 @@ using namespace std;
 int main() {
   upcxx::init();
 
-  if(upcxx::rank_me() == 0 && !UPCXX_ASSERT_ENABLED) {
+  #if UPCXX_CODEMODE
+  if(upcxx::rank_me() == 0) {
     say("")<<"This test will likely deadlock. Build it in debug codemode "
              "so that it asserts before deadlocking.";
   }
+  #endif
   
   UPCXX_ASSERT_ALWAYS(upcxx::rank_n() % 2 == 0);
   say()<<"sending outermost RPC.";
