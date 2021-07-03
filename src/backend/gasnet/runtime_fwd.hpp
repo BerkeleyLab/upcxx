@@ -11,7 +11,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if !UPCXX_BACKEND_GASNET
+#if !UPCXXI_BACKEND_GASNET
   #error "This header can only be used when the GASNet backend is enabled."
 #endif
 

@@ -703,7 +703,7 @@ namespace upcxx {
     template<typename Event, bool eager, progress_level level, typename ...T>
     struct cx_state<future_cx<Event,eager,level>, std::tuple<T...>> {
       future_header_promise<T...> *pro_; // holds ref, no need to drop it in destructor since we move out it in either operator() ro to_lpc_dormant
-      #if UPCXX_ASSERT_ENABLED
+      #if UPCXXI_ASSERT_ENABLED
         bool get_future_invoked = false;
       #endif
 
@@ -714,7 +714,7 @@ namespace upcxx {
       // completions_returner_head handles cx_state<future_cx> specially and requires
       // this additional method rather than set_done().
       future<T...> get_future(cx_event_done value) /*const*/ {
-        #if UPCXX_ASSERT_ENABLED
+        #if UPCXXI_ASSERT_ENABLED
           get_future_invoked = true;
         #endif
 

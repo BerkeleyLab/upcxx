@@ -137,7 +137,7 @@ namespace upcxx {
           f.then([=]() {
             if (copy_traits::want_remote) {
               detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
-                                             /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                             /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
               delete cxs_remote_heaped;
             }
 
@@ -199,7 +199,7 @@ namespace upcxx {
               copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
         detail::the_persona_tls.during(backend::master, progress_level::user, std::move(cxs_remote),
-                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                       /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
       }
 
       return returner();
@@ -227,7 +227,7 @@ namespace upcxx {
       if (copy_traits::want_remote) {
         initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
         detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote),
-                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                       /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
         delete cxs_remote;
       }
     };
@@ -294,7 +294,7 @@ namespace upcxx {
           if (copy_traits::want_remote) {
             initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
             detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
-                                           /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                           /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
             delete cxs_remote_heaped;
           }
         })
@@ -335,7 +335,7 @@ namespace upcxx {
               // RMA complete at target
               if (copy_traits::want_remote) {
                 detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
-                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                       /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
                 delete cxs_remote_heaped;
               }
 
@@ -397,7 +397,7 @@ namespace upcxx {
                 initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
                 if (rank_d == initiator) { // in-place RC
                   detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped_local),
-                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                       /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
                   delete cxs_remote_heaped_local;
                 } else { // initiator-chained RC
                   backend::send_prepared_am_master(progress_level::user, rank_d, std::move(*cxs_remote_am));
@@ -451,7 +451,7 @@ namespace upcxx {
                         if (copy_traits::want_remote) {
                           initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
                           detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
-                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                       /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
                           delete cxs_remote_heaped;
                         }
                         cxs_here->template operator()<operation_cx_event>();
@@ -510,7 +510,7 @@ namespace upcxx {
                       
                       if (copy_traits::want_remote) {
                         detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
-                                       /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
+                                       /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
                         delete cxs_remote_heaped;
                       }
 

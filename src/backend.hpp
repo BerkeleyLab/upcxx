@@ -273,10 +273,10 @@ namespace backend {
 ////////////////////////////////////////////////////////////////////////////////
 // Include backend-specific headers:
 
-#if UPCXX_BACKEND_GASNET_SEQ || UPCXX_BACKEND_GASNET_PAR
+#if UPCXXI_BACKEND_GASNET_SEQ || UPCXXI_BACKEND_GASNET_PAR
   #include <upcxx/backend/gasnet/runtime.hpp>
 #else
-  #error "Invalid UPCXX_BACKEND."
+  #error "Invalid UPCXXI_BACKEND."
 #endif
 
 #endif // #ifdef guard

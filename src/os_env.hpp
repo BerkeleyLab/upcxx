@@ -69,7 +69,7 @@ namespace upcxx {
  } // namespace experimental
 
   inline char *getenv_console(const char *env_var) {
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
       UPCXX_ASSERT(initialized(), "UPC++ is not currently initialized");
     #endif
     UPCXX_ASSERT(detail::getenv);

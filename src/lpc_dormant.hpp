@@ -216,7 +216,7 @@ namespace upcxx {
           tls.enqueue_quiesced_promise(
             *p->target, p->level,
             /*move ref*/pro, /*result*/1 + /*anon*/0,
-            /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+            /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
           );
 
           delete static_cast<lpc_dormant_qpromise<T...>*>(p);
@@ -233,7 +233,7 @@ namespace upcxx {
 
           tls.enqueue(
             *p->target, p->level, p,
-            /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+            /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
           );
         }
 

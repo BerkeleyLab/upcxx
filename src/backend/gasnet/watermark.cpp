@@ -38,9 +38,9 @@ GASNETT_IDENT(UPCXXI_IdentString_SpecVersion, "$UPCXXSpecVersion: " _STRINGIFY(U
 GASNETT_IDENT(UPCXXI_IdentString_GitVersion, "$UPCXXGitVersion: " _STRINGIFY(UPCXX_GIT_VERSION) " $");
 #endif
 
-#if UPCXX_BACKEND_GASNET_SEQ
+#if UPCXXI_BACKEND_GASNET_SEQ
 GASNETT_IDENT(UPCXXI_IdentString_ThreadMode, "$UPCXXThreadMode: SEQ $");
-#elif UPCXX_BACKEND_GASNET_PAR
+#elif UPCXXI_BACKEND_GASNET_PAR
 GASNETT_IDENT(UPCXXI_IdentString_ThreadMode, "$UPCXXThreadMode: PAR $");
 #endif
 
@@ -61,7 +61,7 @@ GASNETT_IDENT(UPCXXI_IdentString_GASNetVersion, "$UPCXXGASNetVersion: "
   GASNETT_IDENT(UPCXXI_IdentString_CUDAEnabled, "$UPCXXCUDAEnabled: 0 $");
 #endif
 
-GASNETT_IDENT(UPCXXI_IdentString_AssertEnabled, "$UPCXXAssertEnabled: " _STRINGIFY(UPCXX_ASSERT_ENABLED) " $");
+GASNETT_IDENT(UPCXXI_IdentString_AssertEnabled, "$UPCXXAssertEnabled: " _STRINGIFY(UPCXXI_ASSERT_ENABLED) " $");
 
 #if UPCXXI_MPSC_QUEUE_ATOMIC
   GASNETT_IDENT(UPCXXI_IdentString_MPSCQueue, "$UPCXXMPSCQueue: atomic $");

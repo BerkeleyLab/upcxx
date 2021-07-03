@@ -1,7 +1,7 @@
 // upc_link.c
 // this file MUST be compiled as C (not C++) to support the bupc_tentative API
 
-#if UPCXX_ASSERT_ENABLED
+#if UPCXXI_ASSERT_ENABLED
   #undef NDEBUG
 #else
   #define NDEBUG 1

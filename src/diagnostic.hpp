@@ -55,12 +55,12 @@ namespace detail {
 
 #define UPCXXI_ASSERT_DISPATCH(_1, _2, NAME, ...) NAME
 
-#ifndef UPCXX_ASSERT_ENABLED
-  #define UPCXX_ASSERT_ENABLED 0
+#ifndef UPCXXI_ASSERT_ENABLED
+  #define UPCXXI_ASSERT_ENABLED 0
 #endif
 
 // Assert that will only happen in debug-mode.
-#if UPCXX_ASSERT_ENABLED
+#if UPCXXI_ASSERT_ENABLED
   #define UPCXX_ASSERT(...) UPCXXI_ASSERT_DISPATCH(__VA_ARGS__, UPCXXI_ASSERT_2, UPCXXI_ASSERT_1, _DUMMY)(__VA_ARGS__)
 #elif __PGI
   // PGI's warning #174-D "expression has no effect" is too stoopid to ignore `((void)0)` 
@@ -79,7 +79,7 @@ namespace detail {
 #define UPCXX_ASSERT_ALWAYS(...) UPCXXI_ASSERT_DISPATCH(__VA_ARGS__, UPCXXI_ASSERT_2, UPCXXI_ASSERT_1, _DUMMY)(__VA_ARGS__)
 
 // In debug mode this will abort. In non-debug this is a nop.
-#if UPCXX_ASSERT_ENABLED
+#if UPCXXI_ASSERT_ENABLED
   #define UPCXXI_INVOKE_UB() UPCXXI_FATAL_ERROR("Undefined behavior!")
 #else
   #define UPCXXI_INVOKE_UB() UPCXXI_UNREACHABLE()
@@ -106,14 +106,14 @@ namespace detail {
 #define UPCXXI_ASSERT_ALWAYS_MASTER() \
         UPCXX_ASSERT_ALWAYS(backend::master.active_with_caller(), \
                      "This operation requires the master persona to appear in the persona stack of the calling thread")
-#if UPCXX_ASSERT_ENABLED
+#if UPCXXI_ASSERT_ENABLED
   #define UPCXXI_ASSERT_MASTER() UPCXXI_ASSERT_ALWAYS_MASTER()
-  #define UPCXXI_ASSERT_MASTER_HELD_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
+  #define UPCXXI_ASSERT_MASTER_HELD_IFSEQ() (!UPCXXI_BACKEND_GASNET_SEQ ? ((void)0) : \
           UPCXX_ASSERT(::upcxx::master_persona().active_with_caller(), \
                "When compiled in threadmode=seq, this operation requires the primordial thread with the master persona in the persona stack.\n" \
                "Invoking certain UPC++ functions from multiple threads requires compiling with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
                "For details, please see `docs/implementation-defined.md`"))
-  #define UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
+  #define UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ() (!UPCXXI_BACKEND_GASNET_SEQ ? ((void)0) : \
           UPCXX_ASSERT(&::upcxx::current_persona() == &::upcxx::master_persona(), \
                "When compiled in threadmode=seq, this operation requires the primordial thread using the master persona as the current persona.\n" \
                "Applications with multi-threaded communication requirements should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
@@ -145,7 +145,7 @@ namespace detail {
 #endif
 
 #ifndef UPCXX_WARN_EMPTY_RMA
-#define UPCXX_WARN_EMPTY_RMA UPCXX_ASSERT_ENABLED
+#define UPCXX_WARN_EMPTY_RMA UPCXXI_ASSERT_ENABLED
 #endif
 #if UPCXX_WARN_EMPTY_RMA
 #define UPCXXI_WARN_EMPTY(fnname, count) ( (count) == 0 ? backend::warn_empty_rma(fnname) : (void)0 )

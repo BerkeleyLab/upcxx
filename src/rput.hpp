@@ -7,7 +7,7 @@
 #include <upcxx/serialization.hpp>
 
 // For the time being, our implementation of put/get requires the
-// gasnet backend. Ideally we would detect gasnet via UPCXX_BACKEND_GASNET
+// gasnet backend. Ideally we would detect gasnet via UPCXXI_BACKEND_GASNET
 // and if not present, rely on a reference implementation over
 // upcxx::backend generic API.
 #include <upcxx/backend/gasnet/runtime.hpp>

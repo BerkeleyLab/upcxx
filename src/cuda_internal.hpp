@@ -40,7 +40,7 @@
         ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
-  #if UPCXX_ASSERT_ENABLED
+  #if UPCXXI_ASSERT_ENABLED
     #define CU_CHECK(expr)   CU_CHECK_ALWAYS(expr)
     #define CURT_CHECK(expr) CURT_CHECK_ALWAYS(expr)
   #else

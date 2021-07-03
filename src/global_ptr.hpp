@@ -19,7 +19,7 @@
 
 #ifndef UPCXXI_GPTR_CHECK_ENABLED
 // -DUPCXXI_GPTR_CHECK_ENABLED=0/1 independently controls gptr checking (default enabled with assertions)
-#define UPCXXI_GPTR_CHECK_ENABLED UPCXX_ASSERT_ENABLED
+#define UPCXXI_GPTR_CHECK_ENABLED UPCXXI_ASSERT_ENABLED
 #endif
 #ifndef UPCXXI_GPTR_CHECK_ALIGNMENT
 #define UPCXXI_GPTR_CHECK_ALIGNMENT 1 // -DUPCXXI_GPTR_CHECK_ALIGNMENT=0 disables alignment checking

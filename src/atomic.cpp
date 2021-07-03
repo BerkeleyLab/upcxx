@@ -2,7 +2,7 @@
 #include <upcxx/atomic.hpp>
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 
-#if UPCXX_BACKEND_GASNET
+#if UPCXXI_BACKEND_GASNET
   #include <gasnet_ratomic.h>
 #endif
 

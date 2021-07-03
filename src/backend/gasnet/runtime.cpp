@@ -49,11 +49,11 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////
 
-#if UPCXX_BACKEND_GASNET_SEQ && !GASNET_SEQ
+#if UPCXXI_BACKEND_GASNET_SEQ && !GASNET_SEQ
     #error "This backend is gasnet-seq only!"
 #endif
 
-#if UPCXX_BACKEND_GASNET_PAR && !GASNET_PAR
+#if UPCXXI_BACKEND_GASNET_PAR && !GASNET_PAR
     #error "This backend is gasnet-par only!"
 #endif
 
@@ -113,7 +113,7 @@ sheap_footprint_t gasnet::sheap_footprint_rdzv;
 sheap_footprint_t gasnet::sheap_footprint_misc;
 sheap_footprint_t gasnet::sheap_footprint_user;
   
-#if UPCXX_BACKEND_GASNET_SEQ
+#if UPCXXI_BACKEND_GASNET_SEQ
   handle_cb_queue gasnet::master_hcbs;
 #endif
 
@@ -126,7 +126,7 @@ namespace {
   unique_ptr<uintptr_t[/*local_team.size()*/]> pshm_owner_vbase;
   unique_ptr<intrank_t[/*local_team.size()*/]> pshm_owner_peer;
 
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if UPCXXI_BACKEND_GASNET_SEQ
     // Set by the thread which initiates gasnet since in SEQ only that thread
     // may invoke gasnet.
     void *gasnet_seq_thread_id = nullptr;
@@ -489,7 +489,7 @@ void upcxx::init() {
   
   int ok;
 
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if UPCXXI_BACKEND_GASNET_SEQ
     gasnet_seq_thread_id = upcxx::detail::thread_id();
   #endif
   detail::persona_tls &tls = detail::the_persona_tls;
@@ -2054,10 +2054,10 @@ void gasnet::after_gasnet() {
     tls.foreach_active_as_top([&](persona &p) {
       burst_cuda(&p);
       
-      #if UPCXX_BACKEND_GASNET_SEQ
+      #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
           exec_n += gasnet::master_hcbs.burst(/*spinning=*/false);
-      #elif UPCXX_BACKEND_GASNET_PAR
+      #elif UPCXXI_BACKEND_GASNET_PAR
         exec_n += p.UPCXXI_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/false);
       #endif
       
@@ -2093,7 +2093,7 @@ static inline void do_progress() {
   int total_exec_n = 0;
   int exec_n;
   
-  if(!UPCXX_BACKEND_GASNET_SEQ || gasnet_seq_thread_id == detail::thread_id())
+  if(!UPCXXI_BACKEND_GASNET_SEQ || gasnet_seq_thread_id == detail::thread_id())
     gasnet_AMPoll();
   
   do {
@@ -2102,10 +2102,10 @@ static inline void do_progress() {
     tls.foreach_active_as_top([&](persona &p) {
       burst_cuda(&p);
       
-      #if UPCXX_BACKEND_GASNET_SEQ
+      #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
           exec_n += gasnet::master_hcbs.burst(/*spinning=*/true);
-      #elif UPCXX_BACKEND_GASNET_PAR
+      #elif UPCXXI_BACKEND_GASNET_PAR
         exec_n += p.UPCXXI_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/true);
       #endif
       
@@ -2205,7 +2205,7 @@ namespace {
       backend::master,
       level_user ? progress_level::user : progress_level::internal,
       m,
-      /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+      /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
     );
   }
   
@@ -2238,7 +2238,7 @@ namespace {
       *per,
       level_user ? progress_level::user : progress_level::internal,
       m,
-      /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+      /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
     );
   }
   
@@ -2258,7 +2258,7 @@ namespace {
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
-    constexpr auto known_active = std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>();
+    constexpr auto known_active = std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>();
     
     tls.defer(
       backend::master,
@@ -2440,7 +2440,7 @@ namespace {
       backend::master,
       level_user ? progress_level::user : progress_level::internal,
       m,
-      /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+      /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
     );
 
     if(!(reply_cb_lo == 0x0 && reply_cb_hi == 0x0))
@@ -2505,7 +2505,7 @@ namespace {
         backend::master,
         cmd_level ? progress_level::user : progress_level::internal,
         st,
-        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+        /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
       );
       
       if(!(reply_cb_lo == 0x0 && reply_cb_hi == 0x0))
@@ -2574,7 +2574,7 @@ namespace {
         backend::master,
         cmd_level ? progress_level::user : progress_level::internal,
         st,
-        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+        /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
       );
       
       if(!(reply_cb_lo == 0x0 && reply_cb_hi == 0x0))

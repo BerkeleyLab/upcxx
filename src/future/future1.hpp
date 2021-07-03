@@ -3,7 +3,7 @@
 
 #include <upcxx/future/core.hpp>
 #include <upcxx/utility.hpp>
-#if UPCXX_BACKEND
+#if UPCXXI_BACKEND
   #include <upcxx/backend_fwd.hpp>
 #endif
 
@@ -43,7 +43,7 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   
   namespace detail {
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
       struct future_wait_upcxx_progress_user {
         void operator()() const {
           UPCXX_ASSERT(
@@ -55,7 +55,7 @@ namespace upcxx {
       };
     #endif
 
-    #ifndef UPCXX_BACKEND
+    #ifndef UPCXXI_BACKEND
       // Used to mark member function as internal only. Normally defined in
       // <upcxx/backend_fwd.hpp>.
       struct internal_only {
@@ -326,7 +326,7 @@ namespace upcxx {
       } while (0)
     #endif
 
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
     #else
@@ -343,7 +343,7 @@ namespace upcxx {
       return this->template result<i>();
     }
     
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
     #else
@@ -360,7 +360,7 @@ namespace upcxx {
       return static_cast<future1&&>(*this).template result<i>();
     }
     
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<typename Fn=detail::future_wait_upcxx_progress_user>
     results_type wait_tuple(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
     #else
@@ -376,7 +376,7 @@ namespace upcxx {
       return this->result_tuple();
     }
 
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<typename Fn=detail::future_wait_upcxx_progress_user>
     results_type wait_tuple(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
     #else
@@ -392,7 +392,7 @@ namespace upcxx {
       return static_cast<future1&&>(*this).result_tuple();
     }
     
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait_reference(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
     #else
@@ -407,7 +407,7 @@ namespace upcxx {
       return this->template result_reference<i>();
     }
 
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait_reference(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
     #else

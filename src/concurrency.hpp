@@ -9,7 +9,7 @@
 
 namespace upcxx {
   namespace detail {
-  #if UPCXX_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
+  #if UPCXXI_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
     // AM handlers may run concurrently wrt the primordial thread
 
     using par_mutex = std::mutex;

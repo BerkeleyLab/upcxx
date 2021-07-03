@@ -179,7 +179,7 @@ namespace upcxx {
       UPCXX_ASSERT(gp.is_null() || gp.where() == upcxx::rank_me());
       if (!gp) return Device::invalid_device_id;
       else {
-        #if UPCXX_ASSERT_ENABLED // issue 468: avoid unused-variable warning
+        #if UPCXXI_ASSERT_ENABLED // issue 468: avoid unused-variable warning
           backend::heap_state *hs = backend::heap_state::get(gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
         #endif
         UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
@@ -196,7 +196,7 @@ namespace upcxx {
       UPCXXI_GPTR_CHK(gp);
       if (!gp) return Device::template null_pointer<T>();
       UPCXX_ASSERT(gp.where() == upcxx::rank_me());
-      #if UPCXX_ASSERT_ENABLED // issue 468: avoid unused-variable warning
+      #if UPCXXI_ASSERT_ENABLED // issue 468: avoid unused-variable warning
         backend::heap_state *hs = backend::heap_state::get(gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
       #endif
       UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 

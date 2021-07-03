@@ -33,7 +33,7 @@ namespace gasnet {
   extern sheap_footprint_t sheap_footprint_misc;
   extern sheap_footprint_t sheap_footprint_user;
 
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if UPCXXI_BACKEND_GASNET_SEQ
     extern handle_cb_queue master_hcbs;
   #endif
 
@@ -662,9 +662,9 @@ namespace gasnet {
   inline handle_cb_queue& get_handle_cb_queue() {
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
-    #if UPCXX_BACKEND_GASNET_SEQ
+    #if UPCXXI_BACKEND_GASNET_SEQ
       return gasnet::master_hcbs;
-    #elif UPCXX_BACKEND_GASNET_PAR
+    #elif UPCXXI_BACKEND_GASNET_PAR
       return upcxx::current_persona().UPCXXI_INTERNAL_ONLY(backend_state_).hcbs;
     #endif
   }

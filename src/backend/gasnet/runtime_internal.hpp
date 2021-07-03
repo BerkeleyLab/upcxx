@@ -7,7 +7,7 @@
 
 #include <upcxx/backend.hpp>
 
-#if UPCXX_BACKEND_GASNET
+#if UPCXXI_BACKEND_GASNET
     #include <gasnet.h>
     #include <gasnet_coll.h>
     #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR  0

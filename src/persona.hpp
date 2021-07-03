@@ -502,7 +502,7 @@ namespace upcxx {
     
     bool was_active = p.active();
     UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
-    if (UPCXX_BACKEND_GASNET_SEQ && &p == &master_persona()) 
+    if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
        UPCXX_ASSERT(tls.is_primordial_thread,
         "When compiled in threadmode=seq, only the primordial thread may acquire the master persona.\n"
         "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n"
@@ -546,7 +546,7 @@ namespace upcxx {
     
     bool was_active = p.active();
     UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
-    if (UPCXX_BACKEND_GASNET_SEQ && &p == &master_persona()) 
+    if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
        UPCXX_ASSERT(tls.is_primordial_thread,
         "When compiled in threadmode=seq, only the primordial thread may acquire the master persona.\n"
         "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n"
@@ -667,7 +667,7 @@ namespace upcxx {
     
     promise_meta *meta = &pro_hdr->pro_meta;
 
-    #if UPCXX_ASSERT_ENABLED
+    #if UPCXXI_ASSERT_ENABLED
       void *target_queue = future_header_promise<T...>::is_trivially_deletable
           ? (void*)&per.pros_deferred_trivial_
           : (void*)&per.self_inbox_[user];

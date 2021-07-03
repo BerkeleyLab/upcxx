@@ -3,7 +3,7 @@
 
 // Added for upcxx:
 #define ONLY_MSPACES 1
-#if UPCXX_ASSERT_ENABLED
+#if UPCXXI_ASSERT_ENABLED
   #define DEBUG 1
 #else
   #undef DEBUG
