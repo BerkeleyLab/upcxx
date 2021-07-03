@@ -260,7 +260,7 @@ namespace {
 
 void upcxx::backend::heap_state::init() {
   heap_state::use_mk_ = false 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
      || upcxx::cuda::use_mk()
   #endif
   /* || otherkind::use_mk() ... */;
@@ -2023,7 +2023,7 @@ RpcAsLpc* rpc_as_lpc::build_rdzv_lz(
 namespace {
   GASNETT_HOT
   void burst_cuda(persona *per) {
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     while(cuda::event_cb *cb = per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
       if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->cu_event)) {
         CU_CHECK(cuEventDestroy((CUevent)cb->cu_event));

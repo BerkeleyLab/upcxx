@@ -304,7 +304,7 @@ else
 UPCXX_DEFINES += -DUPCXXI_BACKEND_GASNET_PAR=1
 endif
 ifeq ($(UPCXX_CUDA),1)
-UPCXX_DEFINES += -DUPCXX_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
+UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
 endif
 
 # In developer builds, embed git-describe output in runtime.o

@@ -9,7 +9,7 @@ namespace detail = upcxx::detail;
 using std::size_t;
 using std::uint64_t;
 
-#if UPCXX_CUDA_ENABLED
+#if UPCXXI_CUDA_ENABLED
 #if UPCXXI_CUDA_USE_MK
   bool upcxx::cuda::use_mk() { return true; }
 #else
@@ -154,7 +154,7 @@ namespace {
 } // anon namespace
 #endif
 
-#if UPCXX_CUDA_ENABLED
+#if UPCXXI_CUDA_ENABLED
 GASNETT_COLD
 void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char *expr) {
   const char *errname, *errstr;
@@ -189,7 +189,7 @@ upcxx::cuda_device::cuda_device(int device):
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     if (device != invalid_device_id) {
       heap_idx_ = backend::heap_state::alloc_index();
       CUcontext ctx;
@@ -258,7 +258,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
 
   if (!is_active()) return;
 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     cuda::device_state *st = cuda::device_state::get(heap_idx_);
     UPCXX_ASSERT(st != nullptr);
     UPCXX_ASSERT(st->device_id == device_);
@@ -297,7 +297,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
 
 upcxx::cuda_device::id_type 
 upcxx::cuda_device::device_id(detail::internal_only, int heap_idx) {
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     cuda::device_state *st = cuda::device_state::get(heap_idx);
     int id = st->device_id;
     UPCXX_ASSERT(id != invalid_device_id);
@@ -320,14 +320,14 @@ detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core(
   ):
   detail::device_allocator_base(
     dev.heap_idx_,
-    #if UPCXX_CUDA_ENABLED
+    #if UPCXXI_CUDA_ENABLED
       make_segment(dev.heap_idx_, base, size)
     #else
       segment_allocator(nullptr, 0)
     #endif
   ) {
 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     if (dev.is_active()) {
       backend::heap_state *hs = backend::heap_state::get(dev.heap_idx_);
       UPCXX_ASSERT(hs->alloc_base == this); // registration handled by device_allocator_base
@@ -339,7 +339,7 @@ GASNETT_COLD
 void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
   if (!is_active()) return;
 
-  #if UPCXX_CUDA_ENABLED  
+  #if UPCXXI_CUDA_ENABLED  
       cuda::device_state *st = cuda::device_state::get(heap_idx_);
       UPCXX_ASSERT(st);
      

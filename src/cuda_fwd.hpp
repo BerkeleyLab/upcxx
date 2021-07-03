@@ -34,7 +34,7 @@ namespace upcxx {
     //   1. trivially destructible.
     //   2. constexpr constructible equivalent to zero-initialization.
     struct persona_state {
-    #if UPCXX_CUDA_ENABLED
+    #if UPCXXI_CUDA_ENABLED
       // queue of pending events
       detail::intru_queue<
           event_cb,

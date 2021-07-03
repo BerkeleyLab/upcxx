@@ -29,7 +29,7 @@ void upcxx::detail::rma_copy_local(
     cb->execute_and_delete();
   }
   else { // one or both sides on device
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     int heap_main = !host_d ? heap_d : heap_s;
     UPCXX_ASSERT(heap_main > 0);
     cuda::device_state *st = cuda::device_state::get(heap_main);

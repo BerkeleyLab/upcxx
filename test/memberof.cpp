@@ -409,7 +409,7 @@ int main() {
   upcxx::init();
   print_test_header();
 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXX_KIND_CUDA
     cuda_enabled = true;
   #endif
   if (cuda_enabled) {

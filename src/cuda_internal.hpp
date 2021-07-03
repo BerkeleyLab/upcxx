@@ -6,7 +6,7 @@
 
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 
-#if UPCXX_CUDA_ENABLED
+#if UPCXXI_CUDA_ENABLED
   #include <cuda.h>
   #include <cuda_runtime_api.h>
 

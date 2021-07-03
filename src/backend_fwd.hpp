@@ -209,7 +209,7 @@ namespace backend {
   struct heap_state {
     detail::device_allocator_base *alloc_base;
 
-  #if UPCXX_CUDA_ENABLED && UPCXXI_MAXEPS > 1
+  #if UPCXXI_CUDA_ENABLED && UPCXXI_MAXEPS > 1
     static constexpr int max_heaps = UPCXXI_MAXEPS;
   #else
     static constexpr int max_heaps = 33;

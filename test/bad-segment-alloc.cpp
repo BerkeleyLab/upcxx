@@ -4,7 +4,7 @@
 
 using namespace upcxx;
 
-#if !UPCXX_CUDA_ENABLED
+#if !UPCXX_KIND_CUDA
 #error "This example requires UPC++ to be built with CUDA support."
 #endif
 
