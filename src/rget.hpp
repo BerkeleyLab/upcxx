@@ -79,7 +79,7 @@ namespace upcxx {
         rank_s{rank_s},
         state_remote{std::move(state_remote)} {
 
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
       void send_remote() {
@@ -87,7 +87,7 @@ namespace upcxx {
           state_remote.template bind_event<remote_cx_event>()
         );
         
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
     
@@ -160,7 +160,7 @@ namespace upcxx {
   
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::rget_byval_event_values<T>,
@@ -179,7 +179,7 @@ namespace upcxx {
       "RMA operations only work on TriviallySerializable types."
     );
 
-    UPCXX_STATIC_ASSERT_VALUE_SIZE(T, rget); // issue 392: prevent large types by-value
+    UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, rget); // issue 392: prevent large types by-value
 
     UPCXX_ASSERT_ALWAYS(
       (detail::completions_has_event<CxsDecayed, operation_cx_event>::value),
@@ -193,9 +193,9 @@ namespace upcxx {
       "rget does not support source completion."
     );
   
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXX_GPTR_CHK(gp_s);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_GPTR_CHK(gp_s);
     UPCXX_ASSERT(gp_s, "pointer arguments to rget may not be null");
     
     using cxs_here_t = detail::completions_state<
@@ -209,11 +209,11 @@ namespace upcxx {
     
     using detail::rma_get_done;
 
-    if (backend::rank_is_local(gp_s.UPCXX_INTERNAL_ONLY(rank_))) {
+    if (backend::rank_is_local(gp_s.UPCXXI_INTERNAL_ONLY(rank_))) {
       // local case does copy directly without involving backend
       T *buf_s_local = (T*) backend::localize_memory_nonnull(
-        gp_s.UPCXX_INTERNAL_ONLY(rank_),
-        reinterpret_cast<std::uintptr_t>(gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_))
+        gp_s.UPCXXI_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_s.UPCXXI_INTERNAL_ONLY(raw_ptr_))
       );
       // data passed directly to operation-completion trigger below
 
@@ -226,7 +226,7 @@ namespace upcxx {
       // no source completion
       if (!cxs_remote_t::empty) {
         backend::send_am_master<progress_level::user>(
-          gp_s.UPCXX_INTERNAL_ONLY(rank_),
+          gp_s.UPCXXI_INTERNAL_ONLY(rank_),
           cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
         );
       }
@@ -235,14 +235,14 @@ namespace upcxx {
     }
     
     auto *cb = new detail::rget_cb_byval<T,cxs_here_t,cxs_remote_t>{
-      gp_s.UPCXX_INTERNAL_ONLY(rank_),
+      gp_s.UPCXXI_INTERNAL_ONLY(rank_),
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     };
     
     rma_get_done done = detail::rma_get_nb(
-      &cb->buffer, gp_s.UPCXX_INTERNAL_ONLY(rank_),
-      gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), sizeof(T), cb
+      &cb->buffer, gp_s.UPCXXI_INTERNAL_ONLY(rank_),
+      gp_s.UPCXXI_INTERNAL_ONLY(raw_ptr_), sizeof(T), cb
     );
     
     gasnet::handle_cb_queue &cb_q = gasnet::get_handle_cb_queue();
@@ -279,7 +279,7 @@ namespace upcxx {
   
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::rget_byref_event_values,
@@ -311,11 +311,11 @@ namespace upcxx {
       "rget does not support source completion."
     );
     
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXX_GPTR_CHK(gp_s);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_GPTR_CHK(gp_s);
     UPCXX_ASSERT(buf_d && gp_s, "pointer arguments to rget may not be null");
-    UPCXX_WARN_EMPTY("upcxx::rget", n);
+    UPCXXI_WARN_EMPTY("upcxx::rget", n);
 
     using cxs_here_t = detail::completions_state<
       /*EventPredicate=*/detail::event_is_here,
@@ -326,11 +326,11 @@ namespace upcxx {
       /*EventValues=*/detail::rget_byref_event_values,
       CxsDecayed>;
 
-    if (backend::rank_is_local(gp_s.UPCXX_INTERNAL_ONLY(rank_))) {
+    if (backend::rank_is_local(gp_s.UPCXXI_INTERNAL_ONLY(rank_))) {
       // local case does copy directly without involving backend
       void *buf_s_local = backend::localize_memory_nonnull(
-        gp_s.UPCXX_INTERNAL_ONLY(rank_),
-        reinterpret_cast<std::uintptr_t>(gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_))
+        gp_s.UPCXXI_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_s.UPCXXI_INTERNAL_ONLY(raw_ptr_))
       );
       std::memcpy(buf_d, buf_s_local, n*sizeof(T));
 
@@ -343,7 +343,7 @@ namespace upcxx {
       // no source completion
       if (!cxs_remote_t::empty) {
         backend::send_am_master<progress_level::user>(
-          gp_s.UPCXX_INTERNAL_ONLY(rank_),
+          gp_s.UPCXXI_INTERNAL_ONLY(rank_),
           cxs_remote_t::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
         );
       }
@@ -352,7 +352,7 @@ namespace upcxx {
     }
     
     detail::rget_cb_byref<cxs_here_t,cxs_remote_t> cb(
-      gp_s.UPCXX_INTERNAL_ONLY(rank_),
+      gp_s.UPCXXI_INTERNAL_ONLY(rank_),
       cxs_here_t{std::forward<Cxs>(cxs)},
       cxs_remote_t{std::forward<Cxs>(cxs)}
     );
@@ -360,8 +360,8 @@ namespace upcxx {
     using detail::rma_get_done;
     
     rma_get_done done = detail::rma_get_nb(
-      buf_d, gp_s.UPCXX_INTERNAL_ONLY(rank_),
-      gp_s.UPCXX_INTERNAL_ONLY(raw_ptr_), n*sizeof(T), &cb
+      buf_d, gp_s.UPCXXI_INTERNAL_ONLY(rank_),
+      gp_s.UPCXXI_INTERNAL_ONLY(raw_ptr_), n*sizeof(T), &cb
     );
     
     auto returner = detail::completions_returner<

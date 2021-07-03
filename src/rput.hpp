@@ -199,7 +199,7 @@ namespace upcxx {
              bool want_op = Traits::want_op,
              // op_is_sync is only true for operation_cx::as_blocking(),
              // which is only conditionally enabled by
-             // UPCXX_HAS_OPERATION_CX_AS_BLOCKING (see completion.hpp)
+             // UPCXXI_HAS_OPERATION_CX_AS_BLOCKING (see completion.hpp)
              bool op_is_sync = Traits::op_is_sync,
              bool want_src = Traits::want_src>
     struct rput_obj_base;
@@ -264,7 +264,7 @@ namespace upcxx {
       }
     };
 
-    // only used when UPCXX_HAS_OPERATION_CX_AS_BLOCKING=1
+    // only used when UPCXXI_HAS_OPERATION_CX_AS_BLOCKING=1
     template<typename Obj, typename Traits, bool want_src>
     struct rput_obj_base<Obj, Traits,
         /*want_remote=*/true,
@@ -449,7 +449,7 @@ namespace upcxx {
 
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/true>::return_t
   rput(T value_s,
        global_ptr<T> gp_d,
@@ -461,22 +461,22 @@ namespace upcxx {
     
     traits_t::template assert_sane<T>();
 
-    UPCXX_STATIC_ASSERT_VALUE_SIZE(T, rput); // issue 392: prevent large types by-value
+    UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, rput); // issue 392: prevent large types by-value
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXX_GPTR_CHK(gp_d);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_GPTR_CHK(gp_d);
     UPCXX_ASSERT(gp_d, "pointer arguments to rput may not be null");
     UPCXX_ASSERT_ALWAYS(
       (!detail::completions_has_event<CxsDecayed, source_cx_event>::value),
       "Scalar rput does not support source completion."
     );
 
-    if (backend::rank_is_local(gp_d.UPCXX_INTERNAL_ONLY(rank_))) {
+    if (backend::rank_is_local(gp_d.UPCXXI_INTERNAL_ONLY(rank_))) {
       // local case does copy directly without involving backend
       T *buf_d_local = (T*) backend::localize_memory_nonnull(
-        gp_d.UPCXX_INTERNAL_ONLY(rank_),
-        reinterpret_cast<std::uintptr_t>(gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_))
+        gp_d.UPCXXI_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_))
       );
       *buf_d_local = value_s;
 
@@ -486,7 +486,7 @@ namespace upcxx {
       // no source completion
       if (traits_t::want_remote) {
         backend::send_am_master<progress_level::user>(
-          gp_d.UPCXX_INTERNAL_ONLY(rank_),
+          gp_d.UPCXXI_INTERNAL_ONLY(rank_),
           traits_t::cx_state_remote_t
           ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
         );
@@ -500,7 +500,7 @@ namespace upcxx {
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
     detail::rma_put_sync sync_done = o->inject(
-      gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      gp_d.UPCXXI_INTERNAL_ONLY(rank_), gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_),
       &value_s, sizeof(T),
       traits_t::cx_state_remote_t
         ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
@@ -520,7 +520,7 @@ namespace upcxx {
   
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/false>::return_t
   rput(T const *buf_s,
        global_ptr<T> gp_d,
@@ -533,18 +533,18 @@ namespace upcxx {
     
     traits_t::template assert_sane<T>();
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXX_GPTR_CHK(gp_d);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_GPTR_CHK(gp_d);
     UPCXX_ASSERT(buf_s && gp_d, "pointer arguments to rput may not be null");
 
-    UPCXX_WARN_EMPTY("upcxx::rput", n);
+    UPCXXI_WARN_EMPTY("upcxx::rput", n);
     
-    if (backend::rank_is_local(gp_d.UPCXX_INTERNAL_ONLY(rank_))) {
+    if (backend::rank_is_local(gp_d.UPCXXI_INTERNAL_ONLY(rank_))) {
       // local case does copy directly without involving backend
       void *buf_d_local = backend::localize_memory_nonnull(
-        gp_d.UPCXX_INTERNAL_ONLY(rank_),
-        reinterpret_cast<std::uintptr_t>(gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_))
+        gp_d.UPCXXI_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_))
       );
       std::memcpy(buf_d_local, buf_s, n*sizeof(T));
 
@@ -556,7 +556,7 @@ namespace upcxx {
       }
       if (traits_t::want_remote) {
         backend::send_am_master<progress_level::user>(
-          gp_d.UPCXX_INTERNAL_ONLY(rank_),
+          gp_d.UPCXXI_INTERNAL_ONLY(rank_),
           traits_t::cx_state_remote_t
           ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
         );
@@ -570,7 +570,7 @@ namespace upcxx {
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
     detail::rma_put_sync sync_done = o->inject(
-      gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      gp_d.UPCXXI_INTERNAL_ONLY(rank_), gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_),
       buf_s, n*sizeof(T),
       traits_t::cx_state_remote_t
         ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))

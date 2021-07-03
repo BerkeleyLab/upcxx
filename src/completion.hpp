@@ -14,9 +14,9 @@
   #define UPCXX_DEFER_COMPLETION 0 // default is eager
 #endif
 #if UPCXX_DEFER_COMPLETION
-  #define UPCXX_EAGER_DEFAULT false
+  #define UPCXXI_EAGER_DEFAULT false
 #else
-  #define UPCXX_EAGER_DEFAULT true
+  #define UPCXXI_EAGER_DEFAULT true
 #endif
 
 namespace upcxx {
@@ -343,7 +343,7 @@ namespace upcxx {
               detail::type_respects_static_size_limit,
               typename binding<Args>::on_wire_type...
             >::value,
-          UPCXX_STATIC_ASSERT_RPC_MSG(remote_cx::as_rpc)
+          UPCXXI_STATIC_ASSERT_RPC_MSG(remote_cx::as_rpc)
         );
 
       using type = completions<
@@ -359,8 +359,8 @@ namespace upcxx {
   namespace detail {
     template<typename Event>
     struct support_as_future {
-      static constexpr completions<future_cx<Event, UPCXX_EAGER_DEFAULT>> as_future() {
-        return {future_cx<Event, UPCXX_EAGER_DEFAULT>{}};
+      static constexpr completions<future_cx<Event, UPCXXI_EAGER_DEFAULT>> as_future() {
+        return {future_cx<Event, UPCXXI_EAGER_DEFAULT>{}};
       }
       static constexpr completions<future_cx<Event, false>> as_defer_future() {
         return {future_cx<Event, false>{}};
@@ -373,9 +373,9 @@ namespace upcxx {
     template<typename Event>
     struct support_as_promise {
       template<typename ...T>
-      static constexpr completions<promise_cx<Event, UPCXX_EAGER_DEFAULT, T...>>
+      static constexpr completions<promise_cx<Event, UPCXXI_EAGER_DEFAULT, T...>>
       as_promise(promise<T...> pro) {
-        return {promise_cx<Event, UPCXX_EAGER_DEFAULT, T...>{
+        return {promise_cx<Event, UPCXXI_EAGER_DEFAULT, T...>{
           static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
         }};
       }
@@ -442,7 +442,7 @@ namespace upcxx {
     detail::support_as_promise<source_cx_event> {};
   
   struct operation_cx:
-    #if UPCXX_HAS_OPERATION_CX_AS_BLOCKING
+    #if UPCXXI_HAS_OPERATION_CX_AS_BLOCKING
       detail::support_as_blocking<operation_cx_event>,
     #endif
     detail::support_as_future<operation_cx_event>,
@@ -456,9 +456,9 @@ namespace upcxx {
   // operation_cx_as_future_t: default completions for most operations
   namespace detail {
     using operation_cx_as_future_t =
-      completions<future_cx<operation_cx_event, UPCXX_EAGER_DEFAULT>>;
+      completions<future_cx<operation_cx_event, UPCXXI_EAGER_DEFAULT>>;
     using operation_cx_as_internal_future_t =
-      completions<future_cx<operation_cx_event, UPCXX_EAGER_DEFAULT,
+      completions<future_cx<operation_cx_event, UPCXXI_EAGER_DEFAULT,
                             progress_level::internal>>;
   }
 
@@ -535,7 +535,7 @@ namespace upcxx {
     template<typename Kind1, typename ...T1, typename Kind2, typename ...T2>
     auto cx_result_combine(future1<Kind1, T1...> &&v1,
                            future1<Kind2, T2...> &&v2)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         detail::when_all_fast(std::forward<future1<Kind1, T1...>>(v1),
                               std::forward<future1<Kind2, T2...>>(v2))
       ) {
@@ -558,7 +558,7 @@ namespace upcxx {
     }
     template<typename Fn>
     auto call_convert_non_future(Fn &&fn, std::true_type/* returns_future*/)
-      UPCXX_RETURN_DECLTYPE(static_cast<Fn&&>(fn)()) {
+      UPCXXI_RETURN_DECLTYPE(static_cast<Fn&&>(fn)()) {
       return static_cast<Fn&&>(fn)();
     }
 
@@ -692,7 +692,7 @@ namespace upcxx {
     template<typename ...T>
     future<T...> make_ready_empty_future() {
       // this should never be used
-      UPCXX_FATAL_ERROR("make_ready_empty_future<T...>() called with nonempty T");
+      UPCXXI_FATAL_ERROR("make_ready_empty_future<T...>() called with nonempty T");
       return {};
     }
     template<>
@@ -884,18 +884,18 @@ namespace upcxx {
       cx_state(lpc_cx<Event,Fn> &&cx):
         target_(cx.target_),
         fn_(static_cast<Fn&&>(cx.fn_)) {
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) += 1;
       }
       cx_state(const lpc_cx<Event,Fn> &cx):
         target_(cx.target_),
         fn_(cx.fn_) {
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
       void set_done(cx_event_done) {}
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
         return detail::make_lpc_dormant(*target_, progress_level::user, std::move(fn_), tail);
       }
       
@@ -903,7 +903,7 @@ namespace upcxx {
         target_->lpc_ff(
           detail::lpc_bind<Fn,T...>(static_cast<Fn&&>(fn_), static_cast<T&&>(vals)...)
         );
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
 
@@ -953,7 +953,7 @@ namespace upcxx {
   namespace detail {
     template<typename FnRefTuple, int ...i>
     auto cx_bind_remote_fns(FnRefTuple &&fns, detail::index_sequence<i...>)
-      UPCXX_RETURN_DECLTYPE (
+      UPCXXI_RETURN_DECLTYPE (
         detail::bind(
           cx_remote_dispatch{},
           std::get<i>(std::forward<FnRefTuple>(fns))...
@@ -967,7 +967,7 @@ namespace upcxx {
 
     template<typename FnRefTuple>
     auto cx_bind_remote_fns(FnRefTuple &&fns)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         cx_bind_remote_fns(
           fns,
           detail::make_index_sequence<
@@ -1180,12 +1180,12 @@ namespace upcxx {
         );
       }
 
-      auto get_remote_fn() const UPCXX_RETURN_DECLTYPE(cx_get_remote_fn(state_)) {
+      auto get_remote_fn() const UPCXXI_RETURN_DECLTYPE(cx_get_remote_fn(state_)) {
         return cx_get_remote_fn(state_);
       }
 
       static auto get_remote_fn(const Cx &cx)
-        UPCXX_RETURN_DECLTYPE(cx_get_remote_fn(cx)) {
+        UPCXXI_RETURN_DECLTYPE(cx_get_remote_fn(cx)) {
         return cx_get_remote_fn(cx);
       }
 
@@ -1276,14 +1276,14 @@ namespace upcxx {
       }
 
       auto get_remote_fns() const
-        UPCXX_RETURN_DECLTYPE(std::tuple_cat(head().get_remote_fn(),
+        UPCXXI_RETURN_DECLTYPE(std::tuple_cat(head().get_remote_fn(),
                                              tail().get_remote_fns())) {
         return std::tuple_cat(head().get_remote_fn(),
                               tail().get_remote_fns());
       }
 
       static auto get_remote_fns(const completions<CxH,CxT...> &cxs)
-        UPCXX_RETURN_DECLTYPE(std::tuple_cat(head_t::get_remote_fn(cxs.head()),
+        UPCXXI_RETURN_DECLTYPE(std::tuple_cat(head_t::get_remote_fn(cxs.head()),
                                              tail_t::get_remote_fns(cxs.tail()))) {
         return std::tuple_cat(head_t::get_remote_fn(cxs.head()),
                               tail_t::get_remote_fns(cxs.tail()));
@@ -1291,7 +1291,7 @@ namespace upcxx {
 
       template<typename Event>
       auto bind_event() const
-        UPCXX_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns())) {
+        UPCXXI_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns())) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
                       "supported for remote_cx_event");
@@ -1300,7 +1300,7 @@ namespace upcxx {
 
       template<typename Event>
       static auto bind_event_static(const completions<CxH,CxT...> &cxs)
-        UPCXX_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns(cxs))) {
+        UPCXXI_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns(cxs))) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
                       "supported for remote_cx_event");

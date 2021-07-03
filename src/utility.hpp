@@ -16,22 +16,22 @@
 #include <new> // launder
 
 // RTTI support
-#ifndef UPCXX_HAVE_RTTI
-#define UPCXX_HAVE_RTTI (__GXX_RTTI || __cpp_rtti)
+#ifndef UPCXXI_HAVE_RTTI
+#define UPCXXI_HAVE_RTTI (__GXX_RTTI || __cpp_rtti)
 #endif
-#if UPCXX_HAVE_RTTI
+#if UPCXXI_HAVE_RTTI
 #include <typeinfo> // typeid
 #endif
 
 #include <cstdlib> // posix_memalign
 
-// UPCXX_RETURN_DECLTYPE(type): use this inplace of "-> decltype(type)" so that
+// UPCXXI_RETURN_DECLTYPE(type): use this inplace of "-> decltype(type)" so that
 // for compilers which choke on such return types (icc) it can be elided in
 // the presence of C++14.
 #if !defined(__INTEL_COMPILER) || __cplusplus <= 201199L
-  #define UPCXX_RETURN_DECLTYPE(...) -> decltype(__VA_ARGS__)
+  #define UPCXXI_RETURN_DECLTYPE(...) -> decltype(__VA_ARGS__)
 #else
-  #define UPCXX_RETURN_DECLTYPE(...)
+  #define UPCXXI_RETURN_DECLTYPE(...)
 #endif
 
 namespace upcxx {
@@ -603,7 +603,7 @@ namespace detail {
 
   template <typename T, std::size_t x = sizeof(T)>
   inline const char *typename_of_(T *_) { 
-    #if UPCXX_HAVE_RTTI
+    #if UPCXXI_HAVE_RTTI
       return typeid(T).name(); 
     #else
       return "";

@@ -79,7 +79,7 @@ namespace upcxx {
       
       template<int ...i>
       auto result_refs_or_vals_(detail::index_sequence<i...>) const&
-        UPCXX_RETURN_DECLTYPE(std::tuple_cat(
+        UPCXXI_RETURN_DECLTYPE(std::tuple_cat(
             std::get<i>(this->args_).impl_.result_refs_or_vals()...
           )
         ) {
@@ -89,7 +89,7 @@ namespace upcxx {
       }
       template<int ...i>
       auto result_refs_or_vals_(detail::index_sequence<i...>) &&
-        UPCXX_RETURN_DECLTYPE(std::tuple_cat(
+        UPCXXI_RETURN_DECLTYPE(std::tuple_cat(
             std::get<i>(std::move(this->args_)).impl_.result_refs_or_vals()...
           )
         ) {
@@ -186,11 +186,11 @@ namespace upcxx {
       }
       
       auto result_refs_or_vals() const&
-        UPCXX_RETURN_DECLTYPE(this->result_refs_or_vals_(detail::make_index_sequence<sizeof...(FuArg)>())) {
+        UPCXXI_RETURN_DECLTYPE(this->result_refs_or_vals_(detail::make_index_sequence<sizeof...(FuArg)>())) {
         return this->result_refs_or_vals_(detail::make_index_sequence<sizeof...(FuArg)>());
       }
       auto result_refs_or_vals() &&
-        UPCXX_RETURN_DECLTYPE(std::move(*this).result_refs_or_vals_(detail::make_index_sequence<sizeof...(FuArg)>())) {
+        UPCXXI_RETURN_DECLTYPE(std::move(*this).result_refs_or_vals_(detail::make_index_sequence<sizeof...(FuArg)>())) {
         return std::move(*this).result_refs_or_vals_(detail::make_index_sequence<sizeof...(FuArg)>());
       }
       
@@ -271,7 +271,7 @@ namespace upcxx {
       }
 
       auto result_refs_or_vals() &&
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           std::tuple_cat(
             static_cast<future_dependency_when_all_arg<i,Arg>&&>(*static_cast<future_dependency_when_all_arg<i,Arg>*>(this)).dep_.result_refs_or_vals()...
           )

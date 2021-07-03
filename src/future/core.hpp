@@ -21,8 +21,8 @@
  * stubs seems better than dumbing down offending code to always call the generic
  * deallocate, which if we get custom allocation might be slower or just wrong.
  */
-#ifndef UPCXX_OPNEW_AS_STD // pretty sure not defined anywhere, just thinking ahead.
-  #define UPCXX_OPNEW_AS_STD \
+#ifndef UPCXXI_OPNEW_AS_STD // pretty sure not defined anywhere, just thinking ahead.
+  #define UPCXXI_OPNEW_AS_STD \
     static void* operator new(std::size_t size) {\
       return ::operator new(size);\
     }\
@@ -34,12 +34,12 @@
 #if __PGI // TODO: range of impacted versions and/or C++ standard?
   // Work around a bug leading to nullptr initialization for a function pointer
   // See PR#119 for more details
-  #define UPCXX_PROMISE_VTABLE_HACK 1
+  #define UPCXXI_PROMISE_VTABLE_HACK 1
 #endif
 
-#ifndef UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+#ifndef UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
 // Old intel needs a suboptimal hack, see issue 485 and PR 357
-#define UPCXX_ISSUE_485_SLOW_THE_ALWAYS (__INTEL_COMPILER && __INTEL_COMPILER < 1900)
+#define UPCXXI_ISSUE_485_SLOW_THE_ALWAYS (__INTEL_COMPILER && __INTEL_COMPILER < 1900)
 #endif
 
 namespace upcxx {
@@ -48,7 +48,7 @@ namespace upcxx {
     // future headers...
   
     struct future_header {
-      UPCXX_OPNEW_AS_STD
+      UPCXXI_OPNEW_AS_STD
       
       // Our refcount. A negative value indicates a static lifetime.
       int ref_n_;
@@ -163,7 +163,7 @@ namespace upcxx {
 
     using future_header_nil = future_header_nil1<>;
     
-    #if !UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+    #if !UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
     // The "always" future, not to be used by anything other than
     // future_header_result<>::always(). Optimization for always-ready
     // empty futures.
@@ -186,7 +186,7 @@ namespace upcxx {
 
     template<typename VoidThanks>
     constexpr future_header_always2 future_header_always1<VoidThanks>::the_always;
-    #endif // !UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+    #endif // !UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
 
     ////////////////////////////////////////////////////////////////////
     // future_header_dependent: dependent headers are those that...
@@ -324,7 +324,7 @@ namespace upcxx {
     
     // Base type for all future bodies.
     struct future_body {
-      UPCXX_OPNEW_AS_STD
+      UPCXXI_OPNEW_AS_STD
       
       // The memory block holding this body. Managed by future_body::operator new/delete().
       void *storage_;
@@ -373,7 +373,7 @@ namespace upcxx {
     
     template<typename ...T>
     struct future_header_result {
-      UPCXX_OPNEW_AS_STD
+      UPCXXI_OPNEW_AS_STD
       
       future_header base_header;
       
@@ -480,14 +480,14 @@ namespace upcxx {
     
     template<>
     struct future_header_result<> {
-      UPCXX_OPNEW_AS_STD
+      UPCXXI_OPNEW_AS_STD
 
-      #if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+      #if UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
       static const future_header the_always;
       #endif
 
       static constexpr future_header* always() {
-        #if UPCXX_ISSUE_485_SLOW_THE_ALWAYS
+        #if UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
           return const_cast<future_header*>(&the_always);
         #else
           return const_cast<future_header*>(
@@ -618,7 +618,7 @@ namespace upcxx {
     // The future header of a promise.
     template<typename ...T>
     struct future_header_promise {
-      UPCXX_OPNEW_AS_STD
+      UPCXXI_OPNEW_AS_STD
       
       // We "inherit" from future_header_result<T...> use "first member of standard
       // layout" since real inheritance would break standard layout.
@@ -672,7 +672,7 @@ namespace upcxx {
     template<typename ...T>
     constexpr promise_vtable the_promise_vtable<T...>::vtbl;
     
-    #if UPCXX_PROMISE_VTABLE_HACK
+    #if UPCXXI_PROMISE_VTABLE_HACK
     // This empty-parameter specialization is redundant, the general <T...> case
     // redues to something functionally equivalent. Unfortunately, the PGI linker
     // is not initializing the `execute_and_delete` fnptr of vtbl correctly.

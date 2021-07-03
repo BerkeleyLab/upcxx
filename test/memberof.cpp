@@ -284,7 +284,7 @@ void check_general(bool has_virtual) {
   // the following is not guaranteed by spec, just tests the known implementation
   bool expect_ready = std::is_standard_layout<T>::value
                       || gp_o.where() == upcxx::rank_me()
-                      #if UPCXX_UNIFORM_LOCAL_VTABLES
+                      #if UPCXXI_UNIFORM_LOCAL_VTABLES
                       || gp_o.is_local()
                       #endif
                       ;

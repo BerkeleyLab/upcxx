@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
       of.then(mark_done);
     });
 
-  #if UPCXX_HAS_OPERATION_CX_AS_BLOCKING
+  #if UPCXXI_HAS_OPERATION_CX_AS_BLOCKING
     // blocking OC
     // NOTE: operation_cx::as_blocking() is currently unspecified and should not be relied upon by users.
     // The calls below ensure white-box code coverage for the implementation.
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) {
       );
       src_done();
     });
-  #endif // UPCXX_HAS_OPERATION_CX_AS_BLOCKING
+  #endif // UPCXXI_HAS_OPERATION_CX_AS_BLOCKING
 
     // no OC - commented out cases are ill-formed
     

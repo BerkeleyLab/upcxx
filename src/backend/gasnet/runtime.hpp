@@ -451,19 +451,19 @@ namespace backend {
   // We want to use the NPAM protocol iff NPAM MediumRequest has a native zero-copy implementation
   // This is true for any target rank on certain native conduits, 
   // and for local targets only on other conduits.
-  #ifndef UPCXX_USE_NPAM
+  #ifndef UPCXXI_USE_NPAM
     #if UPCXXI_NATIVE_NP_ALLOC_REQ_MEDIUM || \
         UPCXX_NETWORK_SMP /* PSHM always provides native NPAM, this improves static analysis */
-      #define UPCXX_USE_NPAM 1
+      #define UPCXXI_USE_NPAM 1
     #else
-      #define UPCXX_USE_NPAM is_local // network NPAM non-native, use NPAM iff target is local
+      #define UPCXXI_USE_NPAM is_local // network NPAM non-native, use NPAM iff target is local
     #endif
   #endif
-  #ifndef UPCXX_USE_NPAM_STATIC
-    #if UPCXX_USE_NPAM
-      #define UPCXX_USE_NPAM_STATIC 1
+  #ifndef UPCXXI_USE_NPAM_STATIC
+    #if UPCXXI_USE_NPAM
+      #define UPCXXI_USE_NPAM_STATIC 1
     #else // relies on undefined is_local symbol evaluating to zero
-      #define UPCXX_USE_NPAM_STATIC 0
+      #define UPCXXI_USE_NPAM_STATIC 0
     #endif
   #endif
 
@@ -489,7 +489,7 @@ namespace backend {
       intrank_t recipient,
       std::integral_constant<bool, restricted> restricted1={}
     ) -> gasnet::am_send_buffer<decltype(detail::command<detail::lpc_base*>::ubound(detail::empty_storage_size, fn)),
-                                (UPCXX_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> {
+                                (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> {
     
     using gasnet::am_send_buffer;
     using gasnet::rpc_as_lpc;
@@ -502,7 +502,7 @@ namespace backend {
                                                : backend::rank_is_local(recipient);
 
     const int usingNPAMArgs = ( (eagerNPAMArgs < 0 ) ? -1/*disabled*/
-                                : ( UPCXX_USE_NPAM ? eagerNPAMArgs : -1/*disabled*/ ) );
+                                : ( UPCXXI_USE_NPAM ? eagerNPAMArgs : -1/*disabled*/ ) );
 
     const std::size_t rdzv_cutover_size = (
        forceEager ? std::size_t(-1)
@@ -510,7 +510,7 @@ namespace backend {
                                : gasnet::am_size_rdzv_cutover )
     );
 
-    am_send_buffer<decltype(ub), (UPCXX_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> am_buf;
+    am_send_buffer<decltype(ub), (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> am_buf;
     auto w = am_buf.prepare_writer(ub, rdzv_cutover_size, usingNPAMArgs, recipient);
     
     detail::command<detail::lpc_base*>::template serialize<
@@ -525,7 +525,7 @@ namespace backend {
 
   template<typename AmBuf>
   void send_prepared_am_master(progress_level level, intrank_t recipient, AmBuf &&am) {
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     if(am.is_eager)
       gasnet::send_am_eager_master(level, recipient, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
@@ -555,7 +555,7 @@ namespace backend {
       intrank_t recipient_rank, persona *recipient_persona,
       AmBuf &&am
     ) {
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     
     if(am.is_eager)
       gasnet::send_am_eager_persona(level, recipient_rank, recipient_persona, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
@@ -601,7 +601,7 @@ namespace backend {
   
   template<progress_level level, typename Fn1>
   void bcast_am_master(const team &tm, Fn1 &&fn) {
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     
     using gasnet::am_send_buffer;
     using gasnet::bcast_as_lpc;
@@ -660,12 +660,12 @@ namespace gasnet {
   // register_handle_cb
 
   inline handle_cb_queue& get_handle_cb_queue() {
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     #if UPCXX_BACKEND_GASNET_SEQ
       return gasnet::master_hcbs;
     #elif UPCXX_BACKEND_GASNET_PAR
-      return upcxx::current_persona().UPCXX_INTERNAL_ONLY(backend_state_).hcbs;
+      return upcxx::current_persona().UPCXXI_INTERNAL_ONLY(backend_state_).hcbs;
     #endif
   }
   
@@ -678,7 +678,7 @@ namespace gasnet {
   
   template<typename Fn>
   void send_am_restricted(intrank_t recipient, Fn &&fn) {
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     auto am_buf(prepare_am<1>(
       std::forward<Fn>(fn), recipient, /*restricted=*/std::true_type()
@@ -727,7 +727,7 @@ namespace gasnet {
       progress_level am_level, AmFn &&am_fn,
       handle_cb *src_cb, reply_cb *rem_cb
     ) {
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     constexpr std::size_t arg_size = sizeof(std::int32_t);
 

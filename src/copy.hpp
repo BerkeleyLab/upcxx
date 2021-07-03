@@ -10,11 +10,11 @@
 
 #include <functional>
 
-#ifndef UPCXX_COPY_OPTIMIZEHOST
-#define UPCXX_COPY_OPTIMIZEHOST 1 // host-only optimizations can be disabled for debugging library behavior
+#ifndef UPCXXI_COPY_OPTIMIZEHOST
+#define UPCXXI_COPY_OPTIMIZEHOST 1 // host-only optimizations can be disabled for debugging library behavior
 #endif
-#ifndef UPCXX_COPY_PROMOTEPRIVATE
-#define UPCXX_COPY_PROMOTEPRIVATE 1 // private promotion optimization can be disabled for debugging library behavior
+#ifndef UPCXXI_COPY_PROMOTEPRIVATE
+#define UPCXXI_COPY_PROMOTEPRIVATE 1 // private promotion optimization can be disabled for debugging library behavior
 #endif
 
 namespace upcxx {
@@ -162,7 +162,7 @@ namespace upcxx {
     return returner();
   } // detail::copy_3rdparty
 
-#if UPCXX_COPY_OPTIMIZEHOST
+#if UPCXXI_COPY_OPTIMIZEHOST
   // special case: host-to-host copy-put
   template<typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
@@ -216,7 +216,7 @@ namespace upcxx {
             copy_traits::cxs_remote_deserialized_value(
               copy_traits::bind_remote(std::forward<Cxs>(cxs))
             ));
-      initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
+      initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
     }
 
     auto signal_completion = [=]() {
@@ -225,7 +225,7 @@ namespace upcxx {
       delete cxs_here;
 
       if (copy_traits::want_remote) {
-        initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
+        initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
         detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote),
                                        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
         delete cxs_remote;
@@ -255,7 +255,7 @@ namespace upcxx {
                const int heap_d, const intrank_t rank_d, void *const buf_d,
                const std::size_t size, Cxs &&cxs) {
 
-    #if UPCXX_COPY_OPTIMIZEHOST
+    #if UPCXXI_COPY_OPTIMIZEHOST
       // only reach this function for calls involving device memory
       UPCXX_ASSERT(heap_s > 0 || heap_d > 0);
     #endif
@@ -285,14 +285,14 @@ namespace upcxx {
               copy_traits::bind_remote(std::forward<Cxs>(cxs))
             )
           ) : nullptr);
-      if (copy_traits::want_remote) initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
+      if (copy_traits::want_remote) initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
       detail::rma_copy_local(heap_d, buf_d, heap_s, buf_s, size,
         cuda::make_event_cb([=]() {
           cxs_here->template operator()<source_cx_event>();
           cxs_here->template operator()<operation_cx_event>();
           delete cxs_here;
           if (copy_traits::want_remote) {
-            initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
+            initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
             detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
                                            /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
             delete cxs_remote_heaped;
@@ -384,7 +384,7 @@ namespace upcxx {
                               copy_traits::bind_remote(std::forward<Cxs>(cxs)) ));
         }
 
-        initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
+        initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
       } // want_remote
 
       detail::rma_copy_remote(heap_s, rank_s, buf_s, heap_d, rank_d, buf_d, size,
@@ -394,7 +394,7 @@ namespace upcxx {
               delete cxs_here;
           
               if (copy_traits::want_remote) {
-                initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
+                initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
                 if (rank_d == initiator) { // in-place RC
                   detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped_local),
                                        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
@@ -428,7 +428,7 @@ namespace upcxx {
         bounce_d = backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);
       }
 
-      if (copy_traits::want_remote) initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)++;
+      if (copy_traits::want_remote) initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
       backend::send_am_master<progress_level::internal>( rank_s,
         [=]() {
           auto make_bounce_s_cont = [=](void *bounce_s) {
@@ -449,7 +449,7 @@ namespace upcxx {
                           backend::gasnet::deallocate(bounce_d, &backend::gasnet::sheap_footprint_rdzv);
 
                         if (copy_traits::want_remote) {
-                          initiator_per->UPCXX_INTERNAL_ONLY(undischarged_n_)--;
+                          initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)--;
                           detail::the_persona_tls.during(backend::master, progress_level::user, std::move(*cxs_remote_heaped),
                                        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>());
                           delete cxs_remote_heaped;
@@ -585,32 +585,32 @@ namespace upcxx {
 
   template<typename T, memory_kind Ks,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, T *dest, std::size_t n,
        Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(src);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    UPCXX_WARN_EMPTY("upcxx::copy", n);
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_WARN_EMPTY("upcxx::copy", n);
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     using copy_traits = detail::copy_traits<Cxs>;
     copy_traits::template assert_sane<T>();
 
-    #if UPCXX_COPY_OPTIMIZEHOST
+    #if UPCXXI_COPY_OPTIMIZEHOST
       if (Ks == memory_kind::host || src.dynamic_kind() == memory_kind::host)
         return detail::copy_as_rget(
-                 src.UPCXX_INTERNAL_ONLY(rank_),
-                 src.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(rank_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  dest, n * sizeof(T), std::forward<Cxs>(cxs) );
       else
     #endif
       { int heap_d = detail::private_heap;
         intrank_t rank_d = upcxx::rank_me();
         T * buf_d = dest;
-        #if UPCXX_COPY_PROMOTEPRIVATE
-          if (src.UPCXX_INTERNAL_ONLY(rank_) != rank_d) { // not loopback (where promotion not profitable)
+        #if UPCXXI_COPY_PROMOTEPRIVATE
+          if (src.UPCXXI_INTERNAL_ONLY(rank_) != rank_d) { // not loopback (where promotion not profitable)
             // upcxx::try_global_ptr(buf_d), with less overheads
             intrank_t p_rank;
             std::uintptr_t p_raw;
@@ -638,9 +638,9 @@ namespace upcxx {
           }
         #endif
         return detail::copy_general( 
-                 src.UPCXX_INTERNAL_ONLY(heap_idx_),
-                 src.UPCXX_INTERNAL_ONLY(rank_),
-                 src.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                 src.UPCXXI_INTERNAL_ONLY(rank_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  heap_d, rank_d, buf_d,
                  n * sizeof(T), std::forward<Cxs>(cxs) );
       }
@@ -648,32 +648,32 @@ namespace upcxx {
 
   template<typename T, memory_kind Kd,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(T const *src, global_ptr<T,Kd> dest, std::size_t n,
        Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(dest);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    UPCXX_WARN_EMPTY("upcxx::copy", n);
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_WARN_EMPTY("upcxx::copy", n);
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     detail::copy_traits<Cxs>::template assert_sane<T>();
 
-    #if UPCXX_COPY_OPTIMIZEHOST
+    #if UPCXXI_COPY_OPTIMIZEHOST
       if (Kd == memory_kind::host || dest.dynamic_kind() == memory_kind::host)
         return detail::copy_as_rput(
                  const_cast<T*>(src),
-                 dest.UPCXX_INTERNAL_ONLY(rank_),
-                 dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(rank_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  n * sizeof(T), std::forward<Cxs>(cxs) );
       else
     #endif
       { int heap_s = detail::private_heap;
         intrank_t rank_s = upcxx::rank_me();
         T * buf_s = const_cast<T*>(src);
-        #if UPCXX_COPY_PROMOTEPRIVATE
-          if (dest.UPCXX_INTERNAL_ONLY(rank_) != rank_s) { // not loopback (where promotion not profitable)
+        #if UPCXXI_COPY_PROMOTEPRIVATE
+          if (dest.UPCXXI_INTERNAL_ONLY(rank_) != rank_s) { // not loopback (where promotion not profitable)
             // upcxx::try_global_ptr(buf_s), with less overheads
             intrank_t p_rank;
             std::uintptr_t p_raw;
@@ -701,29 +701,29 @@ namespace upcxx {
         #endif
         return detail::copy_general( 
                  heap_s, rank_s, buf_s,
-                 dest.UPCXX_INTERNAL_ONLY(heap_idx_),
-                 dest.UPCXX_INTERNAL_ONLY(rank_),
-                 dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                 dest.UPCXXI_INTERNAL_ONLY(rank_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  n * sizeof(T), std::forward<Cxs>(cxs) );
       }
   }
   
   template<typename T, memory_kind Ks, memory_kind Kd,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, global_ptr<T,Kd> dest, std::size_t n,
        Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(src); UPCXX_GPTR_CHK(dest);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_GPTR_CHK(src); UPCXXI_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
-    UPCXX_WARN_EMPTY("upcxx::copy", n);
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_WARN_EMPTY("upcxx::copy", n);
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     using copy_traits = detail::copy_traits<Cxs>;
     copy_traits::template assert_sane<T>();
 
-    #if UPCXX_COPY_OPTIMIZEHOST
+    #if UPCXXI_COPY_OPTIMIZEHOST
       if ( ( Ks == memory_kind::host || src.dynamic_kind()  == memory_kind::host ) &&
            ( Kd == memory_kind::host || dest.dynamic_kind() == memory_kind::host ) ) {
         // generalized host-to-host copy
@@ -733,29 +733,29 @@ namespace upcxx {
         if (src.is_local()) 
           return detail::copy_as_rput(
                  const_cast<T*>(src.local()),
-                 dest.UPCXX_INTERNAL_ONLY(rank_),
-                 dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(rank_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  n * sizeof(T), std::forward<Cxs>(cxs) );
         else if (  ( !copy_traits::want_remote && dest.is_local() ) 
-                || (  copy_traits::want_remote && dest.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me() ))
+                || (  copy_traits::want_remote && dest.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me() ))
           return detail::copy_as_rget(
-                 src.UPCXX_INTERNAL_ONLY(rank_),
-                 src.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(rank_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  dest.local(), n * sizeof(T), std::forward<Cxs>(cxs) );
         else
           return detail::copy_3rdparty</*HostOnly=*/true>(
-                 src.UPCXX_INTERNAL_ONLY(heap_idx_), src.UPCXX_INTERNAL_ONLY(rank_),
-                 src.UPCXX_INTERNAL_ONLY(raw_ptr_),
-                 dest.UPCXX_INTERNAL_ONLY(heap_idx_), dest.UPCXX_INTERNAL_ONLY(rank_),
-                 dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(heap_idx_), src.UPCXXI_INTERNAL_ONLY(rank_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(heap_idx_), dest.UPCXXI_INTERNAL_ONLY(rank_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  n*sizeof(T), std::forward<Cxs>(cxs) );
       } else
     #endif
         return detail::copy_general(
-                 src.UPCXX_INTERNAL_ONLY(heap_idx_), src.UPCXX_INTERNAL_ONLY(rank_),
-                 src.UPCXX_INTERNAL_ONLY(raw_ptr_),
-                 dest.UPCXX_INTERNAL_ONLY(heap_idx_), dest.UPCXX_INTERNAL_ONLY(rank_),
-                 dest.UPCXX_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(heap_idx_), src.UPCXXI_INTERNAL_ONLY(rank_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(heap_idx_), dest.UPCXXI_INTERNAL_ONLY(rank_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  n*sizeof(T), std::forward<Cxs>(cxs) );
   }
 

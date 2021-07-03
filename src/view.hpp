@@ -41,7 +41,7 @@ namespace upcxx {
     deserializing_iterator(char const *p = nullptr) noexcept: r_(p) {}
     
     value_type operator*() const noexcept {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("deserializing_iterator::operator*()",
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("deserializing_iterator::operator*()",
                                             "deserializing_iterator::deserialize_into()",
                                             value_type);
       detail::serialization_reader r1(r_);
@@ -306,7 +306,7 @@ namespace upcxx {
     struct serialization_view_element<T, /*skip_is_fast=*/false> {
       template<typename SS>
       static constexpr auto ubound(SS ub0, T const &x) noexcept
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           ub0.template cat_size_of<std::size_t>()
              .template cat_ubound_of<T>(x)
         ) {

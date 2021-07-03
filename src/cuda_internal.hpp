@@ -16,7 +16,7 @@
   #error Missing UPCXXI_MAXEPS definition
   #endif
   #if UPCXXI_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
-    #define UPCXX_CUDA_USE_MK 1
+    #define UPCXXI_CUDA_USE_MK 1
   #endif
 
   namespace upcxx {
@@ -57,7 +57,7 @@
         CUstream stream;
         CUdeviceptr segment_to_free;
 
-        #if UPCXX_CUDA_USE_MK
+        #if UPCXXI_CUDA_USE_MK
           // gex objects...
           gex_EP_t ep;
           gex_MK_t kind;

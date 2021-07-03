@@ -144,11 +144,11 @@ namespace upcxx {
          detail::type_respects_static_size_limit,
          typename detail::binding<Arg>::on_wire_type...
        >::value,
-      UPCXX_STATIC_ASSERT_RPC_MSG(rpc_ff)
+      UPCXXI_STATIC_ASSERT_RPC_MSG(rpc_ff)
     );
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
@@ -165,8 +165,8 @@ namespace upcxx {
          typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), detail::completions<>>::type
        >::type {
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc_ff(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -175,7 +175,7 @@ namespace upcxx {
 
   // explicit completions
   template<typename Cxs, typename Fn, typename ...Arg>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto rpc_ff(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if cxs is not a completions type
     -> typename std::enable_if<
@@ -229,11 +229,11 @@ namespace upcxx {
          detail::type_respects_static_size_limit,
          typename detail::binding<Arg>::on_wire_type...
        >::value,
-      UPCXX_STATIC_ASSERT_RPC_MSG(rpc_ff)
+      UPCXXI_STATIC_ASSERT_RPC_MSG(rpc_ff)
     );
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
@@ -267,7 +267,7 @@ namespace upcxx {
   }
   
   template<typename Cxs, typename Fn, typename ...Arg>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto rpc_ff(const team &tm, intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if cxs is not a completions type
     -> typename std::enable_if<
@@ -275,8 +275,8 @@ namespace upcxx {
          typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
        >::type {
   
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc_ff(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -421,7 +421,7 @@ namespace upcxx {
             detail::type_respects_static_size_limit,
             typename detail::binding<Arg>::on_wire_type...
           >::value,
-        UPCXX_STATIC_ASSERT_RPC_MSG(rpc)
+        UPCXXI_STATIC_ASSERT_RPC_MSG(rpc)
       );
 
       UPCXX_ASSERT_ALWAYS(
@@ -498,7 +498,7 @@ namespace upcxx {
   }
 
   template<typename Cxs, typename Fn, typename ...Arg>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto rpc(const team &tm, intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if cxs is not a completions type
     -> typename std::enable_if<
@@ -506,8 +506,8 @@ namespace upcxx {
          typename detail::rpc_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
        >::type {
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -518,7 +518,7 @@ namespace upcxx {
   }
   
   template<typename Cxs, typename Fn, typename ...Arg>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto rpc(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if cxs is not a completions type
     -> typename std::enable_if<
@@ -526,8 +526,8 @@ namespace upcxx {
          typename detail::rpc_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
        >::type {
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
@@ -539,7 +539,7 @@ namespace upcxx {
   
   // rpc: default completions variant
   template<typename Fn, typename ...Arg>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto rpc(const team &tm, intrank_t recipient, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if fn is a completions type
     -> typename std::enable_if<
@@ -547,8 +547,8 @@ namespace upcxx {
          typename detail::rpc_return_no_sfinae<Fn(Arg...), detail::operation_cx_as_future_t>::type
        >::type {
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
@@ -559,7 +559,7 @@ namespace upcxx {
   }
   
   template<typename Fn, typename ...Arg>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto rpc(intrank_t recipient, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if fn is a completions type
     -> typename std::enable_if<
@@ -567,8 +567,8 @@ namespace upcxx {
          typename detail::rpc_return_no_sfinae<Fn(Arg...), detail::operation_cx_as_future_t>::type
        >::type {
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 

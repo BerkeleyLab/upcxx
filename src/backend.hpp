@@ -19,7 +19,7 @@ namespace upcxx {
   }
   
   inline persona& master_persona() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return backend::master;
   }
  
@@ -28,7 +28,7 @@ namespace upcxx {
     void progress_internal();
   }
   inline void progress(progress_level level) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
 
     if (level == progress_level::user)
       detail::progress_user();
@@ -39,26 +39,26 @@ namespace upcxx {
   }
 
   inline bool in_progress() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::the_persona_tls.get_progressing() >= 0;
   }
   
   inline bool progress_required() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::the_persona_tls.progress_required();
   }
   inline bool progress_required(persona_scope &bottom) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::the_persona_tls.progress_required(bottom);
   }
   
   inline void discharge() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     while(upcxx::progress_required())
       upcxx::progress(progress_level::internal);
   }
   inline void discharge(persona_scope &ps) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     while(upcxx::progress_required(ps))
       upcxx::progress(progress_level::internal);
   }
@@ -71,7 +71,7 @@ namespace upcxx {
 namespace backend {
   // inclusive lower and exclusive upper bounds for local_team ranks
   extern intrank_t pshm_peer_lb_;
-  #if UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+  #if UPCXXI_ALL_RANKS_DEFINITELY_LOCAL
     constexpr intrank_t pshm_peer_lb = 0;
   #else
     static constexpr intrank_t const& pshm_peer_lb = pshm_peer_lb_;
@@ -213,7 +213,7 @@ namespace backend {
   
   inline bool rank_is_local(intrank_t r) {
     UPCXX_ASSERT(r >= 0 && r < backend::rank_n, "Invalid argument to rank_is_local: " << r);
-    UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
+    UPCXXI_ASSERT_VALID_DEFINITELY_LOCAL();
 
     return /*constexpr*/all_ranks_definitely_local || 
            std::uintptr_t(r) - std::uintptr_t(pshm_peer_lb) < std::uintptr_t(pshm_peer_n);
@@ -226,7 +226,7 @@ namespace backend {
       pshm_peer_lb <= rank && rank < pshm_peer_ub,
       "Rank "<<rank<<" is not local with current rank ("<<upcxx::rank_me()<<")."
     );
-    UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
+    UPCXXI_ASSERT_VALID_DEFINITELY_LOCAL();
 
     intrank_t peer = rank - pshm_peer_lb;
     std::uintptr_t u = raw + pshm_local_minus_remote[peer];
@@ -251,7 +251,7 @@ namespace backend {
       pshm_peer_lb <= rank && rank < pshm_peer_ub,
       "Rank "<<rank<<" is not local with current rank ("<<upcxx::rank_me()<<")."
     );
-    UPCXX_ASSERT_VALID_DEFINITELY_LOCAL();
+    UPCXXI_ASSERT_VALID_DEFINITELY_LOCAL();
     
     std::uintptr_t u = reinterpret_cast<std::uintptr_t>(addr);
     intrank_t peer = rank - pshm_peer_lb;

@@ -198,12 +198,12 @@ namespace upcxx {
         // the exchange operation on the producer thread who is trying to modify the tail.
         // Sadly neither PowerPC nor ARM guarantee a particular coherency block size
         // for LL/SC, so use something around the cache line size, which is likely "big enough".
-        #ifndef UPCXX_MPSC_PAD_SIZE
-        #define UPCXX_MPSC_PAD_SIZE 128
+        #ifndef UPCXXI_MPSC_PAD_SIZE
+        #define UPCXXI_MPSC_PAD_SIZE 128
         #endif
-        char pad1_[UPCXX_MPSC_PAD_SIZE-sizeof(std::atomic<T*>)];
+        char pad1_[UPCXXI_MPSC_PAD_SIZE-sizeof(std::atomic<T*>)];
         std::atomic<std::uintptr_t> tailp_xor_head_;
-        char pad2_[UPCXX_MPSC_PAD_SIZE-sizeof(std::uintptr_t)];
+        char pad2_[UPCXXI_MPSC_PAD_SIZE-sizeof(std::uintptr_t)];
         
       private:
         constexpr std::atomic<T*>* decode_tailp(std::uintptr_t u) const {

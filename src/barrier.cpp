@@ -9,10 +9,10 @@ using namespace std;
 // obsolete hand-rolled barrier removed post 2021.3.0 release
 
 void upcxx::barrier(const team &tm) {
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_MASTER();
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-  UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
  
   // memory fencing is handled inside gex_Coll_BarrierNB + gex_Event_Test
   //std::atomic_thread_fence(std::memory_order_release);
@@ -29,8 +29,8 @@ void upcxx::detail::barrier_async_inject(
     const team &tm,
     backend::gasnet::handle_cb *cb
   ) {
-  UPCXX_ASSERT_MASTER();
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     gex_Event_t e = gex_Coll_BarrierNB(backend::gasnet::handle_of(tm), 0);
     cb->handle = reinterpret_cast<std::uintptr_t>(e);

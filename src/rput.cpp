@@ -11,7 +11,7 @@ detail::rma_put_sync detail::rma_put(
     gasnet::handle_cb *src_cb,
     gasnet::handle_cb *op_cb
   ) {
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   if(sync_lb != rma_put_sync::op_now) {
     gex_Event_t src_h = GEX_EVENT_INVALID, *src_ph;
@@ -91,7 +91,7 @@ detail::rma_put_sync detail::rma_put<
     gasnet::handle_cb *op_cb
   );
 
-// only used when UPCXX_HAS_OPERATION_CX_AS_BLOCKING=1
+// only used when UPCXXI_HAS_OPERATION_CX_AS_BLOCKING=1
 template
 detail::rma_put_sync detail::rma_put<
   /*mode=*/detail::rma_put_sync::op_now

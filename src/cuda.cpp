@@ -10,7 +10,7 @@ using std::size_t;
 using std::uint64_t;
 
 #if UPCXX_CUDA_ENABLED
-#if UPCXX_CUDA_USE_MK
+#if UPCXXI_CUDA_USE_MK
   bool upcxx::cuda::use_mk() { return true; }
 #else
   bool upcxx::cuda::use_mk() { return false; }
@@ -121,7 +121,7 @@ namespace {
 
       throw upcxx::bad_segment_alloc("cuda_device", report_size, report_rank);
     } else {
-      #if UPCXX_CUDA_USE_MK
+      #if UPCXXI_CUDA_USE_MK
       gex_TM_t TM0 = upcxx::backend::gasnet::handle_of(upcxx::world()); UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
       if (st) {
         int ok;
@@ -184,10 +184,10 @@ GASNETT_COLD
 upcxx::cuda_device::cuda_device(int device):
   device_(device), heap_idx_(-1) {
 
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_ALWAYS_MASTER();
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-  UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_ALWAYS_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
 
   #if UPCXX_CUDA_ENABLED
     if (device != invalid_device_id) {
@@ -207,7 +207,7 @@ upcxx::cuda_device::cuda_device(int device):
       st->alloc_base = nullptr;
       st->segment_to_free = reinterpret_cast<CUdeviceptr>(nullptr);
 
-      #if UPCXX_CUDA_USE_MK
+      #if UPCXXI_CUDA_USE_MK
       {
         int ok;
         gex_TM_t TM0 = backend::gasnet::handle_of(upcxx::world()); UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
@@ -249,10 +249,10 @@ upcxx::cuda_device::~cuda_device() {
 
 GASNETT_COLD
 void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_ALWAYS_MASTER();
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-  UPCXX_ASSERT_COLLECTIVE_SAFE(eb);
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_ALWAYS_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
 
   backend::quiesce(upcxx::world(), eb);
 
@@ -271,7 +271,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
       UPCXX_ASSERT(st->alloc_base == &tombstone);
     }
 
-    #if UPCXX_CUDA_USE_MK
+    #if UPCXXI_CUDA_USE_MK
     // TODO: once they are provided, eventually will do:
     //   gex_Segment_Destroy()
     //   gex_MK_Destroy()
@@ -303,7 +303,7 @@ upcxx::cuda_device::device_id(detail::internal_only, int heap_idx) {
     UPCXX_ASSERT(id != invalid_device_id);
     return id;
   #else
-    UPCXX_FATAL_ERROR("Internal error on device_allocator::device_id()");
+    UPCXXI_FATAL_ERROR("Internal error on device_allocator::device_id()");
     return invalid_device_id;
   #endif
 }
@@ -363,7 +363,7 @@ detail::device_allocator_core<upcxx::cuda_device>::~device_allocator_core() {
     // The thread safety restriction of this call still applies when upcxx isn't
     // initialized, we just have no good way of asserting it so we conditionalize
     // on initialized().
-    UPCXX_ASSERT_ALWAYS_MASTER();
+    UPCXXI_ASSERT_ALWAYS_MASTER();
   }
 
   destroy();
