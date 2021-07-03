@@ -151,7 +151,7 @@ namespace upcxx {
   std::int64_t shared_segment_size();
   std::int64_t shared_segment_used();
   
-  void progress(progress_level level = progress_level::user);
+  inline void progress(progress_level level = progress_level::user);
   
   persona& master_persona();
   void liberate_master_persona();
@@ -209,12 +209,12 @@ namespace backend {
   struct heap_state {
     detail::device_allocator_base *alloc_base;
 
-  #if UPCXX_CUDA_ENABLED && UPCXX_MAXEPS > 1
-    static constexpr int max_heaps = UPCXX_MAXEPS;
+  #if UPCXX_CUDA_ENABLED && UPCXXI_MAXEPS > 1
+    static constexpr int max_heaps = UPCXXI_MAXEPS;
   #else
     static constexpr int max_heaps = 33;
   #endif
-    static_assert(max_heaps > 1, "bad value of UPCXX_MAXEPS");
+    static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
 
     enum class memory_kind : std::uint32_t { 
       host = 0x40514051, 
@@ -224,7 +224,7 @@ namespace backend {
     memory_kind kind() { return my_kind; }
 
   protected:
-    memory_kind my_kind; // serves as both tag and magic
+    memory_kind const my_kind; // serves as both tag and magic
     static heap_state *heaps[max_heaps];
     static int heap_count;
     static bool recycle;
@@ -233,7 +233,9 @@ namespace backend {
 
   public:
     static void init();
+    UPCXXI_ATTRIB_CONST
     static bool use_mk() { return use_mk_; }
+    UPCXXI_ATTRIB_CONST
     static bool bug4148_workaround() { return bug4148_workaround_; }
     static int alloc_index() {
       UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
@@ -307,8 +309,11 @@ namespace backend {
   template<progress_level level, typename Fn>
   void bcast_am_master(const team &tm, Fn &&fn);
   
+  UPCXXI_ATTRIB_PURE
   intrank_t team_rank_from_world(const team &tm, intrank_t rank);
+  UPCXXI_ATTRIB_PURE
   intrank_t team_rank_from_world(const team &tm, intrank_t rank, intrank_t otherwise);
+  UPCXXI_ATTRIB_PURE
   intrank_t team_rank_to_world(const team &tm, intrank_t peer);
 
   #ifndef UPCXX_ALL_RANKS_DEFINITELY_LOCAL
@@ -326,13 +331,17 @@ namespace backend {
                         ::upcxx::backend::pshm_peer_n == ::upcxx::backend::rank_n), \
                        "Invalid UPCXX_ALL_RANKS_DEFINITELY_LOCAL setting!");
 
-
+  UPCXXI_ATTRIB_CONST
   bool rank_is_local(intrank_t r);
   
+  UPCXXI_ATTRIB_PURE
   void* localize_memory(intrank_t rank, std::uintptr_t raw);
+  UPCXXI_ATTRIB_PURE
   void* localize_memory_nonnull(intrank_t rank, std::uintptr_t raw);
   
+  UPCXXI_ATTRIB_PURE
   std::tuple<intrank_t/*rank*/, std::uintptr_t/*raw*/> globalize_memory(void const *addr);
+  UPCXXI_ATTRIB_PURE
   std::tuple<intrank_t/*rank*/, std::uintptr_t/*raw*/> globalize_memory(void const *addr, std::tuple<intrank_t,std::uintptr_t> otherwise);
   std::uintptr_t globalize_memory_nonnull(intrank_t rank, void const *addr);
 }}
@@ -351,10 +360,12 @@ namespace backend {
 #define UPCXX_ASSERT_INIT() UPCXX_ASSERT_INIT_NAMED("the library call shown above")
 
 namespace upcxx {
+  UPCXXI_ATTRIB_CONST
   inline intrank_t rank_n() {
     UPCXX_ASSERT_INIT();
     return backend::rank_n;
   }
+  UPCXXI_ATTRIB_CONST
   inline intrank_t rank_me() {
     UPCXX_ASSERT_INIT();
     return backend::rank_me;

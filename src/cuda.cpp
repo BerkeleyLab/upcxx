@@ -17,6 +17,7 @@ using std::uint64_t;
 #endif
 
 namespace {
+  GASNETT_COLD
   detail::segment_allocator make_segment(int heap_idx, void *base, size_t size) {
     upcxx::cuda::device_state *st = heap_idx <= 0 ? nullptr :
                                     upcxx::cuda::device_state::get(heap_idx);
@@ -154,6 +155,7 @@ namespace {
 #endif
 
 #if UPCXX_CUDA_ENABLED
+GASNETT_COLD
 void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char *expr) {
   const char *errname, *errstr;
   cuGetErrorName(res, &errname);
@@ -165,6 +167,7 @@ void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char
   upcxx::detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
 }
 
+GASNETT_COLD
 void upcxx::cuda::curt_failed(cudaError_t res, const char *file, int line, const char *expr) {
   const char *errname, *errstr;
   errname = cudaGetErrorName(res);
@@ -177,6 +180,7 @@ void upcxx::cuda::curt_failed(cudaError_t res, const char *file, int line, const
 }
 #endif
 
+GASNETT_COLD
 upcxx::cuda_device::cuda_device(int device):
   device_(device), heap_idx_(-1) {
 
@@ -236,12 +240,14 @@ upcxx::cuda_device::cuda_device(int device):
   #endif
 }
 
+GASNETT_COLD
 upcxx::cuda_device::~cuda_device() {
   if(backend::init_count > 0) { // we don't assert on leaks after finalization
     UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::cuda_device must have destroy() called before destructor.");
   }
 }
 
+GASNETT_COLD
 void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_ALWAYS_MASTER();
@@ -303,10 +309,12 @@ upcxx::cuda_device::device_id(detail::internal_only, int heap_idx) {
 }
 
 // non-collective default constructor
+GASNETT_COLD
 detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core():
   detail::device_allocator_base(-1/*inactive*/, segment_allocator(nullptr, 0)) { }
 
 // collective constructor with a (possibly inactive) device
+GASNETT_COLD
 detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core(
     upcxx::cuda_device &dev, void *base, size_t size
   ):
@@ -327,6 +335,7 @@ detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core(
   #endif
 }
 
+GASNETT_COLD
 void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
   if (!is_active()) return;
 
@@ -348,6 +357,7 @@ void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
   heap_idx_ = -1; // deactivate
 }
 
+GASNETT_COLD
 detail::device_allocator_core<upcxx::cuda_device>::~device_allocator_core() {
   if(upcxx::initialized()) {
     // The thread safety restriction of this call still applies when upcxx isn't

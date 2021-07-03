@@ -16,6 +16,9 @@ raw_storage<team> detail::the_local_team;
 
 std::unordered_map<upcxx::detail::digest, void*> upcxx::detail::registry;
 
+static constexpr upcxx::detail::digest tombstone{~0ull, ~0ull};
+
+GASNETT_COLD
 team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
            intrank_t n, intrank_t me):
   backend::team_base(std::move(base)),
@@ -24,9 +27,11 @@ team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
   n_(n),
   me_(me) {
   
+  UPCXX_ASSERT(id_ != tombstone);
   detail::registry[id_] = this;
 }
 
+GASNETT_COLD
 team::team(team &&that):
   backend::team_base(std::move(that)),
   id_(that.id_),
@@ -36,13 +41,14 @@ team::team(team &&that):
 
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_MASTER();
-  UPCXX_ASSERT((that.id_ != detail::digest{~0ull, ~0ull}));
+  UPCXX_ASSERT(that.id_ != tombstone);
   
-  that.id_ = detail::digest{~0ull, ~0ull}; // the tombstone id value
+  that.id_ = tombstone;
   
   detail::registry[id_] = this;
 }
 
+GASNETT_COLD
 team::~team() {
   if(backend::init_count > 0) { // we don't assert on leaks after finalization
     if(this->handle != reinterpret_cast<uintptr_t>(GEX_TM_INVALID)) {
@@ -54,12 +60,14 @@ team::~team() {
   }
 }
 
+GASNETT_COLD
 team team::split(intrank_t color, intrank_t key) const {
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_MASTER();
   UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT(color >= 0 || color == color_none);
+  UPCXX_ASSERT(id_ != tombstone, "Invalid team in destroy()");
   
   gex_TM_t sub_tm = GEX_TM_INVALID;
   gex_TM_t *p_sub_tm = color == color_none ? nullptr : &sub_tm;
@@ -94,6 +102,7 @@ team team::split(intrank_t color, intrank_t key) const {
     );
 }
 
+GASNETT_COLD
 void team::destroy(entry_barrier eb) {
   UPCXX_ASSERT_INIT();
   UPCXX_ASSERT_MASTER();
@@ -101,10 +110,12 @@ void team::destroy(entry_barrier eb) {
   UPCXX_ASSERT_COLLECTIVE_SAFE(eb);
   UPCXX_ASSERT(this != &world(),      "team::destroy() is prohibited on team world()");
   UPCXX_ASSERT(this != &local_team(), "team::destroy() is prohibited on the local_team()");
+  UPCXX_ASSERT(id_ != tombstone,      "Invalid team in destroy()");
 
   team::destroy(detail::internal_only(), eb);
 }
 
+GASNETT_COLD
 void team::destroy(detail::internal_only, entry_barrier eb) {
   UPCXX_ASSERT_MASTER();
   
@@ -125,6 +136,6 @@ void team::destroy(detail::internal_only, entry_barrier eb) {
     upcxx::deallocate(scratch);
   }
   
-  if(id_ != detail::digest{~0ull, ~0ull})
-    detail::registry.erase(id_);
+  UPCXX_ASSERT(id_ != tombstone);
+  detail::registry.erase(id_);
 }

@@ -21,7 +21,7 @@
 
 struct T {
   static void show_stats(int line, char const *title, 
-                         int expected_ctors, int expected_copies, int expected_moves) UPCXX_NOINLINE;
+                         int expected_ctors, int expected_copies, int expected_moves) UTIL_ATTRIB_NOINLINE;
   static void reset_counts() { ctors = copies = moves = dtors = 0; }
 
   T() { ctors++; }
@@ -146,7 +146,7 @@ using upcxx::operation_cx;
 int target;
 dist_object<int> *ddob;
 
-void UPCXX_NOINLINE test_rpc1() {
+void UTIL_ATTRIB_NOINLINE test_rpc1() {
   // About the expected num of copies.
   // Now that backend::send_awaken_lpc can take a std::tuple
   // containing a reference to T and serialize from that place, it no
@@ -213,7 +213,7 @@ void UPCXX_NOINLINE test_rpc1() {
   SHOW("T const& -> future<T>", 2, 1, 3);
 
 }
-void UPCXX_NOINLINE test_rpc2() {
+void UTIL_ATTRIB_NOINLINE test_rpc2() {
   // now with dist_object
   dist_object<int> const &dob = *ddob;
 
@@ -257,7 +257,7 @@ void UPCXX_NOINLINE test_rpc2() {
   SHOW("dist_object + T const& -> future<T>", 2, 1, 3);
 
 }
-void UPCXX_NOINLINE test_rpc3() {
+void UTIL_ATTRIB_NOINLINE test_rpc3() {
   // returning references
 
   upcxx::rpc(target,
@@ -320,7 +320,7 @@ void UPCXX_NOINLINE test_rpc3() {
   SHOW("-> T const&", 1, 0, 1);
 
 }
-void UPCXX_NOINLINE test_rpc4() {
+void UTIL_ATTRIB_NOINLINE test_rpc4() {
   // function object
 
   {
@@ -345,7 +345,7 @@ void UPCXX_NOINLINE test_rpc4() {
   SHOW("(arg) NmNcFn& -> NmNcFn&", 3, 0, 3);
 
 }
-void UPCXX_NOINLINE test_rpc5() {
+void UTIL_ATTRIB_NOINLINE test_rpc5() {
   // rpc_ff
 
   upcxx::barrier();
@@ -419,7 +419,7 @@ upcxx::global_ptr<int> gp;
 upcxx::global_ptr<int> gp_local;
 int x = 0;
 int *lp = &x;
-void UPCXX_NOINLINE test_rput_rpc1() {
+void UTIL_ATTRIB_NOINLINE test_rput_rpc1() {
   // as_rpc
 
   { dist_object<upcxx::global_ptr<int>> dobj(upcxx::new_<int>(0));
@@ -492,7 +492,7 @@ void UPCXX_NOINLINE test_rput_rpc1() {
     SHOW("as_rpc(lambda, NmNcFn&)&& ->", 2, 0, 1);
 
 }
-void UPCXX_NOINLINE test_rput_rpc2() {
+void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
 
     {
       T t;
@@ -532,7 +532,7 @@ void UPCXX_NOINLINE test_rput_rpc2() {
     SHOW("as_rpc()|... T&& -> const T&", 2, 0, 3);
 
 }
-void UPCXX_NOINLINE test_rput_rpc3() {
+void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     {
       T t;
       auto cx = remote_cx::as_rpc([](const T&){ done=true; }, t) | operation_cx::as_future();
@@ -601,7 +601,7 @@ void UPCXX_NOINLINE test_rput_rpc3() {
     SHOW("...&|as_rpc()& T&& -> const T&", 2, 0, 3);
 
 }
-void UPCXX_NOINLINE test_vis_rpc() {
+void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     // VIS rput: as_rpc
     std::size_t sz = 1;
     std::pair<int *,size_t> lpp(lp,sz);
@@ -655,7 +655,7 @@ void UPCXX_NOINLINE test_vis_rpc() {
     SHOW("rput_strided: as_rpc() T&& -> const T&", 2, 0, 3);
 
 }
-void UPCXX_NOINLINE test_copy_rpc() {
+void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
     // copy: as_rpc
  
     {
@@ -748,7 +748,7 @@ void UPCXX_NOINLINE test_copy_rpc() {
     SHOW("copy-loopback: as_rpc() T&& -> const T&", 2, 0, 4);
 
 }
-void UPCXX_NOINLINE test_copy_rpc_cuda() {
+void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
 
   #if USE_CUDA
     upcxx::cuda_device dev(0);

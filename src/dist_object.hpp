@@ -34,6 +34,7 @@ namespace upcxx {
   public:
     dist_id() : dig_(detail::digest::zero()) {}
 
+    UPCXXI_ATTRIB_PURE
     dist_object<T>& here() const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(detail::registry[dig_],
@@ -55,6 +56,7 @@ namespace upcxx {
     }
     
     #define UPCXX_COMPARATOR(op) \
+      UPCXXI_ATTRIB_CONST \
       friend bool operator op(dist_id a, dist_id b) {\
         return a.dig_ op b.dig_; \
       }
@@ -86,7 +88,7 @@ namespace std {
 namespace upcxx {
   template<typename T>
   class dist_object {
-    const upcxx::team *tm_;
+    const upcxx::team * const tm_;
     detail::digest id_;
     T value_;
     

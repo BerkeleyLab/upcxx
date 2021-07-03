@@ -13,6 +13,7 @@
 
 ////////////////////////////////////////////////////////////////////////
 
+GASNETT_COLD
 void upcxx::detail::fatal_error(const char *msg, const char *title,
                                 const char *func, const char *file, int line) {
   std::stringstream ss;
@@ -69,11 +70,13 @@ void upcxx::detail::fatal_error(const char *msg, const char *title,
   #endif
 }
 
+GASNETT_COLD
 void upcxx::detail::assert_failed(const char *func, const char *file,
                                   int line, const char *msg) {
   upcxx::detail::fatal_error(msg, "assertion failure", func, file, line);
 }
 
+GASNETT_COLD
 upcxx::experimental::say::say(std::ostream &output, const char *prefix) : target(output) {
   if (!prefix) return;
   intrank_t myrank = -1;
@@ -93,6 +96,7 @@ upcxx::experimental::say::say(std::ostream &output, const char *prefix) : target
   ss << prefix;
 }
 
+GASNETT_COLD
 upcxx::experimental::say::~say() {
   std::string result = ss.str();
   if (!result.empty()) {

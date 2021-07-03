@@ -40,6 +40,7 @@ namespace upcxx {
   public:
     team_id() : dig_(detail::digest::zero()) {} // issue 343: disable trivial default construction
 
+    UPCXXI_ATTRIB_PURE
     team& here() const {
       UPCXX_ASSERT_INIT();
       team *presult = static_cast<team*>(detail::registry[dig_]);
@@ -89,7 +90,7 @@ namespace upcxx {
       backend::team_base /* defined by <backend>/runtime_fwd.hpp */ {
     detail::digest id_;
     std::uint64_t coll_counter_;
-    intrank_t n_, me_;
+    intrank_t const n_, me_;
     
   public:
     team(detail::internal_only, backend::team_base &&base, detail::digest id,
@@ -97,16 +98,20 @@ namespace upcxx {
     team(team const&) = delete;
     team(team &&that);
     ~team();
-    
+   
+    UPCXXI_ATTRIB_PURE
     intrank_t rank_n() const { UPCXX_ASSERT_INIT(); return n_; }
+    UPCXXI_ATTRIB_PURE
     intrank_t rank_me() const { UPCXX_ASSERT_INIT(); return me_; }
     
+    UPCXXI_ATTRIB_PURE
     intrank_t from_world(intrank_t rank) const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(), 
                    "team::from_world(rank) requires rank in [0, world().rank_n()-1] == [0, " << upcxx::rank_n()-1 << "], but given: " << rank);
       return backend::team_rank_from_world(*this, rank);
     }
+    UPCXXI_ATTRIB_PURE
     intrank_t from_world(intrank_t rank, intrank_t otherwise) const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(), 
@@ -114,6 +119,7 @@ namespace upcxx {
       return backend::team_rank_from_world(*this, rank, otherwise);
     }
     
+    UPCXXI_ATTRIB_PURE
     intrank_t operator[](intrank_t peer) const {
       UPCXX_ASSERT_INIT();
       UPCXX_ASSERT(peer >= 0 && peer < this->rank_n(), 
@@ -121,6 +127,7 @@ namespace upcxx {
       return backend::team_rank_to_world(*this, peer);
     }
     
+    UPCXXI_ATTRIB_PURE
     team_id id() const {
       return team_id{id_};
     }

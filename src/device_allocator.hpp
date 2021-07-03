@@ -138,6 +138,7 @@ namespace upcxx {
     }
 
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     global_ptr<T,Device::kind> to_global_ptr(typename Device::template pointer<T> p) const {
       UPCXX_ASSERT_INIT();
       if (p == Device::template null_pointer<T>()) return global_ptr<T,Device::kind>();
@@ -153,6 +154,7 @@ namespace upcxx {
 
     #if 0 // removed from spec
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     global_ptr<T,Device::kind> try_global_ptr(typename Device::template pointer<T> p) const {
       UPCXX_ASSERT_INIT();
       if (p == Device::template null_pointer<T>()) return global_ptr<T,Device::kind>();
@@ -170,6 +172,7 @@ namespace upcxx {
     #endif
     
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     static typename Device::id_type device_id(global_ptr<T,Device::kind> gp) {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(gp);
@@ -187,6 +190,7 @@ namespace upcxx {
     }
     
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     static typename Device::template pointer<T> local(global_ptr<T,Device::kind> gp) {
       UPCXX_ASSERT_INIT();
       UPCXX_GPTR_CHK(gp);

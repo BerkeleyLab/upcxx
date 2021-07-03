@@ -452,7 +452,7 @@ namespace backend {
   // This is true for any target rank on certain native conduits, 
   // and for local targets only on other conduits.
   #ifndef UPCXX_USE_NPAM
-    #if UPCXX_GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM || \
+    #if UPCXXI_NATIVE_NP_ALLOC_REQ_MEDIUM || \
         UPCXX_NETWORK_SMP /* PSHM always provides native NPAM, this improves static analysis */
       #define UPCXX_USE_NPAM 1
     #else
