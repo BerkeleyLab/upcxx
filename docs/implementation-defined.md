@@ -13,6 +13,11 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
   * `UPCXX_SPEC_VERSION`:
     An integer literal providing the revision of the UPC++ specification
     to which this implementation adheres. See the specification for the specified value.
+  * `UPCXX_KIND_CUDA`:
+    An integer literal providing the version number of the CUDA memory-kind
+    feature to which this implementation adheres, defined only when the library
+    is built with CUDA enabled. See the UPC++ specification for the specified
+    value.
 
   * `UPCXX_THREADMODE`:
     This is either undefined (for the default "seq" threadmode) or defined to
@@ -46,6 +51,21 @@ the macro to a non-zero value makes the default deferred (so that `as_future()`
 and `as_promise(p)` are equivalent to `as_defer_future()` and
 `as_defer_promise(p)`, respectively), while defining it to 0 makes the default
 eager.
+
+## Assertion Macros ##
+
+This implementation provides assertion macros to facilitate debugging on
+distributed systems. Unlike the standard `assert()` macro, the macros below
+print a backtrace and/or freeze to allow a debugger to be attached before
+aborting program execution.
+
+  * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:
+    If `test` evaluates to a false value, outputs `message` if provided and
+    diagnostic information to standard error, prints a backtrace and/or freezes
+    for debgger, and aborts execution by calling `std::abort()`.
+  * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:
+    In the "debug" codemode, provides the same behavior as
+    `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, does nothing.
 
 ## Experimental Features ##
 
@@ -114,7 +134,8 @@ consider adding them to the specification proper.
 
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
 are intended solely for internal use by the implementation (e.g.
-`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`).
+`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`). Similarly, all identifiers
+with the `UPCXXI` prefix are intended for internal use by the implementation.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 
