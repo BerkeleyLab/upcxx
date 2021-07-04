@@ -38,6 +38,7 @@ struct T {
   }
   T(T const &that) {
     check_op("copying");
+    that.check_op("copying from");
     copies++;
   }
   T(T &&that) {
