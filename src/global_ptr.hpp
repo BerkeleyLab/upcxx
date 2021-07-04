@@ -274,7 +274,7 @@ namespace upcxx {
     UPCXXI_COMPARE_OP(<=)
     UPCXXI_COMPARE_OP(>)
     UPCXXI_COMPARE_OP(>=)
-    #undef UPCXXI_COMAPRE_OP
+    #undef UPCXXI_COMPARE_OP
   
   public: //private!
     #if UPCXXI_MANY_KINDS
