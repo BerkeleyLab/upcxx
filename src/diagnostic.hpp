@@ -154,19 +154,19 @@ namespace detail {
 #endif
 
 // UPCXXI_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled
-// Auto-detection can be overridden by -DUPCXXI_USE_NODISCARD=1/0
-#ifndef UPCXXI_USE_NODISCARD
+// Auto-detection can be overridden by -DUPCXX_USE_NODISCARD=1/0
+#ifndef UPCXX_USE_NODISCARD
   // general case: trust __has_cpp_attribute when available
   // This *should* be sufficient for any C++11-compliant compiler
   #ifdef __has_cpp_attribute
     #if __has_cpp_attribute(nodiscard)
-      #define UPCXXI_USE_NODISCARD 1
+      #define UPCXX_USE_NODISCARD 1
     #endif
   #endif
   // exceptions:
   // (currently none in our supported compiler set)
-#endif // !defined(UPCXXI_USE_NODISCARD)
-#if UPCXXI_USE_NODISCARD
+#endif // !defined(UPCXX_USE_NODISCARD)
+#if UPCXX_USE_NODISCARD
   #define UPCXXI_NODISCARD [[nodiscard]]
 #else
   #define UPCXXI_NODISCARD 
