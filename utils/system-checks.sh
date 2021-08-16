@@ -440,16 +440,13 @@ platform_sanity_checks() {
             COMPILER_BAD=1
         elif echo "$CXXVERS" | egrep 'Apple (LLVM|clang) version ([8-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
             COMPILER_GOOD=1
-        elif echo "$CXXVERS" | egrep 'PGI Compilers and Tools'  > /dev/null ; then
-            if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
-               : # PrgEnv-pgi: currently neither GOOD nor BAD
-            elif egrep ' +(20\.[789]|20\.1[0-2]|2[1-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+        elif echo "$CXXVERS" | egrep '(PGI|NVIDIA) Compilers and Tools'  > /dev/null ; then
+            if egrep ' +20\.[5-8]-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                # Ex: "pgc++ (aka nvc++) 20.7-0 LLVM 64-bit target on x86-64 Linux -tp nehalem"
-               # 20.7 and up are known BAD
-               # TODO: update with end range before 2030
+               # Release 20.7 is known bad (see GASNet bug 4115).
+               # However, 20.4 (from PGI) and 20.9 (from Nvidia) are known good.
+               # We conservatively ban 20.[5-8] even though only 20.7 is known to exist.
                COMPILER_BAD=1
-               EXTRA_RECOMMEND='
-       As an exception to the above, PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported.'
             elif [[ "$ARCH,$KERNEL" = 'x86_64,Linux' ]] &&
                  egrep ' +(19|[2-9][0-9])\.[0-9]+-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                # Ex: "pgc++ 19.7-0 LLVM 64-bit target on x86-64 Linux -tp nehalem"
@@ -460,9 +457,16 @@ platform_sanity_checks() {
                # Ex: "pgc++ 18.10-0 linuxpower target on Linuxpower"
                # 18.10 and newer "GOOD" (no 18.x was released for x > 10)
                COMPILER_GOOD=1
+            elif [[ "$ARCH,$KERNEL" = 'aarch64,Linux' ]] ; then
+               : # Not yet claiming support on aarch64, but also not BAD
             else
                # Unsuported platform or version
                COMPILER_BAD=1
+            fi
+            if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
+               # PrgEnv-pgi: currently neither GOOD nor BAD due to lack of testing
+               # However, if logic above identified a bad version, we'll preserve that.
+               unset COMPILER_GOOD
             fi
         elif echo "$CXXVERS" | egrep 'IBM XL'  > /dev/null ; then
             COMPILER_BAD=1
@@ -525,10 +529,11 @@ platform_sanity_checks() {
 
         local RECOMMEND
         read -r -d '' RECOMMEND<<'EOF'
-We recommend one of the following C++ compilers (or any later versions):
-           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1, Intel C 17.0.2,
-                              Intel oneAPI compilers 2021.1.2
-           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10
+We recommend one of the following C++ compilers (or any later versions where no end-of-range is given):
+           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1 through 20.4 (inclusive),
+                              NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2
+           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10 through 20.4 (inclusive),
+                              NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0
            Cray XC systems:   PrgEnv-gnu with gcc/7.1.0 environment module loaded

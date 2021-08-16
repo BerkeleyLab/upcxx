@@ -24,8 +24,8 @@ The current release is known to work on the following configurations:
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
     - Intel C++ 17.0.2 or newer (with libstdc++ from g++ 6.4.0 or newer)    
     - Intel OneAPI compilers 2021.1.2 or newer (with libstdc++ from g++ 6.4.0 or newer)
-    - PGI C++ 19.1 or newer (with libstdc++ from g++ 6.4.0 or newer), except that
-      PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported  
+    - PGI C++ 19.1 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
+    - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
@@ -33,8 +33,8 @@ The current release is known to work on the following configurations:
 * Linux/ppc64le (aka IBM POWER little-endian) with one of the following compilers:
     - g++ 6.4.0 or newer
     - clang++ 5.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
-    - PGI C++ 18.10 or newer (with libstdc++ from g++ 6.4.0 or newer), except that
-      PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported  
+    - PGI C++ 18.10 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
+    - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
@@ -83,11 +83,6 @@ The current release is known to work on the following configurations:
       At this time we do not consider these compilers to be officially
       supported due to insufficient periodic automated testing.  
       The presence or absence of a warning from `configure` varies.
-    - NVIDIA HPC SDK compilers (aka PGI 20.7 and newer)  
-      The NVIDIA-branded host compilers (`pgc++` or `nvc++`) are NOT currently
-      supported due to critical bugs.
-      This refers to the host compilers previously branded as PGI, and should
-      not be confused with `nvcc`, the CUDA compiler driver.
 
 ### Miscellaneous software requirements:
 
