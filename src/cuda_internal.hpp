@@ -22,7 +22,7 @@
   namespace upcxx {
     namespace cuda {
       UPCXXI_ATTRIB_NORETURN
-      void cu_failed(CUresult res, const char *file, int line, const char *expr);
+      void cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose = false);
       UPCXXI_ATTRIB_NORETURN
       void curt_failed(cudaError_t res, const char *file, int line, const char *expr);
     }
@@ -33,6 +33,13 @@
       if_pf (res_xxxxxx != CUDA_SUCCESS) \
         ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
+
+  #define CU_CHECK_ALWAYS_VERBOSE(expr) do { \
+      CUresult res_xxxxxx = (expr); \
+      if_pf (res_xxxxxx != CUDA_SUCCESS) \
+        ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
+    } while(0)
+
 
   #define CURT_CHECK_ALWAYS(expr) do { \
       cudaError_t res_xxxxxx = (expr); \
