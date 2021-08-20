@@ -78,7 +78,7 @@ aborting program execution.
 
 ## Experimental Features ##
 
-Several undocumented, experimental features are implemented in the
+Several unspecified, experimental features are implemented in the
 `upcxx::experimental` namespace. These include the following:
 
   * broadcast of Serializable but non-TriviallySerializable values:
@@ -137,11 +137,13 @@ Several undocumented, experimental features are implemented in the
     };
     ```
 
-In addition, the implementation provides the following undocumented,
+In addition, the implementation provides the following unspecified,
 experimental macro:
 
-  * variant of `upcxx_memberof` for a type `T` that is not standard-layout, but
-    for which the compiler supports `offsetof`:
+  * variant of `upcxx_memberof` that can be used on a type `T` that is either
+    standard-layout (in which case the equivalent, specified `upcxx_memberof`
+    should be used instead), or for which the compiler conditionally supports
+    `offsetof`:
 
     ```c++
     // Macro: function template syntax used for clarity
