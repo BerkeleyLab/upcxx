@@ -155,6 +155,11 @@ namespace detail {
 
 // UPCXXI_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled
 // Auto-detection can be overridden by -DUPCXX_USE_NODISCARD=1/0
+// issue 491: Some compilers report __has_cpp_attribute(nodiscard) but
+// then issue warnings about use of the attribute under certain
+// conditions (e.g. clang with -pedantic -std=c++14). You can override
+// use of this attribute by #defining UPCXX_USE_NODISCARD=0 before
+// including upcxx.hpp
 #ifndef UPCXX_USE_NODISCARD
   // general case: trust __has_cpp_attribute when available
   // This *should* be sufficient for any C++11-compliant compiler

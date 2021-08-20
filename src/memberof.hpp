@@ -24,7 +24,7 @@
 // UPCXXI_ETYPE(global_ptr<E> gp) yields typename E for any expression gp
 #define UPCXXI_ETYPE(gp)  typename UPCXXI_GPTYPE(gp)::element_type
 
-// UPCXXI_ETYPE(global_ptr<E> gp) yields typename E* for any expression gp
+// UPCXXI_PTYPE(global_ptr<E> gp) yields typename E* for any expression gp
 #define UPCXXI_PTYPE(gp)  typename UPCXXI_GPTYPE(gp)::pointer_type
 
 // UPCXXI_KTYPE(global_ptr<E,kind> gp) yields kind for any expression gp
