@@ -77,13 +77,13 @@ namespace upcxx {
   ::upcxx::detail::decay_array_gp(::upcxx::global_ptr<T, Kind>(__VA_ARGS__))
 
 // UNSPECIFIED MACRO: This variant is not guaranteed by the spec
-// upcxx_memberof_unsafe(global_ptr<T> gp, field-designator)
+// upcxx_experimental_memberof_unsafe(global_ptr<T> gp, field-designator)
 // This variant assumes T is standard layout, or (C++17) is conditionally supported by the compiler for use in offsetof
 // Otherwise, the result is undefined behavior
-#define upcxx_memberof_unsafe(gp, FIELD) ( \
+#define upcxx_experimental_memberof_unsafe(gp, FIELD) ( \
   UPCXXI_STATIC_ASSERT(offsetof(UPCXXI_ETYPE(gp), FIELD) < sizeof(UPCXXI_ETYPE(gp)), \
                       "offsetof returned a bogus result. This is probably due to an unsupported non-standard-layout type"), \
-  UPCXXI_ASSERT_INIT_NAMED("upcxx_memberof_unsafe"), \
+  UPCXXI_ASSERT_INIT_NAMED("upcxx_experimental_memberof_unsafe"), \
   UPCXXI_DECAYED_GP(UPCXXI_MTYPE(gp, FIELD), UPCXXI_KTYPE(gp), \
     ::upcxx::detail::internal_only(), \
     (gp),\
@@ -96,8 +96,8 @@ namespace upcxx {
 #define upcxx_memberof(gp, FIELD) ( \
     UPCXXI_ASSERT_INIT_NAMED("upcxx_memberof"), \
     UPCXXI_STATIC_ASSERT(::std::is_standard_layout<UPCXXI_ETYPE(gp)>::value, \
-     "upcxx_memberof() requires a global_ptr to a standard-layout type. Perhaps you want upcxx_memberof_unsafe()?"), \
-     upcxx_memberof_unsafe(gp, FIELD) \
+     "upcxx_memberof() requires a global_ptr to a standard-layout type. Perhaps you want upcxx_experimental_memberof_unsafe()?"), \
+     upcxx_experimental_memberof_unsafe(gp, FIELD) \
   )
 
 // UPCXXI_UNIFORM_LOCAL_VTABLES: set to non-zero when the C++ vtables for user types (which live in an .rodata segment)

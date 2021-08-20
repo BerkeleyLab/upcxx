@@ -137,6 +137,20 @@ Several undocumented, experimental features are implemented in the
     };
     ```
 
+In addition, the implementation provides the following undocumented,
+experimental macro:
+
+  * variant of `upcxx_memberof` for a type `T` that is not standard-layout, but
+    for which the compiler supports `offsetof`:
+
+    ```c++
+    // Macro: function template syntax used for clarity
+    template<typename T, memory_kind Kind>
+    global_ptr<MType, Kind> upcxx_experimental_memberof_unsafe(
+        global_ptr<T, Kind> ptr, member-designator MEMBER
+    )
+    ```
+
 These features are subject to change or removal at any time. If you find any of
 them useful, please send an email to `upcxx@googlegroups.com`, and we will
 consider adding them to the specification proper.
@@ -144,7 +158,8 @@ consider adding them to the specification proper.
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
 are intended solely for internal use by the implementation (e.g.
 `upcxx::backend`, `upcxx::cuda`, `upcxx::detail`). Similarly, all identifiers
-with the `UPCXXI` prefix are intended for internal use by the implementation.
+with the `UPCXXI` or `upcxxi` prefix are intended for internal use by the
+implementation.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 

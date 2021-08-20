@@ -139,7 +139,7 @@ namespace perverse {
   template<typename C, typename GP>
   bool check(GP gp) {
     upcxx::global_ptr<C> gp_f1 = upcxx_memberof(gp, f1);
-    upcxx::global_ptr<C> gp_f2 = upcxx_memberof_unsafe(gp, f2);
+    upcxx::global_ptr<C> gp_f2 = upcxx_experimental_memberof_unsafe(gp, f2);
     return gp_f1 && gp_f2;
   }
   template<typename C, typename GP>
@@ -249,10 +249,10 @@ struct calc<T,false>{ static void _(upcxx::global_ptr<T> gp_o){
   //using tricksy_t = typename match_const<T>::tricksy_type;
 
   if (!upcxx::rank_me()) std::cout << "Testing non-standard layout..." << std::endl;
-  // upcxx_memberof_unsafe is deliberately unspecified
-  upcxx::global_ptr<char_t> gp_f0 = upcxx_memberof_unsafe(gp_o, f0);
-  upcxx::global_ptr<char_t> gp_f1 = upcxx_memberof_unsafe(gp_o, f1);
-  upcxx::global_ptr<char_t> gp_f2 = upcxx_memberof_unsafe(gp_o, f2);
+  // upcxx_experimental_memberof_unsafe is deliberately unspecified
+  upcxx::global_ptr<char_t> gp_f0 = upcxx_experimental_memberof_unsafe(gp_o, f0);
+  upcxx::global_ptr<char_t> gp_f1 = upcxx_experimental_memberof_unsafe(gp_o, f1);
+  upcxx::global_ptr<char_t> gp_f2 = upcxx_experimental_memberof_unsafe(gp_o, f2);
   assert(gp_f0 && gp_f1 && gp_f2);
   upcxx::global_ptr<char_t> gp_base = upcxx::reinterpret_pointer_cast<char_t>(gp_o);
   ssize_t d0 = gp_f0 - gp_base;
