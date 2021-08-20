@@ -60,12 +60,21 @@ print a backtrace and/or freeze to allow a debugger to be attached before
 aborting program execution.
 
   * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:
-    If `test` evaluates to a false value, outputs `message` if provided and
-    diagnostic information to standard error, prints a backtrace and/or freezes
-    for debgger, and aborts execution by calling `std::abort()`.
+    Evaluates `test`, and if the result is a false value, outputs `message` if
+    provided and diagnostic information to standard error, optionally prints a
+    backtrace and/or freezes for debugger, and aborts execution by calling
+    `std::abort()`. `message` may be any expression such that `std::cerr <<
+    message` is well-formed; for instance, it may itself include
+    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, “error! x = “
+    << x)`). `message` is only evaluated when `test` produces a false value. If
+    `message` is not provided, it defaults to a string that includes a textual
+    representation of `test`. In all cases, this macro expands to an expression
+    with type `void`.
   * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:
     In the "debug" codemode, provides the same behavior as
-    `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, does nothing.
+    `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, this macro expands to a
+    side-effect-free expression with type `void` that does not evaluate the
+    arguments.
 
 ## Experimental Features ##
 
