@@ -841,8 +841,8 @@ namespace upcxx {
     private: /* this macro requires "public" protection so we know what to restore */ \
       template<typename> \
       friend struct ::upcxx::detail::serialization_fields; \
-      template<typename upcxx_reserved_prefix_fields_not_values = ::std::true_type> \
-      auto upcxx_reserved_prefix_serialized_fields() \
+      template<typename upcxxi_reserved_prefix_fields_not_values = ::std::true_type> \
+      auto upcxxi_reserved_prefix_serialized_fields() \
         UPCXXI_RETURN_DECLTYPE(::std::forward_as_tuple(__VA_ARGS__)) { \
         return ::std::forward_as_tuple(__VA_ARGS__); \
       } \
@@ -851,13 +851,13 @@ namespace upcxx {
       private: \
         template<typename> \
         friend struct ::upcxx::detail::serialization_fields; \
-        template<typename upcxx_reserved_prefix_T> \
-        static upcxx_reserved_prefix_T* default_construct(void *spot) { \
-          return ::new(spot) upcxx_reserved_prefix_T; \
+        template<typename upcxxi_reserved_prefix_T> \
+        static upcxxi_reserved_prefix_T* default_construct(void *spot) { \
+          return ::new(spot) upcxxi_reserved_prefix_T; \
         } \
       public: \
-        template<typename upcxx_reserved_prefix_T> \
-        struct supply_type_please: ::upcxx::detail::serialization_fields<upcxx_reserved_prefix_T> {}; \
+        template<typename upcxxi_reserved_prefix_T> \
+        struct supply_type_please: ::upcxx::detail::serialization_fields<upcxxi_reserved_prefix_T> {}; \
       };
 
     template<typename T, typename U, bool fields_not_values,
@@ -869,7 +869,7 @@ namespace upcxx {
     }
     // Need to use "..." to accept a type since template instantiations can
     // contain commas not nested in parenthesis.
-    #define UPCXX_SERIALIZED_BASE(...) *::upcxx::detail::template serialized_fields_base_cast<__VA_ARGS__>(this, upcxx_reserved_prefix_fields_not_values())
+    #define UPCXX_SERIALIZED_BASE(...) *::upcxx::detail::template serialized_fields_base_cast<__VA_ARGS__>(this, upcxxi_reserved_prefix_fields_not_values())
 
     template<typename TupRefs,
              int i = 0,
@@ -964,21 +964,21 @@ namespace upcxx {
     
     template<typename T>
     struct serialization_fields {
-      using refs_tup_type = decltype(std::declval<T&>().upcxx_reserved_prefix_serialized_fields());
+      using refs_tup_type = decltype(std::declval<T&>().upcxxi_reserved_prefix_serialized_fields());
       
       static constexpr bool is_serializable = true;
 
       template<typename Prefix>
       static auto ubound(Prefix pre, T const &x)
         UPCXXI_RETURN_DECLTYPE(
-          serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxx_reserved_prefix_serialized_fields())
+          serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxxi_reserved_prefix_serialized_fields())
         ) {
-        return serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxx_reserved_prefix_serialized_fields());
+        return serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxxi_reserved_prefix_serialized_fields());
       }
 
       template<typename Writer>
       static void serialize(Writer &w, T const &x) {
-        serialization_fields_each<refs_tup_type>::serialize(w, const_cast<T&>(x).upcxx_reserved_prefix_serialized_fields());
+        serialization_fields_each<refs_tup_type>::serialize(w, const_cast<T&>(x).upcxxi_reserved_prefix_serialized_fields());
       }
 
       using deserialized_type = T;
@@ -989,7 +989,7 @@ namespace upcxx {
       static deserialized_type* deserialize(Reader &r, void *raw) {
         T *rec = T::upcxx_serialization::template default_construct<T>(raw);
         //T *rec = ::new(raw) T;
-        refs_tup_type refs_tup(rec->upcxx_reserved_prefix_serialized_fields());
+        refs_tup_type refs_tup(rec->upcxxi_reserved_prefix_serialized_fields());
         
         // Deserialization happens in two phases: 1) destruct, 2) read.
         // This avoids a tiny corner case when empty base subobjects can alias
@@ -1015,7 +1015,7 @@ namespace upcxx {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    /* The tuple returned from upcxx_reserved_prefix_serialized_values() will have rvalue-refs
+    /* The tuple returned from upcxxi_reserved_prefix_serialized_values() will have rvalue-refs
      * decayed to naked values but lvalue (const or not) preserved. Since the
      * expression generating each value has access to the object members but no
      * function locals or parameters, we know that any lvalues that come out
@@ -1028,8 +1028,8 @@ namespace upcxx {
     private: /* macro requires "public" protection so we know what to restore */ \
       template<typename> \
       friend struct ::upcxx::detail::serialization_values; \
-      template<typename upcxx_reserved_prefix_fields_not_values = ::std::false_type> \
-      auto upcxx_reserved_prefix_serialized_values() const \
+      template<typename upcxxi_reserved_prefix_fields_not_values = ::std::false_type> \
+      auto upcxxi_reserved_prefix_serialized_values() const \
         UPCXXI_RETURN_DECLTYPE(::upcxx::detail::forward_as_tuple_decay_rrefs(__VA_ARGS__)) { \
         return ::upcxx::detail::forward_as_tuple_decay_rrefs(__VA_ARGS__); \
       } \
@@ -1038,13 +1038,13 @@ namespace upcxx {
       private: \
         template<typename, int, int> \
         friend struct ::upcxx::detail::serialization_values_each; \
-        template<typename upcxx_reserved_prefix_T, typename ...upcxx_reserved_prefix_Arg> \
-        static upcxx_reserved_prefix_T* construct(void *spot, upcxx_reserved_prefix_Arg &&...arg) { \
-          return ::new(spot) upcxx_reserved_prefix_T(static_cast<upcxx_reserved_prefix_Arg&&>(arg)...); \
+        template<typename upcxxi_reserved_prefix_T, typename ...upcxxi_reserved_prefix_Arg> \
+        static upcxxi_reserved_prefix_T* construct(void *spot, upcxxi_reserved_prefix_Arg &&...arg) { \
+          return ::new(spot) upcxxi_reserved_prefix_T(static_cast<upcxxi_reserved_prefix_Arg&&>(arg)...); \
         } \
       public: \
-        template<typename upcxx_reserved_prefix_T> \
-        struct supply_type_please: ::upcxx::detail::serialization_values<upcxx_reserved_prefix_T> {}; \
+        template<typename upcxxi_reserved_prefix_T> \
+        struct supply_type_please: ::upcxx::detail::serialization_values<upcxxi_reserved_prefix_T> {}; \
       };
     
     template<typename TupRefs, int i=0, int n=std::tuple_size<TupRefs>::value>
@@ -1126,21 +1126,21 @@ namespace upcxx {
     template<typename T>
     struct serialization_values {
       // a tuple possibly mixed of lvalue refs and naked values
-      using refs_tup_type = decltype(std::declval<T&>().upcxx_reserved_prefix_serialized_values());
+      using refs_tup_type = decltype(std::declval<T&>().upcxxi_reserved_prefix_serialized_values());
 
       static constexpr bool is_serializable = true;
     
       template<typename Prefix>
       static auto ubound(Prefix pre, T const &x)
         UPCXXI_RETURN_DECLTYPE(
-          serialization_values_each<refs_tup_type>::ubound(pre, x.upcxx_reserved_prefix_serialized_values())
+          serialization_values_each<refs_tup_type>::ubound(pre, x.upcxxi_reserved_prefix_serialized_values())
         ) {
-        return serialization_values_each<refs_tup_type>::ubound(pre, x.upcxx_reserved_prefix_serialized_values());
+        return serialization_values_each<refs_tup_type>::ubound(pre, x.upcxxi_reserved_prefix_serialized_values());
       }
 
       template<typename Writer>
       static void serialize(Writer &w, T const &x) {
-        serialization_values_each<refs_tup_type>::serialize(w, x.upcxx_reserved_prefix_serialized_values());
+        serialization_values_each<refs_tup_type>::serialize(w, x.upcxxi_reserved_prefix_serialized_values());
       }
 
       using deserialized_type = T;
