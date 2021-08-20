@@ -298,8 +298,8 @@ namespace {
   size_t local_scratch_sz = 0;
   void  *local_scratch_ptr = nullptr;
 
-  bool upcxx_use_upc_alloc = true;
-  bool upcxx_upc_heap_coll = false;
+  bool upcxxi_use_upc_alloc = true;
+  bool upcxxi_upc_heap_coll = false;
 
   bool   shared_heap_isinit = false;
   void  *shared_heap_base = nullptr;
@@ -316,43 +316,43 @@ namespace {
     );
     UPCXX_ASSERT_ALWAYS(ok == GASNET_OK);
 
-    if (upcxx_upc_is_linked()) {
+    if (upcxxi_upc_is_linked()) {
       static bool firstcall = true;
       if (firstcall) {
         firstcall = false;
         // UPCXX_USE_UPC_ALLOC enables the use of the UPC allocator to replace our allocator
-        upcxx_use_upc_alloc = os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxx_upc_is_pthreads() || upcxx_use_upc_alloc));
-        if (upcxx_upc_is_pthreads() && !upcxx_use_upc_alloc) {
+        upcxxi_use_upc_alloc = os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxxi_upc_is_pthreads() || upcxxi_use_upc_alloc));
+        if (upcxxi_upc_is_pthreads() && !upcxxi_use_upc_alloc) {
           noise.warn() << "UPCXX_USE_UPC_ALLOC=no is not supported in UPC -pthreads mode. Forcing UPCXX_USE_UPC_ALLOC=yes";
-          upcxx_use_upc_alloc = 1;
+          upcxxi_use_upc_alloc = 1;
         }
-        if (!upcxx_use_upc_alloc) {
+        if (!upcxxi_use_upc_alloc) {
           // UPCXX_UPC_HEAP_COLL: selects the use of the collective or non-collective UPC shared heap to host the UPC++ allocator
-          upcxx_upc_heap_coll = os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxx_upc_heap_coll);
+          upcxxi_upc_heap_coll = os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxxi_upc_heap_coll);
         }
       }
       if (local_scratch_sz && !local_scratch_ptr) { 
         // allocate local scratch separately from the heap to ensure it persists
         // we do this before segment allocation to prevent fragmentation issues
-        if (upcxx_upc_is_pthreads()) // cannot use all_alloc with -pthreads
-             local_scratch_ptr = upcxx_upc_alloc(local_scratch_sz);
-        else local_scratch_ptr = upcxx_upc_all_alloc(local_scratch_sz);
+        if (upcxxi_upc_is_pthreads()) // cannot use all_alloc with -pthreads
+             local_scratch_ptr = upcxxi_upc_alloc(local_scratch_sz);
+        else local_scratch_ptr = upcxxi_upc_all_alloc(local_scratch_sz);
       }
-      if (upcxx_use_upc_alloc) {
+      if (upcxxi_use_upc_alloc) {
         shared_heap_base = segment_base;
         size = segment_size;
       } else {
-        if (upcxx_upc_heap_coll) shared_heap_base = upcxx_upc_all_alloc(size);
-        else shared_heap_base = upcxx_upc_alloc(size);
+        if (upcxxi_upc_heap_coll) shared_heap_base = upcxxi_upc_all_alloc(size);
+        else shared_heap_base = upcxxi_upc_alloc(size);
       }
     } else { // stand-alone UPC++
-      upcxx_use_upc_alloc = false;
+      upcxxi_use_upc_alloc = false;
       size = segment_size;
       shared_heap_base = segment_base;
     }
     shared_heap_sz = size;
 
-    if (!upcxx_use_upc_alloc) {
+    if (!upcxxi_use_upc_alloc) {
       // init dlmalloc to run over our piece of the segment
       segment_mspace_ = create_mspace_with_base(shared_heap_base, shared_heap_sz, 0);
       // ensure dlmalloc never tries to mmap anything from the system
@@ -377,7 +377,7 @@ namespace {
     }
     shared_heap_isinit = true;
 
-    if (!upcxx_upc_is_linked()) {
+    if (!upcxxi_upc_is_linked()) {
       if (local_scratch_sz && !local_scratch_ptr) { 
         local_scratch_ptr = gasnet::allocate(local_scratch_sz, GASNET_PAGESIZE, &gasnet::sheap_footprint_misc);
         UPCXX_ASSERT_ALWAYS(local_scratch_ptr);
@@ -425,15 +425,15 @@ void upcxx::experimental::destroy_heap() {
   if(gasnet::sheap_footprint_user.count != 0)
     noise.warn()<<"destroy_heap() called with "<<gasnet::sheap_footprint_user.count<<" live shared objects.";
 
-  if (upcxx_use_upc_alloc) { 
+  if (upcxxi_use_upc_alloc) { 
     noise.warn()<<"destroy_heap() is not supported for UPCXX_USE_UPC_ALLOC=yes" << endl;
   } else {
     destroy_mspace(segment_mspace_);
     segment_mspace_ = 0;
 
-    if (upcxx_upc_is_linked()) {
-      if (upcxx_upc_heap_coll) upcxx_upc_all_free(shared_heap_base);
-      else upcxx_upc_free(shared_heap_base);
+    if (upcxxi_upc_is_linked()) {
+      if (upcxxi_upc_heap_coll) upcxxi_upc_all_free(shared_heap_base);
+      else upcxxi_upc_free(shared_heap_base);
       shared_heap_base = nullptr;
     }
   }
@@ -457,7 +457,7 @@ void upcxx::experimental::restore_heap(void) {
   UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
   UPCXX_ASSERT_ALWAYS(shared_heap_sz > 0);
 
-  if (upcxx_use_upc_alloc) {
+  if (upcxxi_use_upc_alloc) {
     // unsupported/ignored
   } else {
     noise_log mute = noise_log::muted();
@@ -498,8 +498,8 @@ void upcxx::init() {
   gex_Client_t client;
   gex_Segment_t segment;
 
-  if (upcxx_upc_is_linked()) {
-    upcxx_upc_init(&client, &endpoint0, &world_tm);
+  if (upcxxi_upc_is_linked()) {
+    upcxxi_upc_init(&client, &endpoint0, &world_tm);
   } else { 
     // issue 419: we clear init across gex_Client_Init so that any processes forked 
     // inside this call don't appear to have an initialized UPC++ library, unless they 
@@ -528,7 +528,7 @@ void upcxx::init() {
 
   // Determine a bound on the max usable shared segment size
   size_t gasnet_max_segsize = gasnet_getMaxLocalSegmentSize();
-  if (upcxx_upc_is_linked()) {
+  if (upcxxi_upc_is_linked()) {
     gasnet_max_segsize = gasnet_getMaxGlobalSegmentSize();
     size_t upc_segment_pad = 16*1024*1024; // TODO: replace this hack
     UPCXX_ASSERT_ALWAYS(gasnet_max_segsize > upc_segment_pad);
@@ -587,7 +587,7 @@ void upcxx::init() {
   );
   
   // Create the GEX segment
-  if (upcxx_upc_is_linked()) {
+  if (upcxxi_upc_is_linked()) {
     if(backend::verbose_noise)
       noise.line() << "Activating interoperability support for the Berkeley UPC Runtime.";
   } else {
@@ -820,7 +820,7 @@ void upcxx::init() {
     );
     delete [] peer_ids;
 
-    if (!upcxx_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
+    if (!upcxxi_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
       gex_TM_SetCData(local_tm, local_scratch_ptr );
   }
   
@@ -880,7 +880,7 @@ void init_localheap_tables(void) {
     local_vbase = reinterpret_cast<char*>(local_vbase_vp);
     UPCXX_ASSERT_ALWAYS(owner_vbase && local_vbase && size);
 
-    if (upcxx_upc_is_linked() && !upcxx_use_upc_alloc) { 
+    if (upcxxi_upc_is_linked() && !upcxxi_use_upc_alloc) { 
     #if UPCXXI_STRICT_SEGMENT // this logic prevents UPCR shared objects from passing upcxx::try_global_ptr
       // We have the GEX segment info for the local peer, but
       // the UPC++ shared heap is a subset of the GEX segment.
@@ -1038,7 +1038,7 @@ void upcxx::finalize() {
     #if 0 // local_team scratch is no longer credited as a user allocation
     if(gasnet::handle_of(detail::the_local_team.value()) !=
        gasnet::handle_of(detail::the_world_team.value())
-       && !upcxx_upc_is_linked())
+       && !upcxxi_upc_is_linked())
        live_local -= 1; // minus local_team scratch
     #endif
     
@@ -1056,11 +1056,11 @@ void upcxx::finalize() {
   { // Tear down local_team
     if(gasnet::handle_of(detail::the_local_team.value()) !=
        gasnet::handle_of(detail::the_world_team.value())) {
-       if (upcxx_upc_is_linked()) {
+       if (upcxxi_upc_is_linked()) {
          // local_tm scratch has special handling in UPC mode
          if (local_scratch_ptr) { 
-           if (upcxx_upc_is_pthreads()) upcxx_upc_free(local_scratch_ptr);
-           else upcxx_upc_all_free(local_scratch_ptr);
+           if (upcxxi_upc_is_pthreads()) upcxxi_upc_free(local_scratch_ptr);
+           else upcxxi_upc_all_free(local_scratch_ptr);
            local_scratch_ptr = nullptr;
          }
        }
@@ -1139,12 +1139,12 @@ void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
   void *p;
-  if (upcxx_use_upc_alloc) {
+  if (upcxxi_use_upc_alloc) {
     // must overallocate and pad to ensure alignment
     UPCXX_ASSERT(alignment < 1U<<31);
     alignment = std::max(alignment, (size_t)16);
     UPCXX_ASSERT((alignment & (alignment-1)) == 0); // assumed to be power-of-two
-    uintptr_t base = (uintptr_t)upcxx_upc_alloc(size+alignment);
+    uintptr_t base = (uintptr_t)upcxxi_upc_alloc(size+alignment);
     uintptr_t user = (base+alignment) & ~(alignment-1);
     uintptr_t pad = (user - base);
     UPCXX_ASSERT(pad >= 16 && pad <= alignment);
@@ -1184,14 +1184,14 @@ void gasnet::deallocate(void *p, sheap_footprint_t *foot) {
   
   if_pf (!p) return;
   
-  if (upcxx_use_upc_alloc) {
+  if (upcxxi_use_upc_alloc) {
     // parse alignment header to recover original base ptr
     uintptr_t user = reinterpret_cast<uintptr_t>(p);
     UPCXX_ASSERT((user & 0x3) == 0);
     uint64_t pad = *(reinterpret_cast<uint64_t*>(user-8));
     uint64_t foot_size = *(reinterpret_cast<uint64_t*>(user-16));
     uintptr_t base = user-pad;
-    upcxx_upc_free(reinterpret_cast<void *>(base));
+    upcxxi_upc_free(reinterpret_cast<void *>(base));
     foot->bytes -= foot_size;
     foot->count -= 1;
   } else {
@@ -1428,7 +1428,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
       gex_TM_t tm = GEX_TM_INVALID;
       if (heap_idx == 0) { // host memory segment
         if (rank == backend::rank_me // optimization: local device, bounds are trivially available
-            && !upcxx_upc_is_linked()) {  // avoid complications with UPCXX_USE_UPC_ALLOC=0
+            && !upcxxi_upc_is_linked()) {  // avoid complications with UPCXX_USE_UPC_ALLOC=0
           owner_vbase = shared_heap_base;
           size = shared_heap_sz;
         } else tm = world_tm; // not this process, ask GASNet
