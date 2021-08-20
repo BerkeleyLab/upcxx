@@ -49,6 +49,8 @@ Infrastructure changes:
   MPI-compatible (wrapper) compiler rather than deferring discovery of the
   problem until `make check`, `make test_install` or even to user application
   link time.
+* The "NVIDIA HPC SDK" (or "nvhpc") compiler family is now supported on
+  x86_64 and ppc64le hosts for version 20.9 and newer.
 
 Notable bug fixes:
 
