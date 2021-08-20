@@ -14,9 +14,9 @@
 #include <upcxx/backend/gasnet/upc_link.h>
 #include "bupc_tentative.h"
 
-static gex_Rank_t upcxxi_upc_rank_me = GEX_RANK_INVALID;
-static gex_Rank_t upcxxi_upc_rank_n = GEX_RANK_INVALID;
-static int upcxxi_upc_is_init = 0;
+static gex_Rank_t upc_rank_me = GEX_RANK_INVALID;
+static gex_Rank_t upc_rank_n = GEX_RANK_INVALID;
+static int upc_is_init = 0;
 static int upc_is_pthreads = 0;
 
 extern int upcxxi_upc_is_linked(void) {
@@ -45,7 +45,7 @@ extern void upcxxi_upc_init(
                 gex_TM_t               *tm_p
             ) {
   assert(upcxxi_upc_is_linked());
-  assert(!upcxxi_upc_is_init);
+  assert(!upc_is_init);
 
   // Query UPCR configuration information, to check compatibility
   const char *upcr_config_str = NULL;
@@ -72,17 +72,17 @@ extern void upcxxi_upc_init(
   gasnet_QueryGexObjects(client_p, ep_p, tm_p, NULL);
   assert(gex_Client_QueryFlags(*client_p) & GEX_FLAG_USES_GASNET1);
 
-  upcxxi_upc_rank_me = gex_TM_QueryRank(*tm_p);
-  upcxxi_upc_rank_n = gex_TM_QuerySize(*tm_p);
-  assert(upcxxi_upc_rank_n > 0);
-  assert(upcxxi_upc_rank_me < upcxxi_upc_rank_n);
+  upc_rank_me = gex_TM_QueryRank(*tm_p);
+  upc_rank_n = gex_TM_QuerySize(*tm_p);
+  assert(upc_rank_n > 0);
+  assert(upc_rank_me < upc_rank_n);
 
-  upcxxi_upc_is_init = 1;
+  upc_is_init = 1;
 }
 
 extern void *upcxxi_upc_alloc(size_t sz) {
   assert(upcxxi_upc_is_linked());
-  assert(upcxxi_upc_is_init);
+  assert(upc_is_init);
 
   void *ptr = bupc_tentative_alloc(sz);
   assert(ptr); // UPCR allocation failures are fatal
@@ -91,10 +91,10 @@ extern void *upcxxi_upc_alloc(size_t sz) {
 
 extern void *upcxxi_upc_all_alloc(size_t sz) {
   assert(upcxxi_upc_is_linked());
-  assert(upcxxi_upc_is_init);
+  assert(upc_is_init);
   assert(!upc_is_pthreads);
 
-  void *ptr = bupc_tentative_all_alloc(upcxxi_upc_rank_n, sz);
+  void *ptr = bupc_tentative_all_alloc(upc_rank_n, sz);
   assert(ptr); // UPCR allocation failures are fatal
   return ptr;
 }
@@ -102,7 +102,7 @@ extern void *upcxxi_upc_all_alloc(size_t sz) {
 
 extern void upcxxi_upc_free(void *ptr) {
   assert(upcxxi_upc_is_linked());
-  assert(upcxxi_upc_is_init);
+  assert(upc_is_init);
 
   if (upc_is_pthreads) { // need to lookup current thread
     if (bupc_tentative_version_major > 1 || 
@@ -118,13 +118,13 @@ extern void upcxxi_upc_free(void *ptr) {
       bupc_tentative_free(ptr, bupc_tentative_mythread());
     }
   } else {
-    bupc_tentative_free(ptr, upcxxi_upc_rank_me);
+    bupc_tentative_free(ptr, upc_rank_me);
   }
 }
 
 extern void upcxxi_upc_all_free(void *ptr) {
   assert(upcxxi_upc_is_linked());
-  assert(upcxxi_upc_is_init);
+  assert(upc_is_init);
   assert(!upc_is_pthreads);
 
   bupc_tentative_all_free(ptr, 0);
