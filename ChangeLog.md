@@ -5,7 +5,7 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### 2021.07.01: Snapshot 2021.3.6
+### 2021.XX.YY: PENDING
 
 This is an unofficial snapshot that is being provided to stakeholders on a limited
 basis to preview changes to appear in a forthcoming production release.
@@ -31,6 +31,8 @@ General features/enhancements: (see specification and programmer's guide for ful
 * The following future operations are now permitted before UPC++ initialization:
   `make_future()`, `to_future()`, `when_all()`, assignment and copy/move
   constructors.
+* Added implementation-defined macros `UPCXX_ASSERT` and `UPCXX_ASSERT_ALWAYS`
+* New `UPCXX_KIND_CUDA` feature macro indicates the presence of CUDA support.
 
 Infrastructure changes:
 
@@ -58,7 +60,8 @@ Notable bug fixes:
   objects that have empty `UPCXX_SERIALIZED_{FIELDS,VALUES}`
 * issue #477: `copy(remote_cx::as_rpc)` may invoke callback in the wrong context
 * issue #479: intermittent lpc-stress/opt failures on ARM64
-* issue #482: SEQ mode incorrectly requires master as current_persona for shared allocation
+* issue #482: SEQ mode incorrectly requires master as `current_persona` for shared allocation
+* issue #487: Renaming unspecified internal `UPCXX_` macros and identifiers
 * issue #488: Configure-time failure when mixing GCC + Intel
 
 This library snapshot conforms to the
@@ -74,7 +77,11 @@ Breaking changes:
   `as_defer_future()`/`as_defer_promise()`, or on a translation-unit basis by
   defining the `UPCXX_DEFER_COMPLETION` macro to 1 prior to including
   `upcxx/upcxx.hpp`.
-
+* Many unspecified macros and identifiers that are defined by the public headers
+  have been renamed from a `UPCXX_` prefix to `UPCXXI_`. This naming change reflects
+  the fact these undocumented tokens are INTERNAL to the implementation and carry
+  no guarantee of stability or functionality. Users are strongly advised to avoid 
+  direct reference to any such interfaces.
 
 ### 2021.03.31: Release 2021.3.0
 
