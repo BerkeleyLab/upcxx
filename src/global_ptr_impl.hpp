@@ -1,4 +1,4 @@
-#ifndef UPCXX_IN_GLOBAL_PTR_HPP
+#ifndef UPCXXI_IN_GLOBAL_PTR_HPP
 #error This header is not meant to be included directly. Please use #include <upcxx/upcxx.hpp>
 #endif
 
@@ -9,10 +9,10 @@
                   "global_ptr<T> does not support reference types as T");
 
     global_ptr operator+=(std::ptrdiff_t diff) {
-      if (diff) UPCXX_GPTR_CHK_NONNULL(*this);
-      else      UPCXX_GPTR_CHK(*this);
-      this->UPCXX_INTERNAL_ONLY(raw_ptr_) += diff;
-      UPCXX_GPTR_CHK(*this);
+      if (diff) UPCXXI_GPTR_CHK_NONNULL(*this);
+      else      UPCXXI_GPTR_CHK(*this);
+      this->UPCXXI_INTERNAL_ONLY(raw_ptr_) += diff;
+      UPCXXI_GPTR_CHK(*this);
       return *this;
     }
     friend global_ptr operator+(global_ptr a, int b) { return a += (ptrdiff_t)b; }
@@ -30,10 +30,10 @@
     friend global_ptr operator+(unsigned long long b, global_ptr a) { return a += (ptrdiff_t)b; }
 
     global_ptr operator-=(std::ptrdiff_t diff) {
-      if (diff) UPCXX_GPTR_CHK_NONNULL(*this);
-      else      UPCXX_GPTR_CHK(*this);
-      this->UPCXX_INTERNAL_ONLY(raw_ptr_) -= diff;
-      UPCXX_GPTR_CHK(*this);
+      if (diff) UPCXXI_GPTR_CHK_NONNULL(*this);
+      else      UPCXXI_GPTR_CHK(*this);
+      this->UPCXXI_INTERNAL_ONLY(raw_ptr_) -= diff;
+      UPCXXI_GPTR_CHK(*this);
       return *this;
     }
     friend global_ptr operator-(global_ptr a, int b) { return a -= (ptrdiff_t)b; }

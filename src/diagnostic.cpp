@@ -1,10 +1,10 @@
 #include <upcxx/diagnostic.hpp>
 
-#ifdef UPCXX_BACKEND
+#ifdef UPCXXI_BACKEND
   #include <upcxx/backend_fwd.hpp>
 #endif
 
-#if UPCXX_BACKEND_GASNET
+#if UPCXXI_BACKEND_GASNET
   #include <upcxx/backend/gasnet/runtime_internal.hpp>
 #endif
 
@@ -21,14 +21,14 @@ void upcxx::detail::fatal_error(const char *msg, const char *title,
   ss << std::string(70, '/') << '\n';
   if (!title) title = "fatal error";
   ss << "UPC++ " << title << ":\n";
-  #ifdef UPCXX_BACKEND
+  #ifdef UPCXXI_BACKEND
     ss << " on process ";
     if (upcxx::backend::rank_n > 0 && upcxx::backend::rank_me < upcxx::backend::rank_n) {
       ss << upcxx::backend::rank_me;
     } else { // pre-init or after memory corruption
       ss << "*unknown*";
     }
-    #if UPCXX_BACKEND_GASNET
+    #if UPCXXI_BACKEND_GASNET
       ss << " (" << gasnett_gethostname() << ")";
     #endif
     ss << '\n';
@@ -48,7 +48,7 @@ void upcxx::detail::fatal_error(const char *msg, const char *title,
     ss << '\n' << msg << '\n';
   }
   
-  #if UPCXX_BACKEND_GASNET
+  #if UPCXXI_BACKEND_GASNET
     if(0 == gasnett_getenv_int_withdefault("GASNET_FREEZE_ON_ERROR", 0, 0)) {
       ss << "\n"
         "To have UPC++ freeze during these errors so you can attach a debugger,\n"
@@ -58,7 +58,7 @@ void upcxx::detail::fatal_error(const char *msg, const char *title,
 
   ss << std::string(70, '/') << '\n';
   
-  #if UPCXX_BACKEND_GASNET
+  #if UPCXXI_BACKEND_GASNET
     #ifdef gasnett_fatalerror_nopos
       gasnett_fatalerror_nopos("\n%s", ss.str().c_str());
     #else
@@ -80,7 +80,7 @@ GASNETT_COLD
 upcxx::experimental::say::say(std::ostream &output, const char *prefix) : target(output) {
   if (!prefix) return;
   intrank_t myrank = -1;
-  #ifdef UPCXX_BACKEND
+  #ifdef UPCXXI_BACKEND
     if (upcxx::initialized()) myrank = upcxx::rank_me();
   #endif
   std::unique_ptr<char[]> buf;

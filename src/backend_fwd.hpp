@@ -1,24 +1,24 @@
 #ifndef _f93ccf7a_35a8_49c6_b7b2_55c3c1a9640c
 #define _f93ccf7a_35a8_49c6_b7b2_55c3c1a9640c
 
-#ifndef UPCXX_BACKEND_GASNET_SEQ
-  #define UPCXX_BACKEND_GASNET_SEQ 0
+#ifndef UPCXXI_BACKEND_GASNET_SEQ
+  #define UPCXXI_BACKEND_GASNET_SEQ 0
 #endif
 
-#ifndef UPCXX_BACKEND_GASNET_PAR
-  #define UPCXX_BACKEND_GASNET_PAR 0
+#ifndef UPCXXI_BACKEND_GASNET_PAR
+  #define UPCXXI_BACKEND_GASNET_PAR 0
 #endif
 
-#define UPCXX_BACKEND_GASNET (UPCXX_BACKEND_GASNET_SEQ | UPCXX_BACKEND_GASNET_PAR)
-#if UPCXX_BACKEND_GASNET && !UPCXX_BACKEND
-#error Inconsistent UPCXX_BACKEND definition!
+#define UPCXXI_BACKEND_GASNET (UPCXXI_BACKEND_GASNET_SEQ | UPCXXI_BACKEND_GASNET_PAR)
+#if UPCXXI_BACKEND_GASNET && !UPCXXI_BACKEND
+#error Inconsistent UPCXXI_BACKEND definition!
 #endif
 
 /* This header declares some core user-facing API to break include
  * cycles with headers included by the real "backend.hpp". This header
  * does not pull in the implementation of what it exposes, so you can't
  * use anything that has a runtime analog unless guarded by a:
- *   #ifdef UPCXX_BACKEND
+ *   #ifdef UPCXXI_BACKEND
  */
 
 #include <upcxx/future/fwd.hpp>
@@ -41,9 +41,9 @@
 #define UPCXX_MAX_RPC_ARG_SIZE 512 // user-tunable default
 #endif
 
-#define UPCXX_STATIC_ASSERT_VALUE_SIZE(T, fnname) \
+#define UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, fnname) \
   static_assert(sizeof(T) <= UPCXX_MAX_VALUE_SIZE, \
-    "This program is attempting to pass an object with a large static type (over " UPCXX_STRINGIFY(UPCXX_MAX_VALUE_SIZE) " bytes) " \
+    "This program is attempting to pass an object with a large static type (over " UPCXXI_STRINGIFY(UPCXX_MAX_VALUE_SIZE) " bytes) " \
     "to the by-value overload of upcxx::" #fnname ". This is ill-advised because the by-value overload is " \
     "designed and tuned for small scalar values, and will impose significant data copy overheads " \
     "(and possibly program stack overflow) when used with larger types. Please use the bulk upcxx::" \
@@ -60,10 +60,10 @@ namespace upcxx { namespace detail {
     static constexpr bool value = true;
   };
 }}
-#define UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE(fnname, alternate, ...) \
+#define UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE(fnname, alternate, ...) \
   static_assert(::upcxx::detail::type_respects_value_size_limit<__VA_ARGS__>::value, \
     "This program is calling upcxx::" fnname " to request the UPC++ library return an object by-value that has "\
-    "a large static type (over " UPCXX_STRINGIFY(UPCXX_MAX_VALUE_SIZE) " bytes). " \
+    "a large static type (over " UPCXXI_STRINGIFY(UPCXX_MAX_VALUE_SIZE) " bytes). " \
     "This is ill-advised because the by-value return of this function is " \
     "designed and tuned for small scalar values, and will impose significant data copy overheads " \
     "(and possibly program stack overflow) when used with larger types. " \
@@ -77,8 +77,8 @@ namespace upcxx { namespace detail {
     static constexpr bool value = sizeof(T) <= UPCXX_MAX_RPC_ARG_SIZE;
   };
 }}
-#define UPCXX_STATIC_ASSERT_RPC_MSG(fnname) \
-    "This program is attempting to pass an object with a large static type (over " UPCXX_STRINGIFY(UPCXX_MAX_RPC_ARG_SIZE) " bytes) " \
+#define UPCXXI_STATIC_ASSERT_RPC_MSG(fnname) \
+    "This program is attempting to pass an object with a large static type (over " UPCXXI_STRINGIFY(UPCXX_MAX_RPC_ARG_SIZE) " bytes) " \
     "to upcxx::" #fnname ". This is ill-advised because RPC is tuned for top-level argument objects that provide " \
     "fast move operations, and will impose significant data copy overheads (and possibly program stack overflow) " \
     "when used with larger types. Please consider instead passing a Serializable container for your large object, " \
@@ -111,10 +111,10 @@ namespace upcxx {
       explicit constexpr internal_only() {}
     };
 
-    #define UPCXX_CONCAT_(a, b) a ## b
-    #define UPCXX_CONCAT(a, b) UPCXX_CONCAT_(a, b)
+    #define UPCXXI_CONCAT_(a, b) a ## b
+    #define UPCXXI_CONCAT(a, b) UPCXXI_CONCAT_(a, b)
     // Macro for members that are intended to be private.
-    #define UPCXX_INTERNAL_ONLY(name) UPCXX_CONCAT(private_detail_do_not_use_, name)
+    #define UPCXXI_INTERNAL_ONLY(name) UPCXXI_CONCAT(private_detail_do_not_use_, name)
   }
     
   class persona;
@@ -141,7 +141,7 @@ namespace upcxx {
   intrank_t rank_n();
   intrank_t rank_me();
  
-  UPCXX_NODISCARD 
+  UPCXXI_NODISCARD 
   void* allocate(std::size_t size,
                  std::size_t alignment = alignof(std::max_align_t));
   void deallocate(void *p);
@@ -177,7 +177,7 @@ namespace upcxx {
 ////////////////////////////////////////////////////////////////////////////////
 // Backend API:
 
-#if UPCXX_BACKEND_GASNET_PAR
+#if UPCXXI_BACKEND_GASNET_PAR
   #include <upcxx/backend/gasnet/handle_cb.hpp>
 #endif
 
@@ -198,7 +198,7 @@ namespace backend {
   //   1. trivially destructible.
   //   2. constexpr constructible equivalent to zero-initialization.
   struct persona_state {
-    #if UPCXX_BACKEND_GASNET_PAR
+    #if UPCXXI_BACKEND_GASNET_PAR
       // personas carry their list of oustanding gasnet handles
       gasnet::handle_cb_queue hcbs;
     #else
@@ -209,7 +209,7 @@ namespace backend {
   struct heap_state {
     detail::device_allocator_base *alloc_base;
 
-  #if UPCXX_CUDA_ENABLED && UPCXXI_MAXEPS > 1
+  #if UPCXXI_CUDA_ENABLED && UPCXXI_MAXEPS > 1
     static constexpr int max_heaps = UPCXXI_MAXEPS;
   #else
     static constexpr int max_heaps = 33;
@@ -316,20 +316,20 @@ namespace backend {
   UPCXXI_ATTRIB_PURE
   intrank_t team_rank_to_world(const team &tm, intrank_t peer);
 
-  #ifndef UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+  #ifndef UPCXXI_ALL_RANKS_DEFINITELY_LOCAL
   // smp-conduit statically has exactly one local_team()
-  #define UPCXX_ALL_RANKS_DEFINITELY_LOCAL UPCXX_NETWORK_SMP
+  #define UPCXXI_ALL_RANKS_DEFINITELY_LOCAL UPCXX_NETWORK_SMP
   #endif
-  #if UPCXX_ALL_RANKS_DEFINITELY_LOCAL
+  #if UPCXXI_ALL_RANKS_DEFINITELY_LOCAL
     constexpr bool all_ranks_definitely_local = true;
   #else
     constexpr bool all_ranks_definitely_local = false;
   #endif
-  #define UPCXX_ASSERT_VALID_DEFINITELY_LOCAL() \
+  #define UPCXXI_ASSERT_VALID_DEFINITELY_LOCAL() \
           UPCXX_ASSERT(!::upcxx::backend::all_ranks_definitely_local || \
                        (::upcxx::backend::pshm_peer_lb_ == 0 && \
                         ::upcxx::backend::pshm_peer_n == ::upcxx::backend::rank_n), \
-                       "Invalid UPCXX_ALL_RANKS_DEFINITELY_LOCAL setting!");
+                       "Invalid UPCXXI_ALL_RANKS_DEFINITELY_LOCAL setting!");
 
   UPCXXI_ATTRIB_CONST
   bool rank_is_local(intrank_t r);
@@ -349,25 +349,25 @@ namespace backend {
 ////////////////////////////////////////////////////////////////////////
 // Public API implementations:
 
-#if UPCXX_BACKEND
-  #define UPCXX_ASSERT_INIT_NAMED(fnname) \
+#if UPCXXI_BACKEND
+  #define UPCXXI_ASSERT_INIT_NAMED(fnname) \
     UPCXX_ASSERT(::upcxx::backend::init_count != 0, \
      "Attempted to invoke " << fnname << " while the UPC++ library was not initialized. " \
      "Please call upcxx::init() to initialize the library before calling this function.")
 #else
-  #define UPCXX_ASSERT_INIT_NAMED(fnname) ((void)0)
+  #define UPCXXI_ASSERT_INIT_NAMED(fnname) ((void)0)
 #endif
-#define UPCXX_ASSERT_INIT() UPCXX_ASSERT_INIT_NAMED("the library call shown above")
+#define UPCXXI_ASSERT_INIT() UPCXXI_ASSERT_INIT_NAMED("the library call shown above")
 
 namespace upcxx {
   UPCXXI_ATTRIB_CONST
   inline intrank_t rank_n() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return backend::rank_n;
   }
   UPCXXI_ATTRIB_CONST
   inline intrank_t rank_me() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return backend::rank_me;
   }
 }
@@ -375,7 +375,7 @@ namespace upcxx {
 ////////////////////////////////////////////////////////////////////////////////
 // Include backend-specific headers:
 
-#if UPCXX_BACKEND_GASNET_SEQ || UPCXX_BACKEND_GASNET_PAR
+#if UPCXXI_BACKEND_GASNET_SEQ || UPCXXI_BACKEND_GASNET_PAR
   #include <upcxx/backend/gasnet/runtime_fwd.hpp>
 #endif
 

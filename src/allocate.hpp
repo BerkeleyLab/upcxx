@@ -76,9 +76,9 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   
   template<typename T>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   global_ptr<T> allocate(std::size_t n = 1, std::size_t alignment = alignof(T)) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     void *p = upcxx::allocate(n * sizeof(T), alignment);
     return p == nullptr
       ? global_ptr<T>(nullptr)
@@ -91,15 +91,15 @@ namespace upcxx {
 
   template<typename T>
   void deallocate(global_ptr<T> gptr) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(gptr);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_GPTR_CHK(gptr);
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
+        gptr.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::deallocate must be called by owner of global pointer"
       );
       
-      upcxx::deallocate(gptr.UPCXX_INTERNAL_ONLY(raw_ptr_));
+      upcxx::deallocate(gptr.UPCXXI_INTERNAL_ONLY(raw_ptr_));
     }
   }
 
@@ -138,16 +138,16 @@ namespace upcxx {
   }
 
   template<typename T, typename ...Args>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   global_ptr<T> new_(Args &&...args) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::new_</*throws=*/true, T>(std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Args>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   global_ptr<T> new_(const std::nothrow_t &tag, Args &&...args) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::new_</*throws=*/false, T>(std::forward<Args>(args)...);
   }
 
@@ -207,16 +207,16 @@ namespace upcxx {
   }
 
   template<typename T>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   global_ptr<T> new_array(std::size_t n) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::new_array</*throws=*/true, T>(n);
   }
 
   template<typename T>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   global_ptr<T> new_array(std::size_t n, const std::nothrow_t &tag) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return detail::new_array</*throws=*/false, T>(n);
   }
 
@@ -224,16 +224,16 @@ namespace upcxx {
   void delete_(global_ptr<T> gptr) {
     static_assert(std::is_destructible<T>::value,
                   "T must be destructible");
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(gptr);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_GPTR_CHK(gptr);
     
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
+        gptr.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::delete_ must be called by owner of shared memory."
       );
       
-      T *ptr = gptr.UPCXX_INTERNAL_ONLY(raw_ptr_);
+      T *ptr = gptr.UPCXXI_INTERNAL_ONLY(raw_ptr_);
       ptr->~T();
       upcxx::deallocate(ptr);
     }
@@ -243,12 +243,12 @@ namespace upcxx {
   void delete_array(global_ptr<T> gptr) {
     static_assert(std::is_destructible<T>::value,
                   "T must be destructible");
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(gptr);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_GPTR_CHK(gptr);
     
     if (gptr != nullptr) {
       UPCXX_ASSERT(
-        gptr.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
+        gptr.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me(),
         "upcxx::delete_array must be called by owner of shared memory."
       );
       

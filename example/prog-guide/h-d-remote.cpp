@@ -1,6 +1,6 @@
 #include <upcxx/upcxx.hpp>
 #include <iostream>
-#if !UPCXX_CUDA_ENABLED
+#if !UPCXX_KIND_CUDA
 #error "This example requires UPC++ to be built with CUDA support."
 #endif
 using namespace std;

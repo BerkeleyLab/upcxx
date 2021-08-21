@@ -16,22 +16,22 @@
 #include <new> // launder
 
 // RTTI support
-#ifndef UPCXX_HAVE_RTTI
-#define UPCXX_HAVE_RTTI (__GXX_RTTI || __cpp_rtti)
+#ifndef UPCXXI_HAVE_RTTI
+#define UPCXXI_HAVE_RTTI (__GXX_RTTI || __cpp_rtti)
 #endif
-#if UPCXX_HAVE_RTTI
+#if UPCXXI_HAVE_RTTI
 #include <typeinfo> // typeid
 #endif
 
 #include <cstdlib> // posix_memalign
 
-// UPCXX_RETURN_DECLTYPE(type): use this inplace of "-> decltype(type)" so that
+// UPCXXI_RETURN_DECLTYPE(type): use this inplace of "-> decltype(type)" so that
 // for compilers which choke on such return types (icc) it can be elided in
 // the presence of C++14.
 #if !defined(__INTEL_COMPILER) || __cplusplus <= 201199L
-  #define UPCXX_RETURN_DECLTYPE(...) -> decltype(__VA_ARGS__)
+  #define UPCXXI_RETURN_DECLTYPE(...) -> decltype(__VA_ARGS__)
 #else
-  #define UPCXX_RETURN_DECLTYPE(...)
+  #define UPCXXI_RETURN_DECLTYPE(...)
 #endif
 
 namespace upcxx {
@@ -47,7 +47,7 @@ namespace detail {
   inline void memcpy_aligned(void *dst, void const *src, std::size_t sz) noexcept {
     UPCXX_ASSERT((uintptr_t)src % align == 0);
     UPCXX_ASSERT((uintptr_t)dst % align == 0);
-  #if UPCXX_HAVE___BUILTIN_ASSUME_ALIGNED
+  #if UPCXXI_HAVE___BUILTIN_ASSUME_ALIGNED
     std::memcpy(__builtin_assume_aligned(dst, align),
                 __builtin_assume_aligned(src, align), sz);
   #else
@@ -87,7 +87,7 @@ namespace detail {
     constexpr T* launder(T *p) {
       return std::launder(p);
     }
-  #elif UPCXX_HAVE___BUILTIN_LAUNDER
+  #elif UPCXXI_HAVE___BUILTIN_LAUNDER
     template<typename T>
     constexpr T* launder(T *p) {
       return __builtin_launder(p);
@@ -133,7 +133,7 @@ namespace detail {
       using T1 = typename std::remove_const<T>::type;
       T1 *ans = reinterpret_cast<T1*>(::new(dest) T1);
       detail::template memcpy_aligned<alignof(T1)>(ans, src, sizeof(T1));
-      #if UPCXX_ISSUE400_WORKAROUND
+      #if UPCXXI_ISSUE400_WORKAROUND
         // issue #400: memcpy of any type of object is always insufficient to construct a valid object, as it does not
         // perform any of the actions described in [intro.object]/1 that the standard specifies create an object, even in
         // the case of TriviallyCopyable types. P0593 would change this behavior, but has not been accepted into any
@@ -603,7 +603,7 @@ namespace detail {
 
   template <typename T, std::size_t x = sizeof(T)>
   inline const char *typename_of_(T *_) { 
-    #if UPCXX_HAVE_RTTI
+    #if UPCXXI_HAVE_RTTI
       return typeid(T).name(); 
     #else
       return "";

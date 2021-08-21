@@ -11,8 +11,8 @@
 #include <type_traits>
 #include <utility>
 
-#ifndef UPCXX_CREDUCE_SLIM
-  /* UPCXX_CREDUCE_SLIM should be defined when we're hunting down compiler ICE's
+#ifndef UPCXXI_CREDUCE_SLIM
+  /* UPCXXI_CREDUCE_SLIM should be defined when we're hunting down compiler ICE's
    * using the cReduce tool. Including all these std containers greatly
    * increases the size of the translation unit which slows down cReduce
    * considerably. The end effect is that serialization logic is not registered
@@ -173,9 +173,9 @@ namespace upcxx {
     }
 
     constexpr std::size_t size_aligned(std::size_t min_align=1) const {
-      #define UPCXX_a (min_align > this->align ? min_align : this->align)
-      return (this->size + UPCXX_a-1) & -UPCXX_a;
-      #undef UPCXX_a
+      #define UPCXXI_a (min_align > this->align ? min_align : this->align)
+      return (this->size + UPCXXI_a-1) & -UPCXXI_a;
+      #undef UPCXXI_a
     }
 
     constexpr typename detail::storage_size_base<s_size, s_align>::static_otherwise_invalid_t
@@ -225,7 +225,7 @@ namespace upcxx {
 
     template<typename T>
     constexpr auto cat_ubound_of(T const &x) const
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         serialization_traits<T>::ubound(*this, x)
       ) {
       return serialization_traits<T>::ubound(*this, x);
@@ -280,7 +280,7 @@ namespace upcxx {
         std::is_same<Iter, T*>::value ||
         std::is_same<Iter, T const*>::value ||
 
-        #ifndef UPCXX_CREDUCE_SLIM
+        #ifndef UPCXXI_CREDUCE_SLIM
         std::is_same<Iter, typename std::array<T,1>::iterator>::value ||
         std::is_same<Iter, typename std::array<T,1>::const_iterator>::value ||
         (!std::is_same<T,bool>::value && (
@@ -303,21 +303,21 @@ namespace upcxx {
       struct reserve_handle { void *ptr; };
 
       template<typename T>
-      UPCXX_NODISCARD
+      UPCXXI_NODISCARD
       reserve_handle<T> reserve() {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         return reserve_handle<T>{this->place(storage_size_of<T>())};
       }
 
       template<typename T>
       void commit(reserve_handle<T> handle, T const &val) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         ::new(handle.ptr) T(val);
       }
       
       template<typename T, bool AssertSerializable= true>
       void write(T const &x) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         static_assert(!AssertSerializable || detail::is_serializable_type_or_array<T>::value,
                      "Argument to write must either be Serializable or an array of Serializable elements.");
         upcxx::template serialization_traits<T>::serialize(*static_cast<Writer*>(this), x);
@@ -392,7 +392,7 @@ namespace upcxx {
     public:
       template<typename Iter>
       std::size_t write_sequence(Iter beg, Iter end, std::size_t n=-1) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         using T = typename std::remove_cv<
             typename std::iterator_traits<Iter>::value_type
           >::type;
@@ -595,7 +595,7 @@ namespace upcxx {
     public:
       template<typename Iter>
       std::size_t write_sequence(Iter beg, Iter end) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         using T = typename std::remove_cv<
             typename std::iterator_traits<Iter>::value_type
           >::type;
@@ -608,7 +608,7 @@ namespace upcxx {
       
       template<typename Iter>
       std::size_t write_sequence(Iter beg, Iter end, std::size_t n) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         using T = typename std::remove_cv<
             typename std::iterator_traits<Iter>::value_type
           >::type;
@@ -635,12 +635,12 @@ namespace upcxx {
       template<typename T, bool AssertSerializable = true,
                typename T1 = typename serialization_traits<T>::deserialized_type>
       typename ::std::conditional<!::std::is_array<T1>::value, T1, void>::type read() {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         static_assert(!AssertSerializable || is_serializable<T>::value,
                      "Template argument of read must be Serializable.");
         static_assert(!::std::is_array<T1>::value,
                      "Cannot return array type from read -- use read_into or read_sequence_into instead.");
-        UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("[Reader]::read()", "[Reader]::read_into()", T1);
+        UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("[Reader]::read()", "[Reader]::read_into()", T1);
 
         detail::raw_storage<T1> raw;
         upcxx::template serialization_traits<T>::deserialize(*this, &raw);
@@ -650,7 +650,7 @@ namespace upcxx {
       template<typename T, bool AssertSerializable = true,
                typename T1 = typename serialization_traits<T>::deserialized_type>
       T1* read_into(void *raw) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         static_assert(!AssertSerializable || detail::is_serializable_type_or_array<T>::value,
                      "Template argument of read_into must either be Serializable or an array of Serializable elements.");
 
@@ -706,7 +706,7 @@ namespace upcxx {
       template<typename T,
                typename T1 = typename serialization_traits<T>::deserialized_type>
       T1* read_sequence_into(void *raw, std::size_t n) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
         return this->template read_sequence_into_<T,T1>(raw, n,
             std::integral_constant<bool, serialization_traits<T>::is_actually_trivially_serializable>()
           );
@@ -767,7 +767,7 @@ namespace upcxx {
       
       template<typename Prefix>
       static constexpr auto ubound(Prefix pre, T const&)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           pre.template cat_size_of<T>()
         ) {
         return pre.template cat_size_of<T>();
@@ -841,9 +841,9 @@ namespace upcxx {
     private: /* this macro requires "public" protection so we know what to restore */ \
       template<typename> \
       friend struct ::upcxx::detail::serialization_fields; \
-      template<typename upcxx_reserved_prefix_fields_not_values = ::std::true_type> \
-      auto upcxx_reserved_prefix_serialized_fields() \
-        UPCXX_RETURN_DECLTYPE(::std::forward_as_tuple(__VA_ARGS__)) { \
+      template<typename upcxxi_fields_not_values = ::std::true_type> \
+      auto upcxxi_serialized_fields() \
+        UPCXXI_RETURN_DECLTYPE(::std::forward_as_tuple(__VA_ARGS__)) { \
         return ::std::forward_as_tuple(__VA_ARGS__); \
       } \
     public: /* restore "public" protection */ \
@@ -851,13 +851,13 @@ namespace upcxx {
       private: \
         template<typename> \
         friend struct ::upcxx::detail::serialization_fields; \
-        template<typename upcxx_reserved_prefix_T> \
-        static upcxx_reserved_prefix_T* default_construct(void *spot) { \
-          return ::new(spot) upcxx_reserved_prefix_T; \
+        template<typename upcxxi_T> \
+        static upcxxi_T* default_construct(void *spot) { \
+          return ::new(spot) upcxxi_T; \
         } \
       public: \
-        template<typename upcxx_reserved_prefix_T> \
-        struct supply_type_please: ::upcxx::detail::serialization_fields<upcxx_reserved_prefix_T> {}; \
+        template<typename upcxxi_T> \
+        struct supply_type_please: ::upcxx::detail::serialization_fields<upcxxi_T> {}; \
       };
 
     template<typename T, typename U, bool fields_not_values,
@@ -869,7 +869,7 @@ namespace upcxx {
     }
     // Need to use "..." to accept a type since template instantiations can
     // contain commas not nested in parenthesis.
-    #define UPCXX_SERIALIZED_BASE(...) *::upcxx::detail::template serialized_fields_base_cast<__VA_ARGS__>(this, upcxx_reserved_prefix_fields_not_values())
+    #define UPCXX_SERIALIZED_BASE(...) *::upcxx::detail::template serialized_fields_base_cast<__VA_ARGS__>(this, upcxxi_fields_not_values())
 
     template<typename TupRefs,
              int i = 0,
@@ -894,7 +894,7 @@ namespace upcxx {
 
       template<typename Prefix>
       static auto ubound(Prefix pre, TupRefs const &refs)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           serialization_fields_each<TupRefs, i+1, n>::ubound(
             pre.cat_ubound_of(std::template get<i>(refs)),
             refs
@@ -964,21 +964,21 @@ namespace upcxx {
     
     template<typename T>
     struct serialization_fields {
-      using refs_tup_type = decltype(std::declval<T&>().upcxx_reserved_prefix_serialized_fields());
+      using refs_tup_type = decltype(std::declval<T&>().upcxxi_serialized_fields());
       
       static constexpr bool is_serializable = true;
 
       template<typename Prefix>
       static auto ubound(Prefix pre, T const &x)
-        UPCXX_RETURN_DECLTYPE(
-          serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxx_reserved_prefix_serialized_fields())
+        UPCXXI_RETURN_DECLTYPE(
+          serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxxi_serialized_fields())
         ) {
-        return serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxx_reserved_prefix_serialized_fields());
+        return serialization_fields_each<refs_tup_type>::ubound(pre, const_cast<T&>(x).upcxxi_serialized_fields());
       }
 
       template<typename Writer>
       static void serialize(Writer &w, T const &x) {
-        serialization_fields_each<refs_tup_type>::serialize(w, const_cast<T&>(x).upcxx_reserved_prefix_serialized_fields());
+        serialization_fields_each<refs_tup_type>::serialize(w, const_cast<T&>(x).upcxxi_serialized_fields());
       }
 
       using deserialized_type = T;
@@ -989,7 +989,7 @@ namespace upcxx {
       static deserialized_type* deserialize(Reader &r, void *raw) {
         T *rec = T::upcxx_serialization::template default_construct<T>(raw);
         //T *rec = ::new(raw) T;
-        refs_tup_type refs_tup(rec->upcxx_reserved_prefix_serialized_fields());
+        refs_tup_type refs_tup(rec->upcxxi_serialized_fields());
         
         // Deserialization happens in two phases: 1) destruct, 2) read.
         // This avoids a tiny corner case when empty base subobjects can alias
@@ -1015,7 +1015,7 @@ namespace upcxx {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    /* The tuple returned from upcxx_reserved_prefix_serialized_values() will have rvalue-refs
+    /* The tuple returned from upcxxi_serialized_values() will have rvalue-refs
      * decayed to naked values but lvalue (const or not) preserved. Since the
      * expression generating each value has access to the object members but no
      * function locals or parameters, we know that any lvalues that come out
@@ -1028,9 +1028,9 @@ namespace upcxx {
     private: /* macro requires "public" protection so we know what to restore */ \
       template<typename> \
       friend struct ::upcxx::detail::serialization_values; \
-      template<typename upcxx_reserved_prefix_fields_not_values = ::std::false_type> \
-      auto upcxx_reserved_prefix_serialized_values() const \
-        UPCXX_RETURN_DECLTYPE(::upcxx::detail::forward_as_tuple_decay_rrefs(__VA_ARGS__)) { \
+      template<typename upcxxi_fields_not_values = ::std::false_type> \
+      auto upcxxi_serialized_values() const \
+        UPCXXI_RETURN_DECLTYPE(::upcxx::detail::forward_as_tuple_decay_rrefs(__VA_ARGS__)) { \
         return ::upcxx::detail::forward_as_tuple_decay_rrefs(__VA_ARGS__); \
       } \
     public: /* restore "public" protection */ \
@@ -1038,13 +1038,13 @@ namespace upcxx {
       private: \
         template<typename, int, int> \
         friend struct ::upcxx::detail::serialization_values_each; \
-        template<typename upcxx_reserved_prefix_T, typename ...upcxx_reserved_prefix_Arg> \
-        static upcxx_reserved_prefix_T* construct(void *spot, upcxx_reserved_prefix_Arg &&...arg) { \
-          return ::new(spot) upcxx_reserved_prefix_T(static_cast<upcxx_reserved_prefix_Arg&&>(arg)...); \
+        template<typename upcxxi_T, typename ...upcxxi_Arg> \
+        static upcxxi_T* construct(void *spot, upcxxi_Arg &&...arg) { \
+          return ::new(spot) upcxxi_T(static_cast<upcxxi_Arg&&>(arg)...); \
         } \
       public: \
-        template<typename upcxx_reserved_prefix_T> \
-        struct supply_type_please: ::upcxx::detail::serialization_values<upcxx_reserved_prefix_T> {}; \
+        template<typename upcxxi_T> \
+        struct supply_type_please: ::upcxx::detail::serialization_values<upcxxi_T> {}; \
       };
     
     template<typename TupRefs, int i=0, int n=std::tuple_size<TupRefs>::value>
@@ -1058,7 +1058,7 @@ namespace upcxx {
       
       template<typename Prefix>
       static auto ubound(Prefix pre, TupRefs const &refs)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           recurse_tail::ubound(
             pre.cat_ubound_of(std::template get<i>(refs)),
             refs
@@ -1126,21 +1126,21 @@ namespace upcxx {
     template<typename T>
     struct serialization_values {
       // a tuple possibly mixed of lvalue refs and naked values
-      using refs_tup_type = decltype(std::declval<T&>().upcxx_reserved_prefix_serialized_values());
+      using refs_tup_type = decltype(std::declval<T&>().upcxxi_serialized_values());
 
       static constexpr bool is_serializable = true;
     
       template<typename Prefix>
       static auto ubound(Prefix pre, T const &x)
-        UPCXX_RETURN_DECLTYPE(
-          serialization_values_each<refs_tup_type>::ubound(pre, x.upcxx_reserved_prefix_serialized_values())
+        UPCXXI_RETURN_DECLTYPE(
+          serialization_values_each<refs_tup_type>::ubound(pre, x.upcxxi_serialized_values())
         ) {
-        return serialization_values_each<refs_tup_type>::ubound(pre, x.upcxx_reserved_prefix_serialized_values());
+        return serialization_values_each<refs_tup_type>::ubound(pre, x.upcxxi_serialized_values());
       }
 
       template<typename Writer>
       static void serialize(Writer &w, T const &x) {
-        serialization_values_each<refs_tup_type>::serialize(w, x.upcxx_reserved_prefix_serialized_values());
+        serialization_values_each<refs_tup_type>::serialize(w, x.upcxxi_serialized_values());
       }
 
       using deserialized_type = T;
@@ -1324,7 +1324,7 @@ namespace upcxx {
       > {
       static typename serialization_traits2<T>::deserialized_type
       deserialized_value(T const &x) {
-        UPCXX_ASSERT_INIT();
+        UPCXXI_ASSERT_INIT();
 
         // We access T's serialization through serialization_traits2 instead of
         // serialization_traits to avoid inheritance circularity since we are
@@ -1481,7 +1481,7 @@ namespace upcxx {
 
     template<typename Prefix>
     static constexpr auto ubound(Prefix pre, R(&)(A...))
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         pre.template cat_size_of<deserialized_type>()
       ) {
       return pre.template cat_size_of<deserialized_type>();
@@ -1533,7 +1533,7 @@ namespace upcxx {
 
       template<typename Prefix>
       static auto ubound(Prefix pre, std::tuple<T...> const &x)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           recurse_tail::ubound(
             pre.template cat_ubound_of<Ti>(std::template get<i>(x)),
             x
@@ -1631,7 +1631,7 @@ namespace upcxx {
 
     template<typename Prefix>
     static auto ubound(Prefix pre, std::pair<A,B> const &x)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         pre.cat_ubound_of(x.first).cat_ubound_of(x.second)
       ) {
       return pre.cat_ubound_of(x.first).cat_ubound_of(x.second);
@@ -1672,7 +1672,7 @@ namespace upcxx {
 
   //////////////////////////////////////////////////////////////////////////////
 
-  #ifndef UPCXX_CREDUCE_SLIM
+  #ifndef UPCXXI_CREDUCE_SLIM
   template<typename T, std::size_t n>
   struct is_trivially_serializable<std::array<T,n>>:
     is_trivially_serializable<T> {
@@ -1684,7 +1684,7 @@ namespace upcxx {
 
     template<typename Prefix>
     static constexpr auto ubound(Prefix pre, std::array<T,n> const &x)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         pre.cat(serialization_traits<T>::static_ubound.template arrayed<n>())
       ) {
       return pre.cat(serialization_traits<T>::static_ubound.template arrayed<n>());
@@ -1749,7 +1749,7 @@ namespace upcxx {
     // Writer::write, and Reader::read_into
     template<typename Prefix>
     static constexpr auto ubound(Prefix pre, T const(&x)[n])
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         pre.cat(serialization_traits<T>::static_ubound.template arrayed<n>())
       ) {
       return pre.cat(serialization_traits<T>::static_ubound.template arrayed<n>());
@@ -1790,7 +1790,7 @@ namespace upcxx {
 
   //////////////////////////////////////////////////////////////////////////////
 
-  #ifndef UPCXX_CREDUCE_SLIM
+  #ifndef UPCXXI_CREDUCE_SLIM
 
   /* This is where we hardcode certain builtin c++ std types which semantically
    * *ought* to be Serializable and make them so. Our strategy is to provide a
@@ -1837,36 +1837,36 @@ namespace upcxx {
   template<typename T>
   struct serialization<std::not_equal_to<T>>: detail::serialization_dispatch1<std::not_equal_to<T>, /*bless_trivial_default=*/true> {};
 
-  #define UPCXX_HARDCODE_STD_HASH(type) \
+  #define UPCXXI_HARDCODE_STD_HASH(type) \
     template<> \
     struct serialization<std::hash<type>>: detail::serialization_dispatch1<std::hash<type>, /*bless_trivial_default=*/true> {};
 
-  UPCXX_HARDCODE_STD_HASH(bool)
-  UPCXX_HARDCODE_STD_HASH(char)
-  UPCXX_HARDCODE_STD_HASH(signed char)
-  UPCXX_HARDCODE_STD_HASH(unsigned char)
+  UPCXXI_HARDCODE_STD_HASH(bool)
+  UPCXXI_HARDCODE_STD_HASH(char)
+  UPCXXI_HARDCODE_STD_HASH(signed char)
+  UPCXXI_HARDCODE_STD_HASH(unsigned char)
   #if __cpp_char8_t
-    UPCXX_HARDCODE_STD_HASH(char8_t)
+    UPCXXI_HARDCODE_STD_HASH(char8_t)
   #endif
-  UPCXX_HARDCODE_STD_HASH(char16_t)
-  UPCXX_HARDCODE_STD_HASH(char32_t)
-  UPCXX_HARDCODE_STD_HASH(wchar_t)
-  UPCXX_HARDCODE_STD_HASH(short)
-  UPCXX_HARDCODE_STD_HASH(unsigned short)
-  UPCXX_HARDCODE_STD_HASH(int)
-  UPCXX_HARDCODE_STD_HASH(unsigned int)
-  UPCXX_HARDCODE_STD_HASH(long)
-  UPCXX_HARDCODE_STD_HASH(long long)
-  UPCXX_HARDCODE_STD_HASH(unsigned long)
-  UPCXX_HARDCODE_STD_HASH(unsigned long long)
-  UPCXX_HARDCODE_STD_HASH(float)
-  UPCXX_HARDCODE_STD_HASH(double)
-  UPCXX_HARDCODE_STD_HASH(long double)
+  UPCXXI_HARDCODE_STD_HASH(char16_t)
+  UPCXXI_HARDCODE_STD_HASH(char32_t)
+  UPCXXI_HARDCODE_STD_HASH(wchar_t)
+  UPCXXI_HARDCODE_STD_HASH(short)
+  UPCXXI_HARDCODE_STD_HASH(unsigned short)
+  UPCXXI_HARDCODE_STD_HASH(int)
+  UPCXXI_HARDCODE_STD_HASH(unsigned int)
+  UPCXXI_HARDCODE_STD_HASH(long)
+  UPCXXI_HARDCODE_STD_HASH(long long)
+  UPCXXI_HARDCODE_STD_HASH(unsigned long)
+  UPCXXI_HARDCODE_STD_HASH(unsigned long long)
+  UPCXXI_HARDCODE_STD_HASH(float)
+  UPCXXI_HARDCODE_STD_HASH(double)
+  UPCXXI_HARDCODE_STD_HASH(long double)
   #if __cplusplus >= 201700L
-    UPCXX_HARDCODE_STD_HASH(std::nullptr_t)
+    UPCXXI_HARDCODE_STD_HASH(std::nullptr_t)
   #endif
 
-  #undef UPCXX_HARDCODE_STD_HASH
+  #undef UPCXXI_HARDCODE_STD_HASH
   
   template<typename T>
   struct serialization<std::hash<T*>>:
@@ -1900,7 +1900,7 @@ namespace upcxx {
   
   //////////////////////////////////////////////////////////////////////////////
 
-  #ifndef UPCXX_CREDUCE_SLIM
+  #ifndef UPCXXI_CREDUCE_SLIM
   template<typename CharT, typename Traits, typename Alloc>
   struct serialization<std::basic_string<CharT, Traits, Alloc>> {
     static_assert(std::is_trivial<CharT>::value, "Bad string character type.");
@@ -1911,7 +1911,7 @@ namespace upcxx {
     
     template<typename Prefix>
     static auto ubound(Prefix pre, Str const &s)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         pre.template cat_ubound_of<Alloc>(std::declval<Alloc>())
            .template cat_ubound_of<std::size_t>(1)
            .cat(detail::storage_size_of<CharT>().arrayed(1))
@@ -1954,7 +1954,7 @@ namespace upcxx {
   
   //////////////////////////////////////////////////////////////////////////////
 
-  #ifndef UPCXX_CREDUCE_SLIM
+  #ifndef UPCXXI_CREDUCE_SLIM
   namespace detail {
     template<typename Bag, typename=void>
     struct reserve_if_supported {
@@ -1989,7 +1989,7 @@ namespace upcxx {
       
       template<typename Prefix>
       static auto ubound(Prefix pre, BagIn const &bag)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           pre.template cat_ubound_of<typename BagIn::allocator_type>(std::declval<typename BagIn::allocator_type>())
              .template cat_ubound_of<std::size_t>(1)
              .cat(serialization_traits<T0>::static_ubound.arrayed(1))
@@ -2044,7 +2044,7 @@ namespace upcxx {
       
       template<typename Prefix>
       static auto ubound(Prefix pre, BagIn const &bag)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           pre.template cat_ubound_of<typename BagIn::allocator_type>(std::declval<typename BagIn::allocator_type>())
              .template cat_ubound_of<typename BagIn::key_compare>(std::declval<typename BagIn::key_compare>())
              .template cat_ubound_of<std::size_t>(1)
@@ -2107,7 +2107,7 @@ namespace upcxx {
       
       template<typename Prefix>
       static auto ubound(Prefix pre, BagIn const &bag)
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           pre.template cat_ubound_of<typename BagIn::allocator_type>(std::declval<typename BagIn::allocator_type>())
              .template cat_ubound_of<typename BagIn::key_equal>(std::declval<typename BagIn::key_equal>())
              .template cat_ubound_of<typename BagIn::hasher>(std::declval<typename BagIn::hasher>())

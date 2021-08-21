@@ -13,6 +13,11 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
   * `UPCXX_SPEC_VERSION`:
     An integer literal providing the revision of the UPC++ specification
     to which this implementation adheres. See the specification for the specified value.
+  * `UPCXX_KIND_CUDA`:
+    An integer literal providing the version number of the CUDA memory-kind
+    feature to which this implementation adheres, defined only when the library
+    is built with CUDA enabled. See the UPC++ specification for the specified
+    value.
 
   * `UPCXX_THREADMODE`:
     This is either undefined (for the default "seq" threadmode) or defined to
@@ -47,9 +52,33 @@ and `as_promise(p)` are equivalent to `as_defer_future()` and
 `as_defer_promise(p)`, respectively), while defining it to 0 makes the default
 eager.
 
+## Assertion Macros ##
+
+This implementation provides assertion macros to facilitate debugging on
+distributed systems. Unlike the standard `assert()` macro, the macros below
+print a backtrace and/or freeze to allow a debugger to be attached before
+aborting program execution.
+
+  * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:
+    Evaluates `test`, and if the result is a false value, outputs `message` if
+    provided and diagnostic information to standard error, optionally prints a
+    backtrace and/or freezes for debugger, and aborts execution by calling
+    `std::abort()`. `message` may be any expression such that `std::cerr <<
+    message` is well-formed; for instance, it may itself include
+    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, “error! x = “
+    << x)`). `message` is only evaluated when `test` produces a false value. If
+    `message` is not provided, it defaults to a string that includes a textual
+    representation of `test`. In all cases, this macro expands to an expression
+    with type `void`.
+  * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:
+    In the "debug" codemode, provides the same behavior as
+    `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, this macro expands to a
+    side-effect-free expression with type `void` that does not evaluate the
+    arguments.
+
 ## Experimental Features ##
 
-Several undocumented, experimental features are implemented in the
+Several unspecified, experimental features are implemented in the
 `upcxx::experimental` namespace. These include the following:
 
   * broadcast of Serializable but non-TriviallySerializable values:
@@ -108,13 +137,31 @@ Several undocumented, experimental features are implemented in the
     };
     ```
 
+In addition, the implementation provides the following unspecified,
+experimental macro:
+
+  * variant of `upcxx_memberof` that can be used on a type `T` that is either
+    standard-layout (in which case the equivalent, specified `upcxx_memberof`
+    should be used instead), or for which the compiler conditionally supports
+    `offsetof`:
+
+    ```c++
+    // Macro: function template syntax used for clarity
+    template<typename T, memory_kind Kind>
+    global_ptr<MType, Kind> upcxx_experimental_memberof_unsafe(
+        global_ptr<T, Kind> ptr, member-designator MEMBER
+    )
+    ```
+
 These features are subject to change or removal at any time. If you find any of
 them useful, please send an email to `upcxx@googlegroups.com`, and we will
 consider adding them to the specification proper.
 
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
 are intended solely for internal use by the implementation (e.g.
-`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`).
+`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`). Similarly, all identifiers
+with the `UPCXXI` or `upcxxi` prefix are intended for internal use by the
+implementation.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 

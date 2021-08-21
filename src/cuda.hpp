@@ -9,6 +9,13 @@
 
 #include <cstdint>
 
+#if UPCXXI_CUDA_ENABLED
+  // cuda feature macro
+  #define UPCXX_KIND_CUDA 202103L
+#else
+  #undef UPCXX_KIND_CUDA
+#endif
+
 namespace upcxx {
 
   class cuda_device {

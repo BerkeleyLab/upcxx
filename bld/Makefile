@@ -297,14 +297,14 @@ endif
 include $(top_srcdir)/bld/compiler.mak
 include $(top_srcdir)/bld/sources.mak
 
-UPCXX_DEFINES := -DUPCXX_ASSERT_ENABLED=$(ASSERT) -DUPCXX_BACKEND=1
+UPCXX_DEFINES := -DUPCXXI_ASSERT_ENABLED=$(ASSERT) -DUPCXXI_BACKEND=1
 ifeq ($(strip $(UPCXX_BACKEND)),gasnet_seq)
-UPCXX_DEFINES += -DUPCXX_BACKEND_GASNET_SEQ=1
+UPCXX_DEFINES += -DUPCXXI_BACKEND_GASNET_SEQ=1
 else
-UPCXX_DEFINES += -DUPCXX_BACKEND_GASNET_PAR=1
+UPCXX_DEFINES += -DUPCXXI_BACKEND_GASNET_PAR=1
 endif
 ifeq ($(UPCXX_CUDA),1)
-UPCXX_DEFINES += -DUPCXX_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
+UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
 endif
 
 # In developer builds, embed git-describe output in runtime.o
@@ -314,7 +314,7 @@ UPCXX_GIT_VERSION := $(shell cd "$(top_srcdir)" && git describe --dirty --long -
 ifneq ($(strip $(UPCXX_GIT_VERSION)),)
 upcxx_git_version_file = backend/gasnet/watermark.cpp # consumes UPCXX_GIT_VERSION
 upcxx_git_version_obj = $(notdir $(basename $(upcxx_git_version_file))).o
-$(basename $(upcxx_git_version_obj))_EXTRA_FLAGS = -DUPCXX_GIT_VERSION='$(UPCXX_GIT_VERSION)'
+$(basename $(upcxx_git_version_obj))_EXTRA_FLAGS = -DUPCXXI_GIT_VERSION='$(UPCXX_GIT_VERSION)'
 .INTERMEDIATE: $(upcxx_git_version_obj)
 endif
 endif

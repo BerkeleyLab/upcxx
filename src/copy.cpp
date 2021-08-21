@@ -29,7 +29,7 @@ void upcxx::detail::rma_copy_local(
     cb->execute_and_delete();
   }
   else { // one or both sides on device
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     int heap_main = !host_d ? heap_d : heap_s;
     UPCXX_ASSERT(heap_main > 0);
     cuda::device_state *st = cuda::device_state::get(heap_main);
@@ -63,11 +63,11 @@ void upcxx::detail::rma_copy_local(
     cb->cu_event = (void*)event;
 
     persona *per = detail::the_persona_tls.get_top_persona();
-    per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.enqueue(cb);
+    per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.enqueue(cb);
     
     {CUcontext dump; CU_CHECK(cuCtxPopCurrent(&dump));}
   #else
-    UPCXX_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
+    UPCXXI_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
   #endif
   }
 }
@@ -78,7 +78,7 @@ void upcxx::detail::rma_copy_remote(
     std::size_t size, 
     gasnet::handle_cb *cb
   ) {
-#if UPCXX_CUDA_USE_MK
+#if UPCXXI_CUDA_USE_MK
   const bool isput = (rank_s == upcxx::rank_me());
 
   gex_EP_Index_t local_ep_idx;
@@ -125,8 +125,8 @@ void upcxx::detail::rma_copy_remote(
   cb->handle = reinterpret_cast<uintptr_t>(h);
   gasnet::register_cb(cb);
   gasnet::after_gasnet();
-#else // !UPCXX_CUDA_USE_MK
-    UPCXX_FATAL_ERROR("Internal error in upcxx::copy()");
+#else // !UPCXXI_CUDA_USE_MK
+    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy()");
 #endif
 }
 
@@ -148,8 +148,8 @@ void upcxx::detail::rma_copy_put(
     intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXX_CUDA_USE_MK
-    UPCXX_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
+  #if UPCXXI_CUDA_USE_MK
+    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
   gex_Event_t h = gex_RMA_PutNB(
     gasnet::handle_of(upcxx::world()),

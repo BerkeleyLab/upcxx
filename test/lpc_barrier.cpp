@@ -6,12 +6,6 @@
 
 #include <sched.h>
 
-#if UPCXX_BACKEND
-  #include <upcxx/upcxx.hpp>
-#else
-  #include <upcxx/persona.hpp>
-#endif
-
 #include "util.hpp"
 
 using namespace upcxx;
@@ -142,9 +136,7 @@ void thread_main() {
 }
 
 int main() {
-#if UPCXX_BACKEND
   upcxx::init();
-#endif
   print_test_header();
   
   std::atomic<int> setup_bar{0};
@@ -174,8 +166,6 @@ int main() {
   
   print_test_success();
   
-#if UPCXX_BACKEND
   upcxx::finalize();
-#endif
   return 0;
 }

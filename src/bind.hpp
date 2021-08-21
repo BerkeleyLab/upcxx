@@ -250,7 +250,7 @@ namespace upcxx {
       // the callback invocation, and the invocation receives the
       // arguments as rvalue references as required.
       auto operator()() &&
-        UPCXX_RETURN_DECLTYPE(
+        UPCXXI_RETURN_DECLTYPE(
           std::declval<future1<
             detail::future_kind_when_all<
               typename binding<Fn>::off_wire_future_type,
@@ -316,7 +316,7 @@ namespace upcxx {
 
     template<typename Ub>
     static auto ubound(Ub ub, const detail::bound_function<Fn,B...> &fn)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         ub.template cat_ubound_of<
             typename detail::binding<Fn>::on_wire_type
           >(fn.fn_)

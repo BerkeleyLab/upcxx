@@ -22,7 +22,7 @@ namespace upcxx {
   void barrier(const team &tm = upcxx::world());
   
   template<typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::barrier_event_values,
@@ -33,10 +33,10 @@ namespace upcxx {
       Cxs &&cxs = detail::operation_cx_as_future_t({})
     ) {
     using CxsDecayed = typename std::decay<Cxs>::type;
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::barrier_async()", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::barrier_async()", entry_barrier::internal);
     UPCXX_ASSERT_ALWAYS(
       (detail::completions_has_event<CxsDecayed, operation_cx_event>::value),
       "Not requesting operation completion is surely an error."

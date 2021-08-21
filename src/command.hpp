@@ -30,8 +30,8 @@ namespace detail {
       }
     };
 
-#ifndef UPCXX_RPC_STACK_MAX_FN_SIZE
-#define UPCXX_RPC_STACK_MAX_FN_SIZE 2048
+#ifndef UPCXXI_RPC_STACK_MAX_FN_SIZE
+#define UPCXXI_RPC_STACK_MAX_FN_SIZE 2048
 #endif
 
     template<typename Fn, detail::serialization_reader(*reader)(Arg...), void(*cleanup)(Arg...)>
@@ -55,7 +55,7 @@ namespace detail {
           typename detail::apply_variadic_as_future<FnDez&&>::return_type
         >::value;
       constexpr bool is_small =
-        sizeof(FnDez) <= UPCXX_RPC_STACK_MAX_FN_SIZE;
+        sizeof(FnDez) <= UPCXXI_RPC_STACK_MAX_FN_SIZE;
       constexpr bool on_stack = is_trivial && is_small;
       using local_storage_t =
         typename std::conditional<on_stack,

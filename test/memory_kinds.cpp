@@ -185,7 +185,7 @@ int main() {
   assert(cuda_device::default_alignment<double>() > 0);
   assert(cuda_device::kind == memory_kind::cuda_device);
   assert(cuda_device::invalid_device_id != 0);
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXX_KIND_CUDA
     cuda_enabled = true;
   #endif
   if (cuda_enabled) { 

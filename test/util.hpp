@@ -1,28 +1,12 @@
 #ifndef _f0b217aa_607e_4aa4_8147_82a0d66d6303
 #define _f0b217aa_607e_4aa4_8147_82a0d66d6303
 
-#if UPCXX_BACKEND
-  #include <upcxx/upcxx.hpp>
-#endif
+#include <upcxx/upcxx.hpp>
 
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <stdio.h>
-
-#ifdef UPCXX_USE_COLOR
-  // These test programs are not smart enough to properly honor termcap
-  // Don't issue color codes by default unless specifically requested
-  #define KNORM  "\x1B[0m"
-  #define KLRED "\x1B[91m"
-  #define KLGREEN "\x1B[92m"
-  #define KLBLUE "\x1B[94m"
-#else
-  #define KNORM  ""
-  #define KLRED ""
-  #define KLGREEN ""
-  #define KLBLUE ""
-#endif
 
 // backwards-compatibility hacks for convenience of defect archaeology:
 // ensure up-to-date versions of this header (and tests relying on it) still compile unchanged with older releases
@@ -61,33 +45,32 @@ inline void flush_all_output() {
 
 template<typename=void>
 void print_test_header_inner(const char *file) {
-    say("") << KLBLUE << "Test: " << test_name(file) << KNORM;
+    say("") << "Test: " << test_name(file);
 }
 
 template<typename=void>
 void print_test_success_inner(bool success=true) {
     flush_all_output();
-    say("") << (success?KLGREEN:KLRED) << "Test result: "<< (success?"SUCCESS":"ERROR") << KNORM;
+    say("") << "Test result: "<< (success?"SUCCESS":"ERROR");
 }
 
 template<typename=void>
 void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCESS") {
     flush_all_output();
     say("")
-        << KLBLUE << "Test result: "<< "SKIPPED" << KNORM << "\n"
+        << "Test result: "<< "SKIPPED" << "\n"
         << "UPCXX_TEST_SKIPPED: This test was skipped due to: " << reason << "\n"
         << "Please ignore the following line which placates our automated test infrastructure:\n"
         << success_msg;
 }
 
-#if UPCXX_BACKEND
   template<typename=void>
   void print_test_header_(const char *file) {
       if(!upcxx::initialized() || !upcxx::rank_me()) {
           print_test_header_inner(file);
       }
       if(upcxx::initialized() && !upcxx::rank_me()) {
-          say("") << KLBLUE << "Ranks: " << upcxx::rank_n() << KNORM;
+          say("") << "Ranks: " << upcxx::rank_n();
       }
   }
   #define print_test_header()   print_test_header_(__FILE__)
@@ -116,11 +99,6 @@ void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCE
           print_test_skipped_inner(reason, success_msg);
       }
   }
-#else
-  #define print_test_header()      print_test_header_inner(__FILE__)
-  #define print_test_success(...)  print_test_success_inner(__VA_ARGS__)
-  #define print_test_skipped(...)  print_test_skipped_inner(__VA_ARGS__)
-#endif
 
 #define main_test_skipped(.../* reason, success_msg */) \
   int main() { \

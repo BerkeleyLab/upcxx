@@ -25,43 +25,43 @@ namespace detail {
 }
 
 #if (__GNUC__)
-#define UPCXX_FUNC __PRETTY_FUNCTION__
+#define UPCXXI_FUNC __PRETTY_FUNCTION__
 #else
-#define UPCXX_FUNC __func__
+#define UPCXXI_FUNC __func__
 #endif
 
-#ifndef UPCXX_STRINGIFY
-#define UPCXX_STRINGIFY_HELPER(x) #x
-#define UPCXX_STRINGIFY(x) UPCXX_STRINGIFY_HELPER(x)
+#ifndef UPCXXI_STRINGIFY
+#define UPCXXI_STRINGIFY_HELPER(x) #x
+#define UPCXXI_STRINGIFY(x) UPCXXI_STRINGIFY_HELPER(x)
 #endif
 
 // unconditional fatal error, with file/line and custom message
-#define UPCXX_FATAL_ERROR(ios_msg) \
+#define UPCXXI_FATAL_ERROR(ios_msg) \
   ::upcxx::detail::fatal_error(([&]() { ::std::stringstream _upcxx_fatal_ss; \
                                      _upcxx_fatal_ss << ios_msg; \
                                      return _upcxx_fatal_ss.str(); })(), \
-                           nullptr, UPCXX_FUNC, __FILE__, __LINE__)
+                           nullptr, UPCXXI_FUNC, __FILE__, __LINE__)
 
-#define UPCXX_ASSERT_1(ok) \
+#define UPCXXI_ASSERT_1(ok) \
  ( (ok) ? (void)0 : \
-   ::upcxx::detail::assert_failed(UPCXX_FUNC, __FILE__, __LINE__, ::std::string("Failed condition: " #ok)) )
+   ::upcxx::detail::assert_failed(UPCXXI_FUNC, __FILE__, __LINE__, ::std::string("Failed condition: " #ok)) )
 
-#define UPCXX_ASSERT_2(ok, ios_msg) \
+#define UPCXXI_ASSERT_2(ok, ios_msg) \
  ( (ok) ? (void)0 : \
-   ::upcxx::detail::assert_failed(UPCXX_FUNC, __FILE__, __LINE__, \
+   ::upcxx::detail::assert_failed(UPCXXI_FUNC, __FILE__, __LINE__, \
         ([&]() { ::std::stringstream _upcxx_assert_ss; \
                  _upcxx_assert_ss << ios_msg; \
                  return _upcxx_assert_ss.str(); })()) )
 
-#define UPCXX_ASSERT_DISPATCH(_1, _2, NAME, ...) NAME
+#define UPCXXI_ASSERT_DISPATCH(_1, _2, NAME, ...) NAME
 
-#ifndef UPCXX_ASSERT_ENABLED
-  #define UPCXX_ASSERT_ENABLED 0
+#ifndef UPCXXI_ASSERT_ENABLED
+  #define UPCXXI_ASSERT_ENABLED 0
 #endif
 
 // Assert that will only happen in debug-mode.
-#if UPCXX_ASSERT_ENABLED
-  #define UPCXX_ASSERT(...) UPCXX_ASSERT_DISPATCH(__VA_ARGS__, UPCXX_ASSERT_2, UPCXX_ASSERT_1, _DUMMY)(__VA_ARGS__)
+#if UPCXXI_ASSERT_ENABLED
+  #define UPCXX_ASSERT(...) UPCXXI_ASSERT_DISPATCH(__VA_ARGS__, UPCXXI_ASSERT_2, UPCXXI_ASSERT_1, _DUMMY)(__VA_ARGS__)
 #elif __PGI
   // PGI's warning #174-D "expression has no effect" is too stoopid to ignore `((void)0)` 
   // when it appears in an expression context before a comma operator.
@@ -76,85 +76,90 @@ namespace detail {
 #endif
 
 // Assert that happens regardless of debug-mode.
-#define UPCXX_ASSERT_ALWAYS(...) UPCXX_ASSERT_DISPATCH(__VA_ARGS__, UPCXX_ASSERT_2, UPCXX_ASSERT_1, _DUMMY)(__VA_ARGS__)
+#define UPCXX_ASSERT_ALWAYS(...) UPCXXI_ASSERT_DISPATCH(__VA_ARGS__, UPCXXI_ASSERT_2, UPCXXI_ASSERT_1, _DUMMY)(__VA_ARGS__)
 
 // In debug mode this will abort. In non-debug this is a nop.
-#if UPCXX_ASSERT_ENABLED
-  #define UPCXX_INVOKE_UB() UPCXX_FATAL_ERROR("Undefined behavior!")
+#if UPCXXI_ASSERT_ENABLED
+  #define UPCXXI_INVOKE_UB() UPCXXI_FATAL_ERROR("Undefined behavior!")
 #else
-  #define UPCXX_INVOKE_UB() UPCXXI_UNREACHABLE()
+  #define UPCXXI_INVOKE_UB() UPCXXI_UNREACHABLE()
 #endif
 
 // static assert that is permitted in expression context
-#define UPCXX_STATIC_ASSERT(cnd, msg) ([=](){static_assert(cnd, msg);}())
+#define UPCXXI_STATIC_ASSERT(cnd, msg) ([=](){static_assert(cnd, msg);}())
 
 // Asserting master persona - note the subtle semantic differences!
 //
-// * UPCXX_ASSERT_(ALWAYS_)MASTER():
+// * UPCXXI_ASSERT_(ALWAYS_)MASTER():
 //   Assert the master persona is held by this thread in DEBUG mode (or always, ie also when assertions disabled)
 //   Used for operations the *spec* says require holding the master persona (regardless of threadmode)
 // 
-// * UPCXX_ASSERT_MASTER_HELD_IFSEQ():
+// * UPCXXI_ASSERT_MASTER_HELD_IFSEQ():
 //   Iff we are in SEQ mode, assert the master persona is held by this thread in DEBUG mode
 //   Used for operations docs/implementation-defined.md says require *holding* master persona in SEQ
 //
-// * UPCXX_ASSERT_MASTER_CURRENT_IFSEQ():
+// * UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ():
 //   Iff we are in SEQ mode, assert the master persona is current_persona() for this thread in DEBUG mode
 //   Used for operations docs/implementation-defined.md says require master persona *current* in SEQ
 //
-// For operations requiring two of the above, the more generic UPCXX_ASSERT_(ALWAYS_)MASTER() should appear first.
-#define UPCXX_ASSERT_ALWAYS_MASTER() \
+// For operations requiring two of the above, the more generic UPCXXI_ASSERT_(ALWAYS_)MASTER() should appear first.
+#define UPCXXI_ASSERT_ALWAYS_MASTER() \
         UPCXX_ASSERT_ALWAYS(backend::master.active_with_caller(), \
                      "This operation requires the master persona to appear in the persona stack of the calling thread")
-#if UPCXX_ASSERT_ENABLED
-  #define UPCXX_ASSERT_MASTER() UPCXX_ASSERT_ALWAYS_MASTER()
-  #define UPCXX_ASSERT_MASTER_HELD_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
+#if UPCXXI_ASSERT_ENABLED
+  #define UPCXXI_ASSERT_MASTER() UPCXXI_ASSERT_ALWAYS_MASTER()
+  #define UPCXXI_ASSERT_MASTER_HELD_IFSEQ() (!UPCXXI_BACKEND_GASNET_SEQ ? ((void)0) : \
           UPCXX_ASSERT(::upcxx::master_persona().active_with_caller(), \
                "When compiled in threadmode=seq, this operation requires the primordial thread with the master persona in the persona stack.\n" \
                "Invoking certain UPC++ functions from multiple threads requires compiling with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
                "For details, please see `docs/implementation-defined.md`"))
-  #define UPCXX_ASSERT_MASTER_CURRENT_IFSEQ() (!UPCXX_BACKEND_GASNET_SEQ ? ((void)0) : \
+  #define UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ() (!UPCXXI_BACKEND_GASNET_SEQ ? ((void)0) : \
           UPCXX_ASSERT(&::upcxx::current_persona() == &::upcxx::master_persona(), \
                "When compiled in threadmode=seq, this operation requires the primordial thread using the master persona as the current persona.\n" \
                "Applications with multi-threaded communication requirements should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n" \
                "For details, please see `docs/implementation-defined.md`"))
 #else
-  #define UPCXX_ASSERT_MASTER() ((void)0)
-  #define UPCXX_ASSERT_MASTER_HELD_IFSEQ() ((void)0)
-  #define UPCXX_ASSERT_MASTER_CURRENT_IFSEQ() ((void)0)
+  #define UPCXXI_ASSERT_MASTER() ((void)0)
+  #define UPCXXI_ASSERT_MASTER_HELD_IFSEQ() ((void)0)
+  #define UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ() ((void)0)
 #endif
 
 // asserting collective-safe context
-#ifndef UPCXX_COLLECTIVES_IN_PROGRESS
-#define UPCXX_COLLECTIVES_IN_PROGRESS 1 // whether or not to allow collective invocations in progress
+#ifndef UPCXXI_COLLECTIVES_IN_PROGRESS
+#define UPCXXI_COLLECTIVES_IN_PROGRESS 1 // whether or not to allow collective invocations in progress
 #endif
-#if !UPCXX_COLLECTIVES_IN_PROGRESS // hard prohibition against collectives in progress
-#define UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED(fnname, eb) \
+#if !UPCXXI_COLLECTIVES_IN_PROGRESS // hard prohibition against collectives in progress
+#define UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED(fnname, eb) \
   UPCXX_ASSERT_ALWAYS(!(::upcxx::initialized() && ::upcxx::in_progress()), \
        "Collective operation " << fnname << " invoked within the restricted context. \n" \
        "Initiation of collective operations from within callbacks running inside user-level progress is prohibited.")
-#define UPCXX_ASSERT_COLLECTIVE_SAFE(eb) UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("shown above", eb)
+#define UPCXXI_ASSERT_COLLECTIVE_SAFE(eb) UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("shown above", eb)
 #else // Allow collectives in progress with a deprecation warning
 // eb is an entry_barrier constant actually representing the progress level
 // cannot use progress_level enum because it lacks a "none" constant
-#define UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED(fnname, eb) ( \
+#define UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED(fnname, eb) ( \
     (::upcxx::initialized() && ::upcxx::in_progress()) ? \
     ::upcxx::backend::warn_collective_in_progress(fnname, eb) \
     : (void)0 )
-#define UPCXX_ASSERT_COLLECTIVE_SAFE(eb) UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED(UPCXX_FUNC, eb)
+#define UPCXXI_ASSERT_COLLECTIVE_SAFE(eb) UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED(UPCXXI_FUNC, eb)
 #endif
 
 #ifndef UPCXX_WARN_EMPTY_RMA
-#define UPCXX_WARN_EMPTY_RMA UPCXX_ASSERT_ENABLED
+#define UPCXX_WARN_EMPTY_RMA UPCXXI_ASSERT_ENABLED
 #endif
 #if UPCXX_WARN_EMPTY_RMA
-#define UPCXX_WARN_EMPTY(fnname, count) ( (count) == 0 ? backend::warn_empty_rma(fnname) : (void)0 )
+#define UPCXXI_WARN_EMPTY(fnname, count) ( (count) == 0 ? backend::warn_empty_rma(fnname) : (void)0 )
 #else
-#define UPCXX_WARN_EMPTY(fnname, count) ((void)0)
+#define UPCXXI_WARN_EMPTY(fnname, count) ((void)0)
 #endif
 
-// UPCXX_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled
+// UPCXXI_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled
 // Auto-detection can be overridden by -DUPCXX_USE_NODISCARD=1/0
+// issue 491: Some compilers report __has_cpp_attribute(nodiscard) but
+// then issue warnings about use of the attribute under certain
+// conditions (e.g. clang with -pedantic -std=c++14). You can override
+// use of this attribute by #defining UPCXX_USE_NODISCARD=0 before
+// including upcxx.hpp
 #ifndef UPCXX_USE_NODISCARD
   // general case: trust __has_cpp_attribute when available
   // This *should* be sufficient for any C++11-compliant compiler
@@ -167,9 +172,9 @@ namespace detail {
   // (currently none in our supported compiler set)
 #endif // !defined(UPCXX_USE_NODISCARD)
 #if UPCXX_USE_NODISCARD
-  #define UPCXX_NODISCARD [[nodiscard]]
+  #define UPCXXI_NODISCARD [[nodiscard]]
 #else
-  #define UPCXX_NODISCARD 
+  #define UPCXXI_NODISCARD 
 #endif
 
 namespace upcxx {

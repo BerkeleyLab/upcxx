@@ -9,13 +9,13 @@
 // Consult the UPC++ Specification for guaranteed copy/move behaviors.
 
 #ifndef USE_CUDA
-  #if UPCXX_CUDA_ENABLED 
+  #if UPCXX_KIND_CUDA 
     #define USE_CUDA 1
   #else
     #define USE_CUDA 0
   #endif
 #endif
-#if USE_CUDA && !UPCXX_CUDA_ENABLED
+#if USE_CUDA && !UPCXX_KIND_CUDA
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 

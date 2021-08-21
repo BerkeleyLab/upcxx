@@ -6,7 +6,7 @@
 
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 
-#if UPCXX_CUDA_ENABLED
+#if UPCXXI_CUDA_ENABLED
   #include <cuda.h>
   #include <cuda_runtime_api.h>
 
@@ -16,7 +16,7 @@
   #error Missing UPCXXI_MAXEPS definition
   #endif
   #if UPCXXI_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
-    #define UPCXX_CUDA_USE_MK 1
+    #define UPCXXI_CUDA_USE_MK 1
   #endif
 
   namespace upcxx {
@@ -40,7 +40,7 @@
         ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
-  #if UPCXX_ASSERT_ENABLED
+  #if UPCXXI_ASSERT_ENABLED
     #define CU_CHECK(expr)   CU_CHECK_ALWAYS(expr)
     #define CURT_CHECK(expr) CURT_CHECK_ALWAYS(expr)
   #else
@@ -57,7 +57,7 @@
         CUstream stream;
         CUdeviceptr segment_to_free;
 
-        #if UPCXX_CUDA_USE_MK
+        #if UPCXXI_CUDA_USE_MK
           // gex objects...
           gex_EP_t ep;
           gex_MK_t kind;

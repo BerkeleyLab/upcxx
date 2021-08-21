@@ -6,8 +6,8 @@
 
 #include <sched.h>
 
-#if !UPCXX_BACKEND_GASNET_PAR
-  #error "UPCXX_BACKEND=gasnet_par required."
+#if !UPCXX_THREADMODE
+  #error "UPCXX_THREADMODE=par required."
 #endif
 
 using namespace std; 

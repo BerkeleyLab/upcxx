@@ -39,8 +39,8 @@ team::team(team &&that):
   n_(that.n_),
   me_(that.me_) {
 
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_MASTER();
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_MASTER();
   UPCXX_ASSERT(that.id_ != tombstone);
   
   that.id_ = tombstone;
@@ -62,10 +62,10 @@ team::~team() {
 
 GASNETT_COLD
 team team::split(intrank_t color, intrank_t key) const {
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_MASTER();
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-  UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT(color >= 0 || color == color_none);
   UPCXX_ASSERT(id_ != tombstone, "Invalid team in destroy()");
   
@@ -104,10 +104,10 @@ team team::split(intrank_t color, intrank_t key) const {
 
 GASNETT_COLD
 void team::destroy(entry_barrier eb) {
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_MASTER();
-  UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
-  UPCXX_ASSERT_COLLECTIVE_SAFE(eb);
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
   UPCXX_ASSERT(this != &world(),      "team::destroy() is prohibited on team world()");
   UPCXX_ASSERT(this != &local_team(), "team::destroy() is prohibited on the local_team()");
   UPCXX_ASSERT(id_ != tombstone,      "Invalid team in destroy()");
@@ -117,7 +117,7 @@ void team::destroy(entry_barrier eb) {
 
 GASNETT_COLD
 void team::destroy(detail::internal_only, entry_barrier eb) {
-  UPCXX_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER();
   
   gex_TM_t tm = gasnet::handle_of(*this);
 

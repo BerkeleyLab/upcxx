@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <limits>
 
-#if UPCXX_MPSC_QUEUE_BIGLOCK
+#if UPCXXI_MPSC_QUEUE_BIGLOCK
   #include <mutex>
 #endif
 
@@ -186,7 +186,7 @@ namespace upcxx {
     ////////////////////////////////////////////////////////////////////////////
     // intru_queue<..., safety=mpsc> specialization:
     
-    #if UPCXX_MPSC_QUEUE_ATOMIC
+    #if UPCXXI_MPSC_QUEUE_ATOMIC
       template<typename T, intru_queue_intruder<T> T::*next>
       class intru_queue<T, intru_queue_safety::mpsc, next> {
         std::atomic<T*> head_;
@@ -198,12 +198,12 @@ namespace upcxx {
         // the exchange operation on the producer thread who is trying to modify the tail.
         // Sadly neither PowerPC nor ARM guarantee a particular coherency block size
         // for LL/SC, so use something around the cache line size, which is likely "big enough".
-        #ifndef UPCXX_MPSC_PAD_SIZE
-        #define UPCXX_MPSC_PAD_SIZE 128
+        #ifndef UPCXXI_MPSC_PAD_SIZE
+        #define UPCXXI_MPSC_PAD_SIZE 128
         #endif
-        char pad1_[UPCXX_MPSC_PAD_SIZE-sizeof(std::atomic<T*>)];
+        char pad1_[UPCXXI_MPSC_PAD_SIZE-sizeof(std::atomic<T*>)];
         std::atomic<std::uintptr_t> tailp_xor_head_;
-        char pad2_[UPCXX_MPSC_PAD_SIZE-sizeof(std::uintptr_t)];
+        char pad2_[UPCXXI_MPSC_PAD_SIZE-sizeof(std::uintptr_t)];
         
       private:
         constexpr std::atomic<T*>* decode_tailp(std::uintptr_t u) const {
@@ -395,7 +395,7 @@ namespace upcxx {
         return exec_n;
       }
     
-    #elif UPCXX_MPSC_QUEUE_BIGLOCK
+    #elif UPCXXI_MPSC_QUEUE_BIGLOCK
     
       /* This is the poorly performing but most likely bug-free implementation of
        * a mpsc intru_queue. There is a single global lock, yuck.
@@ -467,7 +467,7 @@ namespace upcxx {
       std::mutex intru_queue<T, intru_queue_safety::mpsc, next>::the_lock_;
     
     #else
-      #error "Invalid UPCXX_MPSC_QUEUE_xxx."
+      #error "Invalid UPCXXI_MPSC_QUEUE_xxx."
     #endif
   }
 }

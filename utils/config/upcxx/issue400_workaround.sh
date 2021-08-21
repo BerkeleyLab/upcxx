@@ -14,7 +14,7 @@ _EOF
 
 if [[ $(eval ${GASNET_CC} ${GASNET_CPPFLAGS} ${GASNET_CFLAGS} -E conftest.c ) =~ (impacted by issue 400) ]]; then
   echo
-  echo '#ifndef UPCXX_ISSUE400_WORKAROUND'
-  echo '#define UPCXX_ISSUE400_WORKAROUND 1'
+  echo '#ifndef UPCXXI_ISSUE400_WORKAROUND'
+  echo '#define UPCXXI_ISSUE400_WORKAROUND 1'
   echo '#endif'
 fi

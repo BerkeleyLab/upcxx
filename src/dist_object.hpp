@@ -36,7 +36,7 @@ namespace upcxx {
 
     UPCXXI_ATTRIB_PURE
     dist_object<T>& here() const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       UPCXX_ASSERT(detail::registry[dig_],
         "dist_id::here() called for an invalid id or dist_object (possibly outside its lifetime)");
       return std::get<0>(
@@ -51,22 +51,22 @@ namespace upcxx {
     }
     
     future<dist_object<T>&> when_here() const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       return detail::promise_get_future(detail::registered_promise<dist_object<T>&>(dig_));
     }
     
-    #define UPCXX_COMPARATOR(op) \
+    #define UPCXXI_COMPARATOR(op) \
       UPCXXI_ATTRIB_CONST \
       friend bool operator op(dist_id a, dist_id b) {\
         return a.dig_ op b.dig_; \
       }
-    UPCXX_COMPARATOR(==)
-    UPCXX_COMPARATOR(!=)
-    UPCXX_COMPARATOR(<)
-    UPCXX_COMPARATOR(<=)
-    UPCXX_COMPARATOR(>)
-    UPCXX_COMPARATOR(>=)
-    #undef UPCXX_COMPARATOR
+    UPCXXI_COMPARATOR(==)
+    UPCXXI_COMPARATOR(!=)
+    UPCXXI_COMPARATOR(<)
+    UPCXXI_COMPARATOR(<=)
+    UPCXXI_COMPARATOR(>)
+    UPCXXI_COMPARATOR(>=)
+    #undef UPCXXI_COMPARATOR
 
     friend std::ostream& operator<<(std::ostream &o, dist_id<T> x) {
       return o << x.dig_;
@@ -97,9 +97,9 @@ namespace upcxx {
     dist_object(const upcxx::team &tm, U &&...arg):
       tm_(&tm),
       value_(std::forward<U>(arg)...) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER();
-      UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
+      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
       
       id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
       
@@ -113,9 +113,9 @@ namespace upcxx {
     dist_object(T value, const upcxx::team &tm):
       tm_(&tm),
       value_(std::move(value)) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER();
-      UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
+      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
 
       id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
       
@@ -137,8 +137,8 @@ namespace upcxx {
       id_(that.id_),
       value_(std::move(that.value_)) {
       
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER();
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
       UPCXX_ASSERT((that.id_ != detail::digest{~0ull, ~0ull}));
 
       that.id_ = detail::digest{~0ull, ~0ull}; // the tombstone id value
@@ -155,7 +155,7 @@ namespace upcxx {
     }
     
     ~dist_object() {
-      if (backend::init_count > 0) UPCXX_ASSERT_MASTER();
+      if (backend::init_count > 0) UPCXXI_ASSERT_MASTER();
 
       if(id_ != detail::digest{~0ull, ~0ull}) {
         auto it = detail::registry.find(id_);
@@ -171,10 +171,10 @@ namespace upcxx {
     const upcxx::team& team() const { return *tm_; }
     dist_id<T> id() const { return dist_id<T>{id_}; }
     
-    UPCXX_NODISCARD
+    UPCXXI_NODISCARD
     future<deserialized_type_t<T>> fetch(intrank_t rank) const {
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER_CURRENT_IFSEQ();
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
       static_assert(
         is_serializable<T>::value,
         "T must be Serializable for dist_object<T>::fetch."

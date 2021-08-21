@@ -45,7 +45,7 @@ namespace gasnet {
       detail::persona_tls &tls = detail::the_persona_tls;
       tls.enqueue(
         *this->target, progress_level::internal, this,
-        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+        /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
       );
     }
   };

@@ -23,6 +23,6 @@
 #include <upcxx/view.hpp>
 #include <upcxx/memberof.hpp>
 
-#undef UPCXX_INTERNAL_ONLY
+#undef UPCXXI_INTERNAL_ONLY
 
 #endif

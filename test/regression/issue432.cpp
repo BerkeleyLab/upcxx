@@ -4,7 +4,7 @@
 #include <upcxx/upcxx.hpp>
 #include "../util.hpp"
 
-#if !UPCXX_CUDA_ENABLED 
+#if !UPCXX_KIND_CUDA 
 #error This test requires CUDA support
 #endif
 
