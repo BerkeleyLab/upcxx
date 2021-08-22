@@ -156,13 +156,56 @@ namespace {
 
 #if UPCXXI_CUDA_ENABLED
 GASNETT_COLD
-void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char *expr) {
-  const char *errname, *errstr;
+static std::string get_cuda_info() {
+  std::stringstream ss;
+
+  int version = -1;
+  if ( cuDriverGetVersion(&version) == CUDA_SUCCESS && version >= 0) {
+    ss << "CUDA Driver version: " << version/1000 << "." << (version%1000)/10 << '\n';
+  }
+
+  int dev_n = -1;
+  if ( cuDeviceGetCount(&dev_n) == CUDA_SUCCESS && dev_n >= 0) {
+    ss << "Found " << dev_n << " CUDA devices:\n";
+    for (int d = 0; d < dev_n; d++) {
+      char name[255];
+      size_t mem = 0;
+      ss << "  " << d << ": ";
+      if (cuDeviceGetName(name, sizeof(name)-1, d) == CUDA_SUCCESS && *name) {
+        name[sizeof(name)-1] = '\0';
+        ss << name;
+      }
+      if (cuDeviceTotalMem(&mem, d) == CUDA_SUCCESS && mem > 0) {
+        ss << "\n    Total memory: " << mem/(1024*1024.0) << " MiB";
+      }
+      ss << '\n';
+    }
+  }
+  for (auto s : 
+       { "CUDA_VISIBLE_DEVICES", "CUDA_DEVICE_ORDER", "NVIDIA_VISIBLE_DEVICES" }) {
+    const char *header = "Environment settings:\n";
+    const char *v = std::getenv(s); // deliberately avoid os_env here to get local process env
+    if (v) {
+      if (header) { ss << header; header = nullptr; }
+      ss << "  " << s << "=" << v << '\n';
+    }
+  }
+
+  return ss.str();
+}
+
+GASNETT_COLD
+void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose) {
+  const char *errname="", *errstr="";
   cuGetErrorName(res, &errname);
   cuGetErrorString(res, &errstr);
   
   std::stringstream ss;
   ss << expr <<"\n  error="<<errname<<": "<<errstr;
+
+  if (report_verbose) {
+    ss << "\n\nCUDA info:\n" << get_cuda_info();
+  }
   
   upcxx::detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
 }
@@ -195,11 +238,15 @@ upcxx::cuda_device::cuda_device(int device):
       CUcontext ctx;
       CUresult res = cuDevicePrimaryCtxRetain(&ctx, device);
       if(res == CUDA_ERROR_NOT_INITIALIZED) {
-        cuInit(0);
+        CU_CHECK_ALWAYS_VERBOSE(cuInit(0));
         res = cuDevicePrimaryCtxRetain(&ctx, device);
       }
-      CU_CHECK_ALWAYS(((void)"cuDevicePrimaryCtxRetain()", res));
-      CU_CHECK_ALWAYS(cuCtxPushCurrent(ctx));
+      if (res != CUDA_SUCCESS) {
+        std::string callstr("cuDevicePrimaryCtxRetain() failed for device=");
+        callstr += std::to_string(device);
+        upcxx::cuda::cu_failed(res, __FILE__, __LINE__, callstr.c_str(), true);
+      }
+      CU_CHECK_ALWAYS_VERBOSE(cuCtxPushCurrent(ctx));
 
       cuda::device_state *st = new cuda::device_state{};
       st->context = ctx;
@@ -230,10 +277,10 @@ upcxx::cuda_device::cuda_device(int device):
       }
       #endif
       
-      CU_CHECK_ALWAYS(cuStreamCreate(&st->stream, CU_STREAM_NON_BLOCKING));
+      CU_CHECK_ALWAYS_VERBOSE(cuStreamCreate(&st->stream, CU_STREAM_NON_BLOCKING));
       backend::heap_state::get(heap_idx_,true) = st;
       
-      CU_CHECK_ALWAYS(cuCtxPopCurrent(&ctx));
+      CU_CHECK_ALWAYS_VERBOSE(cuCtxPopCurrent(&ctx));
     }
   #else
     UPCXX_ASSERT_ALWAYS(device == invalid_device_id);
