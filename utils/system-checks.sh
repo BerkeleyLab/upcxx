@@ -261,7 +261,7 @@ _EOF
         return res;
       }
 _EOF
-    if ! (set -x; $CC $CFLAGS -c conftest-cc.c) >> $DETAIL_LOG 2>&1 ; then
+    if ! (set -x; eval $CC $CFLAGS -c conftest-cc.c) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CC=$CC failed to compile test C file"
         echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
         tail -4 $DETAIL_LOG
@@ -320,14 +320,14 @@ _EOF
         return 0;
       }
 _EOF
-    if ! (set -x; $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp) >> $DETAIL_LOG 2>&1 ; then
+    if ! (set -x; eval $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CXX=$CXX failed to compile test C++ file"
         echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
         tail -4 $DETAIL_LOG
         check_maybe_c_compiler
         return 2
     fi
-    if ! (set -x; $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
+    if ! (set -x; eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
         echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
         tail -4 $DETAIL_LOG
@@ -425,14 +425,14 @@ platform_sanity_checks() {
         CC=$cc_exec
         if test -z "$UPCXX_INSTALL_QUIET" ; then
             echo $CXX
-            $CXX --version 2>&1 | grep -v 'warning #10315'
+            eval $CXX --version 2>&1 | grep -v 'warning #10315'
             echo $CC
-            $CC --version 2>&1 | grep -v 'warning #10315'
+            eval $CC --version 2>&1 | grep -v 'warning #10315'
             echo " "
         fi
 
-        local CXXVERS=`$CXX --version 2>&1`
-        local CCVERS=`$CC --version 2>&1`
+        local CXXVERS=`eval $CXX --version 2>&1`
+        local CCVERS=`eval $CC --version 2>&1`
         local COMPILER_BAD=
         local COMPILER_GOOD=
         local EXTRA_RECOMMEND=

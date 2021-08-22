@@ -111,7 +111,6 @@ do-gasnet-configure: force
 	   cmd="$$cmd --disable-parsync --enable-seq --enable-par";                   \
 	   cmd="$$cmd --enable-pthreads --disable-segment-everything";                \
 	   cmd="$$cmd $(configure_$(GASNET_CODEMODE))";                               \
-	   cmd="$$cmd --with-cc='$(CONFIG_CC)' --with-cxx='$(CONFIG_CXX)'";           \
 	   echo "$$cmd";                                                              \
 	   mkdir -p "$$dir" && cd "$$dir" && eval "$$cmd" 2>&1 | tee config.txt;      \
 	   rc=$${PIPESTATUS[0]}; (( $$rc )) && exit $$rc;                             \
