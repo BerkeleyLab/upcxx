@@ -711,7 +711,9 @@ export CC
 export CXX
 # Quoting is believed sufficient for space, tab, single-quote and double-quote.
 # Do not make these conditional on non-empty values.  We want to preserve empty values too.
+GASNET_CONFIGURE_ARGS+=" --with-cc=\"${CC//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cflags=\"${CFLAGS//\"/\\\"}\""
+GASNET_CONFIGURE_ARGS+=" --with-cxx=\"${CXX//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cxxflags=\"${CXXFLAGS//\"/\\\"}\""
 
 #

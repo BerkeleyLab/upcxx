@@ -77,6 +77,11 @@ GASNETT_IDENT(UPCXXI_IdentString_CompilerStd, "$UPCXXCompilerStd: " _STRINGIFY(_
 
 GASNETT_IDENT(UPCXXI_IdentString_BuildTimestamp, "$UPCXXBuildTimestamp: " __DATE__ " " __TIME__ " $");
 
+#ifndef UPCXXI_CONFIGURE_ARGS
+#error  UPCXXI_CONFIGURE_ARGS missing!
+#endif
+GASNETT_IDENT(UPCXXI_IdentString_ConfigureArgs, "$UPCXXConfigureArgs: " UPCXXI_CONFIGURE_ARGS " $");
+
 namespace upcxx { namespace backend { namespace gasnet {
 extern int watermark_init();
 }}}
