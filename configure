@@ -532,7 +532,7 @@ if [[ "$GASNET_TYPE" == 'build' ]]; then
   gex_spec_file="$GASNET/gasnet_config.h"
 else
   gex_header="$GASNET/gasnetex.h"
-  gex_spec_file=$(echo $GASNET/docs/GASNet-EX.*)
+  gex_spec_file="$GASNET/docs/GASNet-EX.txt"
 fi
 
 # verify distinguishing file (if any)
