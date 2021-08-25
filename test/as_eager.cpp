@@ -1,10 +1,5 @@
 #include "util.hpp"
 
-#define CHECK_READY(fut, expected) \
-  UPCXX_ASSERT_ALWAYS(fut.ready() == expected)
-#define CHECK_RESULT(fut, eager, expected) \
-  UPCXX_ASSERT_ALWAYS((eager ? fut.result() : fut.wait()) == expected)
-
 struct A {
   static int live_count;
   A() {
@@ -23,61 +18,71 @@ int A::live_count = 0;
 template<typename SrcFutCxFn, typename OpFutCxFn,
          typename OpEmptyPromCxFn, typename OpIntPromCxFn,
          typename OpAPromCxFn>
-void test(bool eager_bypass, bool src_eager,
+void test(bool bypass, bool op_eager, bool src_eager,
           SrcFutCxFn src_fut_cx_fn, OpFutCxFn op_fut_cx_fn,
           OpEmptyPromCxFn empty_prom_fn, OpIntPromCxFn int_prom_fn,
           OpAPromCxFn a_prom_fn,
           upcxx::global_ptr<std::int64_t> gptr,
           upcxx::global_ptr<std::int64_t> aptr,
           upcxx::atomic_domain<std::int64_t> &ad) {
+#define CHECK_READY(fut, eagerness) \
+  ([=]() { \
+    auto ready = fut.ready(); \
+    UPCXX_ASSERT_ALWAYS((ready <= eagerness) && \
+                        (ready >= (bypass && eagerness)), \
+    "ready()="<<ready<<" eagerness="<<eagerness<<" bypass="<<bypass); \
+  })()
+#define CHECK_RESULT(fut, expected) \
+  UPCXX_ASSERT_ALWAYS((fut.ready() ? fut.result() : fut.wait()) == expected)
+
   // reset values
   upcxx::rput(std::int64_t(0), gptr).wait();
   ad.store(aptr, std::int64_t(0), std::memory_order_relaxed).wait();
 
   // scalar rput/rget
   auto fut1 = upcxx::rput(std::int64_t(3), gptr, op_fut_cx_fn());
-  CHECK_READY(fut1, eager_bypass);
+  CHECK_READY(fut1, op_eager);
   fut1.wait();
 
   auto fut2 = upcxx::rget(gptr, op_fut_cx_fn());
-  CHECK_READY(fut2, eager_bypass);
-  CHECK_RESULT(fut2, eager_bypass, 3);
+  CHECK_READY(fut2, op_eager);
+  CHECK_RESULT(fut2, 3);
 
   upcxx::promise<> pro3;
   upcxx::rput(std::int64_t(-7), gptr, empty_prom_fn(pro3));
-  CHECK_READY(pro3.finalize(), eager_bypass);
+  CHECK_READY(pro3.finalize(), op_eager);
   pro3.get_future().wait();
 
   upcxx::promise<std::int64_t> pro4;
   upcxx::rget(gptr, int_prom_fn(pro4));
-  CHECK_READY(pro4.finalize(), eager_bypass);
-  CHECK_RESULT(pro4.get_future(), eager_bypass, -7);
+  CHECK_READY(pro4.finalize(), op_eager);
+  CHECK_RESULT(pro4.get_future(), -7);
 
   // vector rput/rget
   std::int64_t val = 11;
   auto futs5 = upcxx::rput(&val, gptr, 1,
                            op_fut_cx_fn() | src_fut_cx_fn());
-  CHECK_READY(std::get<0>(futs5), eager_bypass);
-  // source completion may happen in non-bypass case if eager requested
-  if (eager_bypass) CHECK_READY(std::get<1>(futs5), eager_bypass);
-  else if (!src_eager) CHECK_READY(std::get<1>(futs5), src_eager);
+  CHECK_READY(std::get<0>(futs5), op_eager);
+  CHECK_READY(std::get<1>(futs5), src_eager);
   std::get<1>(futs5).wait();
   val = 0; // clear val before reading back into it below
   std::get<0>(futs5).wait();
 
   auto fut6 = upcxx::rget(gptr, &val, 1, op_fut_cx_fn());
-  CHECK_READY(fut6, eager_bypass);
+  CHECK_READY(fut6, op_eager);
   fut6.wait();
   UPCXX_ASSERT_ALWAYS(val == 11);
 
-  // atomics -- cannot assume synchronous completion
+  { // atomics -- cannot assume synchronous completion
+  bool bypass = false; // force checking to assume no bypass
   auto fut7 = ad.store(aptr, 3, std::memory_order_relaxed, op_fut_cx_fn());
-  if (!eager_bypass) CHECK_READY(fut7, eager_bypass);
+  CHECK_READY(fut7, op_eager);
   fut7.wait();
 
   auto fut8 = ad.load(aptr, std::memory_order_relaxed, op_fut_cx_fn());
-  if (!eager_bypass) CHECK_READY(fut8, eager_bypass);
-  CHECK_RESULT(fut8, false, 3);
+  CHECK_READY(fut8, op_eager);
+  CHECK_RESULT(fut8, 3);
+  } // atomics
 
   // check promise ref counting
   {
@@ -89,27 +94,30 @@ void test(bool eager_bypass, bool src_eager,
     UPCXX_ASSERT_ALWAYS(A::live_count);
   }
   UPCXX_ASSERT_ALWAYS(!A::live_count);
+
+  #undef CHECK_READY
+  #undef CHECK_RESULT
 }
 
 void test_all(bool bypass,
               upcxx::global_ptr<std::int64_t> gptr,
               upcxx::global_ptr<std::int64_t> aptr,
               upcxx::atomic_domain<std::int64_t> &ad) {
-  test(!UPCXX_DEFER_COMPLETION && bypass, !UPCXX_DEFER_COMPLETION,
+  test(bypass, !UPCXX_DEFER_COMPLETION, !UPCXX_DEFER_COMPLETION,
        upcxx::source_cx::as_future,
        upcxx::operation_cx::as_future,
        upcxx::operation_cx::as_promise<>,
        upcxx::operation_cx::as_promise<std::int64_t>,
        upcxx::operation_cx::as_promise<A>,
        gptr, aptr, ad);
-  test(false, false,
+  test(bypass, false, false,
        upcxx::source_cx::as_defer_future,
        upcxx::operation_cx::as_defer_future,
        upcxx::operation_cx::as_defer_promise<>,
        upcxx::operation_cx::as_defer_promise<std::int64_t>,
        upcxx::operation_cx::as_defer_promise<A>,
        gptr, aptr, ad);
-  test(bypass, true,
+  test(bypass, true, true,
        upcxx::source_cx::as_eager_future,
        upcxx::operation_cx::as_eager_future,
        upcxx::operation_cx::as_eager_promise<>,
