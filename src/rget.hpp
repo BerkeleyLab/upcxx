@@ -28,13 +28,6 @@ namespace upcxx {
       backend::gasnet::handle_cb *cb
     );
 
-    void rma_get_b(
-      void *buf_d,
-      intrank_t rank_s,
-      const void *buf_s,
-      std::size_t buf_size
-    );
-    
     ////////////////////////////////////////////////////////////////////
     // Types used as `EventValues` in `detail::completions_state`.
 

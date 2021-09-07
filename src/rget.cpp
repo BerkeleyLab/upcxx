@@ -25,19 +25,3 @@ detail::rma_get_done detail::rma_get_nb(
     : rma_get_done::none;
 }
 
-void upcxx::detail::rma_get_b(
-    void *buf_d,
-    intrank_t rank_s,
-    const void *buf_s,
-    std::size_t buf_size
-  ) {
-  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-
-  (void)gex_RMA_GetBlocking(
-    gasnet::handle_of(upcxx::world()),
-    buf_d, rank_s, const_cast<void*>(buf_s), buf_size,
-    /*flags*/0
-  );
-  
-  gasnet::after_gasnet();
-}
