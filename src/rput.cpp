@@ -12,6 +12,7 @@ detail::rma_put_sync detail::rma_put(
     gasnet::handle_cb *op_cb
   ) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXX_ASSERT(!backend::rank_is_local(rank_d)); // bypass handled in header
 
   if(sync_lb != rma_put_sync::op_now) {
     gex_Event_t src_h = GEX_EVENT_INVALID, *src_ph;
@@ -33,7 +34,7 @@ detail::rma_put_sync detail::rma_put(
       gasnet::handle_of(upcxx::world()), rank_d,
       buf_d, const_cast<void*>(buf_s), size,
       src_ph,
-      /*flags*/0
+      UPCXXI_GEX_FLAG_PEER_NEVER_NBRHD
     );
     
     op_cb->handle = reinterpret_cast<uintptr_t>(op_h);
@@ -53,7 +54,7 @@ detail::rma_put_sync detail::rma_put(
     (void)gex_RMA_PutBlocking(
       gasnet::handle_of(upcxx::world()), rank_d,
       buf_d, const_cast<void*>(buf_s), size,
-      /*flags*/0
+      UPCXXI_GEX_FLAG_PEER_NEVER_NBRHD
     );
     
     return rma_put_sync::op_now;
