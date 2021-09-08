@@ -176,7 +176,6 @@ void upcxx::detail::rma_copy_put(
   #if UPCXXI_CUDA_USE_MK
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
-  UPCXX_ASSERT(!backend::rank_is_local(rank_d)); // bypass handled in header
 
   gex_Event_t h = gex_RMA_PutNB(
     gasnet::handle_of(upcxx::world()),
