@@ -106,6 +106,11 @@ void upcxx::detail::rma_copy_remote(
   }
   UPCXX_ASSERT(gex_EP_QueryIndex(local_ep) == local_ep_idx);
   
+  // We cannot pass GEX_FLAG_PEER_NEVER_NBRHD in the RMA calls below, 
+  // because this function is used to handle interprocess transfers
+  // that involve a device on one/both sides, even between local_team peers.
+  // We could safely pass GEX_FLAG_PEER_NEVER_SELF,
+  // but there is currently no benefit obtained by passing that flag.
   gex_Event_t h;
   if (isput) {
     h = gex_RMA_PutNB(
@@ -130,10 +135,30 @@ void upcxx::detail::rma_copy_remote(
 #endif
 }
 
+void upcxx::detail::rma_copy_get_nonlocal(
+    void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
+    gasnet::handle_cb *cb
+  ) {
+  UPCXX_ASSERT(!backend::rank_is_local(rank_s)); // bypass handled in header
+
+  gex_Event_t h = gex_RMA_GetNB(
+    gasnet::handle_of(upcxx::world()),
+    buf_d, rank_s, const_cast<void*>(buf_s), size,
+    UPCXXI_GEX_FLAG_PEER_NEVER_NBRHD
+  );
+  cb->handle = reinterpret_cast<uintptr_t>(h);
+  gasnet::register_cb(cb);
+  gasnet::after_gasnet();
+}
+
 void upcxx::detail::rma_copy_get(
     void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
+  #if UPCXXI_CUDA_USE_MK
+    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
+  #endif
+
   gex_Event_t h = gex_RMA_GetNB(
     gasnet::handle_of(upcxx::world()),
     buf_d, rank_s, const_cast<void*>(buf_s), size,
@@ -151,6 +176,7 @@ void upcxx::detail::rma_copy_put(
   #if UPCXXI_CUDA_USE_MK
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
+
   gex_Event_t h = gex_RMA_PutNB(
     gasnet::handle_of(upcxx::world()),
     rank_d, buf_d, const_cast<void*>(buf_s), size,

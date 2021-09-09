@@ -19,6 +19,7 @@
 
 namespace upcxx {
   namespace detail {
+    void rma_copy_get_nonlocal(void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
     void rma_copy_get(void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
     void rma_copy_put(intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
     void rma_copy_local(
@@ -240,7 +241,7 @@ namespace upcxx {
         .then(std::move(signal_completion));
     #else
       // this is simpler and faster:
-      detail::rma_copy_get(buf_d, rank_s, buf_s, size,
+      detail::rma_copy_get_nonlocal(buf_d, rank_s, buf_s, size,
                   backend::gasnet::make_handle_cb(std::move(signal_completion)));
     #endif
 
