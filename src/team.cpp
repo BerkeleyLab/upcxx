@@ -103,6 +103,72 @@ team team::split(intrank_t color, intrank_t key) const {
 }
 
 GASNETT_COLD
+team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t count) const {
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
+
+  #if UPCXXI_ASSERT_ENABLED
+    std::stringstream ss;
+    intrank_t limit = this->rank_n();
+    bool err = false;
+    ss << count << " entries : [ ";
+    for (size_t i = 0; i < count; i++) {
+      if (i) ss << ", ";
+      intrank_t rank = (intrank_t)locs[i].gex_rank;
+      UPCXX_ASSERT(locs[i].gex_ep_index == 0);
+      ss << rank;
+      if (rank < 0 || rank >= limit) err = true;
+    }
+    ss << " ]";
+    //experimental::say() << "team::create(" << ss.str() << ")";
+    if (err) UPCXXI_FATAL_ERROR("Invalid rank list passed to team::create()\n    " << ss.str());
+  #endif
+ 
+  gex_TM_t parent_tm = gasnet::handle_of(*this);
+  gex_TM_t sub_tm = GEX_TM_INVALID;
+  gex_TM_t *p_sub_tm = count > 0 ? &sub_tm : nullptr;
+
+  // query the required scratch size
+  size_t scratch_sz = gex_TM_Create(
+    nullptr, !!p_sub_tm,
+    parent_tm,
+    const_cast<gex_EP_Location_t *>(locs), count,
+    nullptr, 0,
+    GEX_FLAG_TM_SCRATCH_SIZE_RECOMMENDED | GEX_FLAG_TM_LOCAL_SCRATCH
+  );
+
+  void *scratch_buf = p_sub_tm
+    ? upcxx::allocate(scratch_sz, GASNET_PAGESIZE)
+    : nullptr;
+ 
+  // construct the new GASNet team
+  gex_TM_Create(
+    p_sub_tm, !!p_sub_tm,
+    parent_tm,
+    const_cast<gex_EP_Location_t *>(locs), count,
+    &scratch_buf, scratch_sz,
+    GEX_FLAG_TM_LOCAL_SCRATCH
+  );
+
+  intrank_t r0 = 0;
+  if (p_sub_tm) {
+    UPCXX_ASSERT(gex_TM_QuerySize(sub_tm) == count);
+    gex_TM_SetCData(sub_tm, scratch_buf);
+    r0 = (*this)[locs->gex_rank]; // world rank of first team member preserves global uniqueness
+  }
+
+  return team(
+      detail::internal_only(),
+      backend::team_base{reinterpret_cast<uintptr_t>(sub_tm)},
+      const_cast<team*>(this)->next_collective_id(detail::internal_only()).eat(r0),
+      count,
+      p_sub_tm ? (intrank_t)gex_TM_QueryRank(sub_tm) : -1
+    );
+}
+
+GASNETT_COLD
 void team::destroy(entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();

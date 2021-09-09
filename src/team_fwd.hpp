@@ -6,6 +6,8 @@
 #include <upcxx/digest.hpp>
 #include <upcxx/utility.hpp>
 
+#include <gasnet_fwd.h> // gex_EP_Location_t
+
 #include <unordered_map>
 
 /* This is the forward declaration(s) of upcxx::team and friends. It does not
@@ -135,6 +137,40 @@ namespace upcxx {
     static constexpr intrank_t color_none = -0xbad;
     
     team split(intrank_t color, intrank_t key) const;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // team::create
+    
+    team create(detail::internal_only, const gex_EP_Location_t *locs, size_t count) const;
+
+    template<typename Iter>
+    team create(Iter cbegin, Iter cend) const {
+      std::vector<gex_EP_Location_t> locs;
+
+      // optimization: reserve space if we can compute requirement in constant time
+      if (std::is_same<std::random_access_iterator_tag, 
+                       typename std::iterator_traits<Iter>::iterator_category>::value) 
+        locs.reserve(std::distance(cbegin, cend));
+
+      // linear pass over the ranks to convert them to GASNet's format
+      gex_EP_Location_t loc0;
+      loc0.gex_ep_index = 0;
+      for ( ; cbegin != cend; cbegin++) {
+        loc0.gex_rank = (gex_Rank_t)*cbegin;
+        locs.push_back(loc0);
+      }
+
+      return this->create(detail::internal_only(), 
+                          locs.data(), locs.size());
+    }
+
+    template<typename Container>
+    team create(const Container &ranks) const {
+      return this->create(ranks.cbegin(), ranks.cend());
+    }
+    team create(intrank_t *ranks, size_t count) const {
+      return this->create(ranks, ranks + count);
+    }
     
     void destroy(entry_barrier eb = entry_barrier::user);
     
