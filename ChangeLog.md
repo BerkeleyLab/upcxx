@@ -22,6 +22,8 @@ General features/enhancements: (see specification and programmer's guide for ful
   [implementation-defined.md](docs/implementation-defined.md) for details).
 * New overloads of fetching atomics that avoid overheads of non-empty futures
   and promises.
+* New `team::create` factory constructs teams with less communication than `team::split`
+  when each participant can enumerate the membership of its own new team.
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
   device memory and/or amenable to shared-memory bypass optimizations.
 * Performance improvements to contiguous RMA (`rput`, `rget`) using shared-memory bypass.
