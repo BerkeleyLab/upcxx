@@ -139,9 +139,9 @@ namespace upcxx {
       
       UPCXXI_ASSERT_INIT();
       UPCXXI_ASSERT_MASTER();
-      UPCXX_ASSERT((that.id_ != detail::digest{~0ull, ~0ull}));
+      UPCXX_ASSERT((that.id_ != detail::tombstone));
 
-      that.id_ = detail::digest{~0ull, ~0ull}; // the tombstone id value
+      that.id_ = detail::tombstone;
 
       // Moving is painful for us because the original constructor (of that)
       // created a promise, set its result to point to that, and then
@@ -157,7 +157,7 @@ namespace upcxx {
     ~dist_object() {
       if (backend::init_count > 0) UPCXXI_ASSERT_MASTER();
 
-      if(id_ != detail::digest{~0ull, ~0ull}) {
+      if(id_ != detail::tombstone) {
         auto it = detail::registry.find(id_);
         static_cast<detail::future_header_promise<dist_object<T>&>*>(it->second)->dropref();
         detail::registry.erase(it);

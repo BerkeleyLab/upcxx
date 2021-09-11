@@ -19,6 +19,7 @@
 namespace upcxx {
   namespace detail {
     extern std::unordered_map<digest, void*> registry;
+    constexpr digest tombstone{~0ull, ~0ull};
     
     // Get the promise pointer from the master map.
     template<typename T>

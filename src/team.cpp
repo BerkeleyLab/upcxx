@@ -10,13 +10,12 @@ namespace gasnet = upcxx::backend::gasnet;
 
 using upcxx::team;
 using detail::raw_storage;
+using detail::tombstone;
 
 raw_storage<team> detail::the_world_team;
 raw_storage<team> detail::the_local_team;
 
 std::unordered_map<upcxx::detail::digest, void*> upcxx::detail::registry;
-
-static constexpr upcxx::detail::digest tombstone{~0ull, ~0ull};
 
 GASNETT_COLD
 team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
