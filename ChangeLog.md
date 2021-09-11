@@ -69,6 +69,7 @@ Notable bug fixes:
 * issue #487: Renaming unspecified internal `UPCXX_` macros and identifiers
 * issue #488: Configure-time failure when mixing GCC + Intel
 * issue #496: Configure mishandling quotes in compiler and flags settings
+* issue #500: Invalid teams created by split() are not handled according to spec
 
 This library snapshot conforms to the
 [UPC++ v1.0 Specification, Revision 2021.7.1-draft](docs/spec.pdf).
