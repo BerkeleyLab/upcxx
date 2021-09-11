@@ -222,11 +222,11 @@ int main() {
    
     upcxx::team const &tm3c = tm3;
     upcxx::team tm4 = tm3c.split(upcxx::team::color_none, 0);
-    UPCXX_ASSERT_ALWAYS(tm4.rank_n() == 0);
+    tm4.destroy(); // tm4 is invalid: optional/no-op
+    upcxx::team tm5 = tm3c.split(upcxx::team::color_none, 0);
     
     all_done.wait();
     
-    tm4.destroy();
     tm3.destroy();
     tm2.destroy();
     tm1.destroy();
