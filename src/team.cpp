@@ -121,22 +121,29 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
+  UPCXX_ASSERT(id_ != tombstone, "Invalid team in team::create()");
 
   #if UPCXXI_ASSERT_ENABLED
     std::stringstream ss;
+    std::unordered_set<intrank_t> check_ids;
     intrank_t limit = this->rank_n();
-    bool err = false;
+    const char *err = nullptr;
     ss << count << " entries : [ ";
     for (size_t i = 0; i < count; i++) {
       if (i) ss << ", ";
       intrank_t rank = (intrank_t)locs[i].gex_rank;
       UPCXX_ASSERT(locs[i].gex_ep_index == 0);
       ss << rank;
-      if (rank < 0 || rank >= limit) err = true;
+      if (rank < 0 || rank >= limit) err = "rank index out-of-range for parent team";
+      else if (check_ids.count(rank)) err = "duplicate rank index";
+      else check_ids.insert(rank);
     }
     ss << " ]";
+    if (count && !check_ids.count(this->rank_me())) err = "missing self";
     //experimental::say() << "team::create(" << ss.str() << ")";
-    if (err) UPCXXI_FATAL_ERROR("Invalid rank list passed to team::create()\n    " << ss.str());
+    if (err) 
+      UPCXXI_FATAL_ERROR("Invalid rank list passed to team::create(): "
+                         << err << "\n  " << ss.str());
   #endif
  
   gex_TM_t parent_tm = gasnet::handle_of(*this);
@@ -165,20 +172,26 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
     GEX_FLAG_TM_LOCAL_SCRATCH
   );
 
-  intrank_t r0 = 0;
-  if (p_sub_tm) {
-    UPCXX_ASSERT(gex_TM_QuerySize(sub_tm) == count);
+  // world rank of first team member preserves global uniqueness:
+  intrank_t r0 = (p_sub_tm ? (*this)[locs->gex_rank]: 0);
+  detail::digest id = // next_collective_id MUST be called unconditionally
+    const_cast<team*>(this)->next_collective_id(detail::internal_only()).eat(r0);
+  
+  intrank_t ranks, me;
+  if(p_sub_tm) {
     gex_TM_SetCData(sub_tm, scratch_buf);
-    r0 = (*this)[locs->gex_rank]; // world rank of first team member preserves global uniqueness
+    me =    (intrank_t)gex_TM_QueryRank(sub_tm);
+    UPCXX_ASSERT(gex_TM_QuerySize(sub_tm) == count);
+    ranks = count;
+  } else { // this process gets an invalid team
+    id =    tombstone; 
+    me =    -1;
+    ranks = 0;
   }
 
-  return team(
-      detail::internal_only(),
-      backend::team_base{reinterpret_cast<uintptr_t>(sub_tm)},
-      const_cast<team*>(this)->next_collective_id(detail::internal_only()).eat(r0),
-      count,
-      p_sub_tm ? (intrank_t)gex_TM_QueryRank(sub_tm) : -1
-    );
+  return team( detail::internal_only(),
+               backend::team_base{reinterpret_cast<uintptr_t>(sub_tm)},
+               id, ranks, me );
 }
 
 GASNETT_COLD
