@@ -27,8 +27,12 @@ team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
   n_(n),
   me_(me) {
   
-  UPCXX_ASSERT(id_ != tombstone);
-  detail::registry[id_] = this;
+  if (id_ == tombstone) { // constructing an invalid team
+    UPCXX_ASSERT(n_ == 0 && me_ == -1);
+    UPCXX_ASSERT(this->handle == reinterpret_cast<uintptr_t>(GEX_TM_INVALID));
+  } else {
+    detail::registry[id_] = this;
+  }
 }
 
 GASNETT_COLD
@@ -67,11 +71,12 @@ team team::split(intrank_t color, intrank_t key) const {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT(color >= 0 || color == color_none);
-  UPCXX_ASSERT(id_ != tombstone, "Invalid team in destroy()");
+  UPCXX_ASSERT(id_ != tombstone, "Invalid team in team::split()");
   
   gex_TM_t sub_tm = GEX_TM_INVALID;
   gex_TM_t *p_sub_tm = color == color_none ? nullptr : &sub_tm;
   
+  // query the required scratch size
   size_t scratch_sz = gex_TM_Split(
     p_sub_tm, gasnet::handle_of(*this),
     color, key,
@@ -83,23 +88,31 @@ team team::split(intrank_t color, intrank_t key) const {
     ? upcxx::allocate(scratch_sz, GASNET_PAGESIZE)
     : nullptr;
   
+  // construct the new GASNet team
   gex_TM_Split(
     p_sub_tm, gasnet::handle_of(*this),
     color, key,
     scratch_buf, scratch_sz,
     /*flags*/0
   );
-  
-  if(p_sub_tm)
+ 
+  intrank_t ranks, me;
+  detail::digest id = // next_collective_id MUST be called unconditionally
+    const_cast<team*>(this)->next_collective_id(detail::internal_only()).eat(color);
+
+  if(p_sub_tm) {
     gex_TM_SetCData(sub_tm, scratch_buf);
+    me =    (intrank_t)gex_TM_QueryRank(sub_tm);
+    ranks = (intrank_t)gex_TM_QuerySize(sub_tm);
+  } else { // this process gets an invalid team
+    id =    tombstone; 
+    me =    -1;
+    ranks = 0;
+  }
   
-  return team(
-      detail::internal_only(),
-      backend::team_base{reinterpret_cast<uintptr_t>(sub_tm)},
-      const_cast<team*>(this)->next_collective_id(detail::internal_only()).eat(color),
-      p_sub_tm ? (intrank_t)gex_TM_QuerySize(sub_tm) : 0,
-      p_sub_tm ? (intrank_t)gex_TM_QueryRank(sub_tm) : -1
-    );
+  return team( detail::internal_only(),
+               backend::team_base{reinterpret_cast<uintptr_t>(sub_tm)},
+               id, ranks, me );
 }
 
 GASNETT_COLD
@@ -171,12 +184,12 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
 GASNETT_COLD
 void team::destroy(entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
+  if (id_ == tombstone) return; // issue 500: ignore destroy of invalid teams
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
   UPCXX_ASSERT(this != &world(),      "team::destroy() is prohibited on team world()");
   UPCXX_ASSERT(this != &local_team(), "team::destroy() is prohibited on the local_team()");
-  UPCXX_ASSERT(id_ != tombstone,      "Invalid team in destroy()");
 
   team::destroy(detail::internal_only(), eb);
 }
