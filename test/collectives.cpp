@@ -5,6 +5,7 @@
 
 #include <set>
 #include <unordered_map>
+#include <random>
 
 using namespace std;
 
@@ -196,14 +197,10 @@ int main() {
   {
     print_test_header();
     
-    uint64_t rng_s = 0xdeadbeef*upcxx::rank_me();
+    std::mt19937_64 gen;
+    gen.seed(upcxx::rank_me());
     auto rng = [&]() -> int {
-      rng_s ^= rng_s >> 31;
-      rng_s *= 0x1234567890abcdef;
-      rng_s += upcxx::rank_me();
-      rng_s ^= rng_s >> 33;
-      rng_s *= 0xfedcba0987654321;
-      return (rng_s % upcxx::rank_n()) + upcxx::rank_n();
+      return (gen() % upcxx::rank_n()) + upcxx::rank_n();
     };
     
     upcxx::future<> all_done = upcxx::make_future();
