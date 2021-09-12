@@ -19,9 +19,6 @@
 namespace upcxx {
   namespace detail {
     extern std::unordered_map<digest, void*> registry;
-    constexpr digest tombstone{~0ull, ~0ull};
-    #define UPCXXI_ASSERT_NOT_TOMB(d) \
-      UPCXX_ASSERT((d) != ::upcxx::detail::tombstone, "Function called on an invalid object")
     
     // Get the promise pointer from the master map.
     template<typename T>
@@ -43,7 +40,7 @@ namespace upcxx {
     friend struct std::hash<upcxx::team_id>;
 
   public:
-    team_id() : dig_(detail::digest::zero()) {} // issue 343: disable trivial default construction
+    team_id() : dig_(detail::tombstone) {} // issue 343: disable trivial default construction
 
     UPCXXI_ATTRIB_PURE
     team& here() const {

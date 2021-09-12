@@ -32,7 +32,7 @@ namespace upcxx {
     friend struct std::hash<upcxx::dist_id<T>>;
     
   public:
-    dist_id() : dig_(detail::digest::zero()) {}
+    dist_id() : dig_(detail::tombstone) {}
 
     UPCXXI_ATTRIB_PURE
     dist_object<T>& here() const {
