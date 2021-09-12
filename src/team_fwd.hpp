@@ -144,13 +144,11 @@ namespace upcxx {
     team create(detail::internal_only, const gex_EP_Location_t *locs, size_t count) const;
 
     template<typename Iter>
-    team create(Iter cbegin, Iter cend) const {
+    team create(Iter cbegin, Iter cend, size_t count) const {
       std::vector<gex_EP_Location_t> locs;
 
-      // optimization: reserve space if we can compute requirement in constant time
-      if (std::is_same<std::random_access_iterator_tag, 
-                       typename std::iterator_traits<Iter>::iterator_category>::value) 
-        locs.reserve(std::distance(cbegin, cend));
+      // optimization: reserve space if we know the requirement in constant time
+      if (count) locs.reserve(count);
 
       // linear pass over the ranks to convert them to GASNet's format
       gex_EP_Location_t loc0;
@@ -163,13 +161,18 @@ namespace upcxx {
       return this->create(detail::internal_only(), 
                           locs.data(), locs.size());
     }
+    template<typename Iter>
+    team create(Iter cbegin, Iter cend) const {
+      size_t count = 0;
+      if (std::is_same<std::random_access_iterator_tag, 
+                       typename std::iterator_traits<Iter>::iterator_category>::value) 
+          count = std::distance(cbegin, cend);
 
+      return this->create(static_cast<Iter&&>(cbegin), static_cast<Iter&&>(cend), count);
+    }
     template<typename Container>
     team create(const Container &ranks) const {
-      return this->create(ranks.cbegin(), ranks.cend());
-    }
-    team create(intrank_t *ranks, size_t count) const {
-      return this->create(ranks, ranks + count);
+      return this->create(ranks.cbegin(), ranks.cend(), ranks.size());
     }
     
     void destroy(entry_barrier eb = entry_barrier::user);

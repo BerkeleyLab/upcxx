@@ -58,8 +58,8 @@ void test_team(const upcxx::team &tm) {
   std::forward_list<int> l_all(v_all.cbegin(), v_all.cend());
 
   team tc1 = tm.create(v_all);
-  team tc2 = tm.create(v_all.data(), n);
-  team tc3 = tm.create(l_all);
+  team tc2 = tm.create(v_all.data(), v_all.data()+n);
+  team tc3 = tm.create(l_all.cbegin(), l_all.cend());
 
   id_check(tc1);
   UPCXX_ASSERT_ALWAYS(team_equal(tc1, tm));
