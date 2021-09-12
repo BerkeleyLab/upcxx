@@ -44,8 +44,8 @@ team::team(team &&that):
 
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();
-  UPCXX_ASSERT(that.id_ != tombstone);
-  
+  UPCXXI_ASSERT_NOT_TOMB(that.id_);
+
   that.id_ = tombstone;
   
   detail::registry[id_] = this;
@@ -70,7 +70,7 @@ team team::split(intrank_t color, intrank_t key) const {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT(color >= 0 || color == color_none);
-  UPCXX_ASSERT(id_ != tombstone, "Invalid team in team::split()");
+  UPCXXI_ASSERT_NOT_TOMB(id_);
   
   gex_TM_t sub_tm = GEX_TM_INVALID;
   gex_TM_t *p_sub_tm = color == color_none ? nullptr : &sub_tm;
@@ -103,6 +103,7 @@ team team::split(intrank_t color, intrank_t key) const {
     gex_TM_SetCData(sub_tm, scratch_buf);
     me =    (intrank_t)gex_TM_QueryRank(sub_tm);
     ranks = (intrank_t)gex_TM_QuerySize(sub_tm);
+    UPCXX_ASSERT(id_ != tombstone);
   } else { // this process gets an invalid team
     id =    tombstone; 
     me =    -1;
@@ -120,7 +121,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
-  UPCXX_ASSERT(id_ != tombstone, "Invalid team in team::create()");
+  UPCXXI_ASSERT_NOT_TOMB(id_);
 
   #if UPCXXI_ASSERT_ENABLED
     std::stringstream ss;
@@ -182,6 +183,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
     me =    (intrank_t)gex_TM_QueryRank(sub_tm);
     UPCXX_ASSERT(gex_TM_QuerySize(sub_tm) == count);
     ranks = count;
+    UPCXX_ASSERT(id_ != tombstone);
   } else { // this process gets an invalid team
     id =    tombstone; 
     me =    -1;

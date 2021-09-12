@@ -37,6 +37,7 @@ namespace upcxx {
     UPCXXI_ATTRIB_PURE
     dist_object<T>& here() const {
       UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_NOT_TOMB(dig_);
       UPCXX_ASSERT(detail::registry[dig_],
         "dist_id::here() called for an invalid id or dist_object (possibly outside its lifetime)");
       return std::get<0>(
@@ -52,6 +53,7 @@ namespace upcxx {
     
     future<dist_object<T>&> when_here() const {
       UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_NOT_TOMB(dig_);
       return detail::promise_get_future(detail::registered_promise<dist_object<T>&>(dig_));
     }
     
@@ -118,6 +120,7 @@ namespace upcxx {
       UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
 
       id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
+      UPCXX_ASSERT(id_ != detail::tombstone);
       
       backend::fulfill_during<progress_level::user>(
           detail::registered_promise<dist_object<T>&>(id_)->incref(1),
@@ -139,7 +142,7 @@ namespace upcxx {
       
       UPCXXI_ASSERT_INIT();
       UPCXXI_ASSERT_MASTER();
-      UPCXX_ASSERT((that.id_ != detail::tombstone));
+      UPCXXI_ASSERT_NOT_TOMB(that.id_);
 
       that.id_ = detail::tombstone;
 
@@ -169,12 +172,16 @@ namespace upcxx {
     
     upcxx::team& team() { return *const_cast<upcxx::team*>(tm_); }
     const upcxx::team& team() const { return *tm_; }
-    dist_id<T> id() const { return dist_id<T>{id_}; }
+    dist_id<T> id() const { 
+      UPCXXI_ASSERT_NOT_TOMB(id_);
+      return dist_id<T>{id_};
+    }
     
     UPCXXI_NODISCARD
     future<deserialized_type_t<T>> fetch(intrank_t rank) const {
       UPCXXI_ASSERT_INIT();
       UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+      UPCXXI_ASSERT_NOT_TOMB(id_);
       static_assert(
         is_serializable<T>::value,
         "T must be Serializable for dist_object<T>::fetch."
