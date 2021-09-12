@@ -75,7 +75,7 @@ _EOF
 # on failure, returns non-zero and yields an error message on stdout
 #
 # precondition: $gnu_version must be set as by a preceeding 'check_gnu_version CXX'
-get_intel_name_option() {
+get_intel_gcc_name_option() {
     case $1 in
          CC) local suffix=c   option=-gcc-name exe=gcc compiler="$CC $CFLAGS" ;;
         CXX) local suffix=cpp option=-gxx-name exe=g++ compiler="$CXX $CXXFLAGS";;
@@ -138,8 +138,12 @@ get_intel_name_option() {
     esac
 }
 
-# checks specific to Intel compilers:
-check_intel_compiler() {
+# Checks and flags specific to Intel compilers with GCC toolchain
+# + Verify the GCC toolchain meets the minimum libstdc++ version
+# + Determine the flags needed to ensure we always use the same toolchain as
+#   probed at configure time, even if end-user has another in $PATH at
+#   application compile time.
+check_intel_toolchain_gcc() {
     check_gnu_version CXX
     case $? in
         0)  # OK
@@ -164,7 +168,7 @@ check_intel_compiler() {
     # Find the actual g++ in use
     # Append to CXXFLAGS unless already present there, or in CXX
     local gxx_name # do not merge w/ assignment or $? is lost!
-    gxx_name=$(get_intel_name_option CXX)
+    gxx_name=$(get_intel_gcc_name_option CXX)
     if [[ $? -ne 0 ]]; then
         echo "ERROR: $gxx_name"
         if [[ ! -d /opt/cray ]]; then # not assured of trustworthy intel environment module(s)
@@ -186,7 +190,7 @@ check_intel_compiler() {
         return 1   # error was already printed
     fi
     local gcc_name # do not merge w/ assignment or $? is lost!
-    gcc_name=$(get_intel_name_option CC)
+    gcc_name=$(get_intel_gcc_name_option CC)
     if [[ $? -ne 0 ]]; then
         echo "ERROR: $gcc_name"
         if [[ ! -d /opt/cray ]]; then # not assured of trustworthy intel environment module(s)
@@ -200,6 +204,25 @@ check_intel_compiler() {
         CFLAGS+="${CFLAGS+ }$gcc_name"
     fi
   fi
+}
+
+# Checks and flags specific to Intel compilers with Clang toolchain
+check_intel_toolchain_clang() {
+    : # TODO?  This is a stub
+    # If support for multiple Xcode installs becomes a requirement, then
+    # the equivalent of get_intel_gcc_name_option() will be needed.
+}
+
+# checks specific to Intel compilers:
+check_intel_compiler() {
+   case $KERNEL in
+     Darwin)
+       check_intel_toolchain_clang
+       ;;
+     Linux)
+       check_intel_toolchain_gcc
+       ;;
+   esac
 }
 
 # check whether $CXX might be a C compiler
@@ -473,7 +496,12 @@ platform_sanity_checks() {
         elif echo "$CXXVERS" | egrep 'Free Software Foundation' 2>&1 > /dev/null &&
              ! check_gnu_version CXX &> /dev/null; then
             COMPILER_BAD=1
-        elif test -z "$CRAY_PRGENVINTEL" && \
+        elif [[ "$KERNEL" = 'Darwin' ]] && \
+             echo "$CXXVERS" | egrep ' +\(ICC\) +(2021\.[3-9]|202[2-9]\.)' 2>&1 > /dev/null ; then
+	    # Ex: icpc (ICC) 2021.3.0 20210609
+            check_intel_compiler || exit 1
+            #COMPILER_GOOD=1 Not yet
+        elif [[ "$CRAY_PRGENVINTEL$KERNEL" = 'Linux' ]] && \
              echo "$CXXVERS" | egrep ' +\(ICC\) +(17\.0\.[2-9]|1[89]\.|(20)?2[0-9]\.)' 2>&1 > /dev/null ; then
 	    # Ex: icpc (ICC) 18.0.1 20171018
             check_intel_compiler || exit 1
