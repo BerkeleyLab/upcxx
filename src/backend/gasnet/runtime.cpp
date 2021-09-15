@@ -1112,7 +1112,7 @@ void upcxx::liberate_master_persona() {
 
 void* upcxx::allocate(size_t size, size_t alignment) {
   UPCXXI_ASSERT_INIT();
-  return gasnet::allocate(size, alignment, &gasnet::sheap_footprint_user);
+  return gasnet::allocate_or_null(size, alignment, &gasnet::sheap_footprint_user);
 }
 
 void  upcxx::deallocate(void *p) {
@@ -1150,7 +1150,7 @@ int64_t upcxx::shared_segment_used() {
        + gasnet::sheap_footprint_misc.bytes;
 }
   
-void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
+void* gasnet::allocate_or_null(size_t size, size_t alignment, sheap_footprint_t *foot) {
   UPCXX_ASSERT(shared_heap_isinit);
   UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
 
@@ -1180,16 +1180,6 @@ void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
     }
   }
 
-  UPCXX_ASSERT_ALWAYS(
-    p != nullptr || foot == &gasnet::sheap_footprint_user,
-
-    "UPC++ could not allocate an internal buffer of\n"
-    "size="<<size<<" from shared heap. Please increase\n"
-    "the size of the shared heap (UPCXX_SHARED_HEAP_SIZE).\n\n"
-    << detail::shared_heap_stats(); 
-  );
-    
-  //UPCXX_ASSERT(p != nullptr);
   UPCXX_ASSERT(reinterpret_cast<uintptr_t>(p) % alignment == 0);
   return p;
 }

@@ -10,6 +10,7 @@
 #include <upcxx/command.hpp>
 #include <upcxx/persona.hpp>
 #include <upcxx/team_fwd.hpp>
+#include <upcxx/exceptions.hpp>
 
 #include <cstdint>
 
@@ -38,9 +39,25 @@ namespace gasnet {
   #endif
 
   // Allocate from shared heap with accounting dumped to given footprint struct
-  // (not optional). Failure mode is null return  for foot == &gasnet::sheap_footprint_user
-  // and job death with diagnostic dump otherwise.
-  void* allocate(std::size_t size, std::size_t align, sheap_footprint_t *foot);
+  // Failure mode is a null return
+  void* allocate_or_null(std::size_t size, std::size_t align, sheap_footprint_t *foot);
+
+  // Allocate from shared heap with accounting dumped to given footprint struct
+  // Failure mode is an exception for failureThrows 
+  //   and job death with diagnostic dump otherwise.
+  template<bool failureThrows=false>
+  inline void *allocate(std::size_t size, std::size_t align, sheap_footprint_t *foot) {
+    void *p = allocate_or_null(size, align, foot);
+    UPCXXI_IF_PT (p) return p;
+    else {
+      bad_shared_alloc fail(nullptr, size, failureThrows);
+      if (failureThrows) 
+        throw fail;
+      else
+        UPCXXI_FATAL_ERROR(fail.what());
+    } 
+    UPCXXI_UNREACHABLE(); // silence a warning from intel 21.3
+  }
 
   // Deallocate shared heap buffer, foot must match that given to allocate.
   void  deallocate(void *p, sheap_footprint_t *foot);

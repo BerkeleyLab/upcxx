@@ -14,9 +14,10 @@
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   struct bad_shared_alloc : public std::bad_alloc {
-    bad_shared_alloc(const char *where=nullptr, size_t nbytes=0) {
+    bad_shared_alloc(const char *where=nullptr, size_t nbytes=0, bool showName=true) {
       std::stringstream ss;
-      ss << _base << "UPC++ shared heap is out of memory on process " << rank_me();
+      if (showName) ss << _base;
+      ss << "UPC++ shared heap is out of memory on process " << rank_me();
       if (where) ss << "\n inside upcxx::" << where;
       if (nbytes) ss << " while trying to allocate " << nbytes <<  " more bytes";
       ss << "\n " << detail::shared_heap_stats();
