@@ -111,12 +111,12 @@ void test_team(const upcxx::team &tm) {
   if (i_am_odd) {
     id_check(tc6o);
     UPCXX_ASSERT_ALWAYS(team_equal(tc6o, tc5));
-    tc6o.destroy();
   } else {
     id_check(tc6e);
     UPCXX_ASSERT_ALWAYS(team_equal(tc6e, tc5));
     tc6e.destroy();
   }
+  tc6o.destroy(); // destroys teams that are valid and invalid (optional) 
 
   tc1.destroy();
   tc2.destroy();
@@ -161,6 +161,26 @@ int main() {
     tm3.destroy();
     tm2.destroy();
     tm1.destroy();
+    
+    { // exercise invalid team/team_id
+      team_id fake;
+      UPCXX_ASSERT_ALWAYS(fake == team_id());
+      team t = upcxx::world().create((int*)nullptr, (int*)nullptr);
+      for (int i=0; i < upcxx::rank_me()+2; i++)
+        t.destroy(); // invalid.destroy is a non-collective no-op
+
+      // uncomment to exercise erronous use cases that assert in debug codemode:
+      //team &nope = fake.here();
+      //auto f = fake.when_here();
+      //team nope = t.create(std::vector<int>());
+      //team nope = t.split(0,0);
+      //say() << t[0];
+      //say() << t.id();
+      //say() << t.rank_me() << "/" << t.rank_n();
+      //team nope = upcxx::world().create(std::vector<int>{0});
+      //team nope = upcxx::world().create(std::vector<int>{upcxx::rank_me(),-2});
+      //team nope = upcxx::world().create(std::vector<int>{upcxx::rank_me(),upcxx::rank_me()});
+    }
     
     print_test_success();
   }
