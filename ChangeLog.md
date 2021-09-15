@@ -22,6 +22,8 @@ General features/enhancements: (see specification and programmer's guide for ful
   [implementation-defined.md](docs/implementation-defined.md) for details).
 * New overloads of fetching atomics that avoid overheads of non-empty futures
   and promises.
+* New `team::create` factory constructs teams with less communication than `team::split`
+  when each participant can enumerate the membership of its own new team.
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
   device memory and/or amenable to shared-memory bypass optimizations.
 * Performance improvements to contiguous RMA (`rput`, `rget`) using shared-memory bypass.
@@ -67,6 +69,7 @@ Notable bug fixes:
 * issue #487: Renaming unspecified internal `UPCXX_` macros and identifiers
 * issue #488: Configure-time failure when mixing GCC + Intel
 * issue #496: Configure mishandling quotes in compiler and flags settings
+* issue #500: Invalid teams created by split() are not handled according to spec
 
 This library snapshot conforms to the
 [UPC++ v1.0 Specification, Revision 2021.7.1-draft](docs/spec.pdf).

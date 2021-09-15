@@ -315,7 +315,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
         static_cast<detail::device_allocator_core<upcxx::cuda_device>*>(st->alloc_base);
       UPCXX_ASSERT(alloc);
       alloc->destroy();
-      UPCXX_ASSERT(st->alloc_base == &tombstone);
+      UPCXX_ASSERT(st->alloc_base == &::tombstone);
     }
 
     #if UPCXXI_CUDA_USE_MK
@@ -398,7 +398,7 @@ void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
         CU_CHECK_ALWAYS(cuCtxPopCurrent(&dump));
       }
       
-      st->alloc_base = &tombstone; // deregister
+      st->alloc_base = &::tombstone; // deregister
   #endif
 
   heap_idx_ = -1; // deactivate
