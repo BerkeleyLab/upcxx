@@ -264,7 +264,7 @@ namespace gasnet {
             buffer = detail::alloc_aligned(w.size(), w.align());
           UPCXX_ASSERT(detail::is_aligned(buffer, w.align()));
         } else { // rendezvous
-          buffer = gasnet::allocate(w.size(), w.align(), &gasnet::sheap_footprint_rdzv);
+          buffer = gasnet::allocate</*throws=*/true>(w.size(), w.align(), &gasnet::sheap_footprint_rdzv);
         }
         
         w.compact_and_invalidate(buffer);
@@ -328,7 +328,7 @@ namespace gasnet {
         UPCXX_ASSERT(detail::is_aligned(buffer, ub.align));
       }
       else
-        buffer = gasnet::allocate(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
+        buffer = gasnet::allocate</*throws=*/true>(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
       
       return detail::serialization_writer<true>(buffer);
     }
@@ -426,7 +426,7 @@ namespace gasnet {
 
         buffer = gasnet::prepare_npam_medium(recipient, ub.size, static_npam_args, npam_nonce);
       } else {
-        buffer = gasnet::allocate(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
+        buffer = gasnet::allocate</*throws=*/true>(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
       }
       UPCXX_ASSERT(detail::is_aligned(buffer, ub.align));
       
