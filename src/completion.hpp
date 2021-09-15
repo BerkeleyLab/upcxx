@@ -779,6 +779,10 @@ namespace upcxx {
               /*move ref*/pro, std::tuple<T...>(static_cast<T&&>(results)...)
             );
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
@@ -823,6 +827,10 @@ namespace upcxx {
           [/*move ref*/pro]() {
             backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
@@ -863,6 +871,10 @@ namespace upcxx {
           [/*move ref*/pro]() {
             backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
@@ -896,7 +908,8 @@ namespace upcxx {
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
         upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
-        return detail::make_lpc_dormant(*target_, progress_level::user, std::move(fn_), tail);
+        return detail::make_lpc_dormant(*target_, progress_level::user, 
+                                        std::move(fn_), [](){}, tail);
       }
       
       void operator()(T ...vals) {

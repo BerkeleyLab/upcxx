@@ -445,6 +445,9 @@ namespace upcxx {
       
       intrank_t initiator = backend::rank_me;
       auto *op_lpc = static_cast<cxs_state_t&&>(state).template to_lpc_dormant<operation_cx_event>();
+      std::unique_ptr<typename std::remove_reference<decltype(*op_lpc)>::type,
+                      decltype(&op_lpc->cancel_and_delete)>
+          cleanup(op_lpc, op_lpc->cancel_and_delete); // protect against throw from injection
       
       using fn_bound_t = typename detail::bind1<const Fn&, const Arg&...>::return_type;
 
@@ -466,6 +469,7 @@ namespace upcxx {
           detail::bind_rvalue_as_lvalue(static_cast<Fn&&>(fn), static_cast<Arg&&>(args)...)
         )
       );
+      cleanup.release(); // injection succeeded
       
       // send_am_master doesn't support async source-completion, so we know
       // its trivially satisfied.

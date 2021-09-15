@@ -14,6 +14,12 @@ namespace upcxx {
       // do *something* and take responsibility for the memory behind this
       // instance.
       void(*execute_and_delete)(lpc_base *me);
+
+      // same basic idea as execute_and_delete, but this function pointer is used 
+      // during cancellation operations where we need to unwind and reclaim resources 
+      // instead of actually doing the *something*.
+      // May be null for objects that do not support cancellation.
+      void(*cancel_and_delete)(lpc_base *me);
     };
     
     // Base class for generic callbacks that can be queued into `lpc_inbox`'s.
