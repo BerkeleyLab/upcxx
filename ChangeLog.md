@@ -38,6 +38,8 @@ General features/enhancements: (see specification and programmer's guide for ful
 * Added implementation-defined macros `UPCXX_ASSERT` and `UPCXX_ASSERT_ALWAYS`
 * New `UPCXX_KIND_CUDA` feature macro indicates the presence of CUDA support.
 * Improve error reporting on failure to open a cuda_device.
+* Add debug codemode checking for exceptions thrown out of user callbacks into
+  library code, which is prohibited by the specification.
 
 Infrastructure changes:
 
