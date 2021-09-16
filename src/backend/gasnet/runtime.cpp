@@ -2100,6 +2100,8 @@ static inline void do_progress() {
   
   int total_exec_n = 0;
   int exec_n;
+
+  UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
   
   if(!UPCXXI_BACKEND_GASNET_SEQ || gasnet_seq_thread_id == detail::thread_id())
     gasnet_AMPoll();
@@ -2132,6 +2134,8 @@ static inline void do_progress() {
   while(total_exec_n < 1000 && exec_n != 0);
   //while(0);
   
+  UPCXXI_ASSERT_NOEXCEPTIONS_END
+
   if(oversubscribed) {
     /* In SMP tests we typically oversubscribe ranks to cpus. This is
      * an attempt at heuristically determining if this rank is just

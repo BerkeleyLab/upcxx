@@ -153,6 +153,19 @@ namespace detail {
 #define UPCXXI_WARN_EMPTY(fnname, count) ((void)0)
 #endif
 
+#if UPCXXI_ASSERT_ENABLED
+#define UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN try {
+#define UPCXXI_ASSERT_NOEXCEPTIONS_END  \
+    } catch(std::exception &_e) { \
+      UPCXXI_FATAL_ERROR("An exception propagated outward into UPC++ library code, which is prohibited\n" << _e.what()); \
+    } catch (...) { \
+      UPCXXI_FATAL_ERROR("An exception propagated outward into UPC++ library code, which is prohibited"); \
+    }
+#else
+  #define UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN {
+  #define UPCXXI_ASSERT_NOEXCEPTIONS_END   }
+#endif
+
 // UPCXXI_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled
 // Auto-detection can be overridden by -DUPCXX_USE_NODISCARD=1/0
 // issue 491: Some compilers report __has_cpp_attribute(nodiscard) but

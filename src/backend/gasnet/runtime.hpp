@@ -529,11 +529,15 @@ namespace backend {
 
     am_send_buffer<decltype(ub), (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> am_buf;
     auto w = am_buf.prepare_writer(ub, rdzv_cutover_size, usingNPAMArgs, recipient);
+
+    UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
     
     detail::command<detail::lpc_base*>::template serialize<
         &rpc_as_lpc::reader_of,
         &rpc_as_lpc::template cleanup<definitely_not_rdzv, restricted>
       >(w, ub.size, fn);
+
+    UPCXXI_ASSERT_NOEXCEPTIONS_END
 
     am_buf.finalize_buffer(std::move(w), rdzv_cutover_size, usingNPAMArgs, recipient);
     

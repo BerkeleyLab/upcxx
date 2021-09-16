@@ -1,4 +1,5 @@
 #include <upcxx/upcxx.hpp>
+#include <unistd.h>
 #include "../util.hpp"
 
 using namespace std;
@@ -34,6 +35,27 @@ struct byte_bag { // serialization ubound is deliberately unbounded
        return r;
      }
   };
+};
+
+struct naughty_serialize {
+  struct upcxx_serialization {
+     template<typename Writer>
+     static void serialize(Writer& writer, naughty_serialize const & object) {
+       throw std::runtime_error("From Hell's heart, I stab at thee");
+     }
+     template<typename Reader>
+     static naughty_serialize* deserialize(Reader& reader, void* storage) {
+       return ::new(storage) naughty_serialize;
+     }
+  };
+};
+struct naughty_deserialize {
+  char dummy;
+  naughty_deserialize() : dummy(0) {}
+  naughty_deserialize(int x) {
+    throw std::runtime_error("For hate's sake, I spit my last breath at thee.");
+  }
+  UPCXX_SERIALIZED_VALUES(0)
 };
 
 struct tracker {
@@ -172,6 +194,63 @@ int main() {
       if (!sp2.get_future().ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
     }
     tracker::check();
+
+    // the following defines enable ERRONEOUS behavior
+    // which should be diagnosed in debug codemode
+    #if TEST_THROW_FROM_PROGRESS
+      if (!rank_me()) say("") << "Throwing an exception into progress()..."; \
+      barrier();
+      try {
+        current_persona().lpc([=]() {
+           rpc_ff(peer,[](view<char> const &v) {}, big_view);
+           say() << "ERROR: failure to throw expected exception";
+          }).wait();
+      } catch (std::exception &e) {
+        say() << "ERROR: exception thrown out of progress\n" << e.what();
+      }
+      barrier();
+    #endif
+
+    #if TEST_THROW_FROM_SERIALIZE
+      if (!rank_me()) say("") << "Throwing an exception from serialize()..."; \
+      barrier();
+      try {
+        rpc_ff(peer,[](naughty_serialize const &) {
+           say() << "ERROR: failure to throw expected exception 1";
+        }, naughty_serialize());
+        say() << "ERROR: failure to throw expected exception 2";
+      } catch (std::exception &e) {
+        say() << "ERROR: exception thrown out of rpc_ff\n" << e.what();
+      }
+      barrier();
+    #endif
+
+    #if TEST_THROW_FROM_DESERIALIZE
+      if (!rank_me()) say("") << "Throwing an exception from deserialize()..."; \
+      barrier();
+      try {
+        rpc_ff(peer,[](naughty_deserialize const &) {
+           say() << "ERROR: failure to throw expected exception";
+        }, naughty_deserialize());
+        discharge(); sleep(1); progress(); abort();
+      } catch (std::exception &e) {
+        say() << "ERROR: exception thrown out of rpc_ff\n" << e.what();
+      }
+      barrier();
+    #endif
+
+    #if TEST_THROW_FROM_SERIAL_VALUE
+      if (!rank_me()) say("") << "Throwing an exception from deserialized_value()..."; \
+      barrier();
+      try {
+        naughty_serialize n;
+        auto x = serialization_traits<naughty_serialize>::deserialized_value(n);
+        say() << "ERROR: failure to throw expected exception";
+      } catch (std::exception &e) {
+        say() << "ERROR: exception thrown out of deserialized_value\n" << e.what();
+      }
+      barrier();
+    #endif
 
     barrier();
     delete [] bb;
