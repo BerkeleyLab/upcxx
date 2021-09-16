@@ -614,6 +614,48 @@ namespace detail {
   template<typename T>
   inline const char *typename_of() { return typename_of_((T*)nullptr); }
 
+  //////////////////////////////////////////////////////////////////////
+  // raii_cleanup: define a lightweight stack unwinding cleanup action
+  //
+  // This utility replaces code written using this try/catch idiom:
+  //
+  //   allocate_resource();
+  //   try {
+  //     something_that_might_throw();
+  //   } catch (...) {
+  //     cancel_resource();
+  //     throw;
+  //   }
+  //
+  // with an RAII idiom that looks like this:
+  //
+  //   allocate_resource();
+  //   auto guard = detail::make_raii_cleanup(cancel_resource);
+  //   something_that_might_throw();
+  //   guard.reset(); // did not throw, release guard
+  //
+  // The callable argument to make_raii_cleanup() is invoked iff the guard
+  // object is destroyed (generally by leaving scope) before reset() was called.
+  //
+  // See pull request #376 for performance results, which show this utility
+  // often outperforms try/catch and unique_ptr idioms on compilers of interest.
+  
+  template<typename Fn>
+  class raii_cleanup {
+    Fn fn;
+    bool armed;
+   public:
+    inline raii_cleanup(Fn &&f) : fn(std::forward<Fn>(f)), armed(true) {}
+    inline void reset() { armed = false; }
+    inline ~raii_cleanup() {
+      UPCXXI_IF_PF(armed) fn();
+    }
+  };
+  template<typename Fn>
+  raii_cleanup<Fn> make_raii_cleanup(Fn &&f) {
+    return raii_cleanup<Fn>(std::forward<Fn>(f));
+  } 
+
 } // namespace detail
 } // namespace upcxx
 #endif
