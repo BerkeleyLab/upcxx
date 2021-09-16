@@ -255,14 +255,16 @@ namespace upcxx {
         CxsDecayed
       >{state};
     
-    try { 
-      backend::template send_am_master<progress_level::user>( recipient,
-        detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
-      );
-    } catch (...) { // injection failed
-      std::move(state).template cancel<source_cx_event>(); // cleanup completions
-      throw; // propagate
-    }
+    auto guard = 
+      detail::make_raii_cleanup([&]() { // guard against throw from injection
+         std::move(state).template cancel<source_cx_event>(); // cleanup completions
+      });
+
+    backend::template send_am_master<progress_level::user>( recipient,
+      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
+    );
+
+    guard.reset(); // injection successful
     
     // send_am_master doesn't support async source-completion, so we know
     // its trivially satisfied.
@@ -450,18 +452,20 @@ namespace upcxx {
       
       intrank_t initiator = backend::rank_me;
       auto *op_lpc = static_cast<cxs_state_t&&>(state).template to_lpc_dormant<operation_cx_event>();
-      std::unique_ptr<typename std::remove_reference<decltype(*op_lpc)>::type,
-                      decltype(&op_lpc->cancel_and_delete)>
-          cleanup(op_lpc, op_lpc->cancel_and_delete); // protect against throw from injection
+
+      auto guard = 
+        detail::make_raii_cleanup([&]() { // guard against throw from injection
+           op_lpc->cancel_and_delete(op_lpc); // cleanup dormant lpcs
+           static_cast<cxs_state_t&&>(state).template cancel<source_cx_event>(); // cleanup completions
+        });
       
       using fn_bound_t = typename detail::bind1<const Fn&, const Arg&...>::return_type;
-    
-      try {
-        backend::template send_am_master<progress_level::user>(
-          recipient,
-          detail::bind_rvalue_as_lvalue(
-            [=](deserialized_type_t<fn_bound_t> &&fn_bound) {
-              return detail::apply_as_future_then_lazy(
+
+      backend::template send_am_master<progress_level::user>(
+        recipient,
+        detail::bind_rvalue_as_lvalue(
+          [=](deserialized_type_t<fn_bound_t> &&fn_bound) {
+            return detail::apply_as_future_then_lazy(
                 static_cast<deserialized_type_t<fn_bound_t>&&>(fn_bound),
                 // Wish we could just use a lambda here, but since it has
                 // to take variadic Arg... we have to call to an outlined
@@ -471,15 +475,12 @@ namespace upcxx {
                   initiator, op_lpc
                 }
               );
-            },
-            detail::bind_rvalue_as_lvalue(static_cast<Fn&&>(fn), static_cast<Arg&&>(args)...)
-          )
-        );
-      } catch (...) { // injection failed
-        static_cast<cxs_state_t&&>(state).template cancel<source_cx_event>(); // cleanup completions
-        throw; // propagate
-      }
-      cleanup.release(); // injection succeeded
+          },
+          detail::bind_rvalue_as_lvalue(static_cast<Fn&&>(fn), static_cast<Arg&&>(args)...)
+        )
+      );
+
+      guard.reset(); // injection successful
       
       // send_am_master doesn't support async source-completion, so we know
       // its trivially satisfied.
