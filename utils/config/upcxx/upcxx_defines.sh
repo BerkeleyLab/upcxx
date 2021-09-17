@@ -5,7 +5,7 @@ echo "#define UPCXX_NETWORK_$(tr '[a-z]' '[A-Z]' <<<$UPCXX_NETWORK) 1"
 eval $($UPCXX_GMAKE -C "$UPCXX_TOPBLD" echovar VARNAME=UPCXX_MPSC_QUEUE)
 echo "#define ${UPCXX_MPSC_QUEUE} 1"
 
-for feature in DISCONTIG ; do
+for feature in DISCONTIG FORCE_LEGACY_RELOCATIONS ; do
   var=UPCXX_$feature
   sym=UPCXXI_$feature
   eval $($UPCXX_GMAKE -C "$UPCXX_TOPBLD" echovar VARNAME=$var)

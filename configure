@@ -121,6 +121,11 @@ Usage:
         Install prefix of HIP developer tools 
         The default is determined by searching for 'hipcc' in $PATH.
 
+  --enable-ccs-rpc
+  --disable-ccs-rpc
+        Enable or disable support for Cross Code Segment (CCS) RPC and
+        CCS error detection.
+
   --with-default-network=...
         Specifies the default network.
         The default is system dependent.
@@ -235,6 +240,7 @@ done
 # these are only accepted on the configure line and not via environment
 UPCXX_VALGRIND=
 UPCXX_DISCONTIG=
+UPCXX_FORCE_LEGACY_RELOCATIONS=''
 
 unset gasnet_help
 
@@ -326,6 +332,9 @@ while [[ $# -gt 0 ]]; do
     -without-hip)              unset UPCXX_HIP;;
     -with-hip-home?(=*))       HIP_HOME="$(get_arg_val $arg)"; export HIP_HOME;;
     -with-hip-libflags?(=*))   UPCXX_HIP_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_HIP_LIBFLAGS;;
+
+    -with-ccs-rpc)              UPCXX_FORCE_LEGACY_RELOCATIONS=''; export UPCXX_FORCE_LEGACY_RELOCATIONS;;
+    -without-ccs-rpc)           UPCXX_FORCE_LEGACY_RELOCATIONS=1; export UPCXX_FORCE_LEGACY_RELOCATIONS;;
 
     -h|-help|-usage)
       echo 'UPC++ configure script.'
@@ -1160,6 +1169,7 @@ export UPCXX_HIP_CPPFLAGS=$UPCXX_HIP_CPPFLAGS
 export UPCXX_HIP_LIBFLAGS=$UPCXX_HIP_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
 export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
+export UPCXX_FORCE_LEGACY_RELOCATIONS=$UPCXX_FORCE_LEGACY_RELOCATIONS
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 

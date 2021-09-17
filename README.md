@@ -34,6 +34,7 @@ Other topics are covered in the following documents:
 * Using UPC++ and UPC in the same program, see: [docs/upc-hybrid.md](docs/upc-hybrid.md).
 * Using UPC++ with oversubscribed cores, see: [docs/oversubscription.md](docs/oversubscription.md)
 * Implementation-defined behavior, see: [docs/implementation-defined.md](docs/implementation-defined.md) 
+* Using UPC++ with dynamic libraries, see: [docs/ccs-rpc.md](docs/ccs-rpc.md)
 * Copyright notice and licensing agreement, see: [LICENSE.txt](LICENSE.txt)
 
 Usage information for public installs of UPC\+\+ at certain computing centers

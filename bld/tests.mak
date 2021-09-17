@@ -7,6 +7,7 @@
 # Built by 'make tests` and `make check`
 ###
 
+
 test_sources_seq = \
 	test/hello_upcxx.cpp \
 	test/atomics.cpp \
@@ -70,6 +71,10 @@ test_dirs = \
 	example/prog-guide \
 	example/serialization
 
+ifneq ($(UPCXX_FORCE_LEGACY_RELOCATIONS),1)
+test_dirs += test/ccs
+endif
+
 #
 # Section 2. Step 2.
 # Exclusion of files with .cpp suffix which are not suited to `make dev-check`
@@ -82,6 +87,7 @@ test_exclude_all = \
 	test/o3-codemode.cpp \
 	test/multifile.cpp \
 	test/multifile-buddy.cpp \
+	test/ccs/ccs-static-dlopen.sh \
 	test/uts/uts.cpp \
 	example/prog-guide/rb1d-check.cpp
 
