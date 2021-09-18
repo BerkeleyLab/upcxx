@@ -5,6 +5,17 @@ echo "#define UPCXX_NETWORK_$(tr '[a-z]' '[A-Z]' <<<$UPCXX_NETWORK) 1"
 eval $($UPCXX_GMAKE -C "$UPCXX_TOPBLD" echovar VARNAME=UPCXX_MPSC_QUEUE)
 echo "#define ${UPCXX_MPSC_QUEUE} 1"
 
+for feature in DISCONTIG ; do
+  var=UPCXX_$feature
+  sym=UPCXXI_$feature
+  eval $($UPCXX_GMAKE -C "$UPCXX_TOPBLD" echovar VARNAME=$var)
+  if (( ${!var} )); then
+    echo "#define $sym 1"
+  else
+    echo "#undef  $sym"
+  fi
+done
+
 # The following line builds a bash array of words from the saved configure
 # command, using 'eval' to honor the quoting which was applied to arguments
 # requiring such.
