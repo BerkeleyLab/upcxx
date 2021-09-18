@@ -43,11 +43,11 @@ namespace detail {
                            nullptr, UPCXXI_FUNC, __FILE__, __LINE__)
 
 #define UPCXXI_ASSERT_1(ok) \
- ( (ok) ? (void)0 : \
+ ( UPCXXI_PREDICT_TRUE(bool(ok)) ? (void)0 : \
    ::upcxx::detail::assert_failed(UPCXXI_FUNC, __FILE__, __LINE__, ::std::string("Failed condition: " #ok)) )
 
 #define UPCXXI_ASSERT_2(ok, ios_msg) \
- ( (ok) ? (void)0 : \
+ ( UPCXXI_PREDICT_TRUE(bool(ok)) ? (void)0 : \
    ::upcxx::detail::assert_failed(UPCXXI_FUNC, __FILE__, __LINE__, \
         ([&]() { ::std::stringstream _upcxx_assert_ss; \
                  _upcxx_assert_ss << ios_msg; \
