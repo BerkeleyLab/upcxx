@@ -243,6 +243,14 @@ namespace upcxx {
       "rpc_ff does not support remote or operation completion."
     );
 
+    // optimization: rpc_ff injection precedes completion processing, 
+    // allowing us to overlap that overhead with network latency.
+    // This also avoids the need to arrange for completion cancellation 
+    // during unwinding in case the injection call throws an excetion.
+    backend::template send_am_master<progress_level::user>( recipient,
+      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
+    );
+
     auto state = detail::completions_state<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rpc_ff_event_values,
@@ -254,17 +262,6 @@ namespace upcxx {
         /*EventValues=*/detail::rpc_ff_event_values,
         CxsDecayed
       >{state};
-    
-    auto guard = 
-      detail::make_raii_cleanup([&]() { // guard against throw from injection
-         std::move(state).template cancel<source_cx_event>(); // cleanup completions
-      });
-
-    backend::template send_am_master<progress_level::user>( recipient,
-      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
-    );
-
-    guard.reset(); // injection successful
     
     // send_am_master doesn't support async source-completion, so we know
     // its trivially satisfied.
