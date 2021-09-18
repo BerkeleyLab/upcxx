@@ -719,6 +719,22 @@ void upcxx::init() {
     local_tm = world_tm;
   } else { // !local_is_world
     if(!contiguous_nbhd) {
+      #if !UPCXXI_DISCONTIG
+        if (!peer_me) {
+          UPCXXI_FATAL_ERROR(
+            "Two or more processes are co-located in a GASNet neighborhood with discontiguous rank IDs.\n"
+            "This usually arises when the job spawner is directed to assign processes\n"
+            "to physical nodes in a manner other than a traditional pure-blocked layout.\n"
+            "This mode of operation is strongly discouraged for performance reasons,\n"
+            "and is prohibited by this build of the UPC++ library.\n\n"
+            "Please adjust your job spawning command to select a job layout that\n"
+            "consecutively numbers all the processes launched on a given node.\n\n"
+            "If you are REALLY sure you want to run with a discontiguous job layout,\n"
+            "then you'll need to reconfigure the UPC++ library with option: --enable-discontig-ranks\n"
+            "and please contact the UPC++ maintainers to report your interest in this capability!"
+          );
+        }
+      #endif
       // Discontiguous rank-set is collapsed to singleton set of "me"
       backend::pshm_peer_lb_ = backend::rank_me;
       backend::pshm_peer_ub = backend::rank_me + 1;

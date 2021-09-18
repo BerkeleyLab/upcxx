@@ -131,6 +131,11 @@ Usage:
         Enable limited support for the Valgrind dynamic analysis tool,
         at some potential cost in performance (off by default).
 
+  --enable-discontig-ranks
+        Enable support for process layouts where the rank numbering assigned
+        at job spawn is permitted to be discontiguous on any given physical host.
+        Otherwise, co-located ranks are required to be contiguously numbered.
+
   -h|--help|--usage
         Produces this message.
   --help=recursive
@@ -214,6 +219,7 @@ done
 # Clear "new" non-legacy configure options
 # these are only accepted on the configure line and not via environment
 UPCXX_VALGRIND=
+UPCXX_DISCONTIG=
 
 unset gasnet_help
 
@@ -276,6 +282,12 @@ while [[ $# -gt 0 ]]; do
     # Not relevant to GASNet's configure:
     -with-default-network?(=*)) GASNET_CONDUIT="$(get_arg_val $arg)"; export GASNET_CONDUIT;;
     -with-python?(=*))          UPCXX_PYTHON="$(get_arg_val $arg)"; export UPCXX_PYTHON;;
+    -without-discontig-ranks)   UPCXX_DISCONTIG=''; export UPCXX_DISCONTIG;;
+    -with-discontig-ranks)      UPCXX_DISCONTIG=1; export UPCXX_DISCONTIG
+      warnings+="\nWARNING: --enable-discontig-ranks mode activated.\n"
+      warnings+='WARNING: This mode has not been carefully tuned and is not recommended for general use.\n'
+      warnings+='WARNING: If this feature matters to you, please let us know!\n'
+      ;;
 
     # Passed explicitly to GASNet's configure, potentially after some processing:
     -with-cc?(=*))              CC="$(get_arg_val $arg)";    export CC;;
@@ -1067,6 +1079,7 @@ export UPCXX_CUDA_NVCC=$UPCXX_CUDA_NVCC
 export UPCXX_CUDA_CPPFLAGS=$UPCXX_CUDA_CPPFLAGS
 export UPCXX_CUDA_LIBFLAGS=$UPCXX_CUDA_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
+export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 

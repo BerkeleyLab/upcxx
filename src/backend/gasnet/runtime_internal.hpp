@@ -27,8 +27,8 @@
            "gasnet is the desired backend (which it isn't)."
 #endif
 
-// TODO: Remove this once we require GEX spec 0.14 or newer
-#ifdef GEX_FLAG_PEER_NEVER_NBRHD
+#if defined(GEX_FLAG_PEER_NEVER_NBRHD) /* GEX spec 0.14 or newer */ \
+    && !UPCXXI_DISCONTIG // issue 502
 #define UPCXXI_GEX_FLAG_PEER_NEVER_NBRHD GEX_FLAG_PEER_NEVER_NBRHD
 #else
 #define UPCXXI_GEX_FLAG_PEER_NEVER_NBRHD 0
