@@ -14,7 +14,7 @@
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   struct bad_shared_alloc : public std::bad_alloc {
-    bad_shared_alloc(const char *where=nullptr, size_t nbytes=0, bool showName=true) {
+    bad_shared_alloc(const char *where=nullptr, size_t nbytes=0, bool showName=true) noexcept {
       std::stringstream ss;
       if (showName) ss << _base;
       ss << "UPC++ shared heap is out of memory on process " << rank_me();
@@ -25,7 +25,7 @@ namespace upcxx {
                " or $UPCXX_SHARED_HEAP_SIZE.";
       _what = ss.str();
     }
-    bad_shared_alloc(const std::string & reason) : _what(_base) {
+    bad_shared_alloc(const std::string & reason) noexcept : _what(_base) {
       _what += reason;
     }
     virtual const char* what() const noexcept {
@@ -37,7 +37,7 @@ namespace upcxx {
   };
   //////////////////////////////////////////////////////////////////////
   struct bad_segment_alloc : public std::bad_alloc {
-    bad_segment_alloc(const char *device_typename=nullptr, size_t nbytes=0, intrank_t who=-1) {
+    bad_segment_alloc(const char *device_typename=nullptr, size_t nbytes=0, intrank_t who=-1) noexcept {
       std::stringstream ss;
       if (!device_typename) device_typename = "Device";
       ss << _base << "UPC++ failed to allocate " << device_typename << " segment memory";
@@ -48,7 +48,7 @@ namespace upcxx {
       ss << "\n You may need to request a smaller device segment to accomodate the memory capacity of your device.";
       _what = ss.str();
     }
-    bad_segment_alloc(const std::string & reason) : _what(_base) {
+    bad_segment_alloc(const std::string & reason) noexcept : _what(_base) {
       _what += reason;
     }
     virtual const char* what() const noexcept {

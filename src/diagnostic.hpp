@@ -9,16 +9,16 @@
 namespace upcxx {
 namespace detail {
   UPCXXI_ATTRIB_NORETURN
-  void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0);
+  void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) noexcept;
   UPCXXI_ATTRIB_NORETURN
-  inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) {
+  inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) noexcept {
     fatal_error(msg.c_str(), title, func, file, line);
   }
 
   UPCXXI_ATTRIB_NORETURN
-  void assert_failed(const char *func, const char *file, int line, const char *msg=nullptr);
+  void assert_failed(const char *func, const char *file, int line, const char *msg=nullptr) noexcept;
   UPCXXI_ATTRIB_NORETURN
-  inline void assert_failed(const char *func, const char *file, int line, const std::string &str) {
+  inline void assert_failed(const char *func, const char *file, int line, const std::string &str) noexcept {
     assert_failed(func, file, line, str.c_str());
   }
 }

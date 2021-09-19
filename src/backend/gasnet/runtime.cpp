@@ -1150,7 +1150,7 @@ int64_t upcxx::shared_segment_used() {
        + gasnet::sheap_footprint_misc.bytes;
 }
   
-void* gasnet::allocate_or_null(size_t size, size_t alignment, sheap_footprint_t *foot) {
+void* gasnet::allocate_or_null(size_t size, size_t alignment, sheap_footprint_t *foot) noexcept {
   UPCXX_ASSERT(shared_heap_isinit);
   UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
 

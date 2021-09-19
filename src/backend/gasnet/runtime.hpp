@@ -40,7 +40,7 @@ namespace gasnet {
 
   // Allocate from shared heap with accounting dumped to given footprint struct
   // Failure mode is a null return
-  void* allocate_or_null(std::size_t size, std::size_t align, sheap_footprint_t *foot);
+  void* allocate_or_null(std::size_t size, std::size_t align, sheap_footprint_t *foot) noexcept;
 
   // Allocate from shared heap with accounting dumped to given footprint struct
   // Failure mode is an exception for failureThrows 

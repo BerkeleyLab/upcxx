@@ -15,7 +15,7 @@
 
 GASNETT_COLD
 void upcxx::detail::fatal_error(const char *msg, const char *title,
-                                const char *func, const char *file, int line) {
+                                const char *func, const char *file, int line) noexcept {
   std::stringstream ss;
 
   ss << std::string(70, '/') << '\n';
@@ -72,7 +72,7 @@ void upcxx::detail::fatal_error(const char *msg, const char *title,
 
 GASNETT_COLD
 void upcxx::detail::assert_failed(const char *func, const char *file,
-                                  int line, const char *msg) {
+                                  int line, const char *msg) noexcept {
   upcxx::detail::fatal_error(msg, "assertion failure", func, file, line);
 }
 
