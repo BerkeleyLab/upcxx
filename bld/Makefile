@@ -110,6 +110,7 @@ do-gasnet-configure: force
 	   cmd="$$cmd $$GASNET_CONFIGURE_ARGS";                                       \
 	   cmd="$$cmd --disable-parsync --enable-seq --enable-par";                   \
 	   cmd="$$cmd --enable-pthreads --disable-segment-everything";                \
+	   cmd="$$cmd --disable-ibv-rcv-thread"; : issue 495 ;                        \
 	   cmd="$$cmd $(configure_$(GASNET_CODEMODE))";                               \
 	   echo "$$cmd";                                                              \
 	   mkdir -p "$$dir" && cd "$$dir" && eval "$$cmd" 2>&1 | tee config.txt;      \
