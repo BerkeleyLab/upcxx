@@ -590,7 +590,7 @@ namespace upcxx {
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, T *dest, std::size_t n,
-       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) noexcept {
     UPCXXI_ASSERT_INIT();
     UPCXXI_GPTR_CHK(src);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -653,7 +653,7 @@ namespace upcxx {
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(T const *src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) noexcept {
     UPCXXI_ASSERT_INIT();
     UPCXXI_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");
@@ -715,7 +715,7 @@ namespace upcxx {
   inline
   typename detail::copy_traits<Cxs>::return_t
   copy(global_ptr<const T,Ks> src, global_ptr<T,Kd> dest, std::size_t n,
-       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) {
+       Cxs &&cxs=detail::operation_cx_as_future_t{{}}) noexcept {
     UPCXXI_ASSERT_INIT();
     UPCXXI_GPTR_CHK(src); UPCXXI_GPTR_CHK(dest);
     UPCXX_ASSERT(src && dest, "pointer arguments to copy may not be null");

@@ -8,6 +8,7 @@
 #include <upcxx/backend.hpp>
 #include <upcxx/diagnostic.hpp>
 #include <upcxx/global_ptr.hpp>
+#include <upcxx/exceptions.hpp>
 
 #include <algorithm> // max
 #include <cmath> // ceil
@@ -15,55 +16,10 @@
 #include <sstream>
 #include <cstddef> // max_align_t
 #include <limits> // numeric_limits
-#include <new> // bad_alloc
 #include <type_traits> // aligned_storage, is_default_constructible,
                        // is_destructible, is_trivially_destructible
 
 namespace upcxx {
-  struct bad_shared_alloc : public std::bad_alloc {
-    bad_shared_alloc(const char *where=nullptr, size_t nbytes=0) {
-      std::stringstream ss;
-      ss << _base << "UPC++ shared heap is out of memory on process " << rank_me();
-      if (where) ss << "\n inside upcxx::" << where;
-      if (nbytes) ss << " while trying to allocate " << nbytes <<  " more bytes";
-      ss << "\n " << detail::shared_heap_stats();
-      ss << "\n You may need to request a larger shared heap with `upcxx-run -shared-heap`"
-               " or $UPCXX_SHARED_HEAP_SIZE.";
-      _what = ss.str();
-    }
-    bad_shared_alloc(const std::string & reason) : _what(_base) {
-      _what += reason;
-    }
-    virtual const char* what() const noexcept {
-      return _what.c_str();
-    }
-    private:
-     std::string _what;
-     static constexpr const char *_base = "upcxx::bad_shared_alloc: ";
-  };
-  //////////////////////////////////////////////////////////////////////
-  struct bad_segment_alloc : public std::bad_alloc {
-    bad_segment_alloc(const char *device_typename=nullptr, size_t nbytes=0, intrank_t who=-1) {
-      std::stringstream ss;
-      if (!device_typename) device_typename = "Device";
-      ss << _base << "UPC++ failed to allocate " << device_typename << " segment memory";
-      if (who == -1) ss << " on one or more processes";
-      else           ss << " on process " << who << " (and possibly others)";
-      ss << "\n inside upcxx::device_allocator<" << device_typename <<"> segment-allocating constructor";
-      if (nbytes) ss << "\n while trying to allocate a " << nbytes <<  " byte segment";
-      ss << "\n You may need to request a smaller device segment to accomodate the memory capacity of your device.";
-      _what = ss.str();
-    }
-    bad_segment_alloc(const std::string & reason) : _what(_base) {
-      _what += reason;
-    }
-    virtual const char* what() const noexcept {
-      return _what.c_str();
-    }
-    private:
-     std::string _what;
-     static constexpr const char *_base = "upcxx::bad_segment_alloc: ";
-  };
   //////////////////////////////////////////////////////////////////////
   /* Declared in: upcxx/backend_fwd.hpp
   

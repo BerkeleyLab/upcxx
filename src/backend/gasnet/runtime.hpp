@@ -10,6 +10,7 @@
 #include <upcxx/command.hpp>
 #include <upcxx/persona.hpp>
 #include <upcxx/team_fwd.hpp>
+#include <upcxx/exceptions.hpp>
 
 #include <cstdint>
 
@@ -38,9 +39,25 @@ namespace gasnet {
   #endif
 
   // Allocate from shared heap with accounting dumped to given footprint struct
-  // (not optional). Failure mode is null return  for foot == &gasnet::sheap_footprint_user
-  // and job death with diagnostic dump otherwise.
-  void* allocate(std::size_t size, std::size_t align, sheap_footprint_t *foot);
+  // Failure mode is a null return
+  void* allocate_or_null(std::size_t size, std::size_t align, sheap_footprint_t *foot) noexcept;
+
+  // Allocate from shared heap with accounting dumped to given footprint struct
+  // Failure mode is an exception for failureThrows 
+  //   and job death with diagnostic dump otherwise.
+  template<bool failureThrows=false>
+  inline void *allocate(std::size_t size, std::size_t align, sheap_footprint_t *foot) {
+    void *p = allocate_or_null(size, align, foot);
+    UPCXXI_IF_PT (p) return p;
+    else {
+      bad_shared_alloc fail(nullptr, size, failureThrows);
+      if (failureThrows) 
+        throw fail;
+      else
+        UPCXXI_FATAL_ERROR(fail.what());
+    } 
+    UPCXXI_UNREACHABLE(); // silence a warning from intel 21.3
+  }
 
   // Deallocate shared heap buffer, foot must match that given to allocate.
   void  deallocate(void *p, sheap_footprint_t *foot);
@@ -247,7 +264,7 @@ namespace gasnet {
             buffer = detail::alloc_aligned(w.size(), w.align());
           UPCXX_ASSERT(detail::is_aligned(buffer, w.align()));
         } else { // rendezvous
-          buffer = gasnet::allocate(w.size(), w.align(), &gasnet::sheap_footprint_rdzv);
+          buffer = gasnet::allocate</*throws=*/true>(w.size(), w.align(), &gasnet::sheap_footprint_rdzv);
         }
         
         w.compact_and_invalidate(buffer);
@@ -311,7 +328,7 @@ namespace gasnet {
         UPCXX_ASSERT(detail::is_aligned(buffer, ub.align));
       }
       else
-        buffer = gasnet::allocate(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
+        buffer = gasnet::allocate</*throws=*/true>(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
       
       return detail::serialization_writer<true>(buffer);
     }
@@ -409,7 +426,7 @@ namespace gasnet {
 
         buffer = gasnet::prepare_npam_medium(recipient, ub.size, static_npam_args, npam_nonce);
       } else {
-        buffer = gasnet::allocate(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
+        buffer = gasnet::allocate</*throws=*/true>(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
       }
       UPCXX_ASSERT(detail::is_aligned(buffer, ub.align));
       
@@ -512,11 +529,15 @@ namespace backend {
 
     am_send_buffer<decltype(ub), (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> am_buf;
     auto w = am_buf.prepare_writer(ub, rdzv_cutover_size, usingNPAMArgs, recipient);
+
+    UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
     
     detail::command<detail::lpc_base*>::template serialize<
         &rpc_as_lpc::reader_of,
         &rpc_as_lpc::template cleanup<definitely_not_rdzv, restricted>
       >(w, ub.size, fn);
+
+    UPCXXI_ASSERT_NOEXCEPTIONS_END
 
     am_buf.finalize_buffer(std::move(w), rdzv_cutover_size, usingNPAMArgs, recipient);
     

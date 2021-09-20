@@ -22,6 +22,8 @@ General features/enhancements: (see specification and programmer's guide for ful
   [implementation-defined.md](docs/implementation-defined.md) for details).
 * New overloads of fetching atomics that avoid overheads of non-empty futures
   and promises.
+* `upcxx::rpc` and `upcxx::rpc_ff` calls that encounter shared heap exhaustion
+  while allocating internal buffers will now throw an exception instead of crashing.
 * New `team::create` factory constructs teams with less communication than `team::split`
   when each participant can enumerate the membership of its own new team.
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
@@ -36,6 +38,8 @@ General features/enhancements: (see specification and programmer's guide for ful
 * Added implementation-defined macros `UPCXX_ASSERT` and `UPCXX_ASSERT_ALWAYS`
 * New `UPCXX_KIND_CUDA` feature macro indicates the presence of CUDA support.
 * Improve error reporting on failure to open a cuda_device.
+* Add debug codemode checking for exceptions thrown out of user callbacks into
+  library code, which is prohibited by the specification.
 
 Infrastructure changes:
 
@@ -71,6 +75,7 @@ Notable bug fixes:
 * issue #496: Configure mishandling quotes in compiler and flags settings
 * issue #500: Invalid teams created by split() are not handled according to spec
 * issue #502: Discontiguous rank numbering vs PEER_NEVER_NBRHD
+* spec issue 176: Change RPC injection to throw an exception on memory exhaustion
 
 This library snapshot conforms to the
 [UPC++ v1.0 Specification, Revision 2021.7.1-draft](docs/spec.pdf).

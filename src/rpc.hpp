@@ -243,6 +243,14 @@ namespace upcxx {
       "rpc_ff does not support remote or operation completion."
     );
 
+    // optimization: rpc_ff injection precedes completion processing, 
+    // allowing us to overlap that overhead with network latency.
+    // This also avoids the need to arrange for completion cancellation 
+    // during unwinding in case the injection call throws an excetion.
+    backend::template send_am_master<progress_level::user>( recipient,
+      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
+    );
+
     auto state = detail::completions_state<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::rpc_ff_event_values,
@@ -254,10 +262,6 @@ namespace upcxx {
         /*EventValues=*/detail::rpc_ff_event_values,
         CxsDecayed
       >{state};
-    
-    backend::template send_am_master<progress_level::user>( recipient,
-      detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
-    );
     
     // send_am_master doesn't support async source-completion, so we know
     // its trivially satisfied.
@@ -445,6 +449,12 @@ namespace upcxx {
       
       intrank_t initiator = backend::rank_me;
       auto *op_lpc = static_cast<cxs_state_t&&>(state).template to_lpc_dormant<operation_cx_event>();
+
+      auto guard = 
+        detail::make_raii_cleanup([&]() { // guard against throw from injection
+           op_lpc->cancel_and_delete(op_lpc); // cleanup dormant lpcs
+           static_cast<cxs_state_t&&>(state).template cancel<source_cx_event>(); // cleanup completions
+        });
       
       using fn_bound_t = typename detail::bind1<const Fn&, const Arg&...>::return_type;
 
@@ -466,6 +476,8 @@ namespace upcxx {
           detail::bind_rvalue_as_lvalue(static_cast<Fn&&>(fn), static_cast<Arg&&>(args)...)
         )
       );
+
+      guard.reset(); // injection successful
       
       // send_am_master doesn't support async source-completion, so we know
       // its trivially satisfied.

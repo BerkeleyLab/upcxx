@@ -9,16 +9,16 @@
 namespace upcxx {
 namespace detail {
   UPCXXI_ATTRIB_NORETURN
-  void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0);
+  void fatal_error(const char *msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) noexcept;
   UPCXXI_ATTRIB_NORETURN
-  inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) {
+  inline void fatal_error(const std::string &msg, const char *title=nullptr, const char *func=0, const char *file=0, int line=0) noexcept {
     fatal_error(msg.c_str(), title, func, file, line);
   }
 
   UPCXXI_ATTRIB_NORETURN
-  void assert_failed(const char *func, const char *file, int line, const char *msg=nullptr);
+  void assert_failed(const char *func, const char *file, int line, const char *msg=nullptr) noexcept;
   UPCXXI_ATTRIB_NORETURN
-  inline void assert_failed(const char *func, const char *file, int line, const std::string &str) {
+  inline void assert_failed(const char *func, const char *file, int line, const std::string &str) noexcept {
     assert_failed(func, file, line, str.c_str());
   }
 }
@@ -151,6 +151,19 @@ namespace detail {
 #define UPCXXI_WARN_EMPTY(fnname, count) ( (count) == 0 ? backend::warn_empty_rma(fnname) : (void)0 )
 #else
 #define UPCXXI_WARN_EMPTY(fnname, count) ((void)0)
+#endif
+
+#if UPCXXI_ASSERT_ENABLED
+#define UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN try {
+#define UPCXXI_ASSERT_NOEXCEPTIONS_END  \
+    } catch(std::exception &_e) { \
+      UPCXXI_FATAL_ERROR("An exception propagated outward into UPC++ library code, which is prohibited\n" << _e.what()); \
+    } catch (...) { \
+      UPCXXI_FATAL_ERROR("An exception propagated outward into UPC++ library code, which is prohibited"); \
+    }
+#else
+  #define UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN {
+  #define UPCXXI_ASSERT_NOEXCEPTIONS_END   }
 #endif
 
 // UPCXXI_NODISCARD: The C++17 [[nodiscard]] attribute, when supported/enabled

@@ -84,7 +84,7 @@ team team::split(intrank_t color, intrank_t key) const {
   );
   
   void *scratch_buf = p_sub_tm
-    ? upcxx::allocate(scratch_sz, GASNET_PAGESIZE)
+    ? gasnet::allocate(scratch_sz, GASNET_PAGESIZE, &gasnet::sheap_footprint_misc)
     : nullptr;
   
   // construct the new GASNet team
@@ -160,7 +160,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
   );
 
   void *scratch_buf = p_sub_tm
-    ? upcxx::allocate(scratch_sz, GASNET_PAGESIZE)
+    ? gasnet::allocate(scratch_sz, GASNET_PAGESIZE, &gasnet::sheap_footprint_misc)
     : nullptr;
  
   // construct the new GASNet team
@@ -226,7 +226,7 @@ void team::destroy(detail::internal_only, entry_barrier eb) {
         if (scratch) UPCXX_ASSERT(scratch == scratch_area.gex_addr);
     }
     
-    upcxx::deallocate(scratch);
+    gasnet::deallocate(scratch, &gasnet::sheap_footprint_misc);
   }
   
   UPCXX_ASSERT(id_ != tombstone);

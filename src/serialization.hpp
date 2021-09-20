@@ -1371,6 +1371,8 @@ namespace upcxx {
         
         detail::serialization_writer</*bounded=*/decltype(ub)::is_valid> w(storage, storage_size);
 
+        UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
+
         the_traits::serialize(w, x);
 
         // Write to space after our static storage to ensure we corrupt any
@@ -1392,6 +1394,8 @@ namespace upcxx {
           std::free(storage);
         
         return x1_raw.value_and_destruct();
+
+        UPCXXI_ASSERT_NOEXCEPTIONS_END
       }
     };
     

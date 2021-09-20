@@ -660,6 +660,10 @@ namespace upcxx {
       // context. Notice event values are taken sans-reference since an event
       // may have multiple "listeners", each should get a private copy.
     }
+
+    void cancel() {
+      // Operation is being cancelled, perform cleanup actions only
+    }
     
     lpc_dormant<T...> to_lpc_dormant(lpc_dormant<T...> *tail) && {
       // Convert this state into a dormant lpc (chained against a supplied tail
@@ -678,6 +682,7 @@ namespace upcxx {
       void set_done(cx_event_done) {}
       cx_state(buffered_cx<Event>) {}
       void operator()() {}
+      void cancel() {}
     };
     
     template<typename Event>
@@ -685,6 +690,7 @@ namespace upcxx {
       void set_done(cx_event_done) {}
       cx_state(blocking_cx<Event>) {}
       void operator()() {}
+      void cancel() {}
     };
     
     // wrapper around make_future<>() that type checks when T... is
@@ -750,6 +756,11 @@ namespace upcxx {
           );
         }
       }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        if (pro_) backend::fulfill_now(/*move ref*/pro_, 1);
+      }
     };
 
     /* There are multiple specializations for promise_cx since both the promise
@@ -779,6 +790,10 @@ namespace upcxx {
               /*move ref*/pro, std::tuple<T...>(static_cast<T&&>(results)...)
             );
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
@@ -793,6 +808,11 @@ namespace upcxx {
             /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
           );
         }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        backend::fulfill_now(/*move ref*/pro_, 1);
       }
     };
     // Case when event type list is empty
@@ -823,6 +843,10 @@ namespace upcxx {
           [/*move ref*/pro]() {
             backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
@@ -833,6 +857,11 @@ namespace upcxx {
         if (pro_) {
           backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
         }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        if (pro_) backend::fulfill_now(/*move ref*/pro_, 1);
       }
     };
     // Case when promise and event type list are both empty
@@ -863,6 +892,10 @@ namespace upcxx {
           [/*move ref*/pro]() {
             backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
@@ -873,6 +906,11 @@ namespace upcxx {
         if (pro_) {
           backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
         }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        if (pro_) backend::fulfill_now(/*move ref*/pro_, 1);
       }
     };
     
@@ -896,13 +934,18 @@ namespace upcxx {
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
         upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
-        return detail::make_lpc_dormant(*target_, progress_level::user, std::move(fn_), tail);
+        return detail::make_lpc_dormant(*target_, progress_level::user, 
+                                        std::move(fn_), [](){}, tail);
       }
       
       void operator()(T ...vals) {
         target_->lpc_ff(
           detail::lpc_bind<Fn,T...>(static_cast<Fn&&>(fn_), static_cast<T&&>(vals)...)
         );
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
+      }
+
+      void cancel() { 
         upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
@@ -1050,6 +1093,10 @@ namespace upcxx {
       // Convert states of actions associated with given Event to dormant lpc list
       template<typename Event>
       lpc_dormant<...> to_lpc_dormant() &&;
+
+      // Cancel actions associated with given Event
+      template<typename Event>
+      void cancel() &&;
     }*/;
 
     // completions_state specialization for empty completions<>
@@ -1099,6 +1146,9 @@ namespace upcxx {
       to_lpc_dormant() && {
         return nullptr; // the empty lpc_dormant list
       }
+
+      template<typename Event>
+      void cancel() && {/*nop*/}
     };
 
     /* completions_state for non-empty completions<...> deconstructs list one
@@ -1131,6 +1181,9 @@ namespace upcxx {
       
       template<typename Event, typename ...V>
       void operator()(V&&...) {/*nop*/}
+
+      template<typename Event>
+      void cancel() && {/*nop*/}
 
       std::tuple<> get_remote_fn() const { return {}; }
       static std::tuple<> get_remote_fn(const Cx &) { return {}; }
@@ -1213,6 +1266,13 @@ namespace upcxx {
           >(),
           tail
         );
+      }
+
+      // fire state if Event == CxH::event_t
+      template<typename Event>
+      void cancel() && {
+        if ( std::is_same<Event, typename Cx::event_t>::value )
+          state_.cancel();
       }
     };
 
@@ -1316,6 +1376,14 @@ namespace upcxx {
         return static_cast<head_t&&>(*this).template to_lpc_dormant<Event>(
           static_cast<tail_t&&>(*this).template to_lpc_dormant<Event>()
         );
+      }
+
+      template<typename Event>
+      void cancel() && {
+        // cancel the head element
+        static_cast<head_t&&>(*this).template cancel<Event>();
+        // recurse to cancel remaining elements
+        static_cast<tail_t&&>(*this).template cancel<Event>();
       }
     };
   }

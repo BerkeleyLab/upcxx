@@ -64,7 +64,10 @@ namespace detail {
 
       local_storage_t storage;
       void *spot = on_stack ? (void*)&storage : ::operator new(sizeof(FnDez));
-      FnDez *fn = serialization_traits<Fn>::deserialize(r, spot);
+      FnDez *fn;
+      UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
+        fn = serialization_traits<Fn>::deserialize(r, spot);
+      UPCXXI_ASSERT_NOEXCEPTIONS_END
 
       // after_execute<...>() will cleanup fn. This will happen
       // immediately after fn is invoked if fn returns a non-future or

@@ -26,12 +26,16 @@ namespace upcxx {
       // enqueue all lpc's contained in the list for which `this` is the head.
       template<typename ...U>
       void awaken(deserialized_raw_tuple<U...> &&results);
+
+      // cancel a list of lpc_dormant, freeing storage without enqueue/execute
+      static void cancel_and_delete(lpc_dormant *);
     };
 
     // Make a lpc_dormant* from lambda.
-    template<typename ...T, typename Fn>
+    template<typename ...T, typename Fn, typename CancelFn>
     lpc_dormant<T...>* make_lpc_dormant(
-        persona &target, progress_level level, Fn &&fn,
+        persona &target, progress_level level, 
+        Fn &&fn, CancelFn &&cancel,
         lpc_dormant<T...> *tail
       );
     
@@ -63,9 +67,10 @@ namespace upcxx {
       ~lpc_dormant_fn_base() {}
     };
     
-    template<typename Fn, typename ...T>
+    template<typename Fn, typename CancelFn, typename ...T>
     struct lpc_dormant_fn final: lpc_dormant_fn_base<T...> {
       Fn fn;
+      CancelFn cancel;
 
       template<int ...i>
       void apply_help(detail::index_sequence<i...>) {
@@ -79,28 +84,37 @@ namespace upcxx {
         me->results.~results_t();
         delete me;
       }
+
+      static void the_cancel_and_delete(lpc_base *me1) {
+        auto *me = static_cast<lpc_dormant_fn*>(me1);
+        std::move(me->cancel)();
+        delete me;
+      }
       
-      static constexpr lpc_vtable the_vtbl = {&the_execute_and_delete};
+      static constexpr lpc_vtable the_vtbl = {&the_execute_and_delete, &the_cancel_and_delete};
       
-      lpc_dormant_fn(persona &target, progress_level level, Fn &&fn):
-        fn(std::forward<Fn>(fn)) {
+      lpc_dormant_fn(persona &target, progress_level level, Fn &&fn, CancelFn &&cancel):
+        fn(std::forward<Fn>(fn)), cancel(std::forward<CancelFn>(cancel)) {
         this->vtbl = &the_vtbl;
         this->target = &target;
         this->level = level;
       }
     };
     
-    template<typename Fn, typename ...T>
-    constexpr lpc_vtable lpc_dormant_fn<Fn,T...>::the_vtbl;
+    template<typename Fn, typename CancelFn, typename ...T>
+    constexpr lpc_vtable lpc_dormant_fn<Fn,CancelFn,T...>::the_vtbl;
 
     // Make a lpc_dormant* from lambda.
-    template<typename ...T, typename Fn1>
+    template<typename ...T, typename Fn1, typename CancelFn1>
     lpc_dormant<T...>* make_lpc_dormant(
-        persona &target, progress_level level, Fn1 &&fn,
+        persona &target, progress_level level, Fn1 &&fn, CancelFn1 &&cancel,
         lpc_dormant<T...> *tail
       ) {
       using Fn = typename std::decay<Fn1>::type;
-      auto *lpc = new lpc_dormant_fn<Fn,T...>(target, level, std::forward<Fn1>(fn));
+      using CancelFn = typename std::decay<CancelFn1>::type;
+      auto *lpc = new lpc_dormant_fn<Fn,CancelFn,T...>(target, level, 
+                                                       std::forward<Fn1>(fn),
+                                                       std::forward<CancelFn1>(cancel));
       lpc->intruder.p.store(tail, std::memory_order_relaxed);
       return lpc;
     }
@@ -246,6 +260,30 @@ namespace upcxx {
 
       if(deserialized) storage.destruct();
     }
-  }
-}
+
+    ////////////////////////////////////////////////////////////////////////////
+    template<typename ...T>
+    void lpc_dormant<T...>::cancel_and_delete(lpc_dormant<T...> *list) {
+      lpc_dormant *p = list;
+      do {
+        lpc_dormant *next = static_cast<lpc_dormant*>(p->intruder.p.load(std::memory_order_relaxed));
+        std::uintptr_t vtbl_u = reinterpret_cast<std::uintptr_t>(p->vtbl);
+        if(vtbl_u & 0x1) {
+          auto *pro = reinterpret_cast<future_header_promise<T...>*>(vtbl_u ^ 0x1);
+          // balance injection increment and dropref:
+          backend::fulfill_now(/*move ref*/pro, 1);
+          delete static_cast<lpc_dormant_qpromise<T...>*>(p);
+        } else {
+          auto *p1 = static_cast<lpc_dormant_fn_base<T...>*>(p);
+          UPCXX_ASSERT(p1->vtbl);
+          auto *cancel_and_delete = p1->vtbl->cancel_and_delete;
+          if (cancel_and_delete) cancel_and_delete(p1);
+          else delete p1;
+        }
+        p = next;
+      } while(p != nullptr);
+    }
+
+  } // namespace detail
+} // namespace upcxx
 #endif
