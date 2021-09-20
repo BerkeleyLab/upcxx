@@ -123,7 +123,7 @@ def heapsz_type(a):
     
 def load_args():
     global _parser
-    _parser = argparse.ArgumentParser(description='A portable parallel job launcher for UPC++ programs, v2021.3.9')
+    _parser = argparse.ArgumentParser(description='A portable parallel job launcher for UPC++ programs, v2021.3.11')
     _parser.add_argument('-n', '-np', dest='nranks', type=ranks_type, default=None, metavar='NUM',
                          help='Spawn NUM number of UPC++ processes. Required.')
     _parser.add_argument('-N', dest='nnodes', type=nodes_type, default=None, metavar='NUM',
