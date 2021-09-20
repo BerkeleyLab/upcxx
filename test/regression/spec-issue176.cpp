@@ -147,6 +147,26 @@ int main() {
     CHECK("rpc(view(unbounded))", 
           auto f = rpc(peer, [](view<byte_bag> const &v) {}, unbounded_view););
 
+#if 0
+    // rput is currently noexcept
+    CHECK("rput(remote_cx::as_rpc(view(char[toobig])))", 
+          rput((char)0, gp, 
+               remote_cx::as_rpc([](view<char> const &v) {}, big_view)));
+
+    CHECK("rput(remote_cx::as_rpc(view(unbounded)))", 
+          rput((char)0, gp, 
+               remote_cx::as_rpc([](view<byte_bag> const &v) {}, unbounded_view)));
+#endif
+#if 0
+    // copy is currently noexcept
+    CHECK("copy-put(remote_cx::as_rpc(view(char[toobig])))", 
+          copy(gp_local.local(), gp, 1, 
+               remote_cx::as_rpc([](view<char> const &v) {}, big_view)));
+    CHECK("copy-3rd(remote_cx::as_rpc(view(char[toobig])))", 
+          copy(gp, gp, 1, 
+               remote_cx::as_rpc([](view<char> const &v) {}, big_view)));
+#endif
+
     tracker::check();
     { tracker t; }
     tracker::check();
