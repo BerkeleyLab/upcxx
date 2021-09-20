@@ -8,6 +8,7 @@
 # Scripts (in $(upcxx_src)/utils/config/upcxx) to be run IN ORDER
 UPCXX_CONFIG_SCRIPTS = \
 	upcxx_defines.sh \
+	hidden_am_concurrency_level.sh \
 	builtin_assume_aligned.sh \
 	builtin_launder.sh \
 	gasnet_macros.sh \
