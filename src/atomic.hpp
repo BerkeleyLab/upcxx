@@ -117,8 +117,10 @@ namespace upcxx {
 
       // The constructor takes a vector of operations. Currently, flags is currently unsupported.
       atomic_domain_untyped(std::vector<atomic_op> const &ops, const team &tm);
-      
-      ~atomic_domain_untyped();
+
+      // Issue 490
+      void real_destructor();
+      ~atomic_domain_untyped() { real_destructor(); }
 
       void destroy(entry_barrier eb);
     };

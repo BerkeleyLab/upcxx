@@ -190,7 +190,7 @@ void upcxx::detail::atomic_domain_untyped<size,bit_flavor>::destroy(entry_barrie
 }
 
 template<std::size_t size, int bit_flavor>
-upcxx::detail::atomic_domain_untyped<size,bit_flavor>::~atomic_domain_untyped() {
+void upcxx::detail::atomic_domain_untyped<size,bit_flavor>::real_destructor() {
   if(backend::init_count > 0) { // we don't assert on leaks after finalization
     UPCXX_ASSERT_ALWAYS(
       atomic_gex_ops == 0,
