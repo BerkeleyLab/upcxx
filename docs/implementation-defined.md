@@ -65,7 +65,7 @@ aborting program execution.
     backtrace and/or freezes for debugger, and aborts execution by calling
     `std::abort()`. `message` may be any expression such that `std::cerr <<
     message` is well-formed; for instance, it may itself include
-    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, “error! x = “
+    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, "error! x = "
     << x)`). `message` is only evaluated when `test` produces a false value. If
     `message` is not provided, it defaults to a string that includes a textual
     representation of `test`. In all cases, this macro expands to an expression
