@@ -24,6 +24,7 @@ General features/enhancements: (see specification and programmer's guide for ful
   and promises.
 * `upcxx::rpc` and `upcxx::rpc_ff` calls that encounter shared heap exhaustion
   while allocating internal buffers will now throw an exception instead of crashing.
+  For details, see [implementation-defined.md](docs/implementation-defined.md)
 * New `team::create` factory constructs teams with less communication than `team::split`
   when each participant can enumerate the membership of its own new team.
 * Performance improvements to `upcxx::copy()`, especially for cases not involving
@@ -61,6 +62,7 @@ Infrastructure changes:
 
 Notable bug fixes:
 
+* issue #242: Lack of backpressure in RPC injection leads to shared memory-exhaustion crashes
 * issue #299: de-duplication of installed headers
 * issue #354: improve default network selection
 * issue #464: assert when calling `global_ptr<T,kind>::local()` on device pointers
