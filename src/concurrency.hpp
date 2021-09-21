@@ -7,6 +7,10 @@
 #include <atomic>
 #include <mutex>
 
+#if UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
+  #error issue 495: UPC++ does not currently support GASNet-level AM progress threads
+#endif
+
 namespace upcxx {
   namespace detail {
   #if UPCXXI_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
