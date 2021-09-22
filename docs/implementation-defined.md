@@ -1,7 +1,8 @@
 # UPC++ Implementation Defined Behavior #
 
 This document describes stable features supported by this implementation that
-go beyond the requirements of the UPC++ Specification.
+go beyond the requirements of the UPC++ Specification, or are specified
+as implementation-defined behavior.
 
 ## Version Identification and Compilation Settings ##
 
@@ -52,6 +53,27 @@ and `as_promise(p)` are equivalent to `as_defer_future()` and
 `as_defer_promise(p)`, respectively), while defining it to 0 makes the default
 eager.
 
+## Exceptions thrown from `rpc` and `rpc_ff` ##
+
+The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw an
+exception if they encounter resource exhaustion while trying to inject the
+RPC. In the current release, this should only occur when the RPC payload is
+somewhat large (over a few KiB) and the shared heap on the initiating 
+process fails to allocate a temporary buffer large enough to hold the
+serialized RPC. 
+
+In releases prior to 2021.9.0, such conditions led to an immediate fatal error.
+Starting in 2021.9.0, an `rpc` or `rpc_ff` call encountering this condition
+will instead throw a `upcxx::bad_shared_alloc` exception, where the `what()`
+member function includes information about the shared heap state at the
+point of failure. The exception may be thrown before or after serialization
+of the function arguments. In all other ways, a call throwing such an exception 
+is effectively "cancelled" -- it will not lead to invocation of the 
+function object at the target, nor will it deliver any event notifications
+(for example, a promise passed using an `as_promise()` completion will
+remain unchanged by the exceptional call).
+
+
 ## Assertion Macros ##
 
 This implementation provides assertion macros to facilitate debugging on
@@ -65,7 +87,7 @@ aborting program execution.
     backtrace and/or freezes for debugger, and aborts execution by calling
     `std::abort()`. `message` may be any expression such that `std::cerr <<
     message` is well-formed; for instance, it may itself include
-    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, “error! x = “
+    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, "error! x = "
     << x)`). `message` is only evaluated when `test` produces a false value. If
     `message` is not provided, it defaults to a string that includes a textual
     representation of `test`. In all cases, this macro expands to an expression
