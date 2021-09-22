@@ -405,7 +405,7 @@ void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
 }
 
 GASNETT_COLD
-detail::device_allocator_core<upcxx::cuda_device>::~device_allocator_core() {
+void detail::device_allocator_core<upcxx::cuda_device>::real_destructor() {
   if(upcxx::initialized()) {
     // The thread safety restriction of this call still applies when upcxx isn't
     // initialized, we just have no good way of asserting it so we conditionalize

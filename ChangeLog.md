@@ -72,6 +72,7 @@ Notable bug fixes:
 * issue #482: SEQ mode incorrectly requires master as `current_persona` for shared allocation
 * issue #487: Renaming unspecified internal `UPCXX_` macros and identifiers
 * issue #488: Configure-time failure when mixing GCC + Intel
+* issue #490: Clang pedantic warnings on template destructors building the library
 * issue #495: failures with ibv-conduit recv thread enabled
 * issue #496: Configure mishandling quotes in compiler and flags settings
 * issue #500: Invalid teams created by split() are not handled according to spec
