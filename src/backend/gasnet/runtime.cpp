@@ -271,8 +271,7 @@ void upcxx::backend::heap_state::init() {
 
   #if UPCXXI_CUDA_USE_MK
     // GASNet-EX versions < 2021.8.3 suffered from bug4148
-    #if UPCXX_NETWORK_IBV && \
-      (GASNET_RELEASE_VERSION_MAJOR*10000 + GASNET_RELEASE_VERSION_MINOR*100 + GASNET_RELEASE_VERSION_PATCH) < 20210803
+    #if UPCXX_NETWORK_IBV && UPCXXI_GEX_VERSION < 20210803
       gex_Rank_t num_nbrhd;
       gex_System_QueryMyPosition(&num_nbrhd, 0, 0, 0);
       UPCXX_ASSERT(intrank_t(num_nbrhd) <= backend::rank_n);
