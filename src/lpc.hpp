@@ -20,6 +20,17 @@ namespace upcxx {
       // instead of actually doing the *something*.
       // May be null for objects that do not support cancellation.
       void(*cancel_and_delete)(lpc_base *me);
+
+      // Aggregate initialization would cause an overly zealous warning about
+      // uninitialized fields with -Wmissing-field-initializers as part of -Wextra.
+      // By creating constructors instead of relying on aggregate initialization,
+      // it is ensured that this warning won't occur on any construction of lpc_vtable.
+      constexpr lpc_vtable(void(*ed)(lpc_base*) = nullptr, void(*cd)(lpc_base*) = nullptr)
+        : execute_and_delete(ed)
+        , cancel_and_delete(cd)
+      {}
+      constexpr lpc_vtable(const lpc_vtable&) = default;
+      constexpr lpc_vtable(lpc_vtable&&) = default;
     };
     
     // Base class for generic callbacks that can be queued into `lpc_inbox`'s.
