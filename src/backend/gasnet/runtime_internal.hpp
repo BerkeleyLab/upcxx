@@ -21,6 +21,9 @@
       // User is trying to compile with a GASNet-EX version that does not meet our current minimum requirement:
       #error This version of UPC++ requires GASNet-EX version 2021.3.0 or newer. Please rerun configure (without '--with-gasnet=...') to fetch and use the default GASNet-EX layer.
     #endif
+
+    #define UPCXXI_GEX_VERSION \
+            (GASNET_RELEASE_VERSION_MAJOR*10000 + GASNET_RELEASE_VERSION_MINOR*100 + GASNET_RELEASE_VERSION_PATCH)
 #else
     #error "You've either pulled in this header without first including" \
            "<upcxx/backend.hpp>, or you've made the assumption that" \

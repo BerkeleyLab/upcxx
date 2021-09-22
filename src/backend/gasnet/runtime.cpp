@@ -271,8 +271,7 @@ void upcxx::backend::heap_state::init() {
 
   #if UPCXXI_CUDA_USE_MK
     // GASNet-EX versions < 2021.8.3 suffered from bug4148
-    #if UPCXX_NETWORK_IBV && \
-      (GASNET_RELEASE_VERSION_MAJOR*10000 + GASNET_RELEASE_VERSION_MINOR*100 + GASNET_RELEASE_VERSION_PATCH) < 20210803
+    #if UPCXX_NETWORK_IBV && UPCXXI_GEX_VERSION < 20210803
       gex_Rank_t num_nbrhd;
       gex_System_QueryMyPosition(&num_nbrhd, 0, 0, 0);
       UPCXX_ASSERT(intrank_t(num_nbrhd) <= backend::rank_n);
@@ -525,6 +524,35 @@ void upcxx::init() {
 
   backend::gasnet::watermark_init();
 
+  //////////////////////////////////////////////////////////////////////////////
+  // issue 495: forbid GASNet-level progress threads in SEQ mode
+  #if UPCXXI_BACKEND_GASNET_SEQ && GASNET_HIDDEN_AM_CONCURRENCY_LEVEL 
+    // static information indicates GASNet MIGHT have a progress thread
+    bool maybe_progress_thread = true;
+
+    // bug 4330: GASNet versions prior to 2021.8.5 botch the GASNET_HIDDEN_AM_CONCURRENCY_LEVEL define for ibv-conduit
+    // this clause can be removed once we raise GEX floor to 2021.9.0:
+    #if GASNET_CONDUIT_IBV && UPCXXI_GEX_VERSION < 20210805 // if this is an affected ibv-conduit version 
+      #if GASNETC_IBV_RCV_THREAD  // bug 4330: this GASNet internal symbol gives the correct value
+        maybe_progress_thread = true;
+      #else
+        maybe_progress_thread = false;
+      #endif
+    #endif
+
+    #if UPCXXI_GEX_VERSION >= 20210807
+      // 2021.8.7 added a direct dynamic query
+      maybe_progress_thread = bool(gex_System_QueryHiddenAMConcurrencyLevel());
+    #endif
+
+    if (maybe_progress_thread) 
+      UPCXXI_FATAL_ERROR(
+        "UPC++ currently does not support GASNet-level progress threads when using threadmode=seq, "
+        "and this unsupported feature appears to be enabled.\n"
+        "Please see GASNet documentation for configure or envvar knobs to disable that feature.\n"
+        "For details, see issue 495."
+      );
+  #endif
   //////////////////////////////////////////////////////////////////////////////
   // UPCXX_SHARED_HEAP_SIZE environment handling
 

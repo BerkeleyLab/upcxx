@@ -7,13 +7,14 @@
 #include <atomic>
 #include <mutex>
 
-#if UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
-  #error issue 495: UPC++ does not currently support GASNet-level AM progress threads
-#endif
+// issue 495: UPC++ does not currently support GASNet-level AM progress threads
+// To minimize impact on users we assume it's off at compile time and validate 
+// the dynamic value at startup to ensure we haven't broken the rule.
+#define UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL 0
 
 namespace upcxx {
   namespace detail {
-  #if UPCXXI_BACKEND_GASNET_PAR || !defined(UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL) || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
+  #if UPCXXI_BACKEND_GASNET_PAR || UPCXXI_HIDDEN_AM_CONCURRENCY_LEVEL
     // AM handlers may run concurrently wrt the primordial thread
 
     using par_mutex = std::mutex;
