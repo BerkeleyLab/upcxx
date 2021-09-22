@@ -18,15 +18,15 @@ int main() {
     a->x = 3;
     const int j = __builtin_launder(reinterpret_cast<A*>(&b))->x;
     #if __INTEL_COMPILER
-    // Intel compiler does not appear to properly support __builtin_launder
-    // see issue 481 and PR 358 for details
+    #error Intel compiler does not appear to properly support __builtin_launder
+    #error see issue 481 and PR 358 for details
     return 1;
     #endif
     return !(i == -1 && j == 3);
 }
 _EOF
 
-TEST="(${GASNET_CXX} ${GASNET_CXXCPPFLAGS} ${GASNET_CXXFLAGS} -o conftest conftest.cpp && ./conftest)"
+TEST="(${GASNET_CXX} ${GASNET_CXXCPPFLAGS} ${GASNET_CXXFLAGS} -o conftest conftest.cpp && (! test -z ${UPCXX_CROSS} || ./conftest))"
 if eval $TEST &> /dev/null; then
   echo '#define UPCXXI_HAVE___BUILTIN_LAUNDER 1'
 else
