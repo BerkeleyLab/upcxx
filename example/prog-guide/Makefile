@@ -37,6 +37,7 @@ EXAMPLES = \
   dmap-conjoined-test \
   dmap-promises-test \
   rb1d \
+  rput-rpc \
   hello-world \
   view-histogram1 \
   view-histogram2 \
