@@ -156,13 +156,12 @@ struct System {
     if (comm.x >= X%comm.nx)
         lo += X%comm.nx;
     hi = lo + dX;
-    if(hi>X) hi=X;
 
     printf("Rank %i Domain: [%i,%i)\n",comm.x,lo,hi);
     T = new double[(hi-lo)*X*X];
     dT = new double[(hi-lo)*X*X];
 
-    if(lo != 0 && lo != hi) {
+    if(lo != 0) {
         left_ghost_slab = upcxx::new_array<double>(X*X);
         nbors++;
     }
@@ -210,7 +209,7 @@ struct System {
 
   // run time loops
   void timestep() {
-    double T_ave;
+    double T_ave = 0;
     for(int t=0; t<=N; t++) {
       if(t>N/2) P = 0.0;
       exchange_T_halo();
@@ -319,7 +318,7 @@ struct System {
  * rank has in the domain, and user-level progress is advanced until that 
  * happens, after which the counter is reset.
  */ 
-    if(lo != 0 && lo != hi) { // last rank may not actually have a domain
+    if(lo != 0) {
       upcxx::rput(T,gptr_left,X*X,
         upcxx::remote_cx::as_rpc([](){count++;}));
     }
