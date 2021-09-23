@@ -1,7 +1,8 @@
 /*
- * This is the main file for all the compute pi code in the guide. It wraps all of the various
- * allocate() calls, using namespaces. Although this is a rather peculiar structure, it is intended
- * for use with individual code snippets extracted directly from the programmer's guide.
+ * This is the test driver for all the reduction examples that appeared in former versions of the guide. 
+ * It wraps all of the various reduce_to_rank0 implementations, using namespaces. 
+ * Although this is a rather peculiar structure, it is intended to exercise
+ * individual stand-alone code snippets implementing a naive reduction in various ways.
 */
 
 #include <libgen.h>
@@ -14,35 +15,35 @@
 using namespace std;
 
 namespace rpc {
-    #include "rpc-reduce_to_rank0.hpp"
+    #include "reduce-rpc.hpp"
 }
 
 namespace rpc_no_barrier {
-    #include "rpc-reduce_to_rank0-no-barrier.hpp"
+    #include "reduce-rpc-no-barrier.hpp"
 }
 
-namespace global_ptrs {
-    #include "global-ptrs-reduce_to_rank0.hpp"
+namespace rpc_ff {
+    #include "reduce-rpc_ff.hpp"
 }
 
 namespace distobj {
-    #include "distobj-reduce_to_rank0.hpp"
+    #include "reduce-distobj.hpp"
 }
 
-namespace async_distobj {
-    #include "async-distobj-reduce_to_rank0.hpp"
+namespace distobj_async {
+    #include "reduce-distobj-async.hpp"
+}
+
+namespace rput {
+    #include "reduce-rput.hpp"
+}
+
+namespace rput_rpc_promise {
+    #include "reduce-rput-rpc-promise.hpp"
 }
 
 namespace atomics {
-    #include "atomics-reduce_to_rank0.hpp"
-}
-
-namespace quiescence {
-    #include "quiescence-reduce_to_rank0.hpp"
-}
-
-namespace promises {
-    #include "promises2-distobj-reduce_to_rank0.hpp"
+    #include "reduce-atomics.hpp"
 }
 
 int hit()
@@ -53,15 +54,14 @@ int hit()
     else return 0;
 }
 
-// the prev is passed into the macro to check that the results between the two
-// versions are identical
-#define ACCM(version, prev)                                             \
-    int hits_##version = version::reduce_to_rank0(my_hits);             \
-    if (!upcxx::rank_me()) {                                            \
-        cout << #version << ": pi estimate: " << 4.0 * hits_##version / trials \
-             << ", rank 0 alone: " << 4.0 * my_hits / my_trials << endl; \
-        UPCXX_ASSERT_ALWAYS(hits_##version == hits_##prev, "hits mismatch between " #version " and " #prev); \
-    }
+// Perform the reduction using given algorithm, report and check the results
+#define ACCM(version) do {                           \
+    int hits = version::reduce_to_rank0(my_hits);    \
+    if (!upcxx::rank_me()) {                         \
+        cout << #version << ": pi estimate: " << 4.0 * hits / trials << endl; \
+        UPCXX_ASSERT_ALWAYS(hits == hits_reference, "hits mismatch in " #version ); \
+    } \
+  } while (0)
 
 int main(int argc, char **argv)
 {
@@ -80,22 +80,28 @@ int main(int argc, char **argv)
         my_hits += hit();
     }
 
-    ACCM(rpc, rpc);
-    ACCM(rpc_no_barrier, rpc);
-    ACCM(global_ptrs, rpc_no_barrier);
-    ACCM(distobj, global_ptrs);
-    ACCM(async_distobj, distobj);
-    ACCM(atomics, async_distobj);
-    ACCM(quiescence, atomics);
-    ACCM(promises, quiescence);
-    // now check that the result is reasonable
+    // recommended algorithm: built-in reduction call
+    int hits_reference = upcxx::reduce_one(my_hits, upcxx::op_fast_add, 0).wait();
+
+    // output initial result and check it's reasonable
     if (!upcxx::rank_me()) {
-        double pi = 4.0 * hits_rpc / trials;
+        double pi = 4.0 * hits_reference / trials;
         cout << "Computed pi to be " << pi << endl;
+        cout << "Estimate from rank 0 alone: " << 4.0 * my_hits / my_trials << endl;
         UPCXX_ASSERT_ALWAYS(pi >= 3 && pi <= 3.5, "pi is out of range (3, 3.5)");
-        cout << "SUCCESS" << endl;
     }
 
+    // now test some alternate reduction algorithms, provided for demonstration purposes
+    ACCM(rpc);
+    ACCM(rpc_no_barrier);
+    ACCM(rpc_ff);
+    ACCM(distobj);
+    ACCM(distobj_async);
+    ACCM(rput);
+    ACCM(rput_rpc_promise);
+    ACCM(atomics);
+
+    if (!upcxx::rank_me()) cout << "SUCCESS" << endl;
     upcxx::finalize();
     return 0;
 }
