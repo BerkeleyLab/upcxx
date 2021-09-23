@@ -2,9 +2,9 @@
 # Note this uses some GNU make extensions for conciseness.
 #
 # To use this makefile, set the UPCXX_INSTALL variable to the upcxx install directory, e.g.
-# make UPCXX_INSTALL=<myinstalldir> hello-world
+# make UPCXX_INSTALL=<myinstalldir>
 # or (for bash)
-# export UPCXX_INSTALL=<myinstalldir>; make hello-world
+# export UPCXX_INSTALL=<myinstalldir>; make
 
 ifeq ($(UPCXX_INSTALL),)
 $(warning UPCXX_INSTALL environment variable is not set, assuming upcxx is in the PATH)
@@ -29,55 +29,17 @@ CXXFLAGS = # optional command-line override
 
 # Programs to build, assuming each has a corresponding *.cpp file
 EXAMPLES = \
-  dmap-async-find-test \
-  dmap-async-insert-test \
-  dmap-atomics-test \
-  dmap-conjoined-test \
-  dmap-promises-test \
-  dmap-quiescence-test \
-  dmap-test \
-  hello-world \
-  non-contig-example \
-  persona-example	\
-  persona-example-rputs \
-  rb1d \
-  rb1d-rpc \
-  rb1d-rpcinit \
-  rput-rpc \
-  serial-custom \
-  serial-fields \
-  serial-recursive \
-  serial-values \
-  team_advanced \
-  team_simple \
-  view-accumulate \
-  view-histogram1 \
-  view-histogram2 \
-  view-matrix-tasks
-
-
-CUDA_EXAMPLES = \
-  h-d \
-  h-d-remote
+  compute-pi \
+  compute-pi-multi-examples 
 
 all: $(EXAMPLES)
-cuda: $(CUDA_EXAMPLES)
 
 # The rule for building any example.
 %: %.cpp $(wildcard *.h) $(wildcard *.hpp)
 	$(CXX) $@.cpp $(CXXFLAGS) -o $@
 
-
-# Example-specific variable specializations.
-PAR_EXAMPLES = \
-  persona-example \
-  persona-example-rputs \
-  view-matrix-tasks
-$(PAR_EXAMPLES): UPCXX_THREADMODE=par
-
 clean:
 	rm -f $(EXAMPLES)
-	rm -f $(CUDA_EXAMPLES)
 
 .PHONY: clean all run
 

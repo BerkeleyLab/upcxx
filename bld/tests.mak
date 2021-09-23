@@ -62,6 +62,7 @@ test_dirs = \
 	test/uts \
 	bench \
 	example \
+	example/compute-pi \
 	example/prog-guide \
 	example/serialization
 
