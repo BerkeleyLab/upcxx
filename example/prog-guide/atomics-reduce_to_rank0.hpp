@@ -1,5 +1,14 @@
+// This example shows how to implement a naive sum reduction
+// using atomic fetch-add and a barrier synchronization
+//
+// This reduction algorithm is non-scalable and only shown here for 
+// demonstration purposes. UPC++ includes scalable reduction operations 
+// upcxx::reduce_{one,all}() that should be preferred in real codes.
+
 int64_t reduce_to_rank0(int64_t my_hits)
 {
+  // construct an atomic domain to mediate atomic update operations
+  // In real programs this is normally performed once at program startup
   upcxx::atomic_domain<int64_t> ad_i64({upcxx::atomic_op::load, upcxx::atomic_op::fetch_add});
 
   // a global pointer to the atomic counter in rank 0's shared segment

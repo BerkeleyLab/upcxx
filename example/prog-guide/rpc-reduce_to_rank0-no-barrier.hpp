@@ -1,3 +1,10 @@
+// This example shows how to implement a naive sum reduction 
+// using round-trip RPC
+//
+// This reduction algorithm is non-scalable and only shown here for 
+// demonstration purposes. UPC++ includes scalable reduction operations 
+// upcxx::reduce_{one,all}() that should be preferred in real codes.
+
 // need to declare a global variable to use with RPC
 int64_t hits_counter = 0; 
 int64_t hits = 0; 
