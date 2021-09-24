@@ -444,6 +444,12 @@ provide additional information.
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
+At the time of writing, UPC++ has beed tested with Developer Beta 7 of macOS 12
+"Monterey", and there are no known platform-specific issues.
+
+At the time of writing, UPC++ has been lightly tested with Apple's Xcode 13 and
+there are no known compiler-specific issues.
+
 ### Configuration: CUDA GPU support
 
 #### System Requirements:
