@@ -5,12 +5,13 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### 2021.XX.YY: PENDING
+### 2021.09.30: Release 2021.9.0
 
-This is an unofficial snapshot that is being provided to stakeholders on a limited
-basis to preview changes to appear in a forthcoming production release.
+Improvements to on-node communication:
 
-General features/enhancements: (see specification and programmer's guide for full details)
+This release features a number of synergistic optimizations that streamline
+interprocess communication operations that are satisfied on-node using
+shared memory bypass. For details, see: https://doi.org/10.25344/S42C71
 
 * New `as_eager_future()`, `as_defer_future()`, `as_eager_promise()`, and
   `as_defer_promise()` calls for requesting eager or deferred notification of
@@ -22,25 +23,29 @@ General features/enhancements: (see specification and programmer's guide for ful
   [implementation-defined.md](docs/implementation-defined.md) for details).
 * New overloads of fetching atomics that avoid overheads of non-empty futures
   and promises.
+* Performance improvements to contiguous RMA (`rput`, `rget`) using shared-memory bypass.
+* Performance improvements to `upcxx::copy()`, especially for cases amenable to
+  shared-memory bypass optimizations and/or not involving device memory.
+* Performance improvements to `global_ptr` localization queries and operations,
+  especially for smp-conduit.
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
 * `upcxx::rpc` and `upcxx::rpc_ff` calls that encounter shared heap exhaustion
   while allocating internal buffers will now throw an exception instead of crashing.
   For details, see [implementation-defined.md](docs/implementation-defined.md)
 * New `team::create` factory constructs teams with less communication than `team::split`
   when each participant can enumerate the membership of its own new team.
-* Performance improvements to `upcxx::copy()`, especially for cases not involving
-  device memory and/or amenable to shared-memory bypass optimizations.
-* Performance improvements to contiguous RMA (`rput`, `rget`) using shared-memory bypass.
-* Performance improvements to `global_ptr` localization queries and operations,
-  especially for smp-conduit.
-* `bench/cuda_microbenchmark` performance test expanded and improved
 * The following future operations are now permitted before UPC++ initialization:
   `make_future()`, `to_future()`, `when_all()`, assignment and copy/move
   constructors.
 * Added implementation-defined macros `UPCXX_ASSERT` and `UPCXX_ASSERT_ALWAYS`
 * New `UPCXX_KIND_CUDA` feature macro indicates the presence of CUDA support.
-* Improve error reporting on failure to open a cuda_device.
+* Improve error reporting on failure to open a `cuda_device`.
 * Add debug codemode checking for exceptions thrown out of user callbacks into
   library code, which is prohibited by the specification.
+* Notable GASNet performance improvements for InfiniBand (ibv) network.
+* `bench/cuda_microbenchmark` performance test expanded and improved
 
 Infrastructure changes:
 
@@ -58,9 +63,10 @@ Infrastructure changes:
   problem until `make check`, `make test_install` or even to user application
   link time.
 * The "NVIDIA HPC SDK" (or "nvhpc") compiler family is now supported on
-  x86_64 and ppc64le hosts for version 20.9 and newer.
+  x86\_64 and ppc64le hosts for version 20.9 and newer.
+* Intel OneAPI compilers v2021.1.2+ are now supported on x86\_64 hosts.
 
-Notable bug fixes:
+Notable bug fixes: (see https://upcxx-bugs.lbl.gov for details)
 
 * issue #242: Lack of backpressure in RPC injection leads to shared memory-exhaustion crashes
 * issue #299: de-duplication of installed headers
@@ -79,11 +85,24 @@ Notable bug fixes:
 * issue #495: failures with ibv-conduit recv thread enabled
 * issue #496: Configure mishandling quotes in compiler and flags settings
 * issue #500: Invalid teams created by split() are not handled according to spec
-* issue #502: Discontiguous rank numbering vs PEER_NEVER_NBRHD
+* issue #502: Discontiguous job layouts now require `configure --enable-discontig-ranks`
 * spec issue 176: Change RPC injection to throw an exception on memory exhaustion
 
-This library snapshot conforms to the
-[UPC++ v1.0 Specification, Revision 2021.7.1-draft](docs/spec.pdf).
+Fixes the following notable bugs in the GASNet library
+  (see https://gasnet-bugs.lbl.gov for details):
+
+* bug4148: ibv/GDR completion issues with multiple communication paths
+* bug4150: ibv/GDR premature local completion of Puts from device memory
+* bug4209: ibv: improve ALC with respect to bounce buffer use
+* bug4230: ssh-spawer de-duplication logic is flawed
+* bug4263: remove `AD_MY_NBRHD` check on smp-conduit
+* bug4265: Collective scratch management is not thread safe
+* bug4266: `gex_Coll_ReduceToAllNB` is not thread safe
+* bug4292: ucx and aries can leak events from AM Long
+* bug4330: ibv conduit incorrectly implements `HIDDEN_AM_CONCURRENCY_LEVEL`
+
+This library release conforms to the
+[UPC++ v1.0 Specification, Revision 2021.9.0](docs/spec.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
