@@ -662,7 +662,7 @@ else
       ;; # OK
     *)
       echo "ERROR: UPCXX_MPSC_QUEUE='$UPCXX_MPSC_QUEUE' is not a valid value."
-      echo_and_die 'See docs/build-devel.md for valid values and additional info.'
+      echo_and_die 'See docs/maintainer.md for valid values and additional info.'
       ;;
   esac
 fi
