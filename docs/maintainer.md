@@ -1,12 +1,12 @@
-# Developing and Maintaining UPC\+\+
+# Maintaining the UPC\+\+ Library Internals
 
-These instructions are for UPC\+\+ runtime developers only.
+These instructions are for UPC\+\+ runtime maintainers only.
 
 THIS INTERNAL DOCUMENTATION IS NOT CAREFULLY MAINTAINED AND MAY BE OUT OF DATE.
 
 Software requirements are detailed in [INSTALL.md](../INSTALL.md).  
 Because we do not employ autoconf, automake or CMake, the requirements for
-developers of UPC\+\+ are no different than for the end-users.  However, the
+maintainers of UPC\+\+ are no different than for the end-users.  However, the
 manner in which the tools might be used does differ.
 
 ## Workflow
@@ -140,7 +140,7 @@ Additional make targets:
   always gets the list of detected conduits.
 
 * `make dev-tests` and `make dev-check`  
-  These are developer versions of `tests` and `check` which operate on nearly
+  These are maintainer versions of `tests` and `check` which operate on nearly
   all tests and examples in the repo in both for both seq and par threadmode,
   and with the supported codemodes (both, unless `--enable-single` mode).
   Tests requiring CUDA are included conditionally.
@@ -171,7 +171,7 @@ in [INSTALL.md](../INSTALL.md)) are intended to be parallel-make-safe (Eg `make
 -j<N> ...`).  Should you experience a failure with a parallel make, please
 report it as a bug.
 
-## Testing Scripts for Developers
+## Testing Scripts for Maintainers
 
 In addition to the `dev-*` family of make targets, there exists a collection of
 scripts which combine them with additional logic including system-specific
@@ -243,7 +243,7 @@ enough to be part of the user-facing docs.
   This option is really only intended for use by our CI infrastructure, which
   operates on/with GASNet-EX build trees.  Since attempts to do anything outside
   the "scope" of the single-mode will likely fail in unexpected ways, this mode
-  is likely to be more of an annoyance than an advantage to developers, other
+  is likely to be more of an annoyance than an advantage in manual use, other
   than when it is necessary to reproduce the CI environment.
 
 * `-v` or `--verbose`:  This option is intended to support debugging of

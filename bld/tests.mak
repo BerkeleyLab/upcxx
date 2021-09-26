@@ -28,7 +28,7 @@ testprograms_par = \
 	test/view.cpp
 
 ###
-# Section 2: developer tests
+# Section 2: Maintainer/development tests
 # Built by 'make dev-tests` and `make dev-check`
 #
 # The logic which follows sets variables which controls what is tested.

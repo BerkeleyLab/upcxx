@@ -307,7 +307,7 @@ ifeq ($(UPCXX_CUDA),1)
 UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
 endif
 
-# In developer builds, embed git-describe output in runtime.o
+# For git cloned source trees, embed git-describe output in runtime.o
 ifneq ($(wildcard $(top_srcdir)/.git),)
 # NOTE: --git-dir breaks --dirty
 UPCXX_GIT_VERSION := $(shell cd "$(top_srcdir)" && git describe --dirty --long --always 2>/dev/null | head -n 1)
@@ -648,7 +648,7 @@ UPCXX_EXE      = $(UPCXX_EXE_STEM)$(EXESUFFIX)
 do-exe: force
 	@mkdir -p $(UPCXXDIR)/exe
 	@if [[ -z '$(UPCXX_EXE_CSUM)' ]]; then \
-	   echo "Developer targets 'exe' and 'run' are unavailable (missing or broken checksum utility)"; \
+	   echo "Maintainer targets 'exe' and 'run' are unavailable (missing or broken checksum utility)"; \
 	   exit 1;  \
 	 fi
 	@$(MAKE) upcxx-single
