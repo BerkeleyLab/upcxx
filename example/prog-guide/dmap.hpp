@@ -31,8 +31,7 @@ public:
                       [](dobj_map_t &lmap, const std::string &key) -> std::string {
                         auto elem = lmap->find(key);
                         if (elem == lmap->end()) return std::string(); // not found
-                        // the key was found, return the value
-                        return elem->second;
+                        else return elem->second; // key found: return value
                       }, local_map, key);
   }
 };

@@ -35,10 +35,8 @@ public:
         // lambda to find the key in the local map
         [](dobj_map_t &lmap, const std::string &key) -> std::string {
           auto elem = lmap->find(key);
-          // no key found
-          if (elem == lmap->end()) return std::string();
-          // the key was found, return the value
-          return elem->second;
+          if (elem == lmap->end()) return std::string(); // not found
+          else return elem->second; // key found: return value
         },local_map,key);
   }
 //SNIPPET  
