@@ -40,7 +40,7 @@ upcxx::future<> send_histo2_byview(histogram2 const &histo) {
     
     upcxx::rpc(owner, upcxx::operation_cx::as_promise(all_done),
       [](upcxx::view<std::pair<const std::string, double>> const &histo_view) {
-        // Traverse key-values directly in network buffer.
+        // Traverse key-values directly from network buffer.
         for(auto const &kv: histo_view)
           my_histo2[kv.first] += kv.second;
       },
