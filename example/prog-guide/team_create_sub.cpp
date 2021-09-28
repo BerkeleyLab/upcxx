@@ -11,11 +11,12 @@ int main() {
   upcxx::team new_team = world_team.split(color, key);
 
 //SNIPPET
-  // select some ranks in parent team:
-  upcxx::intrank_t right = new_team.rank_me() | 0x1;
-  std::vector<upcxx::intrank_t> members({right-1});
-  if (right != new_team.rank_n()) members.push_back(right);
-  // construct a sub-team:
+  upcxx::intrank_t group = new_team.rank_me() / 2; // rounds-down
+  upcxx::intrank_t left  = group * 2;
+  upcxx::intrank_t right = left + 1;
+  std::vector<upcxx::intrank_t> members({left});
+  if (right != new_team.rank_n()) // right member exists
+    members.push_back(right);  
   upcxx::team sub_team = new_team.create(members);
 //SNIPPET
   
