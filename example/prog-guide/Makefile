@@ -49,6 +49,7 @@ EXAMPLES = \
   serial-recursive \
   serial-values \
   team_advanced \
+  team_create_sub \
   team_simple \
   view-accumulate \
   view-histogram1 \
