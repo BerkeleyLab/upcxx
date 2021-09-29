@@ -66,7 +66,8 @@ Infrastructure changes:
   x86\_64 and ppc64le hosts for version 20.9 and newer.
 * Intel OneAPI compilers v2021.1.2+ are now supported on x86\_64 hosts.
 
-Notable bug fixes: (see https://upcxx-bugs.lbl.gov for details)
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #242: Lack of backpressure in RPC injection leads to shared memory-exhaustion crashes
 * issue #299: de-duplication of installed headers
@@ -88,8 +89,8 @@ Notable bug fixes: (see https://upcxx-bugs.lbl.gov for details)
 * issue #502: Discontiguous job layouts now require `configure --enable-discontig-ranks`
 * spec issue 176: Change RPC injection to throw an exception on memory exhaustion
 
-Fixes the following notable bugs in the GASNet library
-  (see https://gasnet-bugs.lbl.gov for details):
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
 
 * bug4148: ibv/GDR completion issues with multiple communication paths
 * bug4150: ibv/GDR premature local completion of Puts from device memory
@@ -166,7 +167,8 @@ Infrastructure changes:
   variant of this host compiler (i.e. `pgc++` or `nvc++` released as NVIDIA HPC
   SDK 20.7 and later) is not currently supported, due to critical defects.
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #25: Remove non-public symbols from top-level `upcxx::` namespace
 * issue #241: Intermittent validation failures in test/copy.cpp
@@ -191,8 +193,8 @@ Notable bug fixes:
 * issue #460: Implementation relies on `std::result_of`, which is deprecated in
   C++17 and removed in C++20
 
-Fixes the following notable bugs in the GASNet library
-  (see https://gasnet-bugs.lbl.gov for details):
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
 
 * bug4194: ibv: unnecessarily slow startup
 * bug4208: ibv: unfortunate multi-rail interactions with PSHM and XRC
@@ -260,7 +262,8 @@ Requirements changes:
   of the Intel, GNU or LLVM/Clang C++ compiler instead. See [INSTALL.md](INSTALL.md)
   for details on supported compilers.
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #221: `upcxx::copy()` mishandling of private memory arguments
 * issue #421: Regression with `upcxx::copy(remote_cx::as_rpc)`
@@ -325,7 +328,8 @@ Requirements changes:
 * The minimum required Intel compiler version for PrgEnv-intel on a Cray XC
   has risen from 17.0.2 to 18.0.1.
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #151: Validate requested completions against the events supported by an
   operation
@@ -391,7 +395,8 @@ New features/enhancements:
 * Shared heap exhaustion in `upcxx::new_(array)` now throws `upcxx::bad_shared_alloc` (a type
   derived from `std::bad_alloc`) which provides additional diagnostics about the failure.
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #343: Guarantee equality for default-constructed invalid `upcxx::team_id`
 * issue #353: configure: automatically cross-compile on Cray XC
@@ -439,7 +444,8 @@ New features/enhancements: (see specification and programmer's guide for full de
 * Significantly improve compile latency associated with `upcxx` compiler wrapper script
 * Improve handling of `upcxx-run -v` verbose options
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #83: strengthen `global_ptr` correctness assertions
 * issue #142: Clarify semantic restrictions on `UPCXX_THREADMODE=seq`
@@ -515,7 +521,8 @@ Support has been added for the following compilers/platforms
     + gcc v6.4.0+
     + clang 4.0.0+
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #140: `upcxx::discharge()` does not discharge `remote_cx::as_rpc()`
 * issue #168: `upcxx::progress_required` always returns 0
@@ -558,12 +565,13 @@ Breaking changes:
 
 ### 2019.05.27: Bug-fix release 2019.3.2
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #209: Broken install defaulting of CC/CXX on macOS
 
-Fixes the following notable bug in the GASNet library
-  (see https://gasnet-bugs.lbl.gov for details):
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
 
 * bug3943: infrequent startup hang with PSHM and over 62 PPN
 
@@ -582,7 +590,8 @@ New features/enhancements: (see specification and programmer's guide for full de
 * Barrier synchronization performance has been improved
 * Installer now defaults to more build parallelism, improving efficiency (see `UPCXX_MAKE`)
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #100: Fix shared heap setting propagation on loosely-coupled clusters
 * issue #118: Enforce GASNet-EX version interlock at compile time
@@ -631,7 +640,8 @@ New features/enhancements: (see specification and programmer's guide for full de
 * UPC++ library now contains ident strings that can be used to query version info
   from a compiled executable, using the UNIX `ident` tool.
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #49: stability and portability issues caused by C++ `thread_local`
 * issue #141: missing promise move assignment operator
@@ -669,7 +679,8 @@ New features/enhancements:
    implementation of teams to support `upcxx::world` and `upcxx::local_team`
    so clients may query their local neighborhood of ranks.
 
-Notable bug fixes:
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
  * issue #119: Build system is now more robust to GASNet-EX download failures.
  * issue #125: Fix upcxx-run exit code handling.
