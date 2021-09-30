@@ -64,7 +64,7 @@ Infrastructure changes:
   link time.
 * The "NVIDIA HPC SDK" (or "nvhpc") compiler family is now supported on
   x86\_64 and ppc64le hosts for version 20.9 and newer.
-* Intel OneAPI compilers v2021.1.2+ are now supported on x86\_64 hosts.
+* Intel oneAPI compilers v2021.1.2+ are now supported on x86\_64 hosts.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
