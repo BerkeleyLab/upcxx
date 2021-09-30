@@ -21,7 +21,7 @@ This will "capture" the options `--with-cc=...`, `--with-cxx=...`,
 those four parameters cannot be changed for a given build directory (but
 you can have as many build directories as you want/need).
 
-```
+```bash
 mkdir <upcxx-build-path>
 cd <upcxx-build-path>
 <upcxx-source-path>/configure --with-cc=... --with-cxx=... [--with-cross=...]
