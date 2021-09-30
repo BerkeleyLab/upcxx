@@ -9,7 +9,7 @@ For information on using UPC++, see: [README.md](README.md)
 ### Supported Platforms
 
 UPC++ makes aggressive use of template meta-programming techniques, and requires
-a modern C++11/14 compiler and corresponding STL implementation.
+a modern C++ compiler and corresponding standard library implementation.
 
 The current release is known to work on the following configurations:
 
@@ -344,7 +344,7 @@ pass the appropriate value for your system:
 * `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
 * `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
 
-When Intel compilers are being used (usually the default for these systems),
+When Intel compilers are being used (a common default for these systems),
 `g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
 then you may need to explicitly load a `gcc` environment module, e.g.:
 
@@ -466,7 +466,7 @@ This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory kinds
 on selected platforms using modern NVIDIA-branded GPUs and Mellanox-branded InfiniBand
 network hardware, when using the native ibv-conduit. Additional requirements:
 
-* Linux OS with x86-64 or ppc64le CPU (not ARM)
+* Linux OS with x86\_64 or ppc64le CPU (not ARM)
 * Recent Mellanox-branded InfiniBand network hardware
 * GPUDirect RDMA drivers installed
 * ibv-conduit built from the current version of GASNet-EX (the default for this release)
