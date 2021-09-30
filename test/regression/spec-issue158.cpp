@@ -86,7 +86,7 @@ int main() {
   void *mp1 = upcxx_memberof(pi, foo);
   auto f =  upcxx_memberof_general(pi, foo);
 
-  auto mp21 = upcxx_memberof_unsafe(po, xref);
+  auto mp21 = upcxx_experimental_memberof_unsafe(po, xref);
  
   // memberof_general on reference-typed field
   global_ptr<hasref> po = upcxx::new_<hasref>();

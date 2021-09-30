@@ -1,6 +1,6 @@
 #include <upcxx/vis.hpp>
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
-#if UPCXX_BACKEND_GASNET
+#if UPCXXI_BACKEND_GASNET
   #include <gasnet_vis.h>
 #endif
 
@@ -21,7 +21,7 @@ void upcxx::detail::rma_put_irreg_nb(
                                     upcxx::detail::memvec_t const _srclist[],
                                     backend::gasnet::handle_cb *source_cb,
                                     backend::gasnet::handle_cb *operation_cb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Flags_t flags = 0;
   if(source_cb!=NULL) // user has requested source completion event
@@ -58,7 +58,7 @@ void upcxx::detail::rma_get_irreg_nb(
                                     std::size_t _srccount,
                                     upcxx::detail::memvec_t const _srclist[],
                                     backend::gasnet::handle_cb *operation_cb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Event_t op_h = gex_VIS_VectorGetNB(gasnet::handle_of(upcxx::world()),
                                          _dstcount,
@@ -80,7 +80,7 @@ void upcxx::detail::rma_put_reg_nb(
                     size_t _srccount, void * const _srclist[], size_t _srclen,
                     backend::gasnet::handle_cb *source_cb,
                     backend::gasnet::handle_cb *operation_cb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Event_t op_h;
   gex_Flags_t flags = 0;
@@ -111,7 +111,7 @@ void upcxx::detail::rma_get_reg_nb(
                     intrank_t rank_s,
                     size_t _srccount, void * const _srclist[], size_t _srclen,
                     backend::gasnet::handle_cb *operation_cb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Event_t op_h;
 
@@ -134,7 +134,7 @@ void upcxx::detail::rma_put_strided_nb(
                         const std::size_t _count[], std::size_t _stridelevels,
                         backend::gasnet::handle_cb *source_cb,
                         backend::gasnet::handle_cb *operation_cb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Flags_t flags = 0;
   if(source_cb!=NULL) // user has requested source completion event
@@ -169,7 +169,7 @@ void upcxx::detail::rma_get_strided_nb(
                         std::size_t _elemsz,
                         const std::size_t _count[], std::size_t _stridelevels,
                         backend::gasnet::handle_cb *operation_cb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
   gex_Event_t op_h = gex_VIS_StridedGetNB(gasnet::handle_of(upcxx::world()),
                                           _dstaddr, _dststrides,

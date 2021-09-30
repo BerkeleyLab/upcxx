@@ -23,7 +23,7 @@ UPC++ application may not run.  This is a problem with how shared libraries are
 handled, and not unique to UPC++.  An example of the kind of error one might
 see: 
 
-```
+```text
 ./a.out: /lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found (required by ./a.out)
 ```
 
@@ -35,30 +35,25 @@ shared library directory of your compiler installation.  In most cases it will
 be the *directory portion* of the output of the following, where g++ should be
 the compiler you intend to use:
 
-```
+```text
 g++ --print-file-name libstdc++.so
 ```
 
 
 ### Your options:
 
-#### 1. Link with an -rpath option.
+#### 1. Configure with an -rpath option.
 
-If you have control over the link command line for your application, then
-include "-Wl,-rpath=GXXLIBDIR".  This encodes the library directory in the ELF
-header of the executable and therefore becomes inseparable from it.
+One can configure UPC++ using `--with-ldflags=-Wl,-rpath=GXXLIBDIR`.  This adds
+a linker flag to encode the library directory in the ELF header of the
+executable.  This should be the most reliable solution for most scenarios
+that use the `upcxx` compiler wrapper or the flags from `upcxx-meta`.
 
-#### 2. Use a wrapper script
+#### 2. Link with an -rpath option.
 
-A simple shell script can be used as your CXX to prepend an -rpath option,
-achieving the same inseparability as the previous option.  The following
-two-line script (with appropriate substitutions for g++ and GXXLIBDIR) should
-work:  
-
-```
-#!/bin/sh  
-exec g++ -Wl,-rpath=GXXLIBDIR "$@"  
-```
+If you are using neither the `upcxx` compiler wrapper nor the flags from
+`upcxx-meta`, but you do have control over the link command line for your
+application, then you should include `-Wl,-rpath=GXXLIBDIR` when linking.
 
 #### 3. Add to the system's default library search path
 

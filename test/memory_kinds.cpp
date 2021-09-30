@@ -51,6 +51,8 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     assert(!ai.is_active());
     assert(!ai2.is_active());
     assert(Allocator::local(gp_null) == dp_null);
+    assert(gp_null.is_local());
+    assert(gp_null.local() == nullptr);
     assert(Allocator::device_id(gp_null) == id_invalid);
     assert(ai.to_global_ptr(dp_null) == gp_null);
     ai.deallocate(gp_null);
@@ -115,6 +117,15 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     gp_type gp1 = a->to_global_ptr(dp);
     assert(gp == gp1);
     assert(Allocator::device_id(gp) == id);
+    global_ptr<int, memory_kind::any> gp_any = gp;
+    assert(gp_any.dynamic_kind() == Device::kind);
+    assert(gp.dynamic_kind() == gp_any.dynamic_kind());
+    assert(gp == dynamic_kind_cast<Device::kind>(gp_any));
+    if (Device::kind != memory_kind::host)
+      assert(!gp.is_local()); // unspecified, but true for all current devices
+    #if TEST_ISSUE464
+      auto invalid = gp.local(); // should assert in debug mode
+    #endif
     return gp;
   };
   gp_type gp0 = alloc_check(a0,1); 
@@ -151,7 +162,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   assert(d4->is_active());
   try {
     Allocator *a4 = new Allocator(*d4, 1ULL<<60);
-    say() << "ERROR: Failed to generate device bad_alloc exn!";
+    say() << "ERROR: Failed to generate device bad_alloc exn!" << a4;
   } catch (std::bad_alloc &e) {
     say() << "got expected exn: " << e.what();
   }
@@ -174,7 +185,7 @@ int main() {
   assert(cuda_device::default_alignment<double>() > 0);
   assert(cuda_device::kind == memory_kind::cuda_device);
   assert(cuda_device::invalid_device_id != 0);
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXX_KIND_CUDA
     cuda_enabled = true;
   #endif
   if (cuda_enabled) { 

@@ -5,49 +5,75 @@
 // This test measures the number of copies/moves invoked on objects passed to
 // various UPC++ routines. The results asserted by this test are only indicative
 // of the current implementation and should NOT be construed as a guarantee of
-// future copy/move behavior. 
+// copy/move behavior for past or subsequent revisions of the implementation. 
 // Consult the UPC++ Specification for guaranteed copy/move behaviors.
 
 #ifndef USE_CUDA
-  #if UPCXX_CUDA_ENABLED 
+  #if UPCXX_KIND_CUDA 
     #define USE_CUDA 1
   #else
     #define USE_CUDA 0
   #endif
 #endif
-#if USE_CUDA && !UPCXX_CUDA_ENABLED
+#if USE_CUDA && !UPCXX_KIND_CUDA
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 
+using std::uint64_t;
+
 struct T {
   static void show_stats(int line, char const *title, 
-                         int expected_ctors, int expected_copies, int expected_moves);
+                         int expected_ctors, int expected_copies, int expected_moves) UTIL_ATTRIB_NOINLINE;
   static void reset_counts() { ctors = copies = moves = dtors = 0; }
 
-  T() { ctors++; }
+  private:
+  static constexpr uint64_t VALID   = 0x5555555555555555llu;
+  static constexpr uint64_t INVALID = 0xAAAAAAAAAAAAAAAAllu;
+  uint64_t valid = VALID;
+
+  public:
+  void check_corruption(const char *context) const {
+    UPCXX_ASSERT_ALWAYS(valid == VALID || valid == INVALID,
+                        context << " a corrupted object: " << std::hex << valid);
+  }
+  void check_op(const char *context) const {
+    check_corruption(context);
+    UPCXX_ASSERT_ALWAYS(valid == VALID,
+                        context << " an invalidated object: " << std::hex << valid);
+  }
+
+  T() { 
+    check_op("default constructing");
+    ctors++; 
+  }
   T(T const &that) {
-    UPCXX_ASSERT_ALWAYS(that.valid, "copying from an invalidated object");
+    check_op("copying");
+    that.check_op("copying from");
     copies++;
   }
   T(T &&that) {
-    UPCXX_ASSERT_ALWAYS(that.valid, "moving from an invalidated object");
-    that.valid = false;
+    check_op("move constructing");
+    that.check_op("moving from");
+    that.valid = INVALID;
     moves++;
   }
   ~T() {
-    valid = false;
+    check_corruption("destroying");
+    valid = INVALID;
     dtors++;
   }
 
   private:
-  bool serialize() const {
-    UPCXX_ASSERT_ALWAYS(valid, "serializing an invalidated object");
+  uint64_t serialize() const {
+    check_op("serializing");
     return valid;
   }
-  T(bool v) : valid(v) { ctors++; } // deserialization
+  T(uint64_t v) : valid(v) { 
+    check_op("deserializing");
+    ctors++; 
+  }
 
   static int ctors, dtors, copies, moves;
-  bool valid = true;
 
   public:
   UPCXX_SERIALIZED_VALUES( serialize() )
@@ -81,10 +107,9 @@ void T::show_stats(int line, const char *title,
   #define CHECK(prop, ...) do { \
     if (!(prop)) { \
       success = false; \
-      if (!upcxx::rank_me()) \
-        std::cerr << "ERROR: failed check: " << #prop << "\n" \
-                  << title << ": " << __VA_ARGS__ \
-                  << " \t(line " << line << ")" << "\n" << std::endl; \
+      say() << "ERROR: failed check: " << #prop << "\n" \
+            << title << ": " << __VA_ARGS__ \
+            << " \t(line " << line << ")" << "\n"; \
     } \
   } while (0)
 
@@ -114,10 +139,14 @@ void T::show_stats(int line, const char *title,
 T global;
 
 bool done = false;
+#define set_done() do { \
+  UPCXX_ASSERT_ALWAYS(done == false, "Duplicate call to set_done()"); \
+  done = true; \
+} while(0)
 
 struct Fn { // movable and copyable function object
   T t;
-  void operator()() { done = true; }
+  void operator()() { set_done(); }
   UPCXX_SERIALIZED_FIELDS(t)
 };
 
@@ -140,23 +169,19 @@ struct NmNcFn { // non-movable/non-copyable object that deserializes as Fn
 
 NmNcFn NmNcFn::global;
 
-int main() {
-  upcxx::init();
-  print_test_header();
+using upcxx::dist_object;
+using upcxx::remote_cx;
+using upcxx::operation_cx;
 
-  T::reset_counts(); // discount construction of global
+int target;
+dist_object<int> *ddob;
 
-  using upcxx::dist_object;
-  dist_object<int> *ddob = new dist_object<int>(3);
-  dist_object<int> const &dob = *ddob;
-
-  int target = (upcxx::rank_me() + 1) % upcxx::rank_n();
-
+void UTIL_ATTRIB_NOINLINE test_rpc1() {
   // About the expected num of copies.
   // Now that backend::send_awaken_lpc can take a std::tuple
   // containing a reference to T and serialize from that place, it no
   // longer involves an extra copy in the future<T> returning cases.
-  
+
   upcxx::rpc(target,
     [](T &&x) {
     },
@@ -217,7 +242,10 @@ int main() {
   ).wait_reference();
   SHOW("T const& -> future<T>", 2, 1, 3);
 
+}
+void UTIL_ATTRIB_NOINLINE test_rpc2() {
   // now with dist_object
+  dist_object<int> const &dob = *ddob;
 
   {
     dist_object<T> dobT(upcxx::world());
@@ -258,6 +286,8 @@ int main() {
   ).wait_reference();
   SHOW("dist_object + T const& -> future<T>", 2, 1, 3);
 
+}
+void UTIL_ATTRIB_NOINLINE test_rpc3() {
   // returning references
 
   upcxx::rpc(target,
@@ -319,6 +349,8 @@ int main() {
   ).wait_reference();
   SHOW("-> T const&", 1, 0, 1);
 
+}
+void UTIL_ATTRIB_NOINLINE test_rpc4() {
   // function object
 
   {
@@ -342,6 +374,8 @@ int main() {
   }
   SHOW("(arg) NmNcFn& -> NmNcFn&", 3, 0, 3);
 
+}
+void UTIL_ATTRIB_NOINLINE test_rpc5() {
   // rpc_ff
 
   upcxx::barrier();
@@ -349,30 +383,27 @@ int main() {
   upcxx::barrier();
 
   upcxx::rpc_ff(target,
-    [](T &&x) {
-      done = true;
-    },
-    T()
+    [](T &&x) { 
+      set_done(); 
+    }, T()
   );
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("(rpc_ff) T&& ->", 2, 0, 0);
 
   upcxx::rpc_ff(target,
-    [](T const &x) {
-      done = true;
-    },
-    global
+    [](T const &x) { 
+      set_done(); 
+    }, global
   );
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("(rpc_ff) T& ->", 1, 0, 0);
 
   upcxx::rpc_ff(target,
-    [](T const &x) {
-      done = true;
-    },
-    static_cast<T const&>(global)
+    [](T const &x) { 
+      set_done(); 
+    }, static_cast<T const&>(global)
   );
   while (!done) { upcxx::progress(); }
   done = false;
@@ -410,15 +441,19 @@ int main() {
   done = false;
   SHOW("(rpc_ff arg) NmNcFn& ->", 2, 0, 1);
 
+}
+upcxx::global_ptr<int> gp;
+upcxx::global_ptr<int> gp_local;
+int x = 0;
+int *lp = &x;
+void UTIL_ATTRIB_NOINLINE test_rput_rpc1() {
   // as_rpc
 
   { dist_object<upcxx::global_ptr<int>> dobj(upcxx::new_<int>(0));
-    upcxx::global_ptr<int> gp = dobj.fetch(target).wait();
-    upcxx::global_ptr<int> gp_local = *dobj;
-    int x = 0; int *lp = &x;
-
-    using upcxx::remote_cx;
-    using upcxx::operation_cx;
+    gp = dobj.fetch(target).wait();
+    gp_local = *dobj;
+    upcxx::barrier();
+  }
 
     // rput: as_rpc
     {
@@ -483,23 +518,26 @@ int main() {
     done = false;
     SHOW("as_rpc(lambda, NmNcFn&)&& ->", 2, 0, 1);
 
+}
+void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
+
     {
       T t;
-      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc() T& -> const T&", 2, 0, 0);
 
     {
-      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+      upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc() T&& -> const T&", 2, 0, 2);
 
     {
-      upcxx::rput(42, gp, remote_cx::as_rpc([](T&& t){ done=true; return std::move(t); }, T()));
+      upcxx::rput(42, gp, remote_cx::as_rpc([](T&& t){ set_done(); return std::move(t); }, T()));
     }
     while (!done) { upcxx::progress(); }
     done = false;
@@ -507,22 +545,24 @@ int main() {
 
     {
       T t;
-      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, t) | operation_cx::as_future());
+      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, t) | operation_cx::as_future());
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc()|... T& -> const T&", 2, 0, 0);
 
     {
-      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ done=true; }, T()) | operation_cx::as_future());
+      (void)upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, T()) | operation_cx::as_future());
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc()|... T&& -> const T&", 2, 0, 3);
 
+}
+void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     {
       T t;
-      auto cx = remote_cx::as_rpc([](const T&){ done=true; }, t) | operation_cx::as_future();
+      auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, t) | operation_cx::as_future();
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -530,7 +570,7 @@ int main() {
     SHOW("as_rpc()|...& T& -> const T&", 2, 0, 0);
 
     {
-      auto cx = remote_cx::as_rpc([](const T&){ done=true; }, T()) | operation_cx::as_future();
+      auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, T()) | operation_cx::as_future();
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -538,7 +578,7 @@ int main() {
     SHOW("as_rpc()|...& T&& -> const T&", 2, 0, 3);
 
     {
-      auto cx = remote_cx::as_rpc([](const T&){ done=true; }, T());
+      auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, T());
       auto cx2 = cx | operation_cx::as_future();
       (void)upcxx::rput(42, gp, cx2);
     }
@@ -548,14 +588,14 @@ int main() {
 
     {
       T t;
-      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t));
+      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("...|as_rpc() T& -> const T&", 2, 0, 0);
 
     {
-      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, T()));
+      (void)upcxx::rput(42, gp, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     }
     while (!done) { upcxx::progress(); }
     done = false;
@@ -563,7 +603,7 @@ int main() {
 
     {
       T t;
-      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t);
+      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, t);
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -571,7 +611,7 @@ int main() {
     SHOW("...|as_rpc()& T& -> const T&", 2, 0, 0);
 
     {
-      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, T());
+      auto cx = operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, T());
       (void)upcxx::rput(42, gp, cx);
     }
     while (!done) { upcxx::progress(); }
@@ -580,15 +620,17 @@ int main() {
 
     {
       auto cx = operation_cx::as_future();
-      auto cx2 = cx | remote_cx::as_rpc([](const T&){ done=true; }, T());
+      auto cx2 = cx | remote_cx::as_rpc([](const T&){ set_done(); }, T());
       (void)upcxx::rput(42, gp, cx2);
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("...&|as_rpc()& T&& -> const T&", 2, 0, 3);
 
+}
+void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     // VIS rput: as_rpc
- {  std::size_t sz = 1;
+    std::size_t sz = 1;
     std::pair<int *,size_t> lpp(lp,sz);
     std::pair<upcxx::global_ptr<int>,size_t> gpp(gp,sz);
     std::array<std::ptrdiff_t,1> a_stride = {{4}};
@@ -597,14 +639,14 @@ int main() {
     {
       T t;
       upcxx::rput_irregular(&lpp,&lpp+1,&gpp,&gpp+1, 
-                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+                            remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_irregular: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::rput_irregular(&lpp,&lpp+1,&gpp,&gpp+1,  
-                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+                          remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_irregular: as_rpc() T&& -> const T&", 2, 0, 3);
@@ -612,14 +654,14 @@ int main() {
     {
       T t;
       upcxx::rput_regular(&lp,&lp+1,sz,&gp,&gp+1,sz,
-                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+                            remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_regular: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::rput_regular(&lp,&lp+1,sz,&gp,&gp+1,sz,
-                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+                          remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_regular: as_rpc() T&& -> const T&", 2, 0, 3);
@@ -627,20 +669,20 @@ int main() {
     {
       T t;
       upcxx::rput_strided(lp, a_stride, gp, a_stride, a_ext,
-                            remote_cx::as_rpc([](const T&){ done=true; }, t));
+                            remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_strided: as_rpc() T& -> const T&", 2, 0, 0);
 
     upcxx::rput_strided(lp, a_stride, gp, a_stride, a_ext,
-                          remote_cx::as_rpc([](const T&){ done=true; }, T()));
+                          remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_strided: as_rpc() T&& -> const T&", 2, 0, 3);
 
- }
-
+}
+void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
     // copy: as_rpc
  
     {
@@ -649,36 +691,36 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-put: as_rpc(Fn&)&& ->", 3, 0, 0);
 
     upcxx::copy(lp, gp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put: as_rpc(Fn&&)&& ->", 3, 0, 2);
 
     {
       T t;
-      upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc() T& -> const T&", 2, 0, 1);
+    SHOW("copy-put: as_rpc() T& -> const T&", 2, 0, 0);
 
-    upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    upcxx::copy(lp, gp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc() T&& -> const T&", 2, -1, -5);
+    SHOW("copy-put: as_rpc() T&& -> const T&", 2, 0, 2);
 
     {
       upcxx::future<> f;
       { T t;
-        f = upcxx::copy(lp, gp, 1, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ done=true; }, t));
+        f = upcxx::copy(lp, gp, 1, operation_cx::as_future() | remote_cx::as_rpc([](const T&){ set_done(); }, t));
       }
       f.wait();
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put: as_rpc()|as_future() T& -> const T&", 2, 0, -1);
+    SHOW("copy-put: as_rpc()|as_future() T& -> const T&", 2, 0, 0);
 
     {
       Fn fn;
@@ -686,25 +728,25 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-get: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gp, lp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-get: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       T t;
-      upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get: as_rpc() T& -> const T&", 2, 0, 1);
+    SHOW("copy-get: as_rpc() T& -> const T&", 2, 0, -2);
 
-    upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    upcxx::copy(gp, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get: as_rpc() T&& -> const T&", 2, 0, 4);
+    SHOW("copy-get: as_rpc() T&& -> const T&", 2, 0, -4);
 
     {
       Fn fn;
@@ -712,7 +754,7 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-loopback: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-loopback: as_rpc(Fn&)&& ->", 3, 0, 2);
 
     upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
@@ -721,16 +763,19 @@ int main() {
 
     {
       T t;
-      upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, t));
+      upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, t));
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-loopback: as_rpc() T& -> const T&", 2, 0, 1);
+    SHOW("copy-loopback: as_rpc() T& -> const T&", 2, 0, 2);
 
-    upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ done=true; }, T()));
+    upcxx::copy(gp_local, lp, 1, remote_cx::as_rpc([](const T&){ set_done(); }, T()));
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-loopback: as_rpc() T&& -> const T&", 2, 0, 4);
+
+}
+void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
 
   #if USE_CUDA
     upcxx::cuda_device dev(0);
@@ -751,7 +796,7 @@ int main() {
     upcxx::copy(gpdev_local, lp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-loop-d2h: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-loop-d2h: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
     {
       Fn fn;
@@ -764,7 +809,7 @@ int main() {
     upcxx::copy(lp, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-loop-h2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-loop-h2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
     {
       Fn fn;
@@ -777,7 +822,7 @@ int main() {
     upcxx::copy(gpdev_local, gpdev_local+1, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-loop-d2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-loop-d2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
 
     {
@@ -786,12 +831,12 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-h2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-put-h2d: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(lp, gpdev, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-h2d: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put-h2d: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       Fn fn;
@@ -799,12 +844,12 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-d2h: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-put-d2h: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gpdev_local, gp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-d2h: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put-d2h: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       Fn fn;
@@ -812,12 +857,12 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-d2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-put-d2d: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gpdev_local, gpdev, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-put-d2d: as_rpc(Fn&&)&& ->", 3, -1, -5);
+    SHOW("copy-put-d2d: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       Fn fn;
@@ -825,12 +870,12 @@ int main() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2h: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-get-d2h: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gpdev, lp, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2h: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-get-d2h: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       Fn fn;
@@ -843,7 +888,7 @@ int main() {
     upcxx::copy(gp, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
     {
       Fn fn;
@@ -856,16 +901,40 @@ int main() {
     upcxx::copy(gpdev, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, 4);
+    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
 
     dev.destroy();
   #endif // USE_CUDA
+}
 
-    upcxx::delete_(gp_local);
-    delete ddob;
-  }
- 
+int main() {
+  upcxx::init();
+  print_test_header();
+
+  T::reset_counts(); // discount construction of global
+
+  target = (upcxx::rank_me() + 1) % upcxx::rank_n();
+
+  ddob = new dist_object<int>(3);
+
+  test_rpc1();
+  test_rpc2();
+  test_rpc3();
+  test_rpc4();
+  test_rpc5();
+  test_rput_rpc1();
+  test_rput_rpc2();
+  test_rput_rpc3();
+  test_vis_rpc();
+  test_copy_rpc();
+  test_copy_rpc_cuda();
+
+  upcxx::barrier();
+  upcxx::delete_(gp_local);
+  delete ddob;
+
   print_test_success(success);
   upcxx::finalize();
 }
+

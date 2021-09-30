@@ -27,7 +27,6 @@ int main(void) {
     upcxx::init();
 
     int rank = upcxx::rank_me();
-    int nranks = upcxx::rank_n();
 
     custom_class_1 msg(std::string("Howdy from rank ") + std::to_string(rank));
     upcxx::rpc(0, [] (const custom_class_1& msg) {

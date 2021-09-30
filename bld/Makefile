@@ -18,9 +18,17 @@ top_srcdir   = $(upcxx_src)
 top_builddir = $(upcxx_bld)
 
 #defaults:
-ASSERT ?= 1
-OPTLEV ?= 0
-DBGSYM ?= 1
+ifneq ($(strip $(UPCXX_DBGOPT)),opt)
+  # normal case
+  ASSERT ?= 1
+  OPTLEV ?= 0
+  DBGSYM ?= 1
+else
+  # --enable-single=opt case
+  ASSERT ?= 0
+  OPTLEV ?= 3
+  DBGSYM ?= 0
+endif
 UPCXX_BACKEND ?= gasnet_seq
 GASNET_CONDUIT ?= $(UPCXX_DEFAULT_NETWORK)
 
@@ -90,7 +98,7 @@ list-networks: force
 configure_opt=--disable-debug
 configure_debug=--enable-debug
 do-gasnet-configure: force
-	@dir=$(GASNETDIR);                                                            \
+	@+dir=$(GASNETDIR);                                                            \
 	 if test \! -f "$$dir/gasnet_config.h" ; then                                 \
 	   echo "Configuring $(GASNET_CODEMODE)-mode build of GASNet";                \
 	   export GASNET_SUPPRESS_DEBUG_WARNING=1 ;                                   \
@@ -102,15 +110,17 @@ do-gasnet-configure: force
 	   cmd="$$cmd $$GASNET_CONFIGURE_ARGS";                                       \
 	   cmd="$$cmd --disable-parsync --enable-seq --enable-par";                   \
 	   cmd="$$cmd --enable-pthreads --disable-segment-everything";                \
-	   cmd="$$cmd --enable-$(GASNET_CONDUIT) $(configure_$(GASNET_CODEMODE))";    \
-	   cmd="$$cmd --with-cc='$(CONFIG_CC)' --with-cxx='$(CONFIG_CXX)'";           \
+	   cmd="$$cmd --disable-ibv-rcv-thread"; : issue 495 ;                        \
+	   cmd="$$cmd $(configure_$(GASNET_CODEMODE))";                               \
 	   echo "$$cmd";                                                              \
-	   mkdir -p "$$dir" && cd "$$dir" &&                                          \
-	     eval "$$cmd" 2>&1 | tee config.txt; exit $${PIPESTATUS[0]};              \
+	   mkdir -p "$$dir" && cd "$$dir" && eval "$$cmd" 2>&1 | tee config.txt;      \
+	   rc=$${PIPESTATUS[0]}; (( $$rc )) && exit $$rc;                             \
+	   if ! $(SHELL) $(top_srcdir)/bld/mpi_link_check.sh; then                    \
+	     rm -f gasnet_config.h;                                                   \
+	     exit 1;                                                                  \
+	   fi                                                                         \
 	 fi
 	@if test \! -f "$(GASNET_CONFIG_FRAGMENT)"; then                              \
-	   $(MAKE) -C $(GASNETDIR)/$(GASNET_CONDUIT)-conduit                          \
-			$(GASNET_CONDUIT)-$(GASNET_THREADMODE).mak &&                 \
 	   $(MAKE) do-gasnet-mak UPCXX_FRAGMENTS="$(builddir)/$(GASNETDIR)";          \
 	 fi
 
@@ -222,7 +232,7 @@ define upcxx_meta_body
 #!/bin/sh
 CC='$($(UPCXX_META_COMPILERS)_CC)'
 CFLAGS='$(GASNET_CFLAGS)'
-CPPFLAGS="$(UPCXX_DEFINES) -I$(DST)/include $(addprefix -I, $(wildcard $(DST)/gen_include)) $(GASNET_CXXCPPFLAGS) $$_UPCXX_EXTRA_CPPFLAGS"
+CPPFLAGS="$(UPCXX_DEFINES) $(addprefix -I, $(wildcard $(dir $(DST))include) $(wildcard $(DST)/include) $(DST)/gen_include) $(GASNET_CXXCPPFLAGS) $$_UPCXX_EXTRA_CPPFLAGS"
 CXX='$($(UPCXX_META_COMPILERS)_CXX)'
 CXXFLAGS='$(UPCXX_STDCXX) $(GASNET_CXXFLAGS)'
 GASNET_CONDUIT='$(GASNET_CONDUIT)'
@@ -281,30 +291,30 @@ endif
 ##
 
 ifneq ($(UPCXX_FRAGMENTS),)
-include $(UPCXX_FRAGMENTS)/$(GASNET_CONDUIT)-conduit/$(GASNET_CONDUIT)-$(GASNET_THREADMODE).mak
+-include $(UPCXX_FRAGMENTS)/$(GASNET_CONDUIT)-conduit/$(GASNET_CONDUIT)-$(GASNET_THREADMODE).mak
 endif
 
 include $(top_srcdir)/bld/compiler.mak
 include $(top_srcdir)/bld/sources.mak
 
-UPCXX_DEFINES := -DUPCXX_ASSERT_ENABLED=$(ASSERT) -DUPCXX_BACKEND=1
+UPCXX_DEFINES := -DUPCXXI_ASSERT_ENABLED=$(ASSERT) -DUPCXXI_BACKEND=1
 ifeq ($(strip $(UPCXX_BACKEND)),gasnet_seq)
-UPCXX_DEFINES += -DUPCXX_BACKEND_GASNET_SEQ=1
+UPCXX_DEFINES += -DUPCXXI_BACKEND_GASNET_SEQ=1
 else
-UPCXX_DEFINES += -DUPCXX_BACKEND_GASNET_PAR=1
+UPCXX_DEFINES += -DUPCXXI_BACKEND_GASNET_PAR=1
 endif
 ifeq ($(UPCXX_CUDA),1)
-UPCXX_DEFINES += -DUPCXX_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
+UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
 endif
 
-# In developer builds, embed git-describe output in runtime.o
+# For git cloned source trees, embed git-describe output in runtime.o
 ifneq ($(wildcard $(top_srcdir)/.git),)
 # NOTE: --git-dir breaks --dirty
 UPCXX_GIT_VERSION := $(shell cd "$(top_srcdir)" && git describe --dirty --long --always 2>/dev/null | head -n 1)
 ifneq ($(strip $(UPCXX_GIT_VERSION)),)
 upcxx_git_version_file = backend/gasnet/watermark.cpp # consumes UPCXX_GIT_VERSION
 upcxx_git_version_obj = $(notdir $(basename $(upcxx_git_version_file))).o
-$(basename $(upcxx_git_version_obj))_EXTRA_FLAGS = -DUPCXX_GIT_VERSION='$(UPCXX_GIT_VERSION)'
+$(basename $(upcxx_git_version_obj))_EXTRA_FLAGS = -DUPCXXI_GIT_VERSION='$(UPCXX_GIT_VERSION)'
 .INTERMEDIATE: $(upcxx_git_version_obj)
 endif
 endif
@@ -393,10 +403,33 @@ GASNET_CONFIG_SCRIPTS_FULL = \
 	$(addprefix $(top_srcdir)/utils/config/gasnet/, $(GASNET_CONFIG_SCRIPTS))
 
 do-gasnet-mak: force
+	@if [[ -n '$(UPCXX_CONFIGURE_NETWORK)' ]]; then                    \
+	   conduit=$(UPCXX_CONFIGURE_NETWORK);                             \
+	 else                                                              \
+	   : find last supported conduit found in CONDUITS;                \
+	   unset conduit;                                                  \
+	   eval $$($(MAKE) -C $(UPCXX_FRAGMENTS) echovar VARNAME=CONDUITS);\
+	   for x in $$CONDUITS; do                                         \
+	     [[ " $(filter-out $(UNOFFICIAL_CONDUITS),$(ALL_CONDUITS)) " =~ " $$x " ]] && conduit=$$x; \
+	   done;                                                           \
+	   if [[ -z $$conduit ]]; then                                     \
+	     echo "ERROR: failed to find a supported network" >&2;         \
+	     exit 1;                                                       \
+	   fi                                                              \
+	 fi;                                                               \
+	 : generate fragment for the default network;                      \
+	 $(MAKE) -C $(UPCXX_FRAGMENTS)/$${conduit}-conduit                 \
+			$${conduit}-$(GASNET_THREADMODE).mak &&            \
+	 : recurse to read the newly generated fragment;                   \
+	 $(MAKE) do-gasnet-mak-pt2 GASNET_CONDUIT=$$conduit
+do-gasnet-mak-pt2: force
 	@export $(UPCXX_CONFIG_VARS)                          \
 	        $(foreach var,$(UPCXX_CONFIG_FRAG_VARS),GASNET_$(var)='$(GASNET_$(var))'); \
 	 cd $(UPCXX_FRAGMENTS);                               \
 	 ( echo '# This file is auto-generated. Do not edit.';\
+	   echo ;                                             \
+	   echo '# Default network conduit';                  \
+	   echo 'UPCXX_DEFAULT_NETWORK=$(GASNET_CONDUIT)';    \
 	   echo ;                                             \
 	   for script in $(GASNET_CONFIG_SCRIPTS_FULL); do    \
 	     $(SHELL) $$script;                               \
@@ -407,7 +440,7 @@ do-gasnet-mak: force
 	     fi;                                              \
 	   done;                                              \
 	 ) >| $(GASNET_CONFIG_FRAGMENT)
-.PHONY: do-gasnet-mak
+.PHONY: do-gasnet-mak do-gasnet-mak-pt2
 
 # Panic button to zap generated upcxx_config.hpp files
 .PHONY: upcxx-unconfig
@@ -476,7 +509,8 @@ $(all_libupcxx): force
 ## Note that these just cover UPCXX_CODEMODE of opt or debug
 ##
 .PHONY: upcxx-all upcxx-install upcxx-clean upcxx-distclean
-.PHONY: do-upcxx-all do-upcxx-install-one do-upcxx-install-all
+.PHONY: do-upcxx-all do-upcxx-install-one do-upcxx-install-one-codemode
+.PHONY: do-upcxx-install-lib do-upcxx-install-include do-upcxx-install-gen_include
 
 #
 # Helpers to iterate over conduits and backends
@@ -497,10 +531,10 @@ do-upcxx-all: force
 	   done;                                                               \
 	 done;                                                                 \
 	 $(MAKE) $$targets
-do-upcxx-install-headers: force
+do-upcxx-install-include: force
 	@cd "$(UPCXXDIR)/include/upcxx/" &&                               \
 	 depfile="$(builddir)/$(UPCXXDIR)/lib/upcxx_headers.d"            \
-	 dst="$(DESTDIR)$(DST)/include/upcxx" src="$$(pwd -P)" &&         \
+	 dst="$(DESTDIR)$(prefix)/include/upcxx" src="$$(pwd -P)" &&      \
 	 for file in $$(find . -name '*.hpp'); do                         \
 	   file="$${file##./}";                                           \
 	   if fgrep -e "/bld/$(UPCXXDIR)/include/upcxx/$$file"            \
@@ -510,15 +544,18 @@ do-upcxx-install-headers: force
 	     mkdir -p "$$dst/$$(dirname $$file)" || exit $$?;             \
 	     cp $$file "$$dst/$$file" || exit $$?;                        \
 	   fi;                                                            \
-	 done;                                                            \
+	 done
+do-upcxx-install-gen_include: force
+	@dst="$(DESTDIR)$(DST)/gen_include/upcxx";                        \
+	 mkdir -p $$dst &&                                                \
 	 cp "$(builddir)/$(UPCXXDIR)/gen_include/upcxx/"*.hpp "$$dst/"
 do-upcxx-install-lib: force
 	@mkdir -p "$(DESTDIR)$(DST)/lib" || exit $$?;                     \
 	 cp "$(UPCXXDIR)/lib/libupcxx.a" "$(DESTDIR)$(DST)/lib/"
 do-upcxx-install-one: force
-	@$(MAKE) do-upcxx-install-headers do-upcxx-install-lib \
+	@$(MAKE) do-upcxx-install-gen_include do-upcxx-install-lib \
 	         do-upcxx-meta UPCXX_META_GASNET='$(prefix)/$(GASNETDIR)'
-do-upcxx-install-all: force
+do-upcxx-install-one-codemode: force
 	@for conduit in $(CONDUITS); do                                      \
 	   for backend in $(ALL_BACKENDS); do                                \
 	     $(MAKE) do-upcxx-install-one                                    \
@@ -539,12 +576,12 @@ do-upcxx-all-opt: force
 	@$(MAKE) do-upcxx-all ASSERT=0 OPTLEV=3 DBGSYM=0
 do-upcxx-all-debug: force
 	@$(MAKE) do-upcxx-all ASSERT=1 OPTLEV=0 DBGSYM=1
-do-upcxx-install-opt: do-upcxx-all-opt
-	@$(MAKE) do-upcxx-install-all \
+do-upcxx-install-opt: do-upcxx-all-opt do-upcxx-install-include
+	@$(MAKE) do-upcxx-install-one-codemode \
 	         ASSERT=0 OPTLEV=3 DBGSYM=0 UPCXX_CODEMODE=opt    \
 	         UPCXX_FRAGMENTS="$(DESTDIR)$(prefix)/gasnet.opt/include"
-do-upcxx-install-debug: do-upcxx-all-debug
-	@$(MAKE) do-upcxx-install-all \
+do-upcxx-install-debug: do-upcxx-all-debug do-upcxx-install-include
+	@$(MAKE) do-upcxx-install-one-codemode \
 	         ASSERT=1 OPTLEV=0 DBGSYM=1 UPCXX_CODEMODE=debug \
 	         UPCXX_FRAGMENTS="$(DESTDIR)$(prefix)/gasnet.debug/include"
 do-upcxx-clean-opt: force
@@ -611,7 +648,7 @@ UPCXX_EXE      = $(UPCXX_EXE_STEM)$(EXESUFFIX)
 do-exe: force
 	@mkdir -p $(UPCXXDIR)/exe
 	@if [[ -z '$(UPCXX_EXE_CSUM)' ]]; then \
-	   echo "Developer targets 'exe' and 'run' are unavailable (missing or broken checksum utility)"; \
+	   echo "Maintainer targets 'exe' and 'run' are unavailable (missing or broken checksum utility)"; \
 	   exit 1;  \
 	 fi
 	@$(MAKE) upcxx-single

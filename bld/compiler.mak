@@ -30,9 +30,9 @@ endif
 #
 LIBUPCXX_CFLAGS := -Wall
 
-# PGI:
+# PGI and NVHPC:
 # + strip unsupported `-Wall`
-ifeq ($(GASNET_CC_FAMILY),PGI)
+ifneq ($(filter PGI NVHPC,$(GASNET_CC_FAMILY)),)
 LIBUPCXX_CFLAGS := $(filter-out -Wall,$(LIBUPCXX_CFLAGS))
 endif
 
@@ -47,10 +47,10 @@ endif
 #
 LIBUPCXX_CXXFLAGS := -Wall
 
-# PGI:
+# PGI and NVHPC:
 # + strip unsupported `-Wall`
 # + address issue #286 (bogus warning on future/core.cpp)
-ifeq ($(GASNET_CXX_FAMILY),PGI)
+ifneq ($(filter PGI NVHPC,$(GASNET_CXX_FAMILY)),)
 LIBUPCXX_CXXFLAGS := $(filter-out -Wall,$(LIBUPCXX_CXXFLAGS)) --diag_suppress1427
 endif
 
@@ -81,7 +81,7 @@ endif
 # Simple example (though general case lacks the common `basename`):
 #   $(call UPCXX_DEP_GEN,$(CXX) $(CXXFLAGS),$(basename).d,$(basename).cpp,$(EXTRA_FLAGS))
 #
-# Note 1: Generation to stdout is used because PGI compilers ignore `-o foo` in
+# Note 1: Generation to stdout is used because PGI/NVHPC compilers ignore `-o foo` in
 # the presence `-E` and lack support for `-MF`.  Meanwhile all supported
 # compilers send `-E` output to stdout by default.
 #
@@ -98,10 +98,11 @@ endif
 UPCXX_DEP_GEN_FLAGS = -MM -MT $(2)
 UPCXX_DEP_GEN = $(1) -E $(UPCXX_DEP_GEN_FLAGS) $(3) $(4)
 
-# With PGI we use `-M` in lieu of `-MM`.
+# With PGI and NVHPC we use `-M` in lieu of `-MM`.
 # The `-MM` flag is just plain broken with this compiler family
 # (emits the compiler's own pre-includes as the only dependencies).
-ifeq ($(GASNET_CXX_FAMILY),PGI)
+ifneq ($(filter PGI NVHPC,$(GASNET_CXX_FAMILY)),)
+# PGI and NVHPC:
 UPCXX_DEP_GEN_FLAGS = -M -MT $(2)
 endif
 

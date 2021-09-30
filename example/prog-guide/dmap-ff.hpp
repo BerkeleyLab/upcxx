@@ -1,4 +1,5 @@
 #include <map>
+#include <cassert>
 #include <upcxx/upcxx.hpp>
 
 class DistrMap
@@ -21,6 +22,7 @@ public:
     upcxx::rpc_ff(get_target_rank(key),
                   // lambda to insert the key-value pair
                   [](dobj_map_t &lmap, const std::string &key, const std::string &val) {
+                    assert(lmap->count(key) == 0); // assume no duplicate keys
                     // insert into the local map at the target
                     lmap->insert({key, val});
                   }, local_map, key, val);
@@ -32,10 +34,8 @@ public:
                       // lambda to find the key in the local map
                       [](dobj_map_t &lmap, const std::string &key) -> std::string {
                         auto elem = lmap->find(key);
-                        // the key was found, return the value
-                        if (elem == lmap->end()) return std::string();
-                        // no key found
-                        return elem->second;
+                        if (elem == lmap->end()) return std::string(); // not found
+                        else return elem->second; // key found: return value
                       }, local_map, key);
   }
   int local_size() {

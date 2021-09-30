@@ -29,7 +29,7 @@ void upcxx::detail::rma_copy_local(
     cb->execute_and_delete();
   }
   else { // one or both sides on device
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
     int heap_main = !host_d ? heap_d : heap_s;
     UPCXX_ASSERT(heap_main > 0);
     cuda::device_state *st = cuda::device_state::get(heap_main);
@@ -63,11 +63,11 @@ void upcxx::detail::rma_copy_local(
     cb->cu_event = (void*)event;
 
     persona *per = detail::the_persona_tls.get_top_persona();
-    per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.enqueue(cb);
+    per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.enqueue(cb);
     
     {CUcontext dump; CU_CHECK(cuCtxPopCurrent(&dump));}
   #else
-    UPCXX_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
+    UPCXXI_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
   #endif
   }
 }
@@ -78,7 +78,7 @@ void upcxx::detail::rma_copy_remote(
     std::size_t size, 
     gasnet::handle_cb *cb
   ) {
-#if UPCXX_CUDA_USE_MK
+#if UPCXXI_CUDA_USE_MK
   const bool isput = (rank_s == upcxx::rank_me());
 
   gex_EP_Index_t local_ep_idx;
@@ -106,6 +106,11 @@ void upcxx::detail::rma_copy_remote(
   }
   UPCXX_ASSERT(gex_EP_QueryIndex(local_ep) == local_ep_idx);
   
+  // We cannot pass GEX_FLAG_PEER_NEVER_NBRHD in the RMA calls below, 
+  // because this function is used to handle interprocess transfers
+  // that involve a device on one/both sides, even between local_team peers.
+  // We could safely pass GEX_FLAG_PEER_NEVER_SELF,
+  // but there is currently no benefit obtained by passing that flag.
   gex_Event_t h;
   if (isput) {
     h = gex_RMA_PutNB(
@@ -125,18 +130,35 @@ void upcxx::detail::rma_copy_remote(
   cb->handle = reinterpret_cast<uintptr_t>(h);
   gasnet::register_cb(cb);
   gasnet::after_gasnet();
-#else // !UPCXX_CUDA_USE_MK
-    UPCXX_FATAL_ERROR("Internal error in upcxx::copy()");
+#else // !UPCXXI_CUDA_USE_MK
+    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy()");
 #endif
+}
+
+void upcxx::detail::rma_copy_get_nonlocal(
+    void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
+    gasnet::handle_cb *cb
+  ) {
+  UPCXX_ASSERT(!backend::rank_is_local(rank_s)); // bypass handled in header
+
+  gex_Event_t h = gex_RMA_GetNB(
+    gasnet::handle_of(upcxx::world()),
+    buf_d, rank_s, const_cast<void*>(buf_s), size,
+    UPCXXI_GEX_FLAG_PEER_NEVER_NBRHD
+  );
+  cb->handle = reinterpret_cast<uintptr_t>(h);
+  gasnet::register_cb(cb);
+  gasnet::after_gasnet();
 }
 
 void upcxx::detail::rma_copy_get(
     void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXX_CUDA_USE_MK
-    UPCXX_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
+  #if UPCXXI_CUDA_USE_MK
+    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
   #endif
+
   gex_Event_t h = gex_RMA_GetNB(
     gasnet::handle_of(upcxx::world()),
     buf_d, rank_s, const_cast<void*>(buf_s), size,
@@ -151,9 +173,10 @@ void upcxx::detail::rma_copy_put(
     intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXX_CUDA_USE_MK
-    UPCXX_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
+  #if UPCXXI_CUDA_USE_MK
+    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
+
   gex_Event_t h = gex_RMA_PutNB(
     gasnet::handle_of(upcxx::world()),
     rank_d, buf_d, const_cast<void*>(buf_s), size,

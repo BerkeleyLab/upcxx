@@ -31,7 +31,7 @@ namespace upcxx {
   /* `detail::opfn_[add|...]` is the function object which actually implements
    * `operator()` and is used as the value for `OpFn` in `op_wrap`.
    */
-  #define UPCXX_INFIX_OP(tok, tok_bool, name, integral_only1) \
+  #define UPCXXI_INFIX_OP(tok, tok_bool, name, integral_only1) \
     namespace detail {\
       struct opfn_##name {\
         static constexpr bool integral_only = integral_only1;\
@@ -52,12 +52,12 @@ namespace upcxx {
     }\
     constexpr detail::op_wrap<detail::opfn_##name, /*fast_demanded=*/true> op_fast_##name = {};
   
-  UPCXX_INFIX_OP(+, |, add, false)
-  UPCXX_INFIX_OP(*, &, mul, false)
-  UPCXX_INFIX_OP(&, &, bit_and, true)
-  UPCXX_INFIX_OP(|, |, bit_or, true)
-  UPCXX_INFIX_OP(^, ^, bit_xor, true)
-  #undef UPCXX_INFIX_OP
+  UPCXXI_INFIX_OP(+, |, add, false)
+  UPCXXI_INFIX_OP(*, &, mul, false)
+  UPCXXI_INFIX_OP(&, &, bit_and, true)
+  UPCXXI_INFIX_OP(|, |, bit_or, true)
+  UPCXXI_INFIX_OP(^, ^, bit_xor, true)
+  #undef UPCXXI_INFIX_OP
   
   namespace detail {
     template<bool min_not_max>
@@ -419,7 +419,7 @@ namespace upcxx {
   template<typename T1, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::reduce_scalar_event_values<T>,
@@ -430,11 +430,12 @@ namespace upcxx {
       const team &tm = upcxx::world(),
       Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
-    UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_one); // issue 392: prevent large types by-value
+    UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, reduce_one); // issue 392: prevent large types by-value
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one(value)", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one(value)", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "reduce_one(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     
@@ -445,7 +446,7 @@ namespace upcxx {
   
   template<typename T, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::reduce_vector_event_values,
@@ -457,9 +458,10 @@ namespace upcxx {
       const team &tm = upcxx::world(),
       Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one(bulk)", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one(bulk)", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "reduce_one(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     
@@ -538,7 +540,7 @@ namespace upcxx {
   template<typename T1, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::reduce_scalar_event_values<T>,
@@ -549,9 +551,10 @@ namespace upcxx {
       const team &tm = upcxx::world(),
       Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one_nontrivial()", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_one_nontrivial()", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "reduce_one_nontrivial(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
       
@@ -568,7 +571,7 @@ namespace upcxx {
   template<typename T1, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::reduce_scalar_event_values<T>,
@@ -579,10 +582,11 @@ namespace upcxx {
       const team &tm = upcxx::world(),
       Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
-    UPCXX_STATIC_ASSERT_VALUE_SIZE(T, reduce_all); // issue 392: prevent large types by-value
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all(value)", entry_barrier::internal);
+    UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, reduce_all); // issue 392: prevent large types by-value
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all(value)", entry_barrier::internal);
     return detail::reduce_one_or_all_trivial<T1,BinaryOp,Cxs,T>(
         std::move(value), std::move(op), /*all=*/-1, tm, std::forward<Cxs>(cxs)
       );
@@ -590,7 +594,7 @@ namespace upcxx {
   
   template<typename T, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::reduce_vector_event_values,
@@ -602,9 +606,10 @@ namespace upcxx {
       const team &tm = upcxx::world(),
       Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all(bulk)", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all(bulk)", entry_barrier::internal);
     return detail::reduce_one_or_all_trivial<T,BinaryOp,Cxs>(
         src, dst, n, std::move(op), /*all=*/-1, tm, std::forward<Cxs>(cxs)
       );
@@ -617,7 +622,7 @@ namespace upcxx {
     template<typename T1, typename BinaryOp,
              typename Cxs = detail::operation_cx_as_future_t,
              typename T = typename std::decay<T1>::type>
-    UPCXX_NODISCARD
+    UPCXXI_NODISCARD
     typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::reduce_scalar_event_values<T>,
@@ -629,14 +634,14 @@ namespace upcxx {
         Cxs &&cxs,
         std::true_type trivial_yes
       ) {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       return reduce_all(std::forward<T1>(value), std::move(op), tm, std::forward<Cxs>(cxs));
     }
     
     template<typename T1, typename BinaryOp,
              typename Cxs = detail::operation_cx_as_future_t,
              typename T = typename std::decay<T1>::type>
-    UPCXX_NODISCARD
+    UPCXXI_NODISCARD
     typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::reduce_scalar_event_values<T>,
@@ -649,7 +654,7 @@ namespace upcxx {
         std::false_type trivial_no
       ) {
       using CxsDecayed = typename std::decay<Cxs>::type;
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       UPCXX_ASSERT_ALWAYS(
         (detail::completions_has_event<CxsDecayed, operation_cx_event>::value),
         "Not requesting operation completion is surely an error."
@@ -685,7 +690,7 @@ namespace upcxx {
   template<typename T1, typename BinaryOp,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
         /*EventPredicate=*/detail::event_is_here,
         /*EventValues=*/detail::reduce_scalar_event_values<T>,
@@ -696,9 +701,10 @@ namespace upcxx {
       const team &tm = upcxx::world(),
       Cxs &&cxs = detail::operation_cx_as_future_t{{}}
     ) {
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all_nontrivial()", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::reduce_all_nontrivial()", entry_barrier::internal);
     return detail::reduce_all_nontrivial(
         std::forward<T1>(value), std::move(op), tm, std::forward<Cxs>(cxs),
         std::integral_constant<bool, upcxx::is_trivially_serializable<T>::value>()
@@ -717,7 +723,7 @@ namespace upcxx {
         typename reduce_state::cxs_state_t *cxs_st
       ) {
       
-      UPCXX_ASSERT_MASTER();
+      UPCXXI_ASSERT_MASTER();
       detail::persona_scope_redundant master_as_top(backend::master, detail::the_persona_tls);
       
       intrank_t rank_n = tm.rank_n();

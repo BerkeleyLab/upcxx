@@ -35,7 +35,7 @@ namespace upcxx {
   template<typename T1,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::broadcast_scalar_event_values<T>,
@@ -48,9 +48,10 @@ namespace upcxx {
     ) {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::experimental::broadcast_nontrivial()", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::experimental::broadcast_nontrivial()", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "broadcast_nontrivial(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     UPCXX_ASSERT_ALWAYS(
@@ -135,7 +136,7 @@ namespace upcxx {
   
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::broadcast_vector_event_values,
@@ -154,9 +155,10 @@ namespace upcxx {
       "use at own risk)."
     );
     
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::broadcast(bulk)", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::broadcast(bulk)", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "broadcast(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     UPCXX_ASSERT_ALWAYS(
@@ -199,7 +201,7 @@ namespace upcxx {
   template<typename T1,
            typename Cxs = detail::operation_cx_as_future_t,
            typename T = typename std::decay<T1>::type>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::completions_returner<
       /*EventPredicate=*/detail::event_is_here,
       /*EventValues=*/detail::broadcast_scalar_event_values<T>,
@@ -219,11 +221,12 @@ namespace upcxx {
       "use at own risk)."
     );
 
-    UPCXX_STATIC_ASSERT_VALUE_SIZE(T, broadcast); // issue 392: prevent large types by-value
+    UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, broadcast); // issue 392: prevent large types by-value
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_ASSERT_MASTER();
-    UPCXX_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::broadcast(value)", entry_barrier::internal);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("upcxx::broadcast(value)", entry_barrier::internal);
     UPCXX_ASSERT(root >= 0 && root < tm.rank_n(),
       "broadcast(..., root, team) requires root in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << root);
     UPCXX_ASSERT_ALWAYS(

@@ -16,73 +16,29 @@
 #include <new> // launder
 
 // RTTI support
-#ifndef UPCXX_HAVE_RTTI
-#define UPCXX_HAVE_RTTI (__GXX_RTTI || __cpp_rtti)
+#ifndef UPCXXI_HAVE_RTTI
+#define UPCXXI_HAVE_RTTI (__GXX_RTTI || __cpp_rtti)
 #endif
-#if UPCXX_HAVE_RTTI
+#if UPCXXI_HAVE_RTTI
 #include <typeinfo> // typeid
 #endif
 
 #include <cstdlib> // posix_memalign
 
-// UPCXX_RETURN_DECLTYPE(type): use this inplace of "-> decltype(type)" so that
+// UPCXXI_RETURN_DECLTYPE(type): use this inplace of "-> decltype(type)" so that
 // for compilers which choke on such return types (icc) it can be elided in
 // the presence of C++14.
 #if !defined(__INTEL_COMPILER) || __cplusplus <= 201199L
-  #define UPCXX_RETURN_DECLTYPE(...) -> decltype(__VA_ARGS__)
+  #define UPCXXI_RETURN_DECLTYPE(...) -> decltype(__VA_ARGS__)
 #else
-  #define UPCXX_RETURN_DECLTYPE(...)
+  #define UPCXXI_RETURN_DECLTYPE(...)
 #endif
 
 namespace upcxx {
 namespace detail {
   //////////////////////////////////////////////////////////////////////
-  // detail::nop_function
-
-  template<typename Sig>
-  struct nop_function;
-  
-  template<typename Ret, typename ...Arg>
-  struct nop_function<Ret(Arg...)> {
-    template<typename ...Arg1>
-    Ret operator()(Arg1 &&...a) const {
-      UPCXX_ASSERT(false);
-      throw std::bad_function_call();
-    }
-  };
-  template<typename ...Arg>
-  struct nop_function<void(Arg...)> {
-    template<typename ...Arg1>
-    void operator()(Arg1 &&...a) const {}
-  };
-  
-  template<typename Sig>
-  nop_function<Sig> nop() {
-    return nop_function<Sig>{};
-  }
-  
-  //////////////////////////////////////////////////////////////////////
-  // detail::constant_function
-
-  template<typename T>
-  struct constant_function {
-    T value_;
-    constant_function(T value): value_(std::move(value)) {}
-    
-    template<typename ...Arg>
-    T operator()(Arg &&...args) const& {
-      return value_;
-    }
-    template<typename ...Arg>
-    T operator()(Arg &&...args) && {
-      return std::move(value_);
-    }
-  };
-  
-  template<typename T>
-  inline constant_function<T> constant(T value) {
-    return constant_function<T>{std::move(value)};
-  }
+  // detail::nop_function, detail::constant_function removed post
+  // 2021.3.0 release
 
   //////////////////////////////////////////////////////////////////////////////
   // detail::memcpy_aligned
@@ -91,7 +47,7 @@ namespace detail {
   inline void memcpy_aligned(void *dst, void const *src, std::size_t sz) noexcept {
     UPCXX_ASSERT((uintptr_t)src % align == 0);
     UPCXX_ASSERT((uintptr_t)dst % align == 0);
-  #if UPCXX_HAVE___BUILTIN_ASSUME_ALIGNED
+  #if UPCXXI_HAVE___BUILTIN_ASSUME_ALIGNED
     std::memcpy(__builtin_assume_aligned(dst, align),
                 __builtin_assume_aligned(src, align), sz);
   #else
@@ -130,6 +86,11 @@ namespace detail {
     template<typename T>
     constexpr T* launder(T *p) {
       return std::launder(p);
+    }
+  #elif UPCXXI_HAVE___BUILTIN_LAUNDER
+    template<typename T>
+    constexpr T* launder(T *p) {
+      return __builtin_launder(p);
     }
   #else
     template<typename T>
@@ -172,10 +133,24 @@ namespace detail {
       using T1 = typename std::remove_const<T>::type;
       T1 *ans = reinterpret_cast<T1*>(::new(dest) T1);
       detail::template memcpy_aligned<alignof(T1)>(ans, src, sizeof(T1));
-      #if UPCXX_ISSUE400_WORKAROUND
-        // issue #400: based on our understanding of the C++ spec, launder should be unnecessary here
-        // because memcpy of a TriviallyCopyable type is sufficient to construct a valid object.
-        // However the GCC 7,8,9 optimizer needs this to avoid incorrect optimization in -O2+
+      #if UPCXXI_ISSUE400_WORKAROUND
+        // issue #400: memcpy of any type of object is always insufficient to construct a valid object, as it does not
+        // perform any of the actions described in [intro.object]/1 that the standard specifies create an object, even in
+        // the case of TriviallyCopyable types. P0593 would change this behavior, but has not been accepted into any
+        // standard as of writing this comment. The proposed std::start_lifetime_as<T> may be necessary to avoid UB even
+        // with this change to the standard. At the present time, the C++ standard does not have mechanisms to avoid this 
+        // UB.
+        //
+        // Additionally, a call to std::launder is necessary to avoid an additional case UB for pointer aliasing even if
+        // an object were to be properly constructed as per the standard. As std::launder requires compiler support with a
+        // builtin such as __builtin_launder, detail::launder_unconstructed attempts to backport a combination of
+        // std::launder and the proposed std::start_lifetime_as<T> as best as possible using inline asm to interrupt the
+        // compiler's analysis. Avoiding this UB is only possible in C++17 or by using compiler builtins if available.
+        //
+        // These undefined behaviors are known to cause incorrect optimizations with GCC 7, 8, and 9 at -O2+.
+        //
+        // Due to a lack of compiler support, the UB is only worked around when it is known to cause problems as the inline
+        // asm can prevent more optimizations than intended.
         return detail::launder_unconstructed<T1>(ans);
       #else
         return ans;
@@ -425,45 +400,8 @@ namespace detail {
   
   //////////////////////////////////////////////////////////////////////
   // trait_any: disjunction, combines multiple traits into a new trait.
-  
-  template<template<typename...> class ...Tr>
-  struct trait_any;
-  
-  template<>
-  struct trait_any<> {
-    template<typename T>
-    using type = std::false_type;
-  };
-  
-  template<template<typename...> class Tr0,
-           template<typename...> class ...Trs>
-  struct trait_any<Tr0,Trs...> {
-    template<typename T>
-    struct type {
-      static constexpr bool value = Tr0<T>::value || trait_any<Trs...>::template type<T>::value;
-    };
-  };
-  
-  //////////////////////////////////////////////////////////////////////
   // trait_all: conjunction, combines multiple traits into a new trait
-  
-  template<template<typename...> class ...Tr>
-  struct trait_all;
-  
-  template<>
-  struct trait_all<> {
-    template<typename T>
-    using type = std::true_type;
-  };
-  
-  template<template<typename...> class Tr0,
-           template<typename...> class ...Trs>
-  struct trait_all<Tr0,Trs...> {
-    template<typename T>
-    struct type {
-      static constexpr bool value = Tr0<T>::value && trait_all<Trs...>::template type<T>::value;
-    };
-  };
+  // trait_any, trait_all removed post 2021.3.0 release
   
   //////////////////////////////////////////////////////////////////////
   // is_lvalue_or_copyable, is_lvalue_or_movable: trait for whether a
@@ -517,52 +455,15 @@ namespace detail {
   //////////////////////////////////////////////////////////////////////////////
   // add_lref_if_nonref: Add a lvalue-reference (&) to type T if T isn't already
   // a reference (& or &&) type.
-  
-  template<typename T>
-  struct add_lref_if_nonref { using type = T&; };
-  
-  template<typename T>
-  struct add_lref_if_nonref<T&> { using type = T&; };
-  
-  template<typename T>
-  struct add_lref_if_nonref<T&&> { using type = T&&; };
-
-  //////////////////////////////////////////////////////////////////////////////
   // add_clref_if_nonref: Add a const-lvalue-reference (const &) to type T if T
   // isn't already a reference (& or &&) type.
-  
-  template<typename T>
-  struct add_clref_if_nonref { using type = T const&; };
-  
-  template<typename T>
-  struct add_clref_if_nonref<T&> { using type = T&; };
-  
-  template<typename T>
-  struct add_clref_if_nonref<T&&> { using type = T&&; };
-
-  //////////////////////////////////////////////////////////////////////////////
   // add_rref_if_nonref: Add a rvalue-reference (&&) to type T if T isn't
   // already a reference (& or &&) type.
-  
-  template<typename T>
-  struct add_rref_if_nonref { using type = T&&; };
-  
-  template<typename T>
-  struct add_rref_if_nonref<T&> { using type = T&; };
-  
-  template<typename T>
-  struct add_rref_if_nonref<T&&> { using type = T&&; };
+  // add_lref_if_nonref, add_clref_if_nonref, add_rref_if_nonref removed
+  // post 2021.3.0 release
   
   //////////////////////////////////////////////////////////////////////
-
-  #if 0
-  template<typename Tup>
-  struct decay_tupled;
-  template<typename ...T>
-  struct decay_tupled<std::tuple<T...>> {
-    typedef std::tuple<typename std::decay<T>::type...> type;
-  };
-  #endif
+  // decay_tupled removed post 2021.3.0 release
  
   //////////////////////////////////////////////////////////////////////
   // decay_tupled_rrefs: decay elements of a tuple, preserving lvalue refs but not rvalue refs
@@ -581,33 +482,7 @@ namespace detail {
   //////////////////////////////////////////////////////////////////////
   // get_or_void & tuple_element_or_void: analogs of std::get &
   // std::tuple_elemenet which return void for out-of-range indices
-
-  #if 0
-  template<int i, typename TupRef,
-           bool in_range = (
-             0 <= i &&
-             i < std::tuple_size<typename std::decay<TupRef>::type>::value
-           )>
-  struct tuple_get_or_void {
-    auto operator()(TupRef t)
-      -> decltype(std::get<i>(t)) {
-      return std::get<i>(t);
-    }
-  };
-  
-  template<int i, typename TupRef>
-  struct tuple_get_or_void<i, TupRef, /*in_range=*/false>{
-    void operator()(TupRef t) {}
-  };
-  
-  template<int i, typename Tup>
-  auto get_or_void(Tup &&tup)
-    -> decltype(
-      tuple_get_or_void<i,Tup>()(std::forward<Tup>(tup))
-    ) {
-    return tuple_get_or_void<i,Tup>()(std::forward<Tup>(tup));
-  }
-  #endif
+  // get_or_void removed post 2021.3.0 release
   
   template<int i, typename Tup,
            bool in_range = 0 <= i && i < std::tuple_size<Tup>::value>
@@ -668,102 +543,13 @@ namespace detail {
     );
   }
 
-  #if 0
   //////////////////////////////////////////////////////////////////////
   // tuple_rvals: Get a tuple of rvalue-references to tuple componenets.
   // Components which are already `&` or `&&` are returned unmodified.
   // Non-reference componenets are returned as `&&` only if the tuple is
   // passed by non-const `&`, otherwise the non-reference type is used
   // and the value is moved or copied from the input to output tuple.
-  
-  namespace help {
-    template<typename Tup, int i,
-             typename Ti = typename std::tuple_element<i, typename std::decay<Tup>::type>::type>
-    struct tuple_rvals_get;
-    
-    // tuple passed by &
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&, i, Ti&> {
-      Ti& operator()(Tup &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&, i, Ti&&> {
-      Ti&& operator()(Tup &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&, i, Ti> {
-      Ti&& operator()(Tup &tup) const {
-        return static_cast<Ti&&>(std::get<i>(tup));
-      }
-    };
-    
-    // tuple passed by const&
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup const&, i, Ti&> {
-      Ti& operator()(Tup const &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup const&, i, Ti&&> {
-      Ti&& operator()(Tup const &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup const&, i, Ti> {
-      Ti const& operator()(Tup const &tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    
-    // tuple passed by &&
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&&, i, Ti&> {
-      Ti& operator()(Tup &&tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&&, i, Ti&&> {
-      Ti&& operator()(Tup &&tup) const {
-        return std::get<i>(tup);
-      }
-    };
-    template<typename Tup, int i, typename Ti>
-    struct tuple_rvals_get<Tup&&, i, Ti> {
-      Ti operator()(Tup &&tup) const {
-        return Ti{static_cast<Ti&&>(std::get<i>(tup))};
-      }
-    };
-    
-    template<typename Tup, int ...i>
-    inline auto tuple_rvals(Tup &&tup, index_sequence<i...>)
-      -> std::tuple<decltype(tuple_rvals_get<Tup&&, i>()(tup))...> {
-      return std::tuple<decltype(tuple_rvals_get<Tup&&, i>()(tup))...>{
-        tuple_rvals_get<Tup&&, i>()(tup)...
-      };
-    }
-  }
-  
-  template<typename Tup>
-  inline auto tuple_rvals(Tup &&tup)
-    -> decltype(
-      help::tuple_rvals(
-        std::forward<Tup>(tup),
-        make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>()
-      )
-    ) {
-    return help::tuple_rvals(
-      std::forward<Tup>(tup),
-      make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>()
-    );
-  }
-  #endif
+  // tuple_rvals removed post 2021.3.0 release
   
   //////////////////////////////////////////////////////////////////////
   // forward_as_tuple_decay_rrefs: like std::forward_as_tuple, but drops
@@ -817,7 +603,7 @@ namespace detail {
 
   template <typename T, std::size_t x = sizeof(T)>
   inline const char *typename_of_(T *_) { 
-    #if UPCXX_HAVE_RTTI
+    #if UPCXXI_HAVE_RTTI
       return typeid(T).name(); 
     #else
       return "";
@@ -827,6 +613,48 @@ namespace detail {
 
   template<typename T>
   inline const char *typename_of() { return typename_of_((T*)nullptr); }
+
+  //////////////////////////////////////////////////////////////////////
+  // raii_cleanup: define a lightweight stack unwinding cleanup action
+  //
+  // This utility replaces code written using this try/catch idiom:
+  //
+  //   allocate_resource();
+  //   try {
+  //     something_that_might_throw();
+  //   } catch (...) {
+  //     cancel_resource();
+  //     throw;
+  //   }
+  //
+  // with an RAII idiom that looks like this:
+  //
+  //   allocate_resource();
+  //   auto guard = detail::make_raii_cleanup(cancel_resource);
+  //   something_that_might_throw();
+  //   guard.reset(); // did not throw, release guard
+  //
+  // The callable argument to make_raii_cleanup() is invoked iff the guard
+  // object is destroyed (generally by leaving scope) before reset() was called.
+  //
+  // See pull request #376 for performance results, which show this utility
+  // often outperforms try/catch and unique_ptr idioms on compilers of interest.
+  
+  template<typename Fn>
+  class raii_cleanup {
+    Fn fn;
+    bool armed;
+   public:
+    inline raii_cleanup(Fn &&f) : fn(std::forward<Fn>(f)), armed(true) {}
+    inline void reset() { armed = false; }
+    inline ~raii_cleanup() {
+      UPCXXI_IF_PF(armed) fn();
+    }
+  };
+  template<typename Fn>
+  raii_cleanup<Fn> make_raii_cleanup(Fn &&f) {
+    return raii_cleanup<Fn>(std::forward<Fn>(f));
+  } 
 
 } // namespace detail
 } // namespace upcxx

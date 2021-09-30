@@ -15,6 +15,7 @@ int nranks;
 
 class vertex;
 vertex *get_vertex_from_store(int vertex_id);
+using std::size_t;
 
 //SNIPPET
 class vertex {
@@ -25,16 +26,8 @@ class vertex {
     public:
         vertex(int _id) : id(_id) { }
         int get_id() const { return id; }
-        int n_neighbors() const { return neighbors.size(); }
         bool has_edge(int other) const;
         void add_neighbor(int neighbor_id); 
-
-        std::vector<vertex*>::const_iterator neighbors_begin() const {
-            return neighbors.begin();
-        }
-        std::vector<vertex*>::const_iterator neighbors_end() const {
-            return neighbors.end();
-        }
 
         /*
          * An example of using a member struct upcxx_serialization to implement
@@ -44,10 +37,8 @@ class vertex {
             template<typename Writer>
             static void serialize (Writer& writer, vertex const & object) {
                 writer.write(object.get_id());
-                writer.write(object.n_neighbors());
-                for (auto i = object.neighbors_begin(), e = object.neighbors_end();
-                        i != e; i++) {
-                    vertex *neighbor = *i;
+                writer.write(object.neighbors.size());
+                for (vertex *neighbor : object.neighbors) {
                     writer.write(neighbor->get_id());
                 }
             }
@@ -55,10 +46,10 @@ class vertex {
             template<typename Reader>
             static vertex* deserialize(Reader& reader, void* storage) {
                 int id = reader.template read<int>();
-                int n_neighbors = reader.template read<int>();
+                size_t n_neighbors = reader.template read<size_t>();
 
                 vertex *v = new(storage) vertex(id);
-                for (int n = 0; n < n_neighbors; n++) {
+                for (size_t n = 0; n < n_neighbors; n++) {
                     v->add_neighbor(reader.template read<int>());
                 }
                 return v;
@@ -70,8 +61,7 @@ class vertex {
 std::map<int, vertex *> local_vertex_store;
 
 bool vertex::has_edge(int other) const {
-    for (auto i = neighbors.begin(), e = neighbors.end(); i != e; i++) {
-        vertex *v = *i;
+    for (vertex *v : neighbors) {
         if (v->get_id() == other) return true;
     }
     return false;
@@ -98,8 +88,7 @@ vertex *get_vertex_from_store(int vertex_id) {
 }
 
 void create_edge(vertex* local, int other_id) {
-    int local_id = local->get_id();
-    vertex *other = get_vertex_from_store(other_id);
+    get_vertex_from_store(other_id); // ensure existence
 
     /*
      * Add a vertex* for this ID to our neighbors list. This should

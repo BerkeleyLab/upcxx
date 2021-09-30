@@ -6,8 +6,8 @@
 #include <random>
 #include <thread>
 
-#if !UPCXX_BACKEND_GASNET_PAR
-  #error "UPCXX_BACKEND=gasnet_par required."
+#if !UPCXX_THREADMODE
+  #error "UPCXX_THREADMODE=par required."
 #endif
 
 using namespace std;
@@ -43,7 +43,6 @@ int main(int argc, char *argv[])
   thread * threads[num_threads];
   // declare an agreed upon persona for the progress thread
   upcxx::persona progress_persona;
-  atomic<int> thread_barrier(0);
   int lpc_count = N;
   // liberate the master persona to allow the progress thread to use it
   upcxx::liberate_master_persona();
@@ -59,8 +58,6 @@ int main(int argc, char *argv[])
         upcxx::progress();
       }
       cout<<"Progress thread on process "<<upcxx::rank_me()<<" is done"<<endl; 
-      // unlock the other threads
-      thread_barrier += 1;
       });
   // launch multiple threads to perform find operations
   for (int tid=0; tid<num_threads; tid++) {
@@ -73,17 +70,14 @@ int main(int argc, char *argv[])
           string key = to_string((upcxx::rank_me() + 1) % upcxx::rank_n()) + ":" + to_string(i);
           // attach callback, which itself runs a LPC on progress_persona on completion
           dmap.find(key, progress_persona, 
-              [key,&lpc_count](string val) {
+              [key,&lpc_count](const string &val) {
                 assert(val == key);
                 lpc_count--;
               });
         }
-        // block here until the progress thread has executed all RPCs and LPCs
-        while(thread_barrier.load(memory_order_acquire) != 1){
-          sched_yield();
-          upcxx::progress();
-        }
-        });
+        // discharge outgoing find operations before thread exit:
+        upcxx::discharge(); 
+    });
   }
 
   // wait until all threads are done

@@ -73,7 +73,7 @@ struct C {  // NOT standard layout, trivial, NOT POD
   char f1;
   char f2;
   tricksy z;
-  private:
+  protected:
   double x;
 };
 
@@ -137,14 +137,16 @@ namespace perverse {
     void declval();
   }
   template<typename C, typename GP>
-  void check(GP gp) {
+  bool check(GP gp) {
     upcxx::global_ptr<C> gp_f1 = upcxx_memberof(gp, f1);
-    upcxx::global_ptr<C> gp_f2 = upcxx_memberof_unsafe(gp, f2);
+    upcxx::global_ptr<C> gp_f2 = upcxx_experimental_memberof_unsafe(gp, f2);
+    return gp_f1 && gp_f2;
   }
   template<typename C, typename GP>
-  void check_general(GP gp) {
+  bool check_general(GP gp) {
     auto fut1 = upcxx_memberof_general(gp, f1);
     upcxx::global_ptr<C> gp_f1 = fut1.wait();
+    return !!gp_f1;
   }
 } // perverse
 
@@ -197,7 +199,7 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
   int se = 0; // test for single-evaluation
   auto func = [&](){se++; return gp_o;};
   upcxx::global_ptr<char_t> se_test = upcxx_memberof(func(), f0);
-  assert(se == 1);
+  assert(se == 1 && se_test);
   upcxx::barrier();
   #endif
 
@@ -244,13 +246,13 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
 template<typename T>
 struct calc<T,false>{ static void _(upcxx::global_ptr<T> gp_o){
   using char_t = typename match_const<T>::char_type;
-  using tricksy_t = typename match_const<T>::tricksy_type;
+  //using tricksy_t = typename match_const<T>::tricksy_type;
 
   if (!upcxx::rank_me()) std::cout << "Testing non-standard layout..." << std::endl;
-  // upcxx_memberof_unsafe is deliberately unspecified
-  upcxx::global_ptr<char_t> gp_f0 = upcxx_memberof_unsafe(gp_o, f0);
-  upcxx::global_ptr<char_t> gp_f1 = upcxx_memberof_unsafe(gp_o, f1);
-  upcxx::global_ptr<char_t> gp_f2 = upcxx_memberof_unsafe(gp_o, f2);
+  // upcxx_experimental_memberof_unsafe is deliberately unspecified
+  upcxx::global_ptr<char_t> gp_f0 = upcxx_experimental_memberof_unsafe(gp_o, f0);
+  upcxx::global_ptr<char_t> gp_f1 = upcxx_experimental_memberof_unsafe(gp_o, f1);
+  upcxx::global_ptr<char_t> gp_f2 = upcxx_experimental_memberof_unsafe(gp_o, f2);
   assert(gp_f0 && gp_f1 && gp_f2);
   upcxx::global_ptr<char_t> gp_base = upcxx::reinterpret_pointer_cast<char_t>(gp_o);
   ssize_t d0 = gp_f0 - gp_base;
@@ -282,7 +284,7 @@ void check_general(bool has_virtual) {
   // the following is not guaranteed by spec, just tests the known implementation
   bool expect_ready = std::is_standard_layout<T>::value
                       || gp_o.where() == upcxx::rank_me()
-                      #if UPCXX_UNIFORM_LOCAL_VTABLES
+                      #if UPCXXI_UNIFORM_LOCAL_VTABLES
                       || gp_o.is_local()
                       #endif
                       ;
@@ -407,7 +409,7 @@ int main() {
   upcxx::init();
   print_test_header();
 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXX_KIND_CUDA
     cuda_enabled = true;
   #endif
   if (cuda_enabled) {

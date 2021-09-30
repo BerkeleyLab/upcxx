@@ -9,7 +9,7 @@ For information on using UPC++, see: [README.md](README.md)
 ### Supported Platforms
 
 UPC++ makes aggressive use of template meta-programming techniques, and requires
-a modern C++11/14 compiler and corresponding STL implementation.
+a modern C++ compiler and corresponding standard library implementation.
 
 The current release is known to work on the following configurations:
 
@@ -23,8 +23,9 @@ The current release is known to work on the following configurations:
     - g++ 6.4.0 or newer    
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
     - Intel C++ 17.0.2 or newer (with libstdc++ from g++ 6.4.0 or newer)    
-    - PGI C++ 19.1 or newer (with libstdc++ from g++ 6.4.0 or newer), except that
-      PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported  
+    - Intel OneAPI compilers 2021.1.2 or newer (with libstdc++ from g++ 6.4.0 or newer)
+    - PGI C++ 19.1 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
+    - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
@@ -32,8 +33,8 @@ The current release is known to work on the following configurations:
 * Linux/ppc64le (aka IBM POWER little-endian) with one of the following compilers:
     - g++ 6.4.0 or newer
     - clang++ 5.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
-    - PGI C++ 18.10 or newer (with libstdc++ from g++ 6.4.0 or newer), except that
-      PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported  
+    - PGI C++ 18.10 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
+    - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
@@ -82,11 +83,6 @@ The current release is known to work on the following configurations:
       At this time we do not consider these compilers to be officially
       supported due to insufficient periodic automated testing.  
       The presence or absence of a warning from `configure` varies.
-    - NVIDIA HPC SDK compilers (aka PGI 20.7 and newer)  
-      The NVIDIA-branded host compilers (`pgc++` or `nvc++`) are NOT currently
-      supported due to critical bugs.
-      This refers to the host compilers previously branded as PGI, and should
-      not be confused with `nvcc`, the CUDA compiler driver.
 
 ### Miscellaneous software requirements:
 
@@ -208,6 +204,22 @@ with eight concurrent processes.  This may significantly reduce the time
 required. However parallel make can also obscure error messages, so if you
 encounter a failure you should retry without a `-j` option.
 
+Some combinations of network and `configure` options require that `CXX` be
+capable of linking MPI applications.  If that requirement exists but is unmet,
+then this step will fail with output giving instructions to read the section
+[Configuration: Linux](#markdown-header-configuration-linux) in this document,
+where this issue is described in more detail.
+
+The output generated at the successful conclusion of this step gives the
+default network and a list of available networks.  This is an appropriate time
+to verify that the default network is the one you expect to use.  If it is
+not, but it is listed as available, you can specify your preferred network
+to the later `make install` step _without_ starting over.  However, if your
+preferred network is not listed as available, then you will need to return
+to the previous (`configure`) step, where additional arguments or environment
+modules may be required to enable detection of the appropriate headers and/or
+libraries.
+
 #### 3. Testing the UPC\+\+ build (optional)
 
 Though it is not required, we recommend testing the completeness and correctness
@@ -264,7 +276,7 @@ command line to limit the tests run to some subset of the tests built above.
 #### 4. Installing the compiled UPC\+\+ package
 
 ```bash
-make install
+make install [NETWORK=net]
 ```
 
 This will install the UPC\+\+ runtime libraries and accompanying utilities to
@@ -272,6 +284,12 @@ the location specified via `--prefix=...` at configuration time.  If that
 value is not the desired installation location, then `make install
 prefix=<desired-install-directory>` may be used to override the value given at
 configure time.
+
+One may optionally pass `NETWORK=net` (replacing `net` by a supported network
+name) to specify the default network (overriding `--with-default-network=...`
+specified at configure time, if any).  Output at the end of the `all` and
+`check` steps report the default to be used in the absence of an explict
+setting, and the available networks.
 
 #### 5. Testing the install UPC\+\+ package (optional)
 
@@ -326,7 +344,7 @@ pass the appropriate value for your system:
 * `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
 * `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
 
-When Intel compilers are being used (usually the default for these systems),
+When Intel compilers are being used (a common default for these systems),
 `g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
 then you may need to explicitly load a `gcc` environment module, e.g.:
 
@@ -361,23 +379,44 @@ control over how UPC\+\+ is configured can be found in the
 [Advanced Configuration](#markdown-header-advanced-configuration) section below.
 
 By default ibv-conduit (InfiniBand support) will use MPI for job spawning if a
-working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  When this
-occurs, one must pass `--with-cxx=mpicxx` (or similar) to `configure` to ensure
-correct linkage of ibv-conduit executables.  It is then important that GASNet's
-MPI support use a corresponding/compatible `mpicc` and `mpirun`.  In the common
-case, the un-prefixed `mpicc` and `mpirun` in `$PATH` are compatible (ie. same
-vendor/version/ABI) with the provided `--with-cxx=mpicxx`, in which case
-nothing more should be required.  Otherwise, one may need to additionally pass
-options like `--with-mpi-cc='/path/to/compatible/mpicc -options'` and/or
-`--with-mpirun-cmd='/path/to/compatible/mpirun -np %N %C'`.  Please see
-GASNet's mpi-conduit documentation for details.  Alternatively, one may pass
-`--disable-mpi-compat` to disable support for MPI as a job spawner, eliminating
-the need to use an MPI C\+\+ compiler.
+working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  The same is
+true for MPI, OFI and UCX conduits, if these have been enabled.  To ensure that
+UPC\+\+ applications will link when one of these conduits are used, one of three
+options must be chosen.  Failure to do so will typically result in an error
+message at UPC\+\+ build time, directing you to this documentation.
+
+Option 1. The most direct solution is to configure using `--with-cxx=mpicxx` (or
+similar) to ensure correct linking of UPC\+\+ applications which use MPI for job
+spawning.  When one *is* using MPI for job spawning, it is important that
+GASNet's MPI support use a corresponding/compatible `mpicc` and `mpirun`.  In
+the common case, the un-prefixed `mpicc` and `mpirun` in `$PATH` are compatible
+(ie. same vendor/version/ABI) with the provided `--with-cxx=mpicxx`, in which
+case nothing more should be required.  Otherwise, one may need to additionally
+pass options like `--with-mpi-cc='/path/to/compatible/mpicc -options'` and/or
+`--with-mpirun-cmd='/path/to/compatible/mpirun -np %N %C'`.  
+Please see GASNet's mpi-conduit documentation for details.
+
+Option 2. If any of these networks are enabled but are not necessary, one can
+configure using `--disable-[network]` to disable it.  One may wish to select
+this option if there is no corresponding network hardware or no interest in
+using the given network API.  The case of missing hardware can often occur for
+IBV when Linux distros install the corresponding development packages as
+dependencies of other packages.
+
+Option 3. If one does not require MPI for job spawning (because SSH- or
+PMI-based spawning in GASNet are sufficient), then one may configure using
+`--disable-mpi-compat` to eliminate the link-time dependence on MPI.
+Note that this particular option does NOT work for mpi-conduit.
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
 ### Configuration: Apple macOS
+
+On macOS, the default network is "smp": multiple processes running on a single
+host, communicating over shared memory.  One may specify a different default
+using `--with-default-network=...` at configure time.  However, you will also
+have the opportunity to make such a selection at the `make install` step.
 
 On macOS, UPC++ defaults to using the Apple LLVM clang compiler that is part
 of the Xcode Command Line Tools.
@@ -405,6 +444,12 @@ provide additional information.
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
+At the time of writing, UPC++ has beed tested with Developer Beta 7 of macOS 12
+"Monterey", and there are no known platform-specific issues.
+
+At the time of writing, UPC++ has been lightly tested with Apple's Xcode 13 and
+there are no known compiler-specific issues.
+
 ### Configuration: CUDA GPU support
 
 #### System Requirements:
@@ -421,7 +466,7 @@ This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory kinds
 on selected platforms using modern NVIDIA-branded GPUs and Mellanox-branded InfiniBand
 network hardware, when using the native ibv-conduit. Additional requirements:
 
-* Linux OS with x86-64 or ppc64le CPU (not ARM)
+* Linux OS with x86\_64 or ppc64le CPU (not ARM)
 * Recent Mellanox-branded InfiniBand network hardware
 * GPUDirect RDMA drivers installed
 * ibv-conduit built from the current version of GASNet-EX (the default for this release)
@@ -500,24 +545,21 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 
 #### Known problems with GDR-accelerated memory kinds
 
-There are several known defects in the current GASNet GDR Put implementation, arising from
-a mismatch between the vendor's overly weak memory model for GDR transfers and 
-traditional RMA Put completion semantics. This UPC++ version includes a workaround
-for these defects that automatically converts Put-like `upcxx::copy` operations into
-use of wire-level GDR Gets from the target rank. This workaround is automatically
-enabled for runs using multi-rail InfiniBand or PSHM shared-memory bypass which are
-known to be affected.  The workaround can also be explicitly controlled by
-setting envvar `UPCXX_BUG4148_WORKAROUND` to 0 or 1.  For details on this GDR
-defect, see the following GASNet bug report:
+Older versions of GASNet-EX, including those embedded in UPC++ releases prior to
+2021.9.0, had multiple known defects in the GASNet GDR Put implementation and an
+issue with incorrectly early source completion of GDR Puts.  To the best of our
+knowledge, these problems have all been resolved.  For more information see:
 
 * [bug 4148: GDR and multi-rail or PSHM](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4148)
-
-There is additionally an issue with incorrectly early source completion of GDR Puts:
-
 * [bug 4150: GDR Put source completion](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4150)
 
-if encountered, this problem can be avoided by explicitly setting `UPCXX_BUG4148_WORKAROUND=1`
-to activate the same workaround (which is effective for both problems).
+UPC++ still retains a workaround for those defects that converts Put-like
+`upcxx::copy` operations into use of wire-level GDR Gets from the target rank.
+This workaround is automatically enabled for runs using GASNet-EX versions old
+enough to have these defects, when also using multi-rail InfiniBand or PSHM
+shared-memory bypass (which are known to have been affected).  However, the
+workaround can also be explicitly controlled by setting envvar
+`UPCXX_BUG4148_WORKAROUND` to 0 or 1.
 
 Finally, there is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
 causes crashes inside the IB Verbs network stack during small gets into device memory on some

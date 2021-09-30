@@ -261,7 +261,7 @@ int main() {
 
             UPCXX_ASSERT_ALWAYS(hunk1v.size() == (size_t)hunk1_n);
             i = hunk1_n;
-            for(upcxx::view<tuple<int,int>> const& x: hunk1v) {
+            for(upcxx::view<tuple<int,int>> x: hunk1v) {
               i--;
               UPCXX_ASSERT_ALWAYS(x.size() == 1u + i*i);
               

@@ -72,30 +72,38 @@ namespace upcxx {
 
     device_allocator(Device &dev, typename Device::template pointer<void> base, std::size_t size):
       detail::device_allocator_core<Device>(
-        (UPCXX_ASSERT_INIT(),UPCXX_ASSERT_ALWAYS_MASTER(),dev), base, size) { }
+        (UPCXXI_ASSERT_INIT(),
+         UPCXXI_ASSERT_ALWAYS_MASTER(),
+         UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ(),
+         dev), base, size) { }
 
     device_allocator(Device &dev, std::size_t size):
       detail::device_allocator_core<Device>(
-        (UPCXX_ASSERT_INIT(),UPCXX_ASSERT_ALWAYS_MASTER(),dev),
-        Device::template null_pointer<void>(), size) { }
+        (UPCXXI_ASSERT_INIT(),
+         UPCXXI_ASSERT_ALWAYS_MASTER(),
+         UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ(),
+         dev), Device::template null_pointer<void>(), size) { }
     
     device_allocator(device_allocator &&that):
       // base class move ctor
       detail::device_allocator_core<Device>::device_allocator_core(
         static_cast<detail::device_allocator_core<Device>&&>(
-          // use comma operator to create a temporary lock_guard surrounding
-          // the invocation of our base class's move ctor
-          (std::lock_guard<detail::par_mutex>(that.lock_), that)
+          ( UPCXXI_ASSERT_MASTER_HELD_IFSEQ(), // required to ensure thread-safety wrt allocate
+            // use comma operator to create a temporary lock_guard surrounding
+            // the invocation of our base class's move ctor
+            std::lock_guard<detail::par_mutex>(that.lock_), 
+            that)
         )
       ) {
     }
 
     template<typename T>
-    UPCXX_NODISCARD
+    UPCXXI_NODISCARD
     global_ptr<T,Device::kind> allocate(std::size_t n=1,
                                         std::size_t align = Device::template default_alignment<T>()) {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       UPCXX_ASSERT(this->is_active(), "device_allocator::allocate() invoked on an inactive device.");
+      UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
       lock_.lock();
       void *ptr = this->seg_.allocate(
           n*sizeof(T),
@@ -116,21 +124,23 @@ namespace upcxx {
 
     template<typename T>
     void deallocate(global_ptr<T,Device::kind> p) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_GPTR_CHK(p);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_GPTR_CHK(p);
       if(p) {
         UPCXX_ASSERT(this->is_active(), "device_allocator::daallocate() invoked on an inactive device.");
-        UPCXX_ASSERT(p.UPCXX_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
-                     p.UPCXX_INTERNAL_ONLY(rank_) == upcxx::rank_me());
+        UPCXX_ASSERT(p.UPCXXI_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
+                     p.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me());
+        UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
         lock_.lock();
-        this->seg_.deallocate(p.UPCXX_INTERNAL_ONLY(raw_ptr_));
+        this->seg_.deallocate(p.UPCXXI_INTERNAL_ONLY(raw_ptr_));
         lock_.unlock();
       }
     }
 
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     global_ptr<T,Device::kind> to_global_ptr(typename Device::template pointer<T> p) const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       if (p == Device::template null_pointer<T>()) return global_ptr<T,Device::kind>();
 
       UPCXX_ASSERT(this->is_active(), "device_allocator::to_global_ptr() invoked on an inactive device.");
@@ -144,8 +154,9 @@ namespace upcxx {
 
     #if 0 // removed from spec
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     global_ptr<T,Device::kind> try_global_ptr(typename Device::template pointer<T> p) const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
       if (p == Device::template null_pointer<T>()) return global_ptr<T,Device::kind>();
 
       UPCXX_ASSERT(this->is_active(), "device_allocator::try_global_ptr() invoked on an inactive device.");
@@ -161,32 +172,36 @@ namespace upcxx {
     #endif
     
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     static typename Device::id_type device_id(global_ptr<T,Device::kind> gp) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_GPTR_CHK(gp);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_GPTR_CHK(gp);
       UPCXX_ASSERT(gp.is_null() || gp.where() == upcxx::rank_me());
       if (!gp) return Device::invalid_device_id;
       else {
-        backend::heap_state *hs =
-          backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+        #if UPCXXI_ASSERT_ENABLED // issue 468: avoid unused-variable warning
+          backend::heap_state *hs = backend::heap_state::get(gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
+        #endif
         UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
           "device_allocator::device_id() invoked with a pointer from an inactive device.");
         return Device::device_id(detail::internal_only(),
-                                 gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+                                 gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
       }
     }
     
     template<typename T>
+    UPCXXI_ATTRIB_PURE
     static typename Device::template pointer<T> local(global_ptr<T,Device::kind> gp) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_GPTR_CHK(gp);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_GPTR_CHK(gp);
       if (!gp) return Device::template null_pointer<T>();
       UPCXX_ASSERT(gp.where() == upcxx::rank_me());
-      backend::heap_state *hs =
-        backend::heap_state::get(gp.UPCXX_INTERNAL_ONLY(heap_idx_));
+      #if UPCXXI_ASSERT_ENABLED // issue 468: avoid unused-variable warning
+        backend::heap_state *hs = backend::heap_state::get(gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
+      #endif
       UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
         "device_allocator::device_id() invoked with a pointer from an inactive device.");
-      return gp.UPCXX_INTERNAL_ONLY(raw_ptr_);
+      return gp.UPCXXI_INTERNAL_ONLY(raw_ptr_);
     }
   };
 }

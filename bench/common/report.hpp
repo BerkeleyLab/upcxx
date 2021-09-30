@@ -4,9 +4,7 @@
 #include "row.hpp"
 #include "os_env.hpp"
 
-#if UPCXX_BACKEND
-  #include <upcxx/upcxx.hpp>
-#endif
+#include <upcxx/upcxx.hpp>
 
 #include <cstring>
 #include <ctime>
@@ -63,9 +61,7 @@ namespace bench {
     args = os_env<std::string>("report_args", "");
     filename = os_env<std::string>("report_file", "report.out");
     
-    #if UPCXX_BACKEND
-      args = "ranks=" + std::to_string(upcxx::rank_n()) + "," + args;
-    #endif
+    args = "ranks=" + std::to_string(upcxx::rank_n()) + "," + args;
 
     if(filename == "-")
       f = &std::cout;

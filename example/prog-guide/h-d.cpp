@@ -1,7 +1,7 @@
 //SNIPPET
 #include <upcxx/upcxx.hpp>
 #include <iostream>
-#if !UPCXX_CUDA_ENABLED
+#if !UPCXX_KIND_CUDA
 #error "This example requires UPC++ to be built with CUDA support."
 #endif
 using namespace std;
@@ -10,12 +10,12 @@ using namespace upcxx;
 int main() {
   upcxx::init();
 
-  std::size_t segsize = 4*1024*1024; // 4MB
+  std::size_t segsize = 4*1024*1024; // 4 MiB
   auto gpu_device = upcxx::cuda_device( 0 ); // open device 0
   auto gpu_alloc = // alloc GPU segment
        upcxx::device_allocator<upcxx::cuda_device>(gpu_device, segsize); 
 
-  // alloc an array of 1024 doubles on GPU and host
+  // alloc some arrays of 1024 doubles on GPU and host
   global_ptr<double,memory_kind::cuda_device> gpu_array = gpu_alloc.allocate<double>(1024);
   global_ptr<double> host_array1 = new_array<double>(1024);
   global_ptr<double> host_array2 = new_array<double>(1024);

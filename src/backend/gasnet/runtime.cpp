@@ -49,11 +49,11 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////
 
-#if UPCXX_BACKEND_GASNET_SEQ && !GASNET_SEQ
+#if UPCXXI_BACKEND_GASNET_SEQ && !GASNET_SEQ
     #error "This backend is gasnet-seq only!"
 #endif
 
-#if UPCXX_BACKEND_GASNET_PAR && !GASNET_PAR
+#if UPCXXI_BACKEND_GASNET_PAR && !GASNET_PAR
     #error "This backend is gasnet-par only!"
 #endif
 
@@ -95,13 +95,7 @@ bool backend::heap_state::bug4148_workaround_ = false; // set by heap_state::ini
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
 
-#if GASNET_CONDUIT_SMP
-  const bool backend::all_ranks_definitely_local = true;
-#else
-  const bool backend::all_ranks_definitely_local = false;
-#endif
-
-intrank_t backend::pshm_peer_lb;
+intrank_t backend::pshm_peer_lb_;
 intrank_t backend::pshm_peer_ub;
 intrank_t backend::pshm_peer_n;
 
@@ -119,7 +113,7 @@ sheap_footprint_t gasnet::sheap_footprint_rdzv;
 sheap_footprint_t gasnet::sheap_footprint_misc;
 sheap_footprint_t gasnet::sheap_footprint_user;
   
-#if UPCXX_BACKEND_GASNET_SEQ
+#if UPCXXI_BACKEND_GASNET_SEQ
   handle_cb_queue gasnet::master_hcbs;
 #endif
 
@@ -132,7 +126,7 @@ namespace {
   unique_ptr<uintptr_t[/*local_team.size()*/]> pshm_owner_vbase;
   unique_ptr<intrank_t[/*local_team.size()*/]> pshm_owner_peer;
 
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if UPCXXI_BACKEND_GASNET_SEQ
     // Set by the thread which initiates gasnet since in SEQ only that thread
     // may invoke gasnet.
     void *gasnet_seq_thread_id = nullptr;
@@ -155,10 +149,10 @@ namespace {
 namespace {
   // we statically allocate the top of the AM handler space, 
   // to improve interoperability with UPCR that uses the bottom
-  #define UPCXX_NUM_AM_HANDLERS 8
-  #define UPCXX_AM_INDEX_BASE   (256 - UPCXX_NUM_AM_HANDLERS)
+  #define UPCXXI_NUM_AM_HANDLERS 8
+  #define UPCXXI_AM_INDEX_BASE   (256 - UPCXXI_NUM_AM_HANDLERS)
   enum {
-    id_am_eager_restricted = UPCXX_AM_INDEX_BASE,
+    id_am_eager_restricted = UPCXXI_AM_INDEX_BASE,
     id_am_eager_master,
     id_am_eager_persona,
     id_am_bcast_master_eager,
@@ -168,8 +162,8 @@ namespace {
     id_am_reply_cb,
     _id_am_endpost
   };
-  static_assert(UPCXX_AM_INDEX_BASE >= GEX_AM_INDEX_BASE, "Incorrect UPCXX_AM_INDEX_BASE");
-  static_assert((int)_id_am_endpost - UPCXX_AM_INDEX_BASE == UPCXX_NUM_AM_HANDLERS, "Incorrect UPCXX_NUM_AM_HANDLERS");
+  static_assert(UPCXXI_AM_INDEX_BASE >= GEX_AM_INDEX_BASE, "Incorrect UPCXXI_AM_INDEX_BASE");
+  static_assert((int)_id_am_endpost - UPCXXI_AM_INDEX_BASE == UPCXXI_NUM_AM_HANDLERS, "Incorrect UPCXXI_NUM_AM_HANDLERS");
     
   void am_eager_restricted(gex_Token_t, void *buf, size_t buf_size, gex_AM_Arg_t buf_align);
   void am_eager_master(gex_Token_t, void *buf, size_t buf_size, gex_AM_Arg_t buf_align_and_level);
@@ -266,7 +260,7 @@ namespace {
 
 void upcxx::backend::heap_state::init() {
   heap_state::use_mk_ = false 
-  #if UPCXX_CUDA_ENABLED
+  #if UPCXXI_CUDA_ENABLED
      || upcxx::cuda::use_mk()
   #endif
   /* || otherkind::use_mk() ... */;
@@ -275,8 +269,9 @@ void upcxx::backend::heap_state::init() {
   // until GASNet grows the ability to recycle endpoints
   heap_state::recycle = !heap_state::use_mk_;
 
-  #if UPCXX_CUDA_USE_MK
-    #if UPCXX_NETWORK_IBV
+  #if UPCXXI_CUDA_USE_MK
+    // GASNet-EX versions < 2021.8.3 suffered from bug4148
+    #if UPCXX_NETWORK_IBV && UPCXXI_GEX_VERSION < 20210803
       gex_Rank_t num_nbrhd;
       gex_System_QueryMyPosition(&num_nbrhd, 0, 0, 0);
       UPCXX_ASSERT(intrank_t(num_nbrhd) <= backend::rank_n);
@@ -304,13 +299,14 @@ namespace {
   size_t local_scratch_sz = 0;
   void  *local_scratch_ptr = nullptr;
 
-  bool upcxx_use_upc_alloc = true;
-  bool upcxx_upc_heap_coll = false;
+  bool use_upc_alloc = true;
+  bool upc_heap_coll = false;
 
   bool   shared_heap_isinit = false;
   void  *shared_heap_base = nullptr;
   size_t shared_heap_sz = 0;
 
+  GASNETT_COLD
   void heap_init_internal(size_t &size, noise_log &noise) {
     UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
 
@@ -321,43 +317,43 @@ namespace {
     );
     UPCXX_ASSERT_ALWAYS(ok == GASNET_OK);
 
-    if (upcxx_upc_is_linked()) {
+    if (upcxxi_upc_is_linked()) {
       static bool firstcall = true;
       if (firstcall) {
         firstcall = false;
         // UPCXX_USE_UPC_ALLOC enables the use of the UPC allocator to replace our allocator
-        upcxx_use_upc_alloc = os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxx_upc_is_pthreads() || upcxx_use_upc_alloc));
-        if (upcxx_upc_is_pthreads() && !upcxx_use_upc_alloc) {
+        use_upc_alloc = os_env<bool>("UPCXX_USE_UPC_ALLOC" , (upcxxi_upc_is_pthreads() || use_upc_alloc));
+        if (upcxxi_upc_is_pthreads() && !use_upc_alloc) {
           noise.warn() << "UPCXX_USE_UPC_ALLOC=no is not supported in UPC -pthreads mode. Forcing UPCXX_USE_UPC_ALLOC=yes";
-          upcxx_use_upc_alloc = 1;
+          use_upc_alloc = 1;
         }
-        if (!upcxx_use_upc_alloc) {
+        if (!use_upc_alloc) {
           // UPCXX_UPC_HEAP_COLL: selects the use of the collective or non-collective UPC shared heap to host the UPC++ allocator
-          upcxx_upc_heap_coll = os_env<bool>("UPCXX_UPC_HEAP_COLL" , upcxx_upc_heap_coll);
+          upc_heap_coll = os_env<bool>("UPCXX_UPC_HEAP_COLL" , upc_heap_coll);
         }
       }
       if (local_scratch_sz && !local_scratch_ptr) { 
         // allocate local scratch separately from the heap to ensure it persists
         // we do this before segment allocation to prevent fragmentation issues
-        if (upcxx_upc_is_pthreads()) // cannot use all_alloc with -pthreads
-             local_scratch_ptr = upcxx_upc_alloc(local_scratch_sz);
-        else local_scratch_ptr = upcxx_upc_all_alloc(local_scratch_sz);
+        if (upcxxi_upc_is_pthreads()) // cannot use all_alloc with -pthreads
+             local_scratch_ptr = upcxxi_upc_alloc(local_scratch_sz);
+        else local_scratch_ptr = upcxxi_upc_all_alloc(local_scratch_sz);
       }
-      if (upcxx_use_upc_alloc) {
+      if (use_upc_alloc) {
         shared_heap_base = segment_base;
         size = segment_size;
       } else {
-        if (upcxx_upc_heap_coll) shared_heap_base = upcxx_upc_all_alloc(size);
-        else shared_heap_base = upcxx_upc_alloc(size);
+        if (upc_heap_coll) shared_heap_base = upcxxi_upc_all_alloc(size);
+        else shared_heap_base = upcxxi_upc_alloc(size);
       }
     } else { // stand-alone UPC++
-      upcxx_use_upc_alloc = false;
+      use_upc_alloc = false;
       size = segment_size;
       shared_heap_base = segment_base;
     }
     shared_heap_sz = size;
 
-    if (!upcxx_use_upc_alloc) {
+    if (!use_upc_alloc) {
       // init dlmalloc to run over our piece of the segment
       segment_mspace_ = create_mspace_with_base(shared_heap_base, shared_heap_sz, 0);
       // ensure dlmalloc never tries to mmap anything from the system
@@ -382,7 +378,7 @@ namespace {
     }
     shared_heap_isinit = true;
 
-    if (!upcxx_upc_is_linked()) {
+    if (!upcxxi_upc_is_linked()) {
       if (local_scratch_sz && !local_scratch_ptr) { 
         local_scratch_ptr = gasnet::allocate(local_scratch_sz, GASNET_PAGESIZE, &gasnet::sheap_footprint_misc);
         UPCXX_ASSERT_ALWAYS(local_scratch_ptr);
@@ -415,10 +411,11 @@ namespace {
 // creation have undefined behavior. The list of such functions is
 // implementation-defined.
 
+GASNETT_COLD
 void upcxx::experimental::destroy_heap() {
   noise_log noise("upcxx::destroy_heap()");
   
-  UPCXX_ASSERT_ALWAYS_MASTER();
+  UPCXXI_ASSERT_ALWAYS_MASTER();
   UPCXX_ASSERT_ALWAYS(shared_heap_isinit);
   backend::quiesce(upcxx::world(), entry_barrier::user);
 
@@ -429,15 +426,15 @@ void upcxx::experimental::destroy_heap() {
   if(gasnet::sheap_footprint_user.count != 0)
     noise.warn()<<"destroy_heap() called with "<<gasnet::sheap_footprint_user.count<<" live shared objects.";
 
-  if (upcxx_use_upc_alloc) { 
+  if (use_upc_alloc) { 
     noise.warn()<<"destroy_heap() is not supported for UPCXX_USE_UPC_ALLOC=yes" << endl;
   } else {
     destroy_mspace(segment_mspace_);
     segment_mspace_ = 0;
 
-    if (upcxx_upc_is_linked()) {
-      if (upcxx_upc_heap_coll) upcxx_upc_all_free(shared_heap_base);
-      else upcxx_upc_free(shared_heap_base);
+    if (upcxxi_upc_is_linked()) {
+      if (upc_heap_coll) upcxxi_upc_all_free(shared_heap_base);
+      else upcxxi_upc_free(shared_heap_base);
       shared_heap_base = nullptr;
     }
   }
@@ -455,12 +452,13 @@ void upcxx::experimental::destroy_heap() {
 // This collective call over all processes re-initializes the shared heap of 
 // all processes, returning them to a live state.
 
+GASNETT_COLD
 void upcxx::experimental::restore_heap(void) {
-  UPCXX_ASSERT_ALWAYS_MASTER();
+  UPCXXI_ASSERT_ALWAYS_MASTER();
   UPCXX_ASSERT_ALWAYS(!shared_heap_isinit);
   UPCXX_ASSERT_ALWAYS(shared_heap_sz > 0);
 
-  if (upcxx_use_upc_alloc) {
+  if (use_upc_alloc) {
     // unsupported/ignored
   } else {
     noise_log mute = noise_log::muted();
@@ -475,14 +473,15 @@ void upcxx::experimental::restore_heap(void) {
 ////////////////////////////////////////////////////////////////////////
 // from: upcxx/backend.hpp
 
+GASNETT_COLD
 void upcxx::init() {
-  UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
   if(0 != backend::init_count++)
     return;
 
   static int first_init = 1;
   if (!first_init) 
-    UPCXX_FATAL_ERROR("This implementation does not currently support re-initialization "
+    UPCXXI_FATAL_ERROR("This implementation does not currently support re-initialization "
       "of the UPC++ library after it has been completely finalized in a given process.\n\n"
       "If this capability is important to you, please contact us!");
   first_init = 0;
@@ -491,7 +490,7 @@ void upcxx::init() {
   
   int ok;
 
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if UPCXXI_BACKEND_GASNET_SEQ
     gasnet_seq_thread_id = upcxx::detail::thread_id();
   #endif
   detail::persona_tls &tls = detail::the_persona_tls;
@@ -500,8 +499,8 @@ void upcxx::init() {
   gex_Client_t client;
   gex_Segment_t segment;
 
-  if (upcxx_upc_is_linked()) {
-    upcxx_upc_init(&client, &endpoint0, &world_tm);
+  if (upcxxi_upc_is_linked()) {
+    upcxxi_upc_init(&client, &endpoint0, &world_tm);
   } else { 
     // issue 419: we clear init across gex_Client_Init so that any processes forked 
     // inside this call don't appear to have an initialized UPC++ library, unless they 
@@ -526,11 +525,40 @@ void upcxx::init() {
   backend::gasnet::watermark_init();
 
   //////////////////////////////////////////////////////////////////////////////
+  // issue 495: forbid GASNet-level progress threads in SEQ mode
+  #if UPCXXI_BACKEND_GASNET_SEQ && GASNET_HIDDEN_AM_CONCURRENCY_LEVEL 
+    // static information indicates GASNet MIGHT have a progress thread
+    bool maybe_progress_thread = true;
+
+    // bug 4330: GASNet versions prior to 2021.8.5 botch the GASNET_HIDDEN_AM_CONCURRENCY_LEVEL define for ibv-conduit
+    // this clause can be removed once we raise GEX floor to 2021.9.0:
+    #if GASNET_CONDUIT_IBV && UPCXXI_GEX_VERSION < 20210805 // if this is an affected ibv-conduit version 
+      #if GASNETC_IBV_RCV_THREAD  // bug 4330: this GASNet internal symbol gives the correct value
+        maybe_progress_thread = true;
+      #else
+        maybe_progress_thread = false;
+      #endif
+    #endif
+
+    #if UPCXXI_GEX_VERSION >= 20210807
+      // 2021.8.7 added a direct dynamic query
+      maybe_progress_thread = bool(gex_System_QueryHiddenAMConcurrencyLevel());
+    #endif
+
+    if (maybe_progress_thread) 
+      UPCXXI_FATAL_ERROR(
+        "UPC++ currently does not support GASNet-level progress threads when using threadmode=seq, "
+        "and this unsupported feature appears to be enabled.\n"
+        "Please see GASNet documentation for configure or envvar knobs to disable that feature.\n"
+        "For details, see issue 495."
+      );
+  #endif
+  //////////////////////////////////////////////////////////////////////////////
   // UPCXX_SHARED_HEAP_SIZE environment handling
 
   // Determine a bound on the max usable shared segment size
   size_t gasnet_max_segsize = gasnet_getMaxLocalSegmentSize();
-  if (upcxx_upc_is_linked()) {
+  if (upcxxi_upc_is_linked()) {
     gasnet_max_segsize = gasnet_getMaxGlobalSegmentSize();
     size_t upc_segment_pad = 16*1024*1024; // TODO: replace this hack
     UPCXX_ASSERT_ALWAYS(gasnet_max_segsize > upc_segment_pad);
@@ -578,7 +606,7 @@ void upcxx::init() {
 
   // ready master persona
   backend::initial_master_scope = new persona_scope(backend::master);
-  UPCXX_ASSERT_ALWAYS_MASTER();
+  UPCXXI_ASSERT_ALWAYS_MASTER();
   
   // Build team upcxx::world()
   ::new(detail::the_world_team.raw()) upcxx::team(
@@ -589,7 +617,7 @@ void upcxx::init() {
   );
   
   // Create the GEX segment
-  if (upcxx_upc_is_linked()) {
+  if (upcxxi_upc_is_linked()) {
     if(backend::verbose_noise)
       noise.line() << "Activating interoperability support for the Berkeley UPC Runtime.";
   } else {
@@ -604,11 +632,11 @@ void upcxx::init() {
   //////////////////////////////////////////////////////////////////////////////
   // Determine RPC Eager/Rendezvous Threshold
  
-  #define UPCXX_MAX_RPC_AM_ARGS 3
+  #define UPCXXI_MAX_RPC_AM_ARGS 3
   size_t fpam_medium_size = gex_AM_MaxRequestMedium( world_tm, GEX_RANK_INVALID, GEX_EVENT_NOW, 
-                                                     /*flags*/0, UPCXX_MAX_RPC_AM_ARGS);
+                                                     /*flags*/0, UPCXXI_MAX_RPC_AM_ARGS);
   size_t npam_medium_size = gex_AM_MaxRequestMedium( world_tm, GEX_RANK_INVALID, GEX_EVENT_NOW, 
-                                                     GEX_FLAG_AM_PREPARE_LEAST_ALLOC, UPCXX_MAX_RPC_AM_ARGS);
+                                                     GEX_FLAG_AM_PREPARE_LEAST_ALLOC, UPCXXI_MAX_RPC_AM_ARGS);
   // the two values above are usually the same, this is just for paranoia:
   size_t am_medium_size = std::min(fpam_medium_size, npam_medium_size);
   
@@ -654,27 +682,27 @@ void upcxx::init() {
   // compute a default threshold
   // 2020-11: testing across all conduits show that maximizing the eager threshold usually
   //          provides the best microbenchmark performance in practice for network RPC
-  #ifndef UPCXX_RPC_EAGER_THRESHOLD_DEFAULT
+  #ifndef UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT
     #if GASNET_CONDUIT_UCX
       // except on ucx-conduit which peaks around 2kb
-      #define UPCXX_RPC_EAGER_THRESHOLD_DEFAULT 2048
+      #define UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT 2048
     #elif GASNET_CONDUIT_ARIES
       // aries maxmedium defaults to ~4k but can be raised higher via configure
       // 2020-11 testing shows the right crossover is around 8kb on knl and haswell
-      #define UPCXX_RPC_EAGER_THRESHOLD_DEFAULT 8192
+      #define UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT 8192
     #else
-      #define UPCXX_RPC_EAGER_THRESHOLD_DEFAULT am_medium_size
+      #define UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT am_medium_size
     #endif
   #endif
   ENV_THRESH(gasnet::am_size_rdzv_cutover, "UPCXX_RPC_EAGER_THRESHOLD", 
-             std::min(std::size_t(UPCXX_RPC_EAGER_THRESHOLD_DEFAULT),am_medium_size));
+             std::min(std::size_t(UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT),am_medium_size));
 
   // optimal PSHM threshold seems to be around 4KB
-  #ifndef UPCXX_RPC_EAGER_THRESHOLD_LOCAL_DEFAULT
-    #define UPCXX_RPC_EAGER_THRESHOLD_LOCAL_DEFAULT 4096
+  #ifndef UPCXXI_RPC_EAGER_THRESHOLD_LOCAL_DEFAULT
+    #define UPCXXI_RPC_EAGER_THRESHOLD_LOCAL_DEFAULT 4096
   #endif
   ENV_THRESH(gasnet::am_size_rdzv_cutover_local, "UPCXX_RPC_EAGER_THRESHOLD_LOCAL", 
-             std::min(std::size_t(UPCXX_RPC_EAGER_THRESHOLD_LOCAL_DEFAULT),gasnet::am_size_rdzv_cutover)); 
+             std::min(std::size_t(UPCXXI_RPC_EAGER_THRESHOLD_LOCAL_DEFAULT),gasnet::am_size_rdzv_cutover)); 
 
 
   //////////////////////////////////////////////////////////////////////////////
@@ -711,7 +739,7 @@ void upcxx::init() {
     if(backend::verbose_noise)
       noise.line() << "Whole world is in same local team.";
     
-    backend::pshm_peer_lb = 0;
+    backend::pshm_peer_lb_ = 0;
     backend::pshm_peer_ub = backend::rank_n;
     UPCXX_ASSERT_ALWAYS((intrank_t)peer_n == backend::rank_n);
     UPCXX_ASSERT_ALWAYS((intrank_t)peer_me == backend::rank_me);
@@ -719,15 +747,31 @@ void upcxx::init() {
     local_tm = world_tm;
   } else { // !local_is_world
     if(!contiguous_nbhd) {
+      #if !UPCXXI_DISCONTIG
+        if (!peer_me) {
+          UPCXXI_FATAL_ERROR(
+            "Two or more processes are co-located in a GASNet neighborhood with discontiguous rank IDs.\n"
+            "This usually arises when the job spawner is directed to assign processes\n"
+            "to physical nodes in a manner other than a traditional pure-blocked layout.\n"
+            "This mode of operation is strongly discouraged for performance reasons,\n"
+            "and is prohibited by this build of the UPC++ library.\n\n"
+            "Please adjust your job spawning command to select a job layout that\n"
+            "consecutively numbers all the processes launched on a given node.\n\n"
+            "If you are REALLY sure you want to run with a discontiguous job layout,\n"
+            "then you'll need to reconfigure the UPC++ library with option: --enable-discontig-ranks\n"
+            "and please contact the UPC++ maintainers to report your interest in this capability!"
+          );
+        }
+      #endif
       // Discontiguous rank-set is collapsed to singleton set of "me"
-      backend::pshm_peer_lb = backend::rank_me;
+      backend::pshm_peer_lb_ = backend::rank_me;
       backend::pshm_peer_ub = backend::rank_me + 1;
       peer_n = 1;
       peer_me = 0;
     }
     else {
       // True subset local team
-      backend::pshm_peer_lb = nbhd[0].gex_jobrank;
+      backend::pshm_peer_lb_ = nbhd[0].gex_jobrank;
       backend::pshm_peer_ub = nbhd[0].gex_jobrank + peer_n;
     }
   }
@@ -822,7 +866,7 @@ void upcxx::init() {
     );
     delete [] peer_ids;
 
-    if (!upcxx_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
+    if (!upcxxi_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
       gex_TM_SetCData(local_tm, local_scratch_ptr );
   }
   
@@ -856,6 +900,7 @@ void upcxx::init() {
 }
 
 namespace {
+GASNETT_COLD
 void init_localheap_tables(void) {
   const gex_Rank_t peer_n = backend::pshm_peer_n;
 
@@ -881,8 +926,8 @@ void init_localheap_tables(void) {
     local_vbase = reinterpret_cast<char*>(local_vbase_vp);
     UPCXX_ASSERT_ALWAYS(owner_vbase && local_vbase && size);
 
-    if (upcxx_upc_is_linked() && !upcxx_use_upc_alloc) { 
-    #if UPCXX_STRICT_SEGMENT // this logic prevents UPCR shared objects from passing upcxx::try_global_ptr
+    if (upcxxi_upc_is_linked() && !use_upc_alloc) { 
+    #if UPCXXI_STRICT_SEGMENT // this logic prevents UPCR shared objects from passing upcxx::try_global_ptr
       // We have the GEX segment info for the local peer, but
       // the UPC++ shared heap is a subset of the GEX segment.
       // Determine the necessary adjustment to locate our shared heap:
@@ -932,6 +977,7 @@ void init_localheap_tables(void) {
 }
 
 namespace {
+  GASNETT_COLD
   void quiesce_rdzv(bool in_finalize, noise_log &noise) {
     int64_t iters = 0;
     int64_t n;
@@ -975,10 +1021,11 @@ namespace {
   }
 }
 
+GASNETT_COLD
 void upcxx::finalize() {
-  UPCXX_ASSERT_INIT();
-  UPCXX_ASSERT_ALWAYS_MASTER();
-  UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_ALWAYS_MASTER();
+  UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT_ALWAYS(backend::init_count > 0);
   
   if (backend::init_count > 1) {
@@ -1037,7 +1084,7 @@ void upcxx::finalize() {
     #if 0 // local_team scratch is no longer credited as a user allocation
     if(gasnet::handle_of(detail::the_local_team.value()) !=
        gasnet::handle_of(detail::the_world_team.value())
-       && !upcxx_upc_is_linked())
+       && !upcxxi_upc_is_linked())
        live_local -= 1; // minus local_team scratch
     #endif
     
@@ -1055,11 +1102,11 @@ void upcxx::finalize() {
   { // Tear down local_team
     if(gasnet::handle_of(detail::the_local_team.value()) !=
        gasnet::handle_of(detail::the_world_team.value())) {
-       if (upcxx_upc_is_linked()) {
+       if (upcxxi_upc_is_linked()) {
          // local_tm scratch has special handling in UPC mode
          if (local_scratch_ptr) { 
-           if (upcxx_upc_is_pthreads()) upcxx_upc_free(local_scratch_ptr);
-           else upcxx_upc_all_free(local_scratch_ptr);
+           if (upcxxi_upc_is_pthreads()) upcxxi_upc_free(local_scratch_ptr);
+           else upcxxi_upc_all_free(local_scratch_ptr);
            local_scratch_ptr = nullptr;
          }
        }
@@ -1082,7 +1129,7 @@ void upcxx::finalize() {
 }
 
 void upcxx::liberate_master_persona() {
-  UPCXX_ASSERT_INIT();
+  UPCXXI_ASSERT_INIT();
   UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &backend::master);
   UPCXX_ASSERT_ALWAYS(backend::initial_master_scope != nullptr);
   
@@ -1092,15 +1139,16 @@ void upcxx::liberate_master_persona() {
 }
 
 void* upcxx::allocate(size_t size, size_t alignment) {
-  UPCXX_ASSERT_INIT();
-  return gasnet::allocate(size, alignment, &gasnet::sheap_footprint_user);
+  UPCXXI_ASSERT_INIT();
+  return gasnet::allocate_or_null(size, alignment, &gasnet::sheap_footprint_user);
 }
 
 void  upcxx::deallocate(void *p) {
-  UPCXX_ASSERT_INIT();
+  UPCXXI_ASSERT_INIT();
   gasnet::deallocate(p, &gasnet::sheap_footprint_user);
 }
 
+GASNETT_COLD
 std::string upcxx::detail::shared_heap_stats() {
   std::stringstream ss;
   ss
@@ -1117,32 +1165,32 @@ std::string upcxx::detail::shared_heap_stats() {
 }
 
 int64_t upcxx::shared_segment_size() {
-  UPCXX_ASSERT_INIT();
+  UPCXXI_ASSERT_INIT();
   UPCXX_ASSERT(shared_heap_isinit);
   return shared_heap_sz;
 }
 
 int64_t upcxx::shared_segment_used() {
-  UPCXX_ASSERT_INIT();
+  UPCXXI_ASSERT_INIT();
   UPCXX_ASSERT(shared_heap_isinit);
   return gasnet::sheap_footprint_user.bytes
        + gasnet::sheap_footprint_rdzv.bytes
        + gasnet::sheap_footprint_misc.bytes;
 }
   
-void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
+void* gasnet::allocate_or_null(size_t size, size_t alignment, sheap_footprint_t *foot) noexcept {
   UPCXX_ASSERT(shared_heap_isinit);
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
 
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
   void *p;
-  if (upcxx_use_upc_alloc) {
+  if (use_upc_alloc) {
     // must overallocate and pad to ensure alignment
     UPCXX_ASSERT(alignment < 1U<<31);
     alignment = std::max(alignment, (size_t)16);
     UPCXX_ASSERT((alignment & (alignment-1)) == 0); // assumed to be power-of-two
-    uintptr_t base = (uintptr_t)upcxx_upc_alloc(size+alignment);
+    uintptr_t base = (uintptr_t)upcxxi_upc_alloc(size+alignment);
     uintptr_t user = (base+alignment) & ~(alignment-1);
     uintptr_t pad = (user - base);
     UPCXX_ASSERT(pad >= 16 && pad <= alignment);
@@ -1160,36 +1208,26 @@ void* gasnet::allocate(size_t size, size_t alignment, sheap_footprint_t *foot) {
     }
   }
 
-  UPCXX_ASSERT_ALWAYS(
-    p != nullptr || foot == &gasnet::sheap_footprint_user,
-
-    "UPC++ could not allocate an internal buffer of\n"
-    "size="<<size<<" from shared heap. Please increase\n"
-    "the size of the shared heap (UPCXX_SHARED_HEAP_SIZE).\n\n"
-    << detail::shared_heap_stats(); 
-  );
-    
-  //UPCXX_ASSERT(p != nullptr);
   UPCXX_ASSERT(reinterpret_cast<uintptr_t>(p) % alignment == 0);
   return p;
 }
 
 void gasnet::deallocate(void *p, sheap_footprint_t *foot) {
   UPCXX_ASSERT(shared_heap_isinit);
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
 
   std::lock_guard<detail::par_mutex> locked{segment_lock_};
   
   if_pf (!p) return;
   
-  if (upcxx_use_upc_alloc) {
+  if (use_upc_alloc) {
     // parse alignment header to recover original base ptr
     uintptr_t user = reinterpret_cast<uintptr_t>(p);
     UPCXX_ASSERT((user & 0x3) == 0);
     uint64_t pad = *(reinterpret_cast<uint64_t*>(user-8));
     uint64_t foot_size = *(reinterpret_cast<uint64_t*>(user-16));
     uintptr_t base = user-pad;
-    upcxx_upc_free(reinterpret_cast<void *>(base));
+    upcxxi_upc_free(reinterpret_cast<void *>(base));
     foot->bytes -= foot_size;
     foot->count -= 1;
   } else {
@@ -1203,7 +1241,7 @@ void gasnet::deallocate(void *p, sheap_footprint_t *foot) {
 // from: upcxx/backend.hpp
 
 void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
-  UPCXX_ASSERT_MASTER_IFSEQ();
+  UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   switch(eb) {
   case entry_barrier::none:
     break;
@@ -1224,6 +1262,7 @@ void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
         gex_Event_Wait(e);
       } else {
         while(0 != gex_Event_Test(e)) {
+          UPCXXI_SPINLOOP_HINT();
           upcxx::progress(
             eb == entry_barrier::internal
               ? progress_level::internal
@@ -1235,12 +1274,13 @@ void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
       //std::atomic_thread_fence(std::memory_order_acquire);
     } break;
   default:
-    UPCXX_FATAL_ERROR("Invalid entry_barrier value = " << (int)eb);
+    UPCXXI_FATAL_ERROR("Invalid entry_barrier value = " << (int)eb);
   }
 }
 
+GASNETT_COLD
 void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) {
-  UPCXX_ASSERT_MASTER();
+  UPCXXI_ASSERT_MASTER();
   UPCXX_ASSERT(upcxx::in_progress());
 
   static bool warn = os_env<bool>("UPCXX_WARN_COLLECTIVE_IN_PROGRESS", true);
@@ -1266,6 +1306,18 @@ void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) 
      "Please refactor your code and/or request entry_barrier::internal or entry_barrier::none "
      "(where available).", 
      "User-progress collective initiated inside progress", fnname);
+  }
+}
+
+GASNETT_COLD
+void backend::warn_empty_rma(const char *fnname) {
+  static bool warn = os_env<bool>("UPCXX_WARN_EMPTY_RMA", true);
+  if (warn) {
+    say() << "WARNING: Issued a zero-length " << fnname << " operation. "
+          << "This is semantically permitted, but the implementation is currently sub-optimal. "
+          << "If performance of zero-length RMA matters to you, please let us know in issue 484!\n"
+          << "This warning is issued at most once, and may be silenced by setting envvar: UPCXX_WARN_EMPTY_RMA=0";
+    warn = false;
   }
 }
 
@@ -1343,24 +1395,7 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
   return gex_TM_TranslateRankToJobrank(gasnet::handle_of(tm), peer);
 }
 
-#ifndef UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
-#if GASNETI_EX_SPEC_VERSION_MAJOR > 0 || GASNETI_EX_SPEC_VERSION_MINOR >= 13 // This line to be removed soon
-  #define UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB 1 // have gex_EP_QueryBoundSegmentNB
-#endif
-#endif
-#if !UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
-// issue #440: This is a temporary hack, to be replaced once GEX expands segment query.
-// Until then we need to track AM handler context to avoid invoking segment query there.
-// The relevant call in backend::validate_global_ptr is currently only reachable from am_eager_restricted(),
-// so we deploy a point solution for that specific case.
-#ifndef UPCXX_TRACK_AM_CONTEXT
-#define UPCXX_TRACK_AM_CONTEXT UPCXX_ASSERT_ENABLED
-#endif
-#if UPCXX_TRACK_AM_CONTEXT
-static __thread bool inside_am_handler;
-#endif
-#endif
-
+GASNETT_COLD
 void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
                                   memory_kind KindSet, size_t T_align, const char *T_name, 
                                   const char *short_context, const char *context) {
@@ -1418,14 +1453,10 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
       error = true; break;
     }
 
-    #ifndef UPCXX_GPTR_CHECK_SCALE
-      #if UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
-        #define UPCXX_GPTR_CHECK_SCALE INT_MAX // unlimited
-      #else
-        #define UPCXX_GPTR_CHECK_SCALE 1024 // job size limit where we stop bounds-checking remote segs
-      #endif
+    #ifndef UPCXXI_GPTR_CHECK_SCALE
+    #define UPCXXI_GPTR_CHECK_SCALE INT_MAX // unlimited
     #endif
-    if (rank_is_local(rank) || backend::rank_n <= UPCXX_GPTR_CHECK_SCALE) {
+    if (backend::rank_n <= UPCXXI_GPTR_CHECK_SCALE || rank_is_local(rank)) {
       // compute segment bounds
       void *owner_vbase = nullptr;
       size_t size = 0;
@@ -1433,7 +1464,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
       gex_TM_t tm = GEX_TM_INVALID;
       if (heap_idx == 0) { // host memory segment
         if (rank == backend::rank_me // optimization: local device, bounds are trivially available
-            && !upcxx_upc_is_linked()) {  // avoid complications with UPCXX_USE_UPC_ALLOC=0
+            && !upcxxi_upc_is_linked()) {  // avoid complications with UPCXX_USE_UPC_ALLOC=0
           owner_vbase = shared_heap_base;
           size = shared_heap_sz;
         } else tm = world_tm; // not this process, ask GASNet
@@ -1448,15 +1479,12 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           std::tie(owner_vbase, size) = hs->alloc_base->seg_.segment_range();
           UPCXX_ASSERT(owner_vbase && size);
         }
-        #if GEX_SPEC_VERSION_MINOR >= 12 || GEX_SPEC_VERSION_MAJOR 
         else if (backend::heap_state::use_mk()) { // query GEX for remote device EP
           UPCXX_ASSERT(endpoint0 != GEX_EP_INVALID);
           tm = gex_TM_Pair(endpoint0, heap_idx);
         }
-        #endif
       }
 
-    #if UPCXX_GEX_EP_QUERYBOUNDSEGMENTNB
       if (tm != GEX_TM_INVALID) {
         // GEX_FLAG_IMMEDIATE ensures correct operation when called in handler context (issue #440),
         // and also avoids introducing communication in our checking logic
@@ -1475,26 +1503,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           UPCXX_ASSERT(owner_vbase && size);
         }
       }
-    #else // GASNet-EX 0.12 and earlier
-      if (tm != GEX_TM_INVALID &&
-       // issue #440: Cannot call in gex_Segment_QueryBound in AM handler context
-       #if UPCXX_TRACK_AM_CONTEXT
-          !inside_am_handler
-       #else
-          false // unknown context, conservative assumption
-       #endif
-       ) {
-        int result = gex_Segment_QueryBound(tm, rank, &owner_vbase, nullptr, &size);
-        if_pf (result != GASNET_OK) { // can only be remote device heap that does not exist
-          UPCXX_ASSERT(heap_idx > 0);
-          UPCXX_ASSERT(rank != backend::rank_me);
-          ss << pretty_type() << " representation corrupted or stale pointer, "
-             << "heap_idx does not correspond to an active device segment\n";
-          error = true; break;
-        }
-        UPCXX_ASSERT(owner_vbase && size);
-      }
-    #endif
+
       if (owner_vbase) {
         UPCXX_ASSERT(size);
         void *owner_vlim = (void *)(((char*)owner_vbase) + size - 1);
@@ -1530,7 +1539,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
 void *gasnet::prepare_npam_medium(
     intrank_t recipient, std::size_t buf_size, 
     int numargs, std::uintptr_t &npam_nonce) {
-  UPCXX_ASSERT(numargs >= 0 && numargs <= UPCXX_MAX_RPC_AM_ARGS);
+  UPCXX_ASSERT(numargs >= 0 && numargs <= UPCXXI_MAX_RPC_AM_ARGS);
   UPCXX_ASSERT(buf_size <= gex_AM_MaxRequestMedium(world_tm, recipient, GEX_EVENT_NOW, GEX_FLAG_AM_PREPARE_LEAST_ALLOC, numargs));
 
   gex_AM_SrcDesc_t sd = 
@@ -1646,7 +1655,7 @@ namespace {
       Fn fn
     ) {
     
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     auto *cb = gasnet::make_handle_cb(std::move(fn));
     
@@ -1715,6 +1724,7 @@ void gasnet::send_am_rdzv(
   );
 }
 
+GASNETT_COLD
 void gasnet::bcast_am_master_eager(
     progress_level level,
     const upcxx::team &tm,
@@ -1756,6 +1766,7 @@ void gasnet::bcast_am_master_eager(
   gasnet::after_gasnet();
 }
 
+GASNETT_COLD
 void gasnet::bcast_am_master_rdzv(
     progress_level level,
     const upcxx::team &tm,
@@ -2046,12 +2057,13 @@ RpcAsLpc* rpc_as_lpc::build_rdzv_lz(
 }
 
 namespace {
+  GASNETT_HOT
   void burst_cuda(persona *per) {
-  #if UPCXX_CUDA_ENABLED
-    while(cuda::event_cb *cb = per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
+  #if UPCXXI_CUDA_ENABLED
+    while(cuda::event_cb *cb = per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
       if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->cu_event)) {
         CU_CHECK(cuEventDestroy((CUevent)cb->cu_event));
-        per->UPCXX_INTERNAL_ONLY(cuda_state_).event_cbs.dequeue();
+        per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.dequeue();
         cb->execute_and_delete();
       }
       else
@@ -2061,6 +2073,7 @@ namespace {
   }
 }
 
+GASNETT_HOT
 void gasnet::after_gasnet() {
   detail::persona_tls &tls = detail::the_persona_tls;
   
@@ -2077,11 +2090,11 @@ void gasnet::after_gasnet() {
     tls.foreach_active_as_top([&](persona &p) {
       burst_cuda(&p);
       
-      #if UPCXX_BACKEND_GASNET_SEQ
+      #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
           exec_n += gasnet::master_hcbs.burst(/*spinning=*/false);
-      #elif UPCXX_BACKEND_GASNET_PAR
-        exec_n += p.UPCXX_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/false);
+      #elif UPCXXI_BACKEND_GASNET_PAR
+        exec_n += p.UPCXXI_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/false);
       #endif
       
       exec_n += tls.burst_internal(p);
@@ -2102,22 +2115,23 @@ int upcxx::detail::progressing() {
   return the_persona_tls.get_progressing();
 }
 
-void upcxx::progress(progress_level level) {
-  UPCXX_ASSERT_INIT();
-
+template<upcxx::progress_level level>
+static inline void do_progress() {
   detail::persona_tls &tls = detail::the_persona_tls;
   
-  if(tls.get_progressing() >= 0)
-    return;
+  if_pf (tls.get_progressing() >= 0) return;
   tls.set_progressing((int)level);
-  
-  if(level == progress_level::user)
-    tls.flip_burstable(progress_level::user);
+ 
+  UPCXX_ASSERT(!tls.is_burstable(progress_level::user));
+  if (level == progress_level::user)
+    tls.flip_burstable(progress_level::user); // enable
   
   int total_exec_n = 0;
   int exec_n;
+
+  UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
   
-  if(!UPCXX_BACKEND_GASNET_SEQ || gasnet_seq_thread_id == detail::thread_id())
+  if(!UPCXXI_BACKEND_GASNET_SEQ || gasnet_seq_thread_id == detail::thread_id())
     gasnet_AMPoll();
   
   do {
@@ -2126,19 +2140,19 @@ void upcxx::progress(progress_level level) {
     tls.foreach_active_as_top([&](persona &p) {
       burst_cuda(&p);
       
-      #if UPCXX_BACKEND_GASNET_SEQ
+      #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
           exec_n += gasnet::master_hcbs.burst(/*spinning=*/true);
-      #elif UPCXX_BACKEND_GASNET_PAR
-        exec_n += p.UPCXX_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/true);
+      #elif UPCXXI_BACKEND_GASNET_PAR
+        exec_n += p.UPCXXI_INTERNAL_ONLY(backend_state_).hcbs.burst(/*spinning=*/true);
       #endif
       
       exec_n += tls.burst_internal(p);
       
       if(level == progress_level::user) {
-        tls.flip_burstable(progress_level::user);
+        tls.flip_burstable(progress_level::user); // disable
         exec_n += tls.burst_user(p);
-        tls.flip_burstable(progress_level::user);
+        tls.flip_burstable(progress_level::user); // enable
       }
     });
     
@@ -2148,6 +2162,8 @@ void upcxx::progress(progress_level level) {
   while(total_exec_n < 1000 && exec_n != 0);
   //while(0);
   
+  UPCXXI_ASSERT_NOEXCEPTIONS_END
+
   if(oversubscribed) {
     /* In SMP tests we typically oversubscribe ranks to cpus. This is
      * an attempt at heuristically determining if this rank is just
@@ -2169,8 +2185,18 @@ void upcxx::progress(progress_level level) {
     }
   }
   
-  tls.flip_burstable(progress_level::user);
+  if(level == progress_level::user)
+    tls.flip_burstable(progress_level::user); // disable
   tls.set_progressing(-1);
+}
+
+GASNETT_HOT
+void upcxx::detail::progress_user() {
+  do_progress<progress_level::user>();
+}
+GASNETT_HOT
+void upcxx::detail::progress_internal() {
+  do_progress<progress_level::internal>();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -2191,19 +2217,10 @@ namespace {
       std::memcpy((void**)tmp, (void**)buf, buf_size);
     }
 
-    #if UPCXX_TRACK_AM_CONTEXT // issue #440
-      UPCXX_ASSERT(!inside_am_handler);
-      inside_am_handler = true;
-    #endif
-
     gasnet::rpc_as_lpc dummy;
     dummy.payload = tmp;
     dummy.is_rdzv = false;
     command<detail::lpc_base*>::get_executor(detail::serialization_reader(tmp))(&dummy);
-
-    #if UPCXX_TRACK_AM_CONTEXT
-      inside_am_handler = false; 
-    #endif
 
     if(tmp != buf)
       std::free(tmp);
@@ -2228,7 +2245,7 @@ namespace {
       backend::master,
       level_user ? progress_level::user : progress_level::internal,
       m,
-      /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+      /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
     );
   }
   
@@ -2261,7 +2278,7 @@ namespace {
       *per,
       level_user ? progress_level::user : progress_level::internal,
       m,
-      /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+      /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
     );
   }
   
@@ -2281,7 +2298,7 @@ namespace {
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
-    constexpr auto known_active = std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>();
+    constexpr auto known_active = std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>();
     
     tls.defer(
       backend::master,
@@ -2463,7 +2480,7 @@ namespace {
       backend::master,
       level_user ? progress_level::user : progress_level::internal,
       m,
-      /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+      /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
     );
 
     if(!(reply_cb_lo == 0x0 && reply_cb_hi == 0x0))
@@ -2528,7 +2545,7 @@ namespace {
         backend::master,
         cmd_level ? progress_level::user : progress_level::internal,
         st,
-        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+        /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
       );
       
       if(!(reply_cb_lo == 0x0 && reply_cb_hi == 0x0))
@@ -2597,7 +2614,7 @@ namespace {
         backend::master,
         cmd_level ? progress_level::user : progress_level::internal,
         st,
-        /*known_active=*/std::integral_constant<bool, !UPCXX_BACKEND_GASNET_PAR>()
+        /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>()
       );
       
       if(!(reply_cb_lo == 0x0 && reply_cb_hi == 0x0))
@@ -2613,6 +2630,7 @@ namespace {
 
 ////////////////////////////////////////////////////////////////////////
 
+GASNETT_HOT
 inline int handle_cb_queue::burst(bool maybe_spinning) {
   // Gasnet present's its asynchrony through pollable handles which is
   // problematic for us since we need to guess a good strategy for choosing
@@ -2711,12 +2729,12 @@ namespace upcxx { namespace experimental {
 ////////////////////////////////////////////////////////////////////////
 // Other library ident strings live in watermark.cpp
 
-GASNETT_IDENT(UPCXX_IdentString_Network, "$UPCXXNetwork: " _STRINGIFY(GASNET_CONDUIT_NAME) " $");
+GASNETT_IDENT(UPCXXI_IdentString_Network, "$UPCXXNetwork: " _STRINGIFY(GASNET_CONDUIT_NAME) " $");
 
 // requires cuda_internal.hpp
-#if UPCXX_CUDA_USE_MK
-  GASNETT_IDENT(UPCXX_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 1 $");
+#if UPCXXI_CUDA_USE_MK
+  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 1 $");
 #else
-  GASNETT_IDENT(UPCXX_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 0 $");
+  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 0 $");
 #endif
 

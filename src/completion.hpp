@@ -10,6 +10,15 @@
 
 #include <tuple>
 
+#ifndef UPCXX_DEFER_COMPLETION
+  #define UPCXX_DEFER_COMPLETION 0 // default is eager
+#endif
+#if UPCXX_DEFER_COMPLETION
+  #define UPCXXI_EAGER_DEFAULT false
+#else
+  #define UPCXXI_EAGER_DEFAULT true
+#endif
+
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////////////
   /* Event names for common completion events as used by rput/rget etc. This
@@ -51,18 +60,22 @@ namespace upcxx {
 
   namespace detail {
   // Future completion to be fulfilled during given progress level
-  template<typename Event, progress_level level = progress_level::user>
+  // If eager is true, then fulfillment can be done eagerly and need
+  // not be deferred until the given progress level
+  template<typename Event, bool eager, progress_level level = progress_level::user>
   struct future_cx {
     using event_t = Event;
-    using deserialized_cx = future_cx<Event,level>;
+    using deserialized_cx = future_cx<Event,eager,level>;
     // stateless
   };
 
   // Promise completion
-  template<typename Event, typename ...T>
+  // If eager is true, then fulfillment can be done eagerly and need
+  // not be deferred until user progress
+  template<typename Event, bool eager, typename ...T>
   struct promise_cx {
     using event_t = Event;
-    using deserialized_cx = promise_cx<Event,T...>;
+    using deserialized_cx = promise_cx<Event,eager,T...>;
     detail::promise_shref<T...> pro_;
   };
 
@@ -330,7 +343,7 @@ namespace upcxx {
               detail::type_respects_static_size_limit,
               typename binding<Args>::on_wire_type...
             >::value,
-          UPCXX_STATIC_ASSERT_RPC_MSG(remote_cx::as_rpc)
+          UPCXXI_STATIC_ASSERT_RPC_MSG(remote_cx::as_rpc)
         );
 
       using type = completions<
@@ -346,16 +359,37 @@ namespace upcxx {
   namespace detail {
     template<typename Event>
     struct support_as_future {
-      static constexpr completions<future_cx<Event>> as_future() {
-        return {future_cx<Event>{}};
+      static constexpr completions<future_cx<Event, UPCXXI_EAGER_DEFAULT>> as_future() {
+        return {future_cx<Event, UPCXXI_EAGER_DEFAULT>{}};
+      }
+      static constexpr completions<future_cx<Event, false>> as_defer_future() {
+        return {future_cx<Event, false>{}};
+      }
+      static constexpr completions<future_cx<Event, true>> as_eager_future() {
+        return {future_cx<Event, true>{}};
       }
     };
 
     template<typename Event>
     struct support_as_promise {
       template<typename ...T>
-      static constexpr completions<promise_cx<Event, T...>> as_promise(promise<T...> pro) {
-        return {promise_cx<Event, T...>{
+      static constexpr completions<promise_cx<Event, UPCXXI_EAGER_DEFAULT, T...>>
+      as_promise(promise<T...> pro) {
+        return {promise_cx<Event, UPCXXI_EAGER_DEFAULT, T...>{
+          static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
+        }};
+      }
+      template<typename ...T>
+      static constexpr completions<promise_cx<Event, false, T...>>
+      as_defer_promise(promise<T...> pro) {
+        return {promise_cx<Event, false, T...>{
+          static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
+        }};
+      }
+      template<typename ...T>
+      static constexpr completions<promise_cx<Event, true, T...>>
+      as_eager_promise(promise<T...> pro) {
+        return {promise_cx<Event, true, T...>{
           static_cast<promise_shref<T...>&&>(promise_as_shref(pro))
         }};
       }
@@ -408,7 +442,9 @@ namespace upcxx {
     detail::support_as_promise<source_cx_event> {};
   
   struct operation_cx:
-    detail::support_as_blocking<operation_cx_event>,
+    #if UPCXXI_HAS_OPERATION_CX_AS_BLOCKING
+      detail::support_as_blocking<operation_cx_event>,
+    #endif
     detail::support_as_future<operation_cx_event>,
     detail::support_as_lpc<operation_cx_event>,
     detail::support_as_promise<operation_cx_event> {};
@@ -420,9 +456,55 @@ namespace upcxx {
   // operation_cx_as_future_t: default completions for most operations
   namespace detail {
     using operation_cx_as_future_t =
-      completions<future_cx<operation_cx_event>>;
+      completions<future_cx<operation_cx_event, UPCXXI_EAGER_DEFAULT>>;
     using operation_cx_as_internal_future_t =
-      completions<future_cx<operation_cx_event, progress_level::internal>>;
+      completions<future_cx<operation_cx_event, UPCXXI_EAGER_DEFAULT,
+                            progress_level::internal>>;
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // cx_event_done: used to inform completions_returner what event has
+  // already completed, allowing eager futures to be optimized
+
+  namespace detail {
+    namespace help {
+      enum cx_event_flag: int {
+        none_event_flag = 0,
+        source_event_flag = 1 << 0,
+        remote_event_flag = 1 << 1,
+        operation_event_flag = 1 << 2
+      };
+    }
+
+    enum class cx_event_done: int {
+      none = 0,
+      source = help::source_event_flag,
+      remote = help::source_event_flag | // remote implies source
+               help::remote_event_flag,
+      operation = help::source_event_flag | // operation implies source
+                  help::remote_event_flag | // operation implies remote
+                  help::operation_event_flag
+    };
+
+    template<help::cx_event_flag category = help::none_event_flag>
+    struct cx_event_is_done_base {
+      bool operator()(cx_event_done value) {
+        return static_cast<bool>(static_cast<int>(value) &
+                                 static_cast<int>(category));
+      }
+    };
+
+    template<typename Event>
+    struct cx_event_is_done: cx_event_is_done_base<> {};
+    template<>
+    struct cx_event_is_done<source_cx_event>:
+      cx_event_is_done_base<help::source_event_flag> {};
+    template<>
+    struct cx_event_is_done<remote_cx_event>:
+      cx_event_is_done_base<help::remote_event_flag> {};
+    template<>
+    struct cx_event_is_done<operation_cx_event>:
+      cx_event_is_done_base<help::operation_event_flag> {};
   }
 
   //////////////////////////////////////////////////////////////////////
@@ -453,7 +535,7 @@ namespace upcxx {
     template<typename Kind1, typename ...T1, typename Kind2, typename ...T2>
     auto cx_result_combine(future1<Kind1, T1...> &&v1,
                            future1<Kind2, T2...> &&v2)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         detail::when_all_fast(std::forward<future1<Kind1, T1...>>(v1),
                               std::forward<future1<Kind2, T2...>>(v2))
       ) {
@@ -476,7 +558,7 @@ namespace upcxx {
     }
     template<typename Fn>
     auto call_convert_non_future(Fn &&fn, std::true_type/* returns_future*/)
-      UPCXX_RETURN_DECLTYPE(static_cast<Fn&&>(fn)()) {
+      UPCXXI_RETURN_DECLTYPE(static_cast<Fn&&>(fn)()) {
       return static_cast<Fn&&>(fn)();
     }
 
@@ -563,7 +645,12 @@ namespace upcxx {
   // Specializations should look like:
   template<typename Event, typename ...T>
   struct cx_state<whatever_cx<Event>, std::tuple<T...>> {
-    // There will be exatcly one call to one of the following functions before
+    void set_done(cx_event_done) {
+      // This function sets the done state of this completion for eager
+      // optimization.
+    }
+
+    // There will be exactly one call to one of the following functions before
     // this state destructs...
 
     void operator()(T...) {
@@ -572,6 +659,10 @@ namespace upcxx {
       // Event has been satisfied so fire this action, Must work in any progress
       // context. Notice event values are taken sans-reference since an event
       // may have multiple "listeners", each should get a private copy.
+    }
+
+    void cancel() {
+      // Operation is being cancelled, perform cleanup actions only
     }
     
     lpc_dormant<T...> to_lpc_dormant(lpc_dormant<T...> *tail) && {
@@ -588,40 +679,87 @@ namespace upcxx {
     
     template<typename Event>
     struct cx_state<buffered_cx<Event>, std::tuple<>> {
+      void set_done(cx_event_done) {}
       cx_state(buffered_cx<Event>) {}
       void operator()() {}
+      void cancel() {}
     };
     
     template<typename Event>
     struct cx_state<blocking_cx<Event>, std::tuple<>> {
+      void set_done(cx_event_done) {}
       cx_state(blocking_cx<Event>) {}
       void operator()() {}
+      void cancel() {}
     };
     
-    template<typename Event, progress_level level, typename ...T>
-    struct cx_state<future_cx<Event,level>, std::tuple<T...>> {
-      future_header_promise<T...> *pro_; // holds ref, no need to drop it in destructor since we move out it in either operator() ro to_lpc_dormant
+    // wrapper around make_future<>() that type checks when T... is
+    // nonempty
+    template<typename ...T>
+    future<T...> make_ready_empty_future() {
+      // this should never be used
+      UPCXXI_FATAL_ERROR("make_ready_empty_future<T...>() called with nonempty T");
+      return {};
+    }
+    template<>
+    inline future<> make_ready_empty_future() {
+      return make_future<>();
+    }
 
-      cx_state(future_cx<Event,level>):
-        pro_(new future_header_promise<T...>) {
+    template<typename Event, bool eager, progress_level level, typename ...T>
+    struct cx_state<future_cx<Event,eager,level>, std::tuple<T...>> {
+      future_header_promise<T...> *pro_; // holds ref, no need to drop it in destructor since we move out it in either operator() ro to_lpc_dormant
+      #if UPCXXI_ASSERT_ENABLED
+        bool get_future_invoked = false;
+      #endif
+
+      cx_state(future_cx<Event,eager,level>):
+        pro_(nullptr) {
       }
 
       // completions_returner_head handles cx_state<future_cx> specially and requires
-      // this additional method.
-      future<T...> get_future() const {
+      // this additional method rather than set_done().
+      future<T...> get_future(cx_event_done value) /*const*/ {
+        #if UPCXXI_ASSERT_ENABLED
+          get_future_invoked = true;
+        #endif
+
+        if (eager && sizeof...(T) == 0 && cx_event_is_done<Event>()(value)) {
+          // return ready empty future rather than creating a promise
+          return make_ready_empty_future<T...>();
+        }
+
+        pro_ = new future_header_promise<T...>;
         return detail::promise_get_future(pro_);
       }
       
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
+        UPCXX_ASSERT(pro_, "internal error: pro_ null in to_lpc_dormant");
         return detail::make_lpc_dormant_quiesced_promise<T...>(
           upcxx::current_persona(), progress_level::user, /*move ref*/pro_, tail
         );
       }
       
       void operator()(T ...vals) {
-        backend::fulfill_during<level>(
-          /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
-        );
+        UPCXX_ASSERT(get_future_invoked,
+                     "internal error: operator() called before get_future");
+        if (eager && sizeof...(T) == 0 && !pro_) {
+          // nothing to do if a promise was not allocated by a call to
+          // get_future()
+        } else if (eager) {
+          backend::fulfill_now(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        } else {
+          backend::fulfill_during<level>(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        if (pro_) backend::fulfill_now(/*move ref*/pro_, 1);
       }
     };
 
@@ -630,16 +768,18 @@ namespace upcxx {
     list is empty */
     
     // Case when promise and event have matching (non-empty) type lists T...
-    template<typename Event, typename ...T>
-    struct cx_state<promise_cx<Event,T...>, std::tuple<T...>> {
+    template<typename Event, bool eager, typename ...T>
+    struct cx_state<promise_cx<Event,eager,T...>, std::tuple<T...>> {
       future_header_promise<T...> *pro_; // holds ref
 
-      cx_state(promise_cx<Event,T...> &&cx):
-        pro_(static_cast<promise_cx<Event,T...>&&>(cx).pro_.steal_header()) {
+      cx_state(promise_cx<Event,eager,T...> &&cx):
+        pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {
         detail::promise_require_anonymous(pro_, 1);
       }
-      cx_state(const promise_cx<Event,T...> &cx):
-        cx_state(promise_cx<Event,T...>(cx)) {}
+      cx_state(const promise_cx<Event,eager,T...> &cx):
+        cx_state(promise_cx<Event,eager,T...>(cx)) {}
+
+      void set_done(cx_event_done) {}
 
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
         future_header_promise<T...> *pro = /*move ref*/pro_;
@@ -650,68 +790,127 @@ namespace upcxx {
               /*move ref*/pro, std::tuple<T...>(static_cast<T&&>(results)...)
             );
           },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
           tail
         );
       }
       
       void operator()(T ...vals) {
-        backend::fulfill_during<progress_level::user>(
-          /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
-        );
+        if (eager) {
+          backend::fulfill_now(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        } else {
+          backend::fulfill_during<progress_level::user>(
+            /*move ref*/pro_, std::tuple<T...>(static_cast<T&&>(vals)...)
+          );
+        }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        backend::fulfill_now(/*move ref*/pro_, 1);
       }
     };
     // Case when event type list is empty
-    template<typename Event, typename ...T>
-    struct cx_state<promise_cx<Event,T...>, std::tuple<>> {
+    template<typename Event, bool eager, typename ...T>
+    struct cx_state<promise_cx<Event,eager,T...>, std::tuple<>> {
       future_header_promise<T...> *pro_; // holds ref
 
-      cx_state(promise_cx<Event,T...> &&cx):
-        pro_(static_cast<promise_cx<Event,T...>&&>(cx).pro_.steal_header()) {
-        detail::promise_require_anonymous(pro_, 1);
-      }
-      cx_state(const promise_cx<Event,T...> &cx):
-        cx_state(promise_cx<Event,T...>(cx)) {}
+      cx_state(promise_cx<Event,eager,T...> &&cx):
+        pro_(static_cast<promise_cx<Event,eager,T...>&&>(cx).pro_.steal_header()) {}
+      cx_state(const promise_cx<Event,eager,T...> &cx):
+        cx_state(promise_cx<Event,eager,T...>(cx)) {}
       
+      void set_done(cx_event_done value) {
+        if (eager && cx_event_is_done<Event>()(value)) {
+          // when eager and done, avoid incrementing the dependency count
+          pro_->dropref();
+          pro_ = nullptr;
+        } else {
+          detail::promise_require_anonymous(pro_, 1);
+        }
+      }
+
       lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
+        UPCXX_ASSERT(pro_, "internal error: pro_ null in to_lpc_dormant");
         future_header_promise<T...> *pro = /*move ref*/pro_;
         return detail::make_lpc_dormant(
           upcxx::current_persona(), progress_level::user,
           [/*move ref*/pro]() {
             backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
           },
-          tail
-        );
-      }
-      
-      void operator()() {
-        backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
-      }
-    };
-    // Case when promise and event type list are both empty
-    template<typename Event>
-    struct cx_state<promise_cx<Event>, std::tuple<>> {
-      future_header_promise<> *pro_; // holds ref
-
-      cx_state(promise_cx<Event> &&cx):
-        pro_(static_cast<promise_cx<Event>&&>(cx).pro_.steal_header()) {
-        detail::promise_require_anonymous(pro_, 1);
-      }
-      cx_state(const promise_cx<Event> &cx):
-        cx_state(promise_cx<Event>(cx)) {}
-
-      lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
-        future_header_promise<> *pro = /*move ref*/pro_;
-        return detail::make_lpc_dormant<>(
-          upcxx::current_persona(), progress_level::user,
-          [/*move ref*/pro]() {
-            backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
           },
           tail
         );
       }
       
       void operator()() {
-        backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        // when pro_ is null, dependency count was not incremented, so
+        // nothing to do here
+        if (pro_) {
+          backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        if (pro_) backend::fulfill_now(/*move ref*/pro_, 1);
+      }
+    };
+    // Case when promise and event type list are both empty
+    template<typename Event, bool eager>
+    struct cx_state<promise_cx<Event,eager>, std::tuple<>> {
+      future_header_promise<> *pro_; // holds ref
+
+      cx_state(promise_cx<Event,eager> &&cx):
+        pro_(static_cast<promise_cx<Event,eager>&&>(cx).pro_.steal_header()) {}
+      cx_state(const promise_cx<Event,eager> &cx):
+        cx_state(promise_cx<Event,eager>(cx)) {}
+
+      void set_done(cx_event_done value) {
+        if (eager && cx_event_is_done<Event>()(value)) {
+          // when eager and done, avoid incrementing the dependency count
+          pro_->dropref();
+          pro_ = nullptr;
+        } else {
+          detail::promise_require_anonymous(pro_, 1);
+        }
+      }
+
+      lpc_dormant<>* to_lpc_dormant(lpc_dormant<> *tail) && {
+        UPCXX_ASSERT(pro_, "internal error: pro_ null in to_lpc_dormant");
+        future_header_promise<> *pro = /*move ref*/pro_;
+        return detail::make_lpc_dormant<>(
+          upcxx::current_persona(), progress_level::user,
+          [/*move ref*/pro]() {
+            backend::fulfill_during<progress_level::user>(/*move ref*/pro, 1);
+          },
+          [/*move ref*/pro]() { // upon cancellation:
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          },
+          tail
+        );
+      }
+      
+      void operator()() {
+        // when pro_ is null, dependency count was not incremented, so
+        // nothing to do here
+        if (pro_) {
+          backend::fulfill_during<progress_level::user>(/*move ref*/pro_, 1);
+        }
+      }
+
+      void cancel() {
+        // balance injection increment and dropref:
+        if (pro_) backend::fulfill_now(/*move ref*/pro_, 1);
       }
     };
     
@@ -723,24 +922,31 @@ namespace upcxx {
       cx_state(lpc_cx<Event,Fn> &&cx):
         target_(cx.target_),
         fn_(static_cast<Fn&&>(cx.fn_)) {
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) += 1;
       }
       cx_state(const lpc_cx<Event,Fn> &cx):
         target_(cx.target_),
         fn_(cx.fn_) {
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) += 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) += 1;
       }
 
+      void set_done(cx_event_done) {}
+
       lpc_dormant<T...>* to_lpc_dormant(lpc_dormant<T...> *tail) && {
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
-        return detail::make_lpc_dormant(*target_, progress_level::user, std::move(fn_), tail);
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
+        return detail::make_lpc_dormant(*target_, progress_level::user, 
+                                        std::move(fn_), [](){}, tail);
       }
       
       void operator()(T ...vals) {
         target_->lpc_ff(
           detail::lpc_bind<Fn,T...>(static_cast<Fn&&>(fn_), static_cast<T&&>(vals)...)
         );
-        upcxx::current_persona().UPCXX_INTERNAL_ONLY(undischarged_n_) -= 1;
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
+      }
+
+      void cancel() { 
+        upcxx::current_persona().UPCXXI_INTERNAL_ONLY(undischarged_n_) -= 1;
       }
     };
 
@@ -757,6 +963,8 @@ namespace upcxx {
       cx_state(const rpc_cx<Event,Fn> &cx):
         fn_(cx.fn_) {
       }
+
+      void set_done(cx_event_done) {}
     };
   }
 
@@ -788,7 +996,7 @@ namespace upcxx {
   namespace detail {
     template<typename FnRefTuple, int ...i>
     auto cx_bind_remote_fns(FnRefTuple &&fns, detail::index_sequence<i...>)
-      UPCXX_RETURN_DECLTYPE (
+      UPCXXI_RETURN_DECLTYPE (
         detail::bind(
           cx_remote_dispatch{},
           std::get<i>(std::forward<FnRefTuple>(fns))...
@@ -802,7 +1010,7 @@ namespace upcxx {
 
     template<typename FnRefTuple>
     auto cx_bind_remote_fns(FnRefTuple &&fns)
-      UPCXX_RETURN_DECLTYPE(
+      UPCXXI_RETURN_DECLTYPE(
         cx_bind_remote_fns(
           fns,
           detail::make_index_sequence<
@@ -880,11 +1088,15 @@ namespace upcxx {
       // Same as the above, but create the callable directly from a completions
       // without needing to create a completions_state first.
       template<typename Event>
-      static SomeCallable bind_event(const Cxs &);
+      static SomeCallable bind_event_static(const Cxs &);
 
       // Convert states of actions associated with given Event to dormant lpc list
       template<typename Event>
       lpc_dormant<...> to_lpc_dormant() &&;
+
+      // Cancel actions associated with given Event
+      template<typename Event>
+      void cancel() &&;
     }*/;
 
     // completions_state specialization for empty completions<>
@@ -916,7 +1128,7 @@ namespace upcxx {
       }
 
       template<typename Event>
-      static event_bound bind_event(completions<>) {
+      static event_bound bind_event_static(completions<>) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
                       "supported for remote_cx_event");
@@ -934,6 +1146,9 @@ namespace upcxx {
       to_lpc_dormant() && {
         return nullptr; // the empty lpc_dormant list
       }
+
+      template<typename Event>
+      void cancel() && {/*nop*/}
     };
 
     /* completions_state for non-empty completions<...> deconstructs list one
@@ -967,8 +1182,14 @@ namespace upcxx {
       template<typename Event, typename ...V>
       void operator()(V&&...) {/*nop*/}
 
+      template<typename Event>
+      void cancel() && {/*nop*/}
+
       std::tuple<> get_remote_fn() const { return {}; }
       static std::tuple<> get_remote_fn(const Cx &) { return {}; }
+
+      // Set the done state of this completion for eager optimization.
+      void set_done(cx_event_done) {}
     };
 
     template<typename Cx>
@@ -1012,13 +1233,18 @@ namespace upcxx {
         );
       }
 
-      auto get_remote_fn() const UPCXX_RETURN_DECLTYPE(cx_get_remote_fn(state_)) {
+      auto get_remote_fn() const UPCXXI_RETURN_DECLTYPE(cx_get_remote_fn(state_)) {
         return cx_get_remote_fn(state_);
       }
 
       static auto get_remote_fn(const Cx &cx)
-        UPCXX_RETURN_DECLTYPE(cx_get_remote_fn(cx)) {
+        UPCXXI_RETURN_DECLTYPE(cx_get_remote_fn(cx)) {
         return cx_get_remote_fn(cx);
+      }
+
+      // Set the done state of this completion for eager optimization.
+      void set_done(cx_event_done value) {
+        state_.set_done(value);
       }
       
       template<typename Event, typename Lpc>
@@ -1040,6 +1266,13 @@ namespace upcxx {
           >(),
           tail
         );
+      }
+
+      // fire state if Event == CxH::event_t
+      template<typename Event>
+      void cancel() && {
+        if ( std::is_same<Event, typename Cx::event_t>::value )
+          state_.cancel();
       }
     };
 
@@ -1103,14 +1336,14 @@ namespace upcxx {
       }
 
       auto get_remote_fns() const
-        UPCXX_RETURN_DECLTYPE(std::tuple_cat(head().get_remote_fn(),
+        UPCXXI_RETURN_DECLTYPE(std::tuple_cat(head().get_remote_fn(),
                                              tail().get_remote_fns())) {
         return std::tuple_cat(head().get_remote_fn(),
                               tail().get_remote_fns());
       }
 
       static auto get_remote_fns(const completions<CxH,CxT...> &cxs)
-        UPCXX_RETURN_DECLTYPE(std::tuple_cat(head_t::get_remote_fn(cxs.head()),
+        UPCXXI_RETURN_DECLTYPE(std::tuple_cat(head_t::get_remote_fn(cxs.head()),
                                              tail_t::get_remote_fns(cxs.tail()))) {
         return std::tuple_cat(head_t::get_remote_fn(cxs.head()),
                               tail_t::get_remote_fns(cxs.tail()));
@@ -1118,7 +1351,7 @@ namespace upcxx {
 
       template<typename Event>
       auto bind_event() const
-        UPCXX_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns())) {
+        UPCXXI_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns())) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
                       "supported for remote_cx_event");
@@ -1126,8 +1359,8 @@ namespace upcxx {
       }
 
       template<typename Event>
-      static auto bind_event(const completions<CxH,CxT...> &cxs)
-        UPCXX_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns(cxs))) {
+      static auto bind_event_static(const completions<CxH,CxT...> &cxs)
+        UPCXXI_RETURN_DECLTYPE(cx_bind_remote_fns(get_remote_fns(cxs))) {
         static_assert(std::is_same<Event, remote_cx_event>::value,
                       "internal error: bind_event() currently only "
                       "supported for remote_cx_event");
@@ -1143,6 +1376,14 @@ namespace upcxx {
         return static_cast<head_t&&>(*this).template to_lpc_dormant<Event>(
           static_cast<tail_t&&>(*this).template to_lpc_dormant<Event>()
         );
+      }
+
+      template<typename Event>
+      void cancel() && {
+        // cancel the head element
+        static_cast<head_t&&>(*this).template cancel<Event>();
+        // recurse to cancel remaining elements
+        static_cast<tail_t&&>(*this).template cancel<Event>();
       }
     };
   }
@@ -1171,7 +1412,8 @@ namespace upcxx {
 
       template<int ordinal>
       completions_returner(
-          completions_state<EventPredicate, EventValues, completions<>, ordinal>&
+          completions_state<EventPredicate, EventValues, completions<>, ordinal>&,
+          cx_event_done completed = cx_event_done::none
         ) {
       }
       
@@ -1189,11 +1431,12 @@ namespace upcxx {
     // specialization: we found a future_cx and are appending our return value
     // onto a tuple of return values
     template<template<typename> class EventPredicate,
-             typename EventValues, typename CxH_event, progress_level level, typename ...CxT,
+             typename EventValues, typename CxH_event, bool eager,
+             progress_level level, typename ...CxT,
              typename ...TailReturn_tuplees>
     struct completions_returner_head<
         EventPredicate, EventValues,
-        completions<future_cx<CxH_event,level>, CxT...>,
+        completions<future_cx<CxH_event,eager,level>, CxT...>,
         std::tuple<TailReturn_tuplees...>
       > {
       
@@ -1209,10 +1452,10 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail &&tail):
+      completions_returner_head(CxState &s, Tail &&tail, cx_event_done completed):
         ans_{
           std::tuple_cat(
-            std::make_tuple(s.head().state_.get_future()),
+            std::make_tuple(s.head().state_.get_future(completed)),
             tail()
           )
         } {
@@ -1222,11 +1465,12 @@ namespace upcxx {
     // specialization: we found a future_cx and one other item is returning a
     // value, so we introduce a two-element tuple.
     template<template<typename> class EventPredicate,
-             typename EventValues, typename CxH_event, progress_level level, typename ...CxT,
+             typename EventValues, typename CxH_event, bool eager,
+             progress_level level, typename ...CxT,
              typename TailReturn_not_tuple>
     struct completions_returner_head<
         EventPredicate, EventValues,
-        completions<future_cx<CxH_event,level>, CxT...>,
+        completions<future_cx<CxH_event,eager,level>, CxT...>,
         TailReturn_not_tuple
       > {
       
@@ -1242,10 +1486,10 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail &&tail):
+      completions_returner_head(CxState &s, Tail &&tail, cx_event_done completed):
         ans_(
           std::make_tuple(
-            s.head().state_.get_future(),
+            s.head().state_.get_future(completed),
             tail()
           )
         ) {
@@ -1255,10 +1499,11 @@ namespace upcxx {
     // specialization: we found a future_cx and are the first to want to return
     // a value.
     template<template<typename> class EventPredicate,
-             typename EventValues, typename CxH_event, progress_level level, typename ...CxT>
+             typename EventValues, typename CxH_event, bool eager,
+             progress_level level, typename ...CxT>
     struct completions_returner_head<
         EventPredicate, EventValues,
-        completions<future_cx<CxH_event,level>, CxT...>,
+        completions<future_cx<CxH_event,eager,level>, CxT...>,
         void
       > {
       
@@ -1271,9 +1516,9 @@ namespace upcxx {
       return_t&& operator()() { return std::move(ans_); }
       
       template<typename CxState, typename Tail>
-      completions_returner_head(CxState &s, Tail&&):
+      completions_returner_head(CxState &s, Tail&&, cx_event_done completed):
         ans_(
-          s.head().state_.get_future()
+          s.head().state_.get_future(completed)
         ) {
       }
     };
@@ -1293,14 +1538,16 @@ namespace upcxx {
       
       template<typename CxState>
       completions_returner_head(
-          CxState&,
+          CxState& s,
           completions_returner<
             EventPredicate, EventValues, completions<CxT...>
-          > &&tail
+          > &&tail,
+          cx_event_done completed
         ):
         completions_returner<
             EventPredicate, EventValues, completions<CxT...>
           >{std::move(tail)} {
+        s.head().set_done(completed);
       }
     };
 
@@ -1323,7 +1570,8 @@ namespace upcxx {
       completions_returner(
           completions_state<
               EventPredicate, EventValues, completions<CxH,CxT...>, ordinal
-            > &s
+            > &s,
+          cx_event_done completed = cx_event_done::none
         ):
         completions_returner_head<
           EventPredicate, EventValues,
@@ -1334,7 +1582,8 @@ namespace upcxx {
         >{s,
           completions_returner<
               EventPredicate, EventValues, completions<CxT...>
-            >{s.tail()}
+            >{s.tail(), completed},
+          completed
         } {
       }
     };

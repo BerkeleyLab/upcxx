@@ -1,4 +1,4 @@
-# Developer's Road Map of "upcxx/src"
+# Maintainer's Road Map of "upcxx/src"
 
 The intent of this document is to arm the reader with enough context to be able
 to understand the source code and its comments. When this document disagrees
@@ -29,14 +29,15 @@ struct operation_cx_event;
 "Actions" are values that describe how the user wants a particular event
 handled. They should hold what the user gave us and little more. They encode
 the event in their type, and possibly more, and then also carry whatever
-runtime state is needed too. Example: `future_cx<Event,progress_level>` carries
-the event and desired progress level in its type and has no runtime state since
-none is required when a user calls `operation_cx::as_future()`.
+runtime state is needed too. Example: `future_cx<Event,eager,progress_level>`
+carries the event, whether it is an eager future, and the desired progress level
+in its type and has no runtime state since none is required when a user calls
+`operation_cx::as_future()`.
 
 ```
-template<typename Event, progress_level level = progress_level::user>
+template<typename Event, bool eager, progress_level level = progress_level::user>
 struct future_cx;
-template<typename Event, typename ...T>
+template<typename Event, bool eager, typename ...T>
 struct promise_cx;
 template<typename Event>
 struct buffered_cx;
@@ -55,7 +56,7 @@ Actions are collected together in heterogeneous lists of type
 `completions<Action...>`. When a user builds an action, we give back a
 singleton list. User uses `operator|` to concatenate these into bigger lists.
 Example of a singleton: `operation_cx::as_future()` returns
-`completions<future_cx<operation_cx_event, progress_level::user>>`.
+`completions<future_cx<operation_cx_event, false, progress_level::user>>`.
 
 
 ### Completions: Action States

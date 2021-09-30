@@ -7,7 +7,7 @@
 #include <upcxx/serialization.hpp>
 
 // For the time being, our implementation of put/get requires the
-// gasnet backend. Ideally we would detect gasnet via UPCXX_BACKEND_GASNET
+// gasnet backend. Ideally we would detect gasnet via UPCXXI_BACKEND_GASNET
 // and if not present, rely on a reference implementation over
 // upcxx::backend generic API.
 #include <upcxx/backend/gasnet/runtime.hpp>
@@ -67,11 +67,13 @@ namespace upcxx {
         /*EventValues=*/detail::rput_event_values,
         Cxs>;
 
-      using return_t = typename detail::completions_returner<
+      using completions_returner_t = detail::completions_returner<
           /*EventPredicate=*/detail::event_is_here,
           /*EventValues=*/detail::rput_event_values,
           Cxs
-        >::return_t;
+        >;
+
+      using return_t = typename completions_returner_t::return_t;
 
       template<typename T>
       static void assert_sane() {
@@ -195,6 +197,9 @@ namespace upcxx {
     template<typename Obj, typename Traits,
              bool want_remote = Traits::want_remote,
              bool want_op = Traits::want_op,
+             // op_is_sync is only true for operation_cx::as_blocking(),
+             // which is only conditionally enabled by
+             // UPCXXI_HAS_OPERATION_CX_AS_BLOCKING (see completion.hpp)
              bool op_is_sync = Traits::op_is_sync,
              bool want_src = Traits::want_src>
     struct rput_obj_base;
@@ -235,7 +240,6 @@ namespace upcxx {
           RemoteFn &&remote
         ) {
         //upcxx::experimental::say()<<"amlong with reply";
-        auto *o = static_cast<Obj*>(this);
 
         auto sync_out = backend::gasnet::template rma_put_then_am_master<sync_lb1>(
           rank_d, buf_d, buf_s, buf_size,
@@ -259,7 +263,8 @@ namespace upcxx {
         return rma_put_sync::op_now;
       }
     };
-    
+
+    // only used when UPCXXI_HAS_OPERATION_CX_AS_BLOCKING=1
     template<typename Obj, typename Traits, bool want_src>
     struct rput_obj_base<Obj, Traits,
         /*want_remote=*/true,
@@ -284,7 +289,6 @@ namespace upcxx {
           RemoteFn &&remote
         ) {
         //upcxx::experimental::say()<<"amlong with reply blocking";
-        auto *o = static_cast<Obj*>(this);
         
         auto sync_out = backend::gasnet::template rma_put_then_am_master<
             backend::gasnet::rma_put_then_am_sync::src_now
@@ -445,11 +449,11 @@ namespace upcxx {
 
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/true>::return_t
   rput(T value_s,
        global_ptr<T> gp_d,
-       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) {
+       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) noexcept {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     using traits_t = detail::rput_traits<CxsDecayed, /*by_val=*/true>;
@@ -457,42 +461,71 @@ namespace upcxx {
     
     traits_t::template assert_sane<T>();
 
-    UPCXX_STATIC_ASSERT_VALUE_SIZE(T, rput); // issue 392: prevent large types by-value
+    UPCXXI_STATIC_ASSERT_VALUE_SIZE(T, rput); // issue 392: prevent large types by-value
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(gp_d);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_GPTR_CHK(gp_d);
     UPCXX_ASSERT(gp_d, "pointer arguments to rput may not be null");
     UPCXX_ASSERT_ALWAYS(
       (!detail::completions_has_event<CxsDecayed, source_cx_event>::value),
       "Scalar rput does not support source completion."
     );
+
+    if (backend::rank_is_local(gp_d.UPCXXI_INTERNAL_ONLY(rank_))) {
+      // local case does copy directly without involving backend
+      T *buf_d_local = (T*) backend::localize_memory_nonnull(
+        gp_d.UPCXXI_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_))
+      );
+      *buf_d_local = value_s;
+
+      typename traits_t::cx_state_here_t cx_state_here(std::forward<Cxs>(cxs));
+      typename traits_t::completions_returner_t
+        returner(cx_state_here, detail::cx_event_done::operation);
+      // no source completion
+      if (traits_t::want_remote) {
+        backend::send_am_master<progress_level::user>(
+          gp_d.UPCXXI_INTERNAL_ONLY(rank_),
+          traits_t::cx_state_remote_t
+          ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+        );
+      }
+      if (traits_t::want_op) {
+        cx_state_here.template operator()<operation_cx_event>();
+      }
+      return returner();
+    }
     
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
-    detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      > returner(o->cx_state_here);
-    
     detail::rma_put_sync sync_done = o->inject(
-      gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      gp_d.UPCXXI_INTERNAL_ONLY(rank_), gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_),
       &value_s, sizeof(T),
       traits_t::cx_state_remote_t
-        ::template bind_event<remote_cx_event>(std::forward<Cxs>(cxs))
+        ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
+
+    // construct returner before rput_post_inject potentially destroys
+    // cx_state_here
+    typename traits_t::completions_returner_t
+      returner(o->cx_state_here,
+                 sync_done >= detail::rma_put_sync::op_now ?
+                 detail::cx_event_done::operation :
+                 detail::cx_event_done::none);
+
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
   }
   
   template<typename T,
            typename Cxs = detail::operation_cx_as_future_t>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   typename detail::rput_traits<typename std::decay<Cxs>::type, /*by_val=*/false>::return_t
   rput(T const *buf_s,
        global_ptr<T> gp_d,
        std::size_t n,
-       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) {
+       Cxs &&cxs = detail::operation_cx_as_future_t{{}}) noexcept {
 
     using CxsDecayed = typename std::decay<Cxs>::type;
     using traits_t = detail::rput_traits<CxsDecayed, /*by_val=*/false>;
@@ -500,24 +533,61 @@ namespace upcxx {
     
     traits_t::template assert_sane<T>();
 
-    UPCXX_ASSERT_INIT();
-    UPCXX_GPTR_CHK(gp_d);
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXXI_GPTR_CHK(gp_d);
     UPCXX_ASSERT(buf_s && gp_d, "pointer arguments to rput may not be null");
+
+    UPCXXI_WARN_EMPTY("upcxx::rput", n);
     
+    if (backend::rank_is_local(gp_d.UPCXXI_INTERNAL_ONLY(rank_))) {
+      // local case does copy directly without involving backend
+      void *buf_d_local = backend::localize_memory_nonnull(
+        gp_d.UPCXXI_INTERNAL_ONLY(rank_),
+        reinterpret_cast<std::uintptr_t>(gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_))
+      );
+      std::memcpy(buf_d_local, buf_s, n*sizeof(T));
+
+      typename traits_t::cx_state_here_t cx_state_here(std::forward<Cxs>(cxs));
+      typename traits_t::completions_returner_t
+        returner(cx_state_here, detail::cx_event_done::operation);
+      if (traits_t::want_src) {
+        cx_state_here.template operator()<source_cx_event>();
+      }
+      if (traits_t::want_remote) {
+        backend::send_am_master<progress_level::user>(
+          gp_d.UPCXXI_INTERNAL_ONLY(rank_),
+          traits_t::cx_state_remote_t
+          ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
+        );
+      }
+      if (traits_t::want_op) {
+        cx_state_here.template operator()<operation_cx_event>();
+      }
+      return returner();
+    }
+
     object_t *o = new object_t(std::forward<Cxs>(cxs));
     
-    detail::completions_returner<
-        /*EventPredicate=*/detail::event_is_here,
-        /*EventValues=*/detail::rput_event_values,
-        CxsDecayed
-      > returner(o->cx_state_here);
-    
     detail::rma_put_sync sync_done = o->inject(
-      gp_d.UPCXX_INTERNAL_ONLY(rank_), gp_d.UPCXX_INTERNAL_ONLY(raw_ptr_),
+      gp_d.UPCXXI_INTERNAL_ONLY(rank_), gp_d.UPCXXI_INTERNAL_ONLY(raw_ptr_),
       buf_s, n*sizeof(T),
       traits_t::cx_state_remote_t
-        ::template bind_event<remote_cx_event>(std::forward<Cxs>(cxs))
+        ::template bind_event_static<remote_cx_event>(std::forward<Cxs>(cxs))
     );
+
+    detail::cx_event_done completed = detail::cx_event_done::none;
+    if (sync_done >= detail::rma_put_sync::op_now) {
+      completed = detail::cx_event_done::operation;
+    } else if (sync_done >= detail::rma_put_sync::src_now) {
+      completed = detail::cx_event_done::source;
+    }
+
+    // construct returner before rput_post_inject potentially destroys
+    // cx_state_here
+    typename traits_t::completions_returner_t
+      returner(o->cx_state_here, completed);
+
     detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
   }

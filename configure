@@ -131,6 +131,11 @@ Usage:
         Enable limited support for the Valgrind dynamic analysis tool,
         at some potential cost in performance (off by default).
 
+  --enable-discontig-ranks
+        Enable support for process layouts where the rank numbering assigned
+        at job spawn is permitted to be discontiguous on any given physical host.
+        Otherwise, co-located ranks are required to be contiguously numbered.
+
   -h|--help|--usage
         Produces this message.
   --help=recursive
@@ -204,7 +209,7 @@ fi
 
 # Preserve env vars which options processing may clobber
 UPCXX_CONFIG_ENVVARS=( CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS LIBS\
-                       GASNET GASNET_CONFIGURE_ARGS UPCXX_CROSS \
+                       GASNET GASNET_CONDUIT GASNET_CONFIGURE_ARGS UPCXX_CROSS \
                        GMAKE UPCXX_PYTHON \
                        UPCXX_CUDA{,_NVCC,_CPPFLAGS,_LIBFLAGS} )
 for var in ${UPCXX_CONFIG_ENVVARS[*]} ; do
@@ -214,6 +219,7 @@ done
 # Clear "new" non-legacy configure options
 # these are only accepted on the configure line and not via environment
 UPCXX_VALGRIND=
+UPCXX_DISCONTIG=
 
 unset gasnet_help
 
@@ -276,6 +282,12 @@ while [[ $# -gt 0 ]]; do
     # Not relevant to GASNet's configure:
     -with-default-network?(=*)) GASNET_CONDUIT="$(get_arg_val $arg)"; export GASNET_CONDUIT;;
     -with-python?(=*))          UPCXX_PYTHON="$(get_arg_val $arg)"; export UPCXX_PYTHON;;
+    -without-discontig-ranks)   UPCXX_DISCONTIG=''; export UPCXX_DISCONTIG;;
+    -with-discontig-ranks)      UPCXX_DISCONTIG=1; export UPCXX_DISCONTIG
+      warnings+="\nWARNING: --enable-discontig-ranks mode activated.\n"
+      warnings+='WARNING: This mode has not been carefully tuned and is not recommended for general use.\n'
+      warnings+='WARNING: If this feature matters to you, please let us know!\n'
+      ;;
 
     # Passed explicitly to GASNet's configure, potentially after some processing:
     -with-cc?(=*))              CC="$(get_arg_val $arg)";    export CC;;
@@ -412,13 +424,16 @@ check_tool_path() {
 # Default GASNet source
 # Enable offline installers with an embedded GASNet-EX tarball
 #
-GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz'
-GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2021.3.0.tar.gz' # Un-comment for release
+#GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz' # Un-comment for development
+GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2021.9.0.tar.gz' # Un-comment for release
+#GASNET_DEFAULT='NONE' # Un-comment for snapshots
 gex_offline=`/bin/ls "$UPCXX_SRC"/src/GASNet-{stable,2???.*}.tar.gz 2> /dev/null | sort -t. -k1,1 -k2,2n -k3n | tail -1`
 if [[ -n "$GASNET" ]]; then
   : # keep defn
 elif [[ -r "$gex_offline" ]]; then
   GASNET="$gex_offline"
+elif [[ $GASNET_DEFAULT == 'NONE' ]]; then
+  echo_and_die 'There is no GASNet tarball available for this UPC++ version. Please obtain a tarball of this UPC++ version containing an embedded GASNet archive.'
 else
   GASNET=$GASNET_DEFAULT
 fi
@@ -529,7 +544,7 @@ if [[ "$GASNET_TYPE" == 'build' ]]; then
   gex_spec_file="$GASNET/gasnet_config.h"
 else
   gex_header="$GASNET/gasnetex.h"
-  gex_spec_file=$(echo $GASNET/docs/GASNet-EX.*)
+  gex_spec_file="$GASNET/docs/GASNet-EX.txt"
 fi
 
 # verify distinguishing file (if any)
@@ -542,9 +557,9 @@ HAVE_MAJ=${BASH_REMATCH[2]}
 [[ $(grep 'EX_SPEC_VERSION_MINOR' "$gex_spec_file" | head -1 | tr '\t' ' ') =~ ( ([0-9]+)) ]]
 HAVE_MIN=${BASH_REMATCH[2]}
 upcxx_header="$UPCXX_SRC/src/backend/gasnet/runtime_internal.hpp"
-[[ $(grep 'UPCXX_REQUIRES_GEX_SPEC_VERSION_MAJOR.*' "$upcxx_header" | head -1 | tr '\t' ' ') =~ ( ([0-9]+)) ]]
+[[ $(grep 'UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR.*' "$upcxx_header" | head -1 | tr '\t' ' ') =~ ( ([0-9]+)) ]]
 WANT_MAJ=${BASH_REMATCH[2]}
-[[ $(grep 'UPCXX_REQUIRES_GEX_SPEC_VERSION_MINOR.*' "$upcxx_header" | head -1 | tr '\t' ' ') =~ ( ([0-9]+)) ]]
+[[ $(grep 'UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR.*' "$upcxx_header" | head -1 | tr '\t' ' ') =~ ( ([0-9]+)) ]]
 WANT_MIN=${BASH_REMATCH[2]}
 [[ ($HAVE_MAJ -gt $WANT_MAJ) || (($HAVE_MAJ -eq $WANT_MAJ) && ($HAVE_MIN -ge $WANT_MIN)) ]] || \
     echo_and_die "GASNET='$ORIG_GASNET' does not contain GASNet-EX implementing specification version $WANT_MAJ.$WANT_MIN or newer"
@@ -647,7 +662,7 @@ else
       ;; # OK
     *)
       echo "ERROR: UPCXX_MPSC_QUEUE='$UPCXX_MPSC_QUEUE' is not a valid value."
-      echo_and_die 'See docs/build-devel.md for valid values and additional info.'
+      echo_and_die 'See docs/maintainer.md for valid values and additional info.'
       ;;
   esac
 fi
@@ -708,7 +723,9 @@ export CC
 export CXX
 # Quoting is believed sufficient for space, tab, single-quote and double-quote.
 # Do not make these conditional on non-empty values.  We want to preserve empty values too.
+GASNET_CONFIGURE_ARGS+=" --with-cc=\"${CC//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cflags=\"${CFLAGS//\"/\\\"}\""
+GASNET_CONFIGURE_ARGS+=" --with-cxx=\"${CXX//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cxxflags=\"${CXXFLAGS//\"/\\\"}\""
 
 #
@@ -851,7 +868,7 @@ for cmd in shasum sha1sum md5sum md5; do
   fi
 done
 if [[ -z "$UPCXX_CSUMCMD" ]]; then
-  warnings+="\nWARNING: The developer targets 'exe' and 'run' are unavailable due to\n"
+  warnings+="\nWARNING: The maintainer targets 'exe' and 'run' are unavailable due to\n"
   warnings+="WARNING: lack of a usable checksum utility.\n"
 fi
 
@@ -998,7 +1015,7 @@ GASNET_CONDUIT=$(tr '[A-Z]' '[a-z]' <<<$GASNET_CONDUIT)
 if [[ -z $GASNET_CONDUIT ]]; then
   if [[ "$UPCXX_CROSS" =~ -aries- ]]; then
     GASNET_CONDUIT=aries
-  else
+  elif [[ $(uname -s) = 'Darwin' ]]; then
     GASNET_CONDUIT=smp
   fi
 elif [[ " $UNOFFICIAL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
@@ -1009,9 +1026,14 @@ elif [[ " $ALL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
 else
   echo_and_die "ERROR: --with-default-network='$GASNET_CONDUIT' is not a valid network.\nValid networks include:$OFFICIAL_CONDUITS"
 fi
-# Complain if last of enabled/disable flags for the default network is disable
-if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
-  echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '--disable-$GASNET_CONDUIT'."
+if [[ -n $GASNET_CONDUIT ]]; then
+  # Complain if last of enabled/disable flags for the default network is disable
+  if [[ $(egrep -o -e "--?(en|dis)able-$GASNET_CONDUIT([ \"]|=[^ \"]*)" <<<"$GASNET_CONFIGURE_ARGS " | tail -1) \
+         =~ (--?(disable-$GASNET_CONDUIT|enable-$GASNET_CONDUIT=no)) ]]; then
+    echo_and_die "ERROR: an explicit '${BASH_REMATCH[1]}' disables the default network.  Please use '--with-default-network=...' to select an alternative default network, or remove '${BASH_REMATCH[1]}'."
+  fi
+  # Ensure GASNet configure fails if default network is not available
+  GASNET_CONFIGURE_ARGS+=" --enable-$GASNET_CONDUIT"
 fi
 
 #
@@ -1047,16 +1069,17 @@ export UPCXX_CROSS=$UPCXX_CROSS
 export UPCXX_COLOR_CFLAGS=$UPCXX_COLOR_CFLAGS
 export UPCXX_COLOR_CXXFLAGS=$UPCXX_COLOR_CXXFLAGS
 export UPCXX_CSUMCMD=$UPCXX_CSUMCMD
-export UPCXX_MPSC_QUEUE=UPCXX_MPSC_QUEUE_$(tr '[a-z]' '[A-Z]' <<<$UPCXX_MPSC_QUEUE)
+export UPCXX_MPSC_QUEUE=UPCXXI_MPSC_QUEUE_$(tr '[a-z]' '[A-Z]' <<<$UPCXX_MPSC_QUEUE)
 export UPCXX_DBGOPT=$UPCXX_DBGOPT
 export GASNET_UNPACKED=$GASNET_UNPACKED
 export GASNET_CONFIGURE_ARGS=$GASNET_CONFIGURE_ARGS
-export UPCXX_DEFAULT_NETWORK=$GASNET_CONDUIT
+export UPCXX_CONFIGURE_NETWORK=$GASNET_CONDUIT
 export UPCXX_CUDA=$UPCXX_CUDA
 export UPCXX_CUDA_NVCC=$UPCXX_CUDA_NVCC
 export UPCXX_CUDA_CPPFLAGS=$UPCXX_CUDA_CPPFLAGS
 export UPCXX_CUDA_LIBFLAGS=$UPCXX_CUDA_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
+export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 
@@ -1066,7 +1089,7 @@ EOF
 mkdir -p bin
 cat >| bin/upcxx <<EOF
 #!$BASH
-function die { echo "upcxx: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx: ERROR: \$*" >&2; exit 1; }
 vars=\$(env UPCXX_META=BUILDDIR $BASH $UPCXX_SRC/utils/upcxx.sh "\$@")
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 if [[ \$vars =~ UPCXX_THREADMODE=([^\$IFS]*) ]]; then
@@ -1077,10 +1100,12 @@ if [[ \$vars =~ UPCXX_THREADMODE=([^\$IFS]*) ]]; then
   esac
 fi
 if [[ \$vars =~ UPCXX_NETWORK=([^\$IFS]*) ]]; then
-  value="\${BASH_REMATCH[1]}"
-  if [[ ! " $ALL_CONDUITS " =~ " \$value " ]]; then
-    die "invalid UPCXX_NETWORK='\$value'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
-  fi
+  network="\${BASH_REMATCH[1]}"
+else
+  network="$GASNET_CONDUIT"
+fi
+if [[ ! " $ALL_CONDUITS " =~ " \$network " ]]; then
+  die "invalid UPCXX_NETWORK='\$network'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
 fi
 vars=\${vars/UPCXX_NETWORK/GASNET_CONDUIT}
 vars=\${vars/UPCXX_THREADMODE=/UPCXX_BACKEND=gasnet_}
@@ -1093,7 +1118,7 @@ exec \${tmp##*\$'\n'} "\$@"
 EOF
 cat >| bin/upcxx-run <<EOF
 #!$BASH
-function die { echo "upcxx-run: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx-run: ERROR: \$*" >&2; exit 1; }
 conduit=\$(\${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -info "\$@" | grep ^GASNetConduitName: | cut -d' ' -f2 | tr '[A-Z]' '[a-z]'; exit \${PIPESTATUS[0]})
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 codemode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-${UPCXX_DBGOPT% *}})
@@ -1109,7 +1134,7 @@ exec \${tmp##*\$'\n'} "\$@"
 EOF
 cat >| bin/upcxx-meta <<EOF
 #!$BASH
-function die { echo "upcxx-meta: ERROR: \$*" >&2; exit 1; }
+function die { echo -e "upcxx-meta: ERROR: \$*" >&2; exit 1; }
 cmode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-opt})
 case \$cmode in
   debug)   export DBGSYM=1 ASSERT=1 OPTLEV=0;;

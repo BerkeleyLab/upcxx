@@ -48,7 +48,11 @@ int main() {
       rput(val,   gptr[step],   operation_cx::as_promise(p[step]));
       rput(val+1, gptr[step]+1, operation_cx::as_promise(p[step]));
       p[step].finalize();
-      assert(!f[step].ready()); assert(!p[step].get_future().ready());
+      #if UPCXX_DEFER_COMPLETION
+        // with eager completion and local bypass, p[step] may be
+        // readied by finalize() above
+        assert(!f[step].ready()); assert(!p[step].get_future().ready());
+      #endif
 
       if (i > 0) {  // sync and check the last iteration
         f[prev].wait();

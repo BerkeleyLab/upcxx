@@ -28,7 +28,7 @@ testprograms_par = \
 	test/view.cpp
 
 ###
-# Section 2: developer tests
+# Section 2: Maintainer/development tests
 # Built by 'make dev-tests` and `make dev-check`
 #
 # The logic which follows sets variables which controls what is tested.
@@ -61,6 +61,8 @@ test_dirs = \
 	test/neg \
 	test/uts \
 	bench \
+	example \
+	example/compute-pi \
 	example/prog-guide \
 	example/serialization
 
@@ -201,6 +203,7 @@ ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
 test_pgi_debug_symbols_broken = \
+	CUDA_MICROBENCHMARK \
 	RPC_CTOR_TRACE \
 	NODISCARD \
 	MEMBEROF \

@@ -5,30 +5,54 @@
 // This test measures the number of copies/moves invoked on objects passed to
 // various UPC++ routines. The results asserted by this test are only indicative
 // of the current implementation and should NOT be construed as a guarantee of
-// future copy/move behavior. 
+// copy/move behavior for past or subsequent revisions of the implementation. 
 // Consult the UPC++ Specification for guaranteed copy/move behaviors.
+
+using std::uint64_t;
 
 struct T {
   static int ctors, dtors, copies, moves;
   static void show_stats(int line, char const *title, int expected_ctors, int expected_copies,
                          int expected_moves=-1);
   static void reset_counts() { ctors = copies = moves = dtors = 0; } 
+
+  private:
+  static constexpr uint64_t VALID   = 0x5555555555555555llu;
+  static constexpr uint64_t INVALID = 0xAAAAAAAAAAAAAAAAllu;
+  uint64_t valid = VALID;
+
+  public:
+  void check_corruption(const char *context) const {
+    UPCXX_ASSERT_ALWAYS(valid == VALID || valid == INVALID,
+                        context << " a corrupted object: " << std::hex << valid);
+  }
+  void check_op(const char *context) const {
+    check_corruption(context);
+    UPCXX_ASSERT_ALWAYS(valid == VALID,
+                        context << " an invalidated object: " << std::hex << valid);
+  }
   
-  bool valid = true;
-  T() { ctors++; }
+  T() {
+    check_op("default constructing");
+    ctors++;
+  }
   T(T const &that) {
-    UPCXX_ASSERT_ALWAYS(that.valid, "copying from an invalidated object");
+    check_op("copying");
+    that.check_op("copying from");
     copies++;
   }
   T(T &&that) {
-    UPCXX_ASSERT_ALWAYS(that.valid, "moving from an invalidated object");
-    that.valid = false;
+    check_op("move constructing");
+    that.check_op("moving from");
+    that.valid = INVALID;
     moves++;
   }
   ~T() {
-    valid = false;
+    check_corruption("destroying");
+    valid = INVALID;
     dtors++;
   }
+
   // Deliberately NOT Serializable
   //UPCXX_SERIALIZED_FIELDS(valid)
 };
@@ -80,10 +104,14 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
 T global;
 
 bool done = false;
+#define set_done() do { \
+  UPCXX_ASSERT_ALWAYS(done == false, "Duplicate call to set_done()"); \
+  done = true; \
+} while(0)
 
 struct Fn {
   T t;
-  void operator()() { done = true; }
+  void operator()() { set_done(); }
   // Deliberately NOT Serializable
   //UPCXX_SERIALIZED_FIELDS(t)
 };

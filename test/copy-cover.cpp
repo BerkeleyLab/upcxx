@@ -8,13 +8,13 @@
 #endif
 
 #ifndef USE_CUDA
-  #if UPCXX_CUDA_ENABLED 
+  #if UPCXX_KIND_CUDA 
     #define USE_CUDA 1
   #else
     #define USE_CUDA 0
   #endif
 #endif
-#if USE_CUDA && !UPCXX_CUDA_ENABLED
+#if USE_CUDA && !UPCXX_KIND_CUDA
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 
@@ -34,6 +34,7 @@ using val_t = std::uint32_t;
 #define VAL(rank, step, idx) ((val_t)(((rank)&0xFFFF << 16) | ((step)&0xFF << 8) | ((idx)&0xFF) ))
 
 using any_ptr = global_ptr<val_t, memory_kind::any>;
+long errs = 0;
 
 int main(int argc, char *argv[]) {
   upcxx::init();
@@ -128,10 +129,14 @@ int main(int argc, char *argv[]) {
     val_t *priv_dst = new val_t[maxelems];
     const int bufcnt = ptrs.size();
 
-
     uint64_t step = 0;
     static uint64_t rc_count = 0;
     for (int round = 0; round < iters; round++) {
+     #if UPCXX_THREADMODE
+     persona p;
+     persona_scope ps(p);
+     #endif
+
      bool talk = !me && (iters <= 10 || round % ((iters+9)/10) == 0);
      if (talk) {
         say("") << "Round "<< round << " (" << round*100/iters << " %)";
@@ -168,6 +173,9 @@ int main(int argc, char *argv[]) {
           auto rc = [](int rank) { 
             UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &upcxx::master_persona());
             UPCXX_ASSERT_ALWAYS(rank == upcxx::rank_me());
+            #if UPCXX_SPEC_VERSION >= 20201000
+            UPCXX_ASSERT_ALWAYS(upcxx::in_progress());
+            #endif
             rc_count++;
           };
           future<> of, sf;
@@ -263,17 +271,21 @@ int main(int argc, char *argv[]) {
                 <<" B="<<B<<"("<<Bwhere<<Bheap<<")"
                 <<mismatch
                 <<(kill1?", kill1":"")<<(kill2?", kill2":"")<<(kill3?", kill3":"");
+          errs++;
         }
 
         step++;
       }} // A/B bufs
 
-      do { upcxx::progress(); } while (rc_count < 3 * uint64_t(bufcnt)*bufcnt);
+      uint64_t rc_expected = 3 * uint64_t(bufcnt)*bufcnt;
+      do { upcxx::progress(); } while (rc_count < rc_expected);
+      UPCXX_ASSERT_ALWAYS(rc_count == rc_expected);
       rc_count = 0;
       upcxx::barrier();
      } // bufelems
     } // round
     
+    UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &upcxx::master_persona());
     upcxx::barrier();
 
     // cleanup
@@ -300,7 +312,7 @@ int main(int argc, char *argv[]) {
   }
     
   UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() == &upcxx::master_persona());
-  print_test_success();
+  print_test_success(errs == 0);
   
   upcxx::finalize();
   return 0;

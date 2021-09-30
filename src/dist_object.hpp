@@ -32,10 +32,12 @@ namespace upcxx {
     friend struct std::hash<upcxx::dist_id<T>>;
     
   public:
-    dist_id() : dig_(detail::digest::zero()) {}
+    dist_id() : dig_(detail::tombstone) {}
 
+    UPCXXI_ATTRIB_PURE
     dist_object<T>& here() const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_NOT_TOMB(dig_);
       UPCXX_ASSERT(detail::registry[dig_],
         "dist_id::here() called for an invalid id or dist_object (possibly outside its lifetime)");
       return std::get<0>(
@@ -50,21 +52,23 @@ namespace upcxx {
     }
     
     future<dist_object<T>&> when_here() const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_NOT_TOMB(dig_);
       return detail::promise_get_future(detail::registered_promise<dist_object<T>&>(dig_));
     }
     
-    #define UPCXX_COMPARATOR(op) \
+    #define UPCXXI_COMPARATOR(op) \
+      UPCXXI_ATTRIB_CONST \
       friend bool operator op(dist_id a, dist_id b) {\
         return a.dig_ op b.dig_; \
       }
-    UPCXX_COMPARATOR(==)
-    UPCXX_COMPARATOR(!=)
-    UPCXX_COMPARATOR(<)
-    UPCXX_COMPARATOR(<=)
-    UPCXX_COMPARATOR(>)
-    UPCXX_COMPARATOR(>=)
-    #undef UPCXX_COMPARATOR
+    UPCXXI_COMPARATOR(==)
+    UPCXXI_COMPARATOR(!=)
+    UPCXXI_COMPARATOR(<)
+    UPCXXI_COMPARATOR(<=)
+    UPCXXI_COMPARATOR(>)
+    UPCXXI_COMPARATOR(>=)
+    #undef UPCXXI_COMPARATOR
 
     friend std::ostream& operator<<(std::ostream &o, dist_id<T> x) {
       return o << x.dig_;
@@ -86,7 +90,7 @@ namespace std {
 namespace upcxx {
   template<typename T>
   class dist_object {
-    const upcxx::team *tm_;
+    const upcxx::team * const tm_;
     detail::digest id_;
     T value_;
     
@@ -95,9 +99,9 @@ namespace upcxx {
     dist_object(const upcxx::team &tm, U &&...arg):
       tm_(&tm),
       value_(std::forward<U>(arg)...) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER();
-      UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
+      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
       
       id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
       
@@ -111,11 +115,12 @@ namespace upcxx {
     dist_object(T value, const upcxx::team &tm):
       tm_(&tm),
       value_(std::move(value)) {
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER();
-      UPCXX_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
+      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
 
       id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
+      UPCXX_ASSERT(id_ != detail::tombstone);
       
       backend::fulfill_during<progress_level::user>(
           detail::registered_promise<dist_object<T>&>(id_)->incref(1),
@@ -135,11 +140,11 @@ namespace upcxx {
       id_(that.id_),
       value_(std::move(that.value_)) {
       
-      UPCXX_ASSERT_INIT();
-      UPCXX_ASSERT_MASTER();
-      UPCXX_ASSERT((that.id_ != detail::digest{~0ull, ~0ull}));
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
+      UPCXXI_ASSERT_NOT_TOMB(that.id_);
 
-      that.id_ = detail::digest{~0ull, ~0ull}; // the tombstone id value
+      that.id_ = detail::tombstone;
 
       // Moving is painful for us because the original constructor (of that)
       // created a promise, set its result to point to that, and then
@@ -153,9 +158,9 @@ namespace upcxx {
     }
     
     ~dist_object() {
-      if (backend::init_count > 0) UPCXX_ASSERT_MASTER();
+      if (backend::init_count > 0) UPCXXI_ASSERT_MASTER();
 
-      if(id_ != detail::digest{~0ull, ~0ull}) {
+      if(id_ != detail::tombstone) {
         auto it = detail::registry.find(id_);
         static_cast<detail::future_header_promise<dist_object<T>&>*>(it->second)->dropref();
         detail::registry.erase(it);
@@ -167,11 +172,16 @@ namespace upcxx {
     
     upcxx::team& team() { return *const_cast<upcxx::team*>(tm_); }
     const upcxx::team& team() const { return *tm_; }
-    dist_id<T> id() const { return dist_id<T>{id_}; }
+    dist_id<T> id() const { 
+      UPCXXI_ASSERT_NOT_TOMB(id_);
+      return dist_id<T>{id_};
+    }
     
-    UPCXX_NODISCARD
+    UPCXXI_NODISCARD
     future<deserialized_type_t<T>> fetch(intrank_t rank) const {
-      UPCXX_ASSERT_INIT();
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+      UPCXXI_ASSERT_NOT_TOMB(id_);
       static_assert(
         is_serializable<T>::value,
         "T must be Serializable for dist_object<T>::fetch."

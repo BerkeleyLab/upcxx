@@ -94,8 +94,7 @@ Can be built like any other upcxx application, but if you want to play with
 the allocator you'll need the appropriate preprocessor defines present. For
 instance:
 
-```
-#!bash
+```bash
 
 # Build. Default allocator = std.
 <upcxx-install>/bin/upcxx my-bench.cpp -o my-bench

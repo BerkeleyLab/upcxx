@@ -29,28 +29,32 @@ CXXFLAGS = # optional command-line override
 
 # Programs to build, assuming each has a corresponding *.cpp file
 EXAMPLES = \
-  dmap-test \
-  dmap-async-insert-test \
   dmap-async-find-test \
-  dmap-quiescence-test \
+  dmap-async-insert-test \
   dmap-atomics-test \
   dmap-conjoined-test \
   dmap-promises-test \
-  rb1d \
+  dmap-quiescence-test \
+  dmap-test \
   hello-world \
-  view-histogram1 \
-  view-histogram2 \
-  view-matrix-tasks \
-  view-accumulate \
   non-contig-example \
-  team_simple \
-  team_advanced \
-  persona-example-rputs \
   persona-example	\
+  persona-example-rputs \
+  rb1d \
+  rb1d-rpc \
+  rb1d-rpcinit \
+  rput-rpc \
   serial-custom \
   serial-fields \
   serial-recursive \
-  serial-values 
+  serial-values \
+  team_advanced \
+  team_create_sub \
+  team_simple \
+  view-accumulate \
+  view-histogram1 \
+  view-histogram2 \
+  view-matrix-tasks
 
 
 CUDA_EXAMPLES = \

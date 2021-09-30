@@ -1,3 +1,10 @@
+// This example shows how to implement a naive sum reduction
+// using RMA put and some advanced completions
+//
+// This reduction algorithm is non-scalable and only shown here for 
+// demonstration purposes. UPC++ includes scalable reduction operations 
+// upcxx::reduce_{one,all}() that should be preferred in real codes.
+
 int64_t hits = 0;
 upcxx::promise<> prom;
 upcxx::global_ptr<int64_t> all_hits_ptr = nullptr;

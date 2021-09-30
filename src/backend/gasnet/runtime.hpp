@@ -10,6 +10,7 @@
 #include <upcxx/command.hpp>
 #include <upcxx/persona.hpp>
 #include <upcxx/team_fwd.hpp>
+#include <upcxx/exceptions.hpp>
 
 #include <cstdint>
 
@@ -33,14 +34,30 @@ namespace gasnet {
   extern sheap_footprint_t sheap_footprint_misc;
   extern sheap_footprint_t sheap_footprint_user;
 
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if UPCXXI_BACKEND_GASNET_SEQ
     extern handle_cb_queue master_hcbs;
   #endif
 
   // Allocate from shared heap with accounting dumped to given footprint struct
-  // (not optional). Failure mode is null return  for foot == &gasnet::sheap_footprint_user
-  // and job death with diagnostic dump otherwise.
-  void* allocate(std::size_t size, std::size_t align, sheap_footprint_t *foot);
+  // Failure mode is a null return
+  void* allocate_or_null(std::size_t size, std::size_t align, sheap_footprint_t *foot) noexcept;
+
+  // Allocate from shared heap with accounting dumped to given footprint struct
+  // Failure mode is an exception for failureThrows 
+  //   and job death with diagnostic dump otherwise.
+  template<bool failureThrows=false>
+  inline void *allocate(std::size_t size, std::size_t align, sheap_footprint_t *foot) {
+    void *p = allocate_or_null(size, align, foot);
+    UPCXXI_IF_PT (p) return p;
+    else {
+      bad_shared_alloc fail(nullptr, size, failureThrows);
+      if (failureThrows) 
+        throw fail;
+      else
+        UPCXXI_FATAL_ERROR(fail.what());
+    } 
+    UPCXXI_UNREACHABLE(); // silence a warning from intel 21.3
+  }
 
   // Deallocate shared heap buffer, foot must match that given to allocate.
   void  deallocate(void *p, sheap_footprint_t *foot);
@@ -247,7 +264,7 @@ namespace gasnet {
             buffer = detail::alloc_aligned(w.size(), w.align());
           UPCXX_ASSERT(detail::is_aligned(buffer, w.align()));
         } else { // rendezvous
-          buffer = gasnet::allocate(w.size(), w.align(), &gasnet::sheap_footprint_rdzv);
+          buffer = gasnet::allocate</*throws=*/true>(w.size(), w.align(), &gasnet::sheap_footprint_rdzv);
         }
         
         w.compact_and_invalidate(buffer);
@@ -311,7 +328,7 @@ namespace gasnet {
         UPCXX_ASSERT(detail::is_aligned(buffer, ub.align));
       }
       else
-        buffer = gasnet::allocate(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
+        buffer = gasnet::allocate</*throws=*/true>(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
       
       return detail::serialization_writer<true>(buffer);
     }
@@ -409,7 +426,7 @@ namespace gasnet {
 
         buffer = gasnet::prepare_npam_medium(recipient, ub.size, static_npam_args, npam_nonce);
       } else {
-        buffer = gasnet::allocate(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
+        buffer = gasnet::allocate</*throws=*/true>(ub.size, ub.align, &gasnet::sheap_footprint_rdzv);
       }
       UPCXX_ASSERT(detail::is_aligned(buffer, ub.align));
       
@@ -445,70 +462,25 @@ namespace gasnet {
 namespace upcxx {
 namespace backend {
   //////////////////////////////////////////////////////////////////////
-  // during_level
-  
-  template<typename Fn>
-  void during_level(
-      std::integral_constant<progress_level, progress_level::internal>,
-      Fn &&fn,
-      persona &active_per
-    ) {
-    
-    // TODO: revisit the purpose of this seemingly wrong assertion
-    //UPCXX_ASSERT(!UPCXX_BACKEND_GASNET_SEQ || backend::master.active_with_caller());
-    
-    fn();
-  }
-  
-  template<typename Fn>
-  void during_level(
-      std::integral_constant<progress_level, progress_level::user>,
-      Fn &&fn,
-      persona &active_per
-    ) {
-    detail::persona_tls &tls = detail::the_persona_tls;
-    
-    // TODO: revisit the purpose of this seemingly wrong assertion
-    //UPCXX_ASSERT(!UPCXX_BACKEND_GASNET_SEQ || backend::master.active_with_caller(tls));
-    //persona &active_per = UPCXX_BACKEND_GASNET_SEQ
-    //  ? backend::master
-    //  : *tls.get_top_persona();
-    
-    tls.during(
-      active_per, progress_level::user, std::forward<Fn>(fn),
-      /*known_active=*/std::true_type{}
-    );
-  }
-
-  template<progress_level level, typename Fn>
-  void during_level(Fn &&fn, persona &active_per) {
-    during_level(
-      std::integral_constant<progress_level,level>{},
-      std::forward<Fn>(fn),
-      active_per
-    );
-  }
-  
-  //////////////////////////////////////////////////////////////////////
   // send_am_{master|persona}
 
   // NPAM protocol control:
   // We want to use the NPAM protocol iff NPAM MediumRequest has a native zero-copy implementation
   // This is true for any target rank on certain native conduits, 
   // and for local targets only on other conduits.
-  #ifndef UPCXX_USE_NPAM
-    #if UPCXX_GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM || \
+  #ifndef UPCXXI_USE_NPAM
+    #if UPCXXI_NATIVE_NP_ALLOC_REQ_MEDIUM || \
         UPCXX_NETWORK_SMP /* PSHM always provides native NPAM, this improves static analysis */
-      #define UPCXX_USE_NPAM 1
+      #define UPCXXI_USE_NPAM 1
     #else
-      #define UPCXX_USE_NPAM is_local // network NPAM non-native, use NPAM iff target is local
+      #define UPCXXI_USE_NPAM is_local // network NPAM non-native, use NPAM iff target is local
     #endif
   #endif
-  #ifndef UPCXX_USE_NPAM_STATIC
-    #if UPCXX_USE_NPAM
-      #define UPCXX_USE_NPAM_STATIC 1
+  #ifndef UPCXXI_USE_NPAM_STATIC
+    #if UPCXXI_USE_NPAM
+      #define UPCXXI_USE_NPAM_STATIC 1
     #else // relies on undefined is_local symbol evaluating to zero
-      #define UPCXX_USE_NPAM_STATIC 0
+      #define UPCXXI_USE_NPAM_STATIC 0
     #endif
   #endif
 
@@ -534,7 +506,7 @@ namespace backend {
       intrank_t recipient,
       std::integral_constant<bool, restricted> restricted1={}
     ) -> gasnet::am_send_buffer<decltype(detail::command<detail::lpc_base*>::ubound(detail::empty_storage_size, fn)),
-                                (UPCXX_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> {
+                                (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> {
     
     using gasnet::am_send_buffer;
     using gasnet::rpc_as_lpc;
@@ -547,7 +519,7 @@ namespace backend {
                                                : backend::rank_is_local(recipient);
 
     const int usingNPAMArgs = ( (eagerNPAMArgs < 0 ) ? -1/*disabled*/
-                                : ( UPCXX_USE_NPAM ? eagerNPAMArgs : -1/*disabled*/ ) );
+                                : ( UPCXXI_USE_NPAM ? eagerNPAMArgs : -1/*disabled*/ ) );
 
     const std::size_t rdzv_cutover_size = (
        forceEager ? std::size_t(-1)
@@ -555,13 +527,17 @@ namespace backend {
                                : gasnet::am_size_rdzv_cutover )
     );
 
-    am_send_buffer<decltype(ub), (UPCXX_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> am_buf;
+    am_send_buffer<decltype(ub), (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> am_buf;
     auto w = am_buf.prepare_writer(ub, rdzv_cutover_size, usingNPAMArgs, recipient);
+
+    UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
     
     detail::command<detail::lpc_base*>::template serialize<
         &rpc_as_lpc::reader_of,
         &rpc_as_lpc::template cleanup<definitely_not_rdzv, restricted>
       >(w, ub.size, fn);
+
+    UPCXXI_ASSERT_NOEXCEPTIONS_END
 
     am_buf.finalize_buffer(std::move(w), rdzv_cutover_size, usingNPAMArgs, recipient);
     
@@ -570,7 +546,7 @@ namespace backend {
 
   template<typename AmBuf>
   void send_prepared_am_master(progress_level level, intrank_t recipient, AmBuf &&am) {
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     if(am.is_eager)
       gasnet::send_am_eager_master(level, recipient, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
@@ -600,7 +576,7 @@ namespace backend {
       intrank_t recipient_rank, persona *recipient_persona,
       AmBuf &&am
     ) {
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     
     if(am.is_eager)
       gasnet::send_am_eager_persona(level, recipient_rank, recipient_persona, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
@@ -646,7 +622,7 @@ namespace backend {
   
   template<progress_level level, typename Fn1>
   void bcast_am_master(const team &tm, Fn1 &&fn) {
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     
     using gasnet::am_send_buffer;
     using gasnet::bcast_as_lpc;
@@ -705,12 +681,12 @@ namespace gasnet {
   // register_handle_cb
 
   inline handle_cb_queue& get_handle_cb_queue() {
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
-    #if UPCXX_BACKEND_GASNET_SEQ
+    #if UPCXXI_BACKEND_GASNET_SEQ
       return gasnet::master_hcbs;
-    #elif UPCXX_BACKEND_GASNET_PAR
-      return upcxx::current_persona().UPCXX_INTERNAL_ONLY(backend_state_).hcbs;
+    #elif UPCXXI_BACKEND_GASNET_PAR
+      return upcxx::current_persona().UPCXXI_INTERNAL_ONLY(backend_state_).hcbs;
     #endif
   }
   
@@ -723,7 +699,7 @@ namespace gasnet {
   
   template<typename Fn>
   void send_am_restricted(intrank_t recipient, Fn &&fn) {
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     auto am_buf(prepare_am<1>(
       std::forward<Fn>(fn), recipient, /*restricted=*/std::true_type()
@@ -772,22 +748,12 @@ namespace gasnet {
       progress_level am_level, AmFn &&am_fn,
       handle_cb *src_cb, reply_cb *rem_cb
     ) {
-    UPCXX_ASSERT_MASTER_IFSEQ();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
-    bool rank_d_is_local = backend::rank_is_local(rank_d);
-    
     constexpr std::size_t arg_size = sizeof(std::int32_t);
 
-    if(rank_d_is_local) {
-      auto am(backend::prepare_am<1,/*knownLocality=*/1>
-                                 (std::forward<AmFn>(am_fn), rank_d));
+    UPCXX_ASSERT(!backend::rank_is_local(rank_d)); // rput now does this case directly
 
-      void *buf_d_local = backend::localize_memory_nonnull(rank_d, reinterpret_cast<std::uintptr_t>(buf_d));
-      std::memcpy(buf_d_local, buf_s, buf_size);
-      backend::send_prepared_am_master(am_level, rank_d, std::move(am));
-      return rma_put_then_am_sync::op_now;
-    }
-    else {
       auto am(backend::prepare_am<-1/*disableNPAM*/,/*knownLocality=*/0,/*forceEager=*/true>
                                  (std::forward<AmFn>(am_fn), rank_d));
 
@@ -805,7 +771,6 @@ namespace gasnet {
           src_cb, rem_cb
         );
       }
-    }
   }
 }}}
 

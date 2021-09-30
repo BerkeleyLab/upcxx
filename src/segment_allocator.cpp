@@ -1,5 +1,6 @@
 #include <upcxx/diagnostic.hpp>
 #include <upcxx/segment_allocator.hpp>
+#include <upcxx/backend/gasnet/runtime_internal.hpp>
 
 #include <algorithm>
 
@@ -20,6 +21,7 @@ namespace {
   }
 }
 
+GASNETT_COLD
 segment_allocator::segment_allocator(void *segment_base, size_t segment_size) {
   this->seg_base_ = reinterpret_cast<uintptr_t>(segment_base);
   
@@ -35,6 +37,7 @@ segment_allocator::segment_allocator(void *segment_base, size_t segment_size) {
   insert_hole_by_size(holes_by_size_, big_hole, segment_size);
 }
 
+GASNETT_COLD
 segment_allocator::segment_allocator(segment_allocator &&that):
   seg_base_(that.seg_base_),
   holes_by_size_(std::move(that.holes_by_size_)),
@@ -50,6 +53,7 @@ segment_allocator::segment_allocator(segment_allocator &&that):
     this->endpost_.prev->next = &this->endpost_;
 }
 
+GASNETT_COLD
 segment_allocator::~segment_allocator() {
   block *b = endpost_.prev;
   while(b != nullptr) {

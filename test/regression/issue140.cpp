@@ -7,7 +7,7 @@ using namespace std;
 using namespace upcxx;
 
 #ifndef KEEP_MASTER
-  #if UPCXX_BACKEND_GASNET_SEQ
+  #if !UPCXX_THREADMODE
     #define KEEP_MASTER 1
   #else
     #define KEEP_MASTER 0

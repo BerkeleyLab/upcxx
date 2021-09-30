@@ -1,7 +1,14 @@
+// This example shows how to implement a naive sum reduction
+// using RMA put and a barrier synchronization.
+//
+// This reduction algorithm is non-scalable and only shown here for 
+// demonstration purposes. UPC++ includes scalable reduction operations 
+// upcxx::reduce_{one,all}() that should be preferred in real codes.
+
 int64_t reduce_to_rank0(int64_t my_hits)
 {
-    // Rank 0 creates an array the size of the number of ranks to store all 
-    // the global pointers
+    // Rank 0 creates an array the size of the number of ranks 
+    // to store all of the incoming values
     upcxx::global_ptr<int64_t> all_hits_ptr = nullptr;
     if (upcxx::rank_me() == 0) { 
         all_hits_ptr = upcxx::new_array<int64_t>(upcxx::rank_n()); 

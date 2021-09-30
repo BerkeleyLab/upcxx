@@ -53,7 +53,7 @@ upcxx::future<> send_histo1_byview(histogram1 const &histo) {
       [](upcxx::view<std::pair<const std::string, double>> const &histo_view) {
         // Pain point from `send_histo1_byval`: Eliminated.
         
-        // Traverse key-values directly in network buffer.
+        // Traverse key-values directly from network buffer.
         for(auto const &kv: histo_view)
           my_histo1[kv.first] += kv.second;
         

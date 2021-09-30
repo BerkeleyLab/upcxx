@@ -3,11 +3,11 @@
 
 // UPCXX_VERSION release identifier format:
 // YYYYMMPPL = [YEAR][MONTH][PATCH]
-#define UPCXX_VERSION 20210300L
+#define UPCXX_VERSION 20210900L
 
 // UPCXX_SPEC_VERSION release identifier format:
 // YYYYMM00L = [YEAR][MONTH]
-#define UPCXX_SPEC_VERSION 20210300L
+#define UPCXX_SPEC_VERSION 20210900L
 
 namespace upcxx {
   long release_version();
@@ -18,7 +18,7 @@ namespace upcxx {
 //   Undefined for SEQ
 //   Non-zero for PAR
 #undef UPCXX_THREADMODE
-#if UPCXX_BACKEND_GASNET_PAR
+#if UPCXXI_BACKEND_GASNET_PAR
   // One must NOT depend on the specific non-zero value
   #define UPCXX_THREADMODE 1
 #endif
@@ -27,7 +27,7 @@ namespace upcxx {
 //   Undefined for debug
 //   Non-zero for "opt" (production)
 #undef UPCXX_CODEMODE
-#if !UPCXX_ASSERT_ENABLED
+#if !UPCXXI_ASSERT_ENABLED
   // One must NOT depend on the specific non-zero value
   #define UPCXX_CODEMODE 1
 #endif

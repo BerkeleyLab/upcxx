@@ -4,12 +4,12 @@
 // This version of this test deliberately avoids initializing the UPC++/GASNet backend, 
 // but still uses some of the UPC++ internals to test them in isolation.
 // This is NOT in any way supported for user code!!
-#if UPCXX_BACKEND_GASNET_SEQ
-#error thread-safe libupcxx is required
-#endif
-
 #include <upcxx/upcxx.hpp>
 #include "../util.hpp"
+
+#if !UPCXX_THREADMODE
+#error thread-safe libupcxx is required
+#endif
 
 #include <atomic>
 #include <thread>

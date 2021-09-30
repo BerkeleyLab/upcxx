@@ -1,7 +1,7 @@
 #include <upcxx/upcxx.hpp>
 #include "util.hpp"
 
-#if UPCXX_CUDA_ENABLED
+#if UPCXX_KIND_CUDA
   #include <cuda_runtime_api.h>
   #include <cuda.h>
   constexpr int max_dev_n = 32;
@@ -29,7 +29,7 @@ int main() {
     if(me == 0 && upcxx::rank_n() == 2)
       std::cerr << "Advice: consider using 3 (or more) ranks to cover three-party cases for upcxx::copy.\n";
 
-    #if UPCXX_CUDA_ENABLED
+    #if UPCXX_KIND_CUDA
     {
       CHECK(cuInit(0) == CUDA_SUCCESS);
       CHECK(cuDeviceGetCount(&dev_n) == CUDA_SUCCESS);
@@ -62,7 +62,7 @@ int main() {
         buf[me][0][0].local()[i] = (i%(1<<17)%10) + (i>>17)*10 + (0*100) + (me*1000);
     }
 
-    #if UPCXX_CUDA_ENABLED
+    #if UPCXX_KIND_CUDA
       cuda_device* gpu[max_dev_n];
       device_allocator<cuda_device>* seg[max_dev_n];
       for(int dev=1; dev < 1+dev_n; dev++) {
@@ -182,7 +182,7 @@ int main() {
           if(dd == 0)
             tmp = buf[me][dd][rounds%2].local() + (dp<<17);
           else {
-          #if UPCXX_CUDA_ENABLED
+          #if UPCXX_KIND_CUDA
             tmp = new int[1<<17];
             CHECK(cudaSetDevice(dd-1) == cudaSuccess);
             CHECK(
@@ -215,7 +215,7 @@ int main() {
       upcxx::delete_array(upcxx::static_kind_cast<memory_kind::host>(buf[me][0][1]));
     }
     
-    #if UPCXX_CUDA_ENABLED
+    #if UPCXX_KIND_CUDA
       for(int dev=1; dev < 1+dev_n; dev++) {
         if(me < 2) {
           seg[dev-1]->deallocate(upcxx::static_kind_cast<memory_kind::cuda_device>(buf[me][dev][0]));

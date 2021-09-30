@@ -3,7 +3,7 @@
 
 #include <upcxx/future/core.hpp>
 #include <upcxx/utility.hpp>
-#if UPCXX_BACKEND
+#if UPCXXI_BACKEND
   #include <upcxx/backend_fwd.hpp>
 #endif
 
@@ -43,7 +43,7 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   
   namespace detail {
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
       struct future_wait_upcxx_progress_user {
         void operator()() const {
           UPCXX_ASSERT(
@@ -55,7 +55,7 @@ namespace upcxx {
       };
     #endif
 
-    #ifndef UPCXX_BACKEND
+    #ifndef UPCXXI_BACKEND
       // Used to mark member function as internal only. Normally defined in
       // <upcxx/backend_fwd.hpp>.
       struct internal_only {
@@ -157,7 +157,7 @@ namespace upcxx {
     template<int i=-1>
     result_return_select_type<i, results_type>
     result() const& {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result()", "future::result_reference()",
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result()", "future::result_reference()",
                                             result_return_select_type<i, results_type>);
       UPCXX_ASSERT( ready(), nonready_msg("result","wait","result") );
       return get_at_(
@@ -174,7 +174,7 @@ namespace upcxx {
     template<int i=-1>
     result_return_select_type<i, results_type>
     result() && {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result()", "future::result_reference()",
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result()", "future::result_reference()",
                                             result_return_select_type<i, results_type>);
       UPCXX_ASSERT( ready(), nonready_msg("result","wait","result") );
       return get_at_(
@@ -219,14 +219,14 @@ namespace upcxx {
     }
     
     results_type result_tuple() const& {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result_tuple()", 
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result_tuple()", 
                                             "future::result_reference()", // result_reference_tuple is unspecified
                                             results_type);
       UPCXX_ASSERT( ready(), nonready_msg("result_tuple","wait_tuple","result tuple") );
       return impl_.result_refs_or_vals();
     }
     results_type result_tuple() && {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result_tuple()", 
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::result_tuple()", 
                                             "future::result_reference()", // result_reference_tuple is unspecified
                                             results_type);
       UPCXX_ASSERT( ready(), nonready_msg("result_tuple","wait_tuple","result tuple") );
@@ -302,7 +302,31 @@ namespace upcxx {
       );
     }
 
-    #ifdef UPCXX_BACKEND
+    #if UPCXXI_PLATFORM_ARCH_X86_64
+      // x86* has a pause instruction that we want to use inside the future::wait*() 
+      // spin-loop to avoid a hazard stall when exiting after a long spin.
+      // However the pause instruction itself incurs a measurable delay (up to ~140 cycles), 
+      // so we don't want to pause until we are sure we are *actually* spin-waiting,
+      // and not just reaping the readiness of a dependency that was already satisfied
+      // with signalling deferred to the first progress call.
+      // So we peel off the first progress call and readiness check before entering
+      // the pausing progress loop.
+      #define UPCXXI_PROGRESS_UNTIL(cond, progress) do { \
+        if (!(cond)) { \
+          progress(); \
+          while (!(cond)) { \
+            UPCXXI_SPINLOOP_HINT(); \
+            progress(); \
+          } \
+        } \
+      } while (0)
+    #else
+      #define UPCXXI_PROGRESS_UNTIL(cond, progress) do { \
+        while (!(cond)) progress(); \
+      } while (0)
+    #endif
+
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
     #else
@@ -310,17 +334,16 @@ namespace upcxx {
     auto wait(Fn &&progress) const&
     #endif
       -> result_return_select_type<i, results_type> {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait()", "future::wait_reference()",
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait()", "future::wait_reference()",
                                             result_return_select_type<i, results_type>);
-      UPCXX_ASSERT_INIT_NAMED("future<...>::wait()");
-      
-      while(!impl_.ready())
-        progress();
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait()");
+     
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return this->template result<i>();
     }
     
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
     #else
@@ -328,17 +351,16 @@ namespace upcxx {
     auto wait(Fn &&progress) &&
     #endif
       -> result_return_select_type<i, results_type> {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait()", "future::wait_reference()",
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait()", "future::wait_reference()",
                                             result_return_select_type<i, results_type>);
-      UPCXX_ASSERT_INIT_NAMED("future<...>::wait()");
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait()");
       
-      while(!impl_.ready())
-        progress();
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return static_cast<future1&&>(*this).template result<i>();
     }
     
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<typename Fn=detail::future_wait_upcxx_progress_user>
     results_type wait_tuple(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
     #else
@@ -346,16 +368,15 @@ namespace upcxx {
     results_type wait_tuple(Fn &&progress) const&
     #endif
     {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
-      UPCXX_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      while(!impl_.ready())
-        progress();
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return this->result_tuple();
     }
 
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<typename Fn=detail::future_wait_upcxx_progress_user>
     results_type wait_tuple(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
     #else
@@ -363,16 +384,15 @@ namespace upcxx {
     results_type wait_tuple(Fn &&progress) &&
     #endif
     {
-      UPCXX_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
-      UPCXX_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      while(!impl_.ready())
-        progress();
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return static_cast<future1&&>(*this).result_tuple();
     }
     
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait_reference(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
     #else
@@ -380,15 +400,14 @@ namespace upcxx {
     auto wait_reference(Fn &&progress) const&
     #endif
       -> result_return_select_type<i, clref_results_refs_or_vals_type> {
-      UPCXX_ASSERT_INIT_NAMED("future<...>::wait_reference()");
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      while(!impl_.ready())
-        progress();
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return this->template result_reference<i>();
     }
 
-    #ifdef UPCXX_BACKEND
+    #ifdef UPCXXI_BACKEND
     template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
     auto wait_reference(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
     #else
@@ -396,10 +415,9 @@ namespace upcxx {
     auto wait_reference(Fn &&progress) &&
     #endif
       -> result_return_select_type<i, rref_results_refs_or_vals_type> {
-      UPCXX_ASSERT_INIT_NAMED("future<...>::wait_reference()");
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      while(!impl_.ready())
-        progress();
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
       
       return static_cast<future1&&>(*this).template result_reference<i>();
     }

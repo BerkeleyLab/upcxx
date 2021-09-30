@@ -8,17 +8,17 @@ conventions (below) must be adhered to when switching between MPI and UPC++
 network communication, otherwise deadlock can result on many systems.
 
 In general, mixed MPI/UPC++ applications must be linked with an MPI C++
-compiler.  This may be named 'mpicxx' or 'mpic++', among other possible names.
-However, on Cray systems 'CC' is both the regular C++ compiler and the MPI C++
+compiler.  This may be named `mpicxx` or `mpic++`, among other possible names.
+However, on Cray systems `CC` is both the regular C++ compiler and the MPI C++
 compiler.  You may need to pass this same compiler as $CXX when installing UPC++
 to ensure object compatibility.
 
-Certain UPC++ network types (currently 'mpi' and 'ibv') may use MPI
+Certain UPC++ network types (currently `mpi` and `ibv`) may use MPI
 internally. For this reason, MPI objects should be compiled with the same MPI
-compiler that was used when UPC++ itself was build (normally the 'mpicc' in
+compiler that was used when UPC++ itself was build (normally the `mpicc` in
 one's $PATH, unless some action is taken to override that default).
 Additionally, the MPI portion of an application should make use of
-'MPI_Initialized()' to ensure exactly one call is made to initialize MPI.
+`MPI_Initialized()` to ensure exactly one call is made to initialize MPI.
 See 'Correct library initialization' section below.
 
 Both MPI and UPC++ cause network communication, and the respective runtimes do
@@ -27,13 +27,13 @@ deadlock when mixing MPI and UPC++, unless the following protocol is strictly
 observed:
 
 1.  When the application starts, the first MPI or UPC++ call (*i.e.*
-    'MPI_Init()' or 'upcxx::init()') which may result in network traffic from
+    `MPI_Init()` or `upcxx::init()`) which may result in network traffic from
     any thread should be considered to put the entire job in 'MPI' or 'UPC++'
     mode, respectively.
 
 2.  When an application is in 'MPI' mode, and needs to switch to using UPC++, it
     should quiesce all MPI operations in-flight and then collectively execute an
-    'MPI_Barrier()' as the last MPI call before causing any UPC++
+    `MPI_Barrier()` as the last MPI call before causing any UPC++
     communication. Once any UPC++ communication has occurred from any rank, the
     program should be considered to have switched to 'UPC++' mode.
 
@@ -57,7 +57,7 @@ depends on your site configuration (see next section).
 The recommended method for hybrids with no special MPI thread safety 
 requirements is a formula such as:
 
-```
+```C++
 #include <upcxx/upcxx.hpp>
 #include <mpi.h>
 
@@ -152,7 +152,7 @@ Ethernet-based clusters, the recommended GASNet backend is udp-conduit (ie
 settings are recommended for MPI integration, and
 then the job can be spawned using `upcxx-run`:
 
-```
+```bash
 export GASNET_SPAWNFN='C'
 export GASNET_CSPAWN_CMD='mpirun -np %N %C'
 export GASNET_WORKER_RANK=OMPI_COMM_WORLD_RANK   # optional, assumes Open MPI
@@ -177,7 +177,7 @@ consult their documentation for the corresponding variable name.
 If `GASNET_WORKER_RANK` is unset (or names a non-existent variable) then
 udp-conduit may number your UPC++ ranks differently from MPI ranks,
 so you may want to perform an MPI rank renumbering after startup, eg:
-```
+```C++
   MPI_Comm newcomm;
   MPI_Comm_split(MPI_COMM_WORLD, 0, upcxx::rank_me(), &newcomm);
 ```
@@ -230,4 +230,4 @@ here are some things to consider:
     per process, a 64-process-per-node run of a hybrid application exceeds the
     available resources.  The solution is to set the following two environment
     variables at run time to instruct both libraries to request virtualized
-    contexts: ``` GASNET_GNI_FMA_SHARING=1 MPICH_GNI_FMA_SHARING=enabled ```
+    contexts: `GASNET_GNI_FMA_SHARING=1 MPICH_GNI_FMA_SHARING=enabled`

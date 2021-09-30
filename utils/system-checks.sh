@@ -75,7 +75,7 @@ _EOF
 # on failure, returns non-zero and yields an error message on stdout
 #
 # precondition: $gnu_version must be set as by a preceeding 'check_gnu_version CXX'
-get_intel_name_option() {
+get_intel_gcc_name_option() {
     case $1 in
          CC) local suffix=c   option=-gcc-name exe=gcc compiler="$CC $CFLAGS" ;;
         CXX) local suffix=cpp option=-gxx-name exe=g++ compiler="$CXX $CXXFLAGS";;
@@ -138,8 +138,12 @@ get_intel_name_option() {
     esac
 }
 
-# checks specific to Intel compilers:
-check_intel_compiler() {
+# Checks and flags specific to Intel compilers with GCC toolchain
+# + Verify the GCC toolchain meets the minimum libstdc++ version
+# + Determine the flags needed to ensure we always use the same toolchain as
+#   probed at configure time, even if end-user has another in $PATH at
+#   application compile time.
+check_intel_toolchain_gcc() {
     check_gnu_version CXX
     case $? in
         0)  # OK
@@ -164,7 +168,7 @@ check_intel_compiler() {
     # Find the actual g++ in use
     # Append to CXXFLAGS unless already present there, or in CXX
     local gxx_name # do not merge w/ assignment or $? is lost!
-    gxx_name=$(get_intel_name_option CXX)
+    gxx_name=$(get_intel_gcc_name_option CXX)
     if [[ $? -ne 0 ]]; then
         echo "ERROR: $gxx_name"
         if [[ ! -d /opt/cray ]]; then # not assured of trustworthy intel environment module(s)
@@ -180,12 +184,13 @@ check_intel_compiler() {
 
     # same for C compiler, allowing (gasp) that it might be different
     # note that no floor is imposed ($? = 0,1 both considered success)
+  if [[ $CCVERS =~ ( \(ICC\) ) ]]; then  # skip probe of $CC if not Intel C
     check_gnu_version CC
     if [[ $? -gt 1 ]]; then
         return 1   # error was already printed
     fi
     local gcc_name # do not merge w/ assignment or $? is lost!
-    gcc_name=$(get_intel_name_option CC)
+    gcc_name=$(get_intel_gcc_name_option CC)
     if [[ $? -ne 0 ]]; then
         echo "ERROR: $gcc_name"
         if [[ ! -d /opt/cray ]]; then # not assured of trustworthy intel environment module(s)
@@ -198,6 +203,169 @@ check_intel_compiler() {
     if [[ -n $gcc_name && ! "$CC $CFLAGS " =~ " $gcc_name " ]]; then
         CFLAGS+="${CFLAGS+ }$gcc_name"
     fi
+  fi
+}
+
+# Checks and flags specific to Intel compilers with Clang toolchain
+check_intel_toolchain_clang() {
+    : # TODO?  This is a stub
+    # If support for multiple Xcode installs becomes a requirement, then
+    # the equivalent of get_intel_gcc_name_option() will be needed.
+}
+
+# checks specific to Intel compilers:
+check_intel_compiler() {
+   case $KERNEL in
+     Darwin)
+       check_intel_toolchain_clang
+       ;;
+     Linux)
+       check_intel_toolchain_gcc
+       ;;
+   esac
+}
+
+# check whether $CXX might be a C compiler
+check_maybe_c_compiler() {
+    local c_compiler=
+    case $(basename "$CXX") in
+        gcc|gcc-*|clang|icc|icx|pgcc|mpicc|cc) c_compiler=1;;
+    esac
+    if test -n "$c_compiler" ; then
+        echo "ERROR: It looks like CXX=$CXX may be a C compiler."\
+             "Please use a C++ compiler instead."
+    fi
+}
+
+# compile_check(): checks that $CXX can compile C++ code and is
+#   link-compatible with $CC.
+compile_check() {
+    local DETAIL_LOG=config-detail.log
+    rm -f $DETAIL_LOG
+    # check if we need to inject -std=c++11 flag
+    trap "rm -f conftest-std.cpp" RETURN
+    local TOKEN1='_reYBrfDyyWZ76wwb_'
+    local TOKEN2='_unnBZgmdLe3ADU4F_'
+    cat >conftest-std.cpp <<_EOF
+      #undef  _REPORT
+      #undef  _REPORT_HELPER
+      #define _REPORT(a) _REPORT_HELPER(a)
+      #define _REPORT_HELPER(a) $TOKEN1 ## a ## $TOKEN2
+      #if __cplusplus < 201103L
+      _REPORT(1)
+      #else
+      _REPORT(0)
+      #endif
+_EOF
+    if ! [[ $(eval $CXX $CXXFLAGS -E conftest-std.cpp) =~ ${TOKEN1}([0-9]+)${TOKEN2} ]]; then
+        echo "ERROR: regex match failed probing \$$1 for C++ standard version"
+        return 4
+    fi
+    local cxx_pre11=${BASH_REMATCH[1]}
+    local CXXSTDFLAG=
+    if [[ $cxx_pre11 -ne 0 ]]; then
+        CXXSTDFLAG="-std=c++11"
+    fi
+    # check C compilation
+    trap "rm -f conftest-std.cpp conftest-cc.c conftest-cc.o conftest-cxx.cpp conftest-cxx.o conftest.o" RETURN
+    cat >conftest-cc.c <<_EOF
+      #include <math.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      extern int cppextfunc(double);
+
+      int cfunc(double x) {
+        printf("[from C] cfunc(%f)\n", x);
+        double *ptr = malloc(sizeof(double)); // okay in C, not in C++
+        *ptr = sqrt(x);
+        int res = abs(cppextfunc(*ptr));
+        free(ptr);
+        return res;
+      }
+_EOF
+    if ! (set -x; eval $CC $CFLAGS -c conftest-cc.c) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: CC=$CC failed to compile test C file"
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        return 1
+    fi
+    # check C++ compilation
+    cat >conftest-cxx.cpp <<_EOF
+      #include <iostream>
+      #include <new>
+      #include <tuple>
+      #include <type_traits>
+      #include <vector>
+
+      extern "C" int cfunc(double);
+
+      extern "C" int cppextfunc(double x) {
+        return static_cast<int>(x);
+      }
+
+      namespace cppnamespace {
+        template<typename T>
+        auto func(T&& x) -> typename std::enable_if<std::is_same<T,int>::value,int>::type {
+          if (x != 0) throw 0;
+          return 0;
+        }
+
+        template<typename T>
+        auto func(T&&) -> typename std::enable_if<!std::is_same<T,int>::value,int>::type {
+          return 1;
+        }
+      }
+
+      int main() {
+        std::cout << "[from C++] cfunc(7.3)" << std::endl;
+        std::cout << cfunc(7.3) << std::endl;
+        try {
+          std::cout << cppnamespace::func(3) << std::endl;
+        } catch (int i) {
+          std::cout << "caught " << i << std::endl;
+        }
+        std::cout << cppnamespace::func(3.1) << std::endl;
+        auto lambda = [](std::vector<double> &vec) {
+                        return std::make_tuple(vec[0], vec.size());
+                      };
+        std::vector<double> v = { 1.1, -2.2, 3.3 };
+        v.~vector();
+        std::vector<double> *ptr = new(&v) std::vector<double>({ -4.4, 5.5 });
+        std::tuple<double, std::vector<double>::size_type> t = lambda(*ptr);
+        std::cout << "(" << std::get<0>(t) << "," << std::get<1>(t) << ")" << std::endl;
+        std::tuple<> empty;
+        auto t2 = std::tuple_cat(t, empty);
+        double d;
+        std::vector<double>::size_type s;
+        std::tie(d, s) = t2;
+        std::cout << d << " " << s << std::endl;
+        return 0;
+      }
+_EOF
+    if ! (set -x; eval $CXX $CXXFLAGS $CXXSTDFLAG -c conftest-cxx.cpp) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: CXX=$CXX failed to compile test C++ file"
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        check_maybe_c_compiler
+        return 2
+    fi
+    if ! (set -x; eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        check_maybe_c_compiler
+        return 3
+    fi
+    # actually run the test if not cross compiling
+    if test -z "$UPCXX_CROSS" && ! (set -x; ./conftest.o) >> $DETAIL_LOG 2>&1 ; then
+        echo "ERROR: Test program successfully compiled with CC=$CC and CXX=$CXX but failed to"\
+             "run correctly. The required dynamic libraries may be missing."
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+        return 5
+    fi
+    rm -f $DETAIL_LOG
 }
 
 # platform_sanity_checks(): defaults $CC and $CXX if they are unset
@@ -280,14 +448,14 @@ platform_sanity_checks() {
         CC=$cc_exec
         if test -z "$UPCXX_INSTALL_QUIET" ; then
             echo $CXX
-            $CXX --version 2>&1 | grep -v 'warning #10315'
+            eval $CXX --version 2>&1 | grep -v 'warning #10315'
             echo $CC
-            $CC --version 2>&1 | grep -v 'warning #10315'
+            eval $CC --version 2>&1 | grep -v 'warning #10315'
             echo " "
         fi
 
-        local CXXVERS=`$CXX --version 2>&1`
-        local CCVERS=`$CC --version 2>&1`
+        local CXXVERS=`eval $CXX --version 2>&1`
+        local CCVERS=`eval $CC --version 2>&1`
         local COMPILER_BAD=
         local COMPILER_GOOD=
         local EXTRA_RECOMMEND=
@@ -295,16 +463,13 @@ platform_sanity_checks() {
             COMPILER_BAD=1
         elif echo "$CXXVERS" | egrep 'Apple (LLVM|clang) version ([8-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
             COMPILER_GOOD=1
-        elif echo "$CXXVERS" | egrep 'PGI Compilers and Tools'  > /dev/null ; then
-            if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
-               : # PrgEnv-pgi: currently neither GOOD nor BAD
-            elif egrep ' +(20\.[789]|20\.1[0-2]|2[1-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+        elif echo "$CXXVERS" | egrep '(PGI|NVIDIA) Compilers and Tools'  > /dev/null ; then
+            if egrep ' +20\.[5-8]-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                # Ex: "pgc++ (aka nvc++) 20.7-0 LLVM 64-bit target on x86-64 Linux -tp nehalem"
-               # 20.7 and up are known BAD
-               # TODO: update with end range before 2030
+               # Release 20.7 is known bad (see GASNet bug 4115).
+               # However, 20.4 (from PGI) and 20.9 (from Nvidia) are known good.
+               # We conservatively ban 20.[5-8] even though only 20.7 is known to exist.
                COMPILER_BAD=1
-               EXTRA_RECOMMEND='
-       As an exception to the above, PGI (aka NVIDIA HPC SDK) 20.7 and newer are NOT currently supported.'
             elif [[ "$ARCH,$KERNEL" = 'x86_64,Linux' ]] &&
                  egrep ' +(19|[2-9][0-9])\.[0-9]+-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                # Ex: "pgc++ 19.7-0 LLVM 64-bit target on x86-64 Linux -tp nehalem"
@@ -315,16 +480,28 @@ platform_sanity_checks() {
                # Ex: "pgc++ 18.10-0 linuxpower target on Linuxpower"
                # 18.10 and newer "GOOD" (no 18.x was released for x > 10)
                COMPILER_GOOD=1
+            elif [[ "$ARCH,$KERNEL" = 'aarch64,Linux' ]] ; then
+               : # Not yet claiming support on aarch64, but also not BAD
             else
                # Unsuported platform or version
                COMPILER_BAD=1
+            fi
+            if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
+               # PrgEnv-pgi: currently neither GOOD nor BAD due to lack of testing
+               # However, if logic above identified a bad version, we'll preserve that.
+               unset COMPILER_GOOD
             fi
         elif echo "$CXXVERS" | egrep 'IBM XL'  > /dev/null ; then
             COMPILER_BAD=1
         elif echo "$CXXVERS" | egrep 'Free Software Foundation' 2>&1 > /dev/null &&
              ! check_gnu_version CXX &> /dev/null; then
             COMPILER_BAD=1
-        elif test -z "$CRAY_PRGENVINTEL" && \
+        elif [[ "$KERNEL" = 'Darwin' ]] && \
+             echo "$CXXVERS" | egrep ' +\(ICC\) +(2021\.[3-9]|202[2-9]\.)' 2>&1 > /dev/null ; then
+	    # Ex: icpc (ICC) 2021.3.0 20210609
+            check_intel_compiler || exit 1
+            #COMPILER_GOOD=1 Not yet
+        elif [[ "$CRAY_PRGENVINTEL$KERNEL" = 'Linux' ]] && \
              echo "$CXXVERS" | egrep ' +\(ICC\) +(17\.0\.[2-9]|1[89]\.|(20)?2[0-9]\.)' 2>&1 > /dev/null ; then
 	    # Ex: icpc (ICC) 18.0.1 20171018
             check_intel_compiler || exit 1
@@ -346,6 +523,11 @@ platform_sanity_checks() {
                 echo
               fi
             fi
+        elif [[ $CXXVERS =~ (oneAPI .* (20[0-9][0-9])\.([0-9]+)\.([0-9]+)) ]]; then
+            if ((BASH_REMATCH[2]*10000 + BASH_REMATCH[3]*100 + BASH_REMATCH[4] >= 20210102 )); then
+              COMPILER_GOOD=1
+            fi
+            # older versions unknown for now
         elif echo "$CXXVERS" | egrep 'Free Software Foundation' 2>&1 > /dev/null &&
              check_gnu_version CXX &> /dev/null; then
             COMPILER_GOOD=1
@@ -368,11 +550,18 @@ platform_sanity_checks() {
             fi
         fi
 
+        local COMPILER_FAIL=
+        if ! compile_check ; then
+            COMPILER_FAIL=1
+        fi
+
         local RECOMMEND
         read -r -d '' RECOMMEND<<'EOF'
-We recommend one of the following C++ compilers (or any later versions):
-           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1, Intel C 17.0.2
-           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10
+We recommend one of the following C++ compilers (or any later versions where no end-of-range is given):
+           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1 through 20.4 (inclusive),
+                              NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2
+           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10 through 20.4 (inclusive),
+                              NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0
            Cray XC systems:   PrgEnv-gnu with gcc/7.1.0 environment module loaded
@@ -387,6 +576,11 @@ EOF
         elif test -n "$COMPILER_BAD" ; then
             echo 'ERROR: Your C++ compiler is known to lack the support needed to build UPC++. '\
                  'Please set $CC and $CXX to point to a newer C/C++ compiler suite.'
+            echo "ERROR: $RECOMMEND$EXTRA_RECOMMEND"
+            exit 1
+        elif test -n "$COMPILER_FAIL" ; then
+            echo 'ERROR: Your C and C++ compilers failed to compile and link C/C++ code. '\
+                 'Please set $CC and $CXX to ABI-compatible C and C++ compilers, respectively.'
             echo "ERROR: $RECOMMEND$EXTRA_RECOMMEND"
             exit 1
         elif test -z "$COMPILER_GOOD" || test -z "$KERNEL_GOOD" || test -z "$ARCH_GOOD" ; then

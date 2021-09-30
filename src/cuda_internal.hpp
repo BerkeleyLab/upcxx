@@ -4,56 +4,56 @@
 #include <upcxx/cuda.hpp>
 #include <upcxx/diagnostic.hpp>
 
-#include <upcxx/backend/gasnet/runtime_internal.hpp> // GEX_SPEC_VERSION
+#include <upcxx/backend/gasnet/runtime_internal.hpp>
 
-#if UPCXX_CUDA_ENABLED
+#if UPCXXI_CUDA_ENABLED
   #include <cuda.h>
   #include <cuda_runtime_api.h>
 
   // Decide whether GASNet has native memory kinds support
-  #ifndef GEX_SPEC_VERSION_MINOR
-  #error Missing GEX_SPEC_VERSION_MINOR definition
+  #include <gasnet_mk.h>
+  #ifndef UPCXXI_MAXEPS
+  #error Missing UPCXXI_MAXEPS definition
   #endif
-  #if GEX_SPEC_VERSION_MINOR >= 12 || GEX_SPEC_VERSION_MAJOR 
-    #include <gasnet_mk.h>
-    #ifndef UPCXX_MAXEPS
-    #error Missing UPCXX_MAXEPS definition
-    #endif
-    #if UPCXX_CUDA_ENABLED && UPCXX_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
-      #define UPCXX_CUDA_USE_MK 1
-    #endif
+  #if UPCXXI_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
+    #define UPCXXI_CUDA_USE_MK 1
   #endif
 
   namespace upcxx {
     namespace cuda {
-      void cu_failed(CUresult res, const char *file, int line, const char *expr);
+      UPCXXI_ATTRIB_NORETURN
+      void cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose = false);
+      UPCXXI_ATTRIB_NORETURN
       void curt_failed(cudaError_t res, const char *file, int line, const char *expr);
     }
   }
   
-  #define CU_CHECK(expr) do { \
-      CUresult res_xxxxxx = (expr); \
-      if(UPCXX_ASSERT_ENABLED && res_xxxxxx != CUDA_SUCCESS) \
-        ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
-    } while(0)
-
   #define CU_CHECK_ALWAYS(expr) do { \
       CUresult res_xxxxxx = (expr); \
-      if(res_xxxxxx != CUDA_SUCCESS) \
+      if_pf (res_xxxxxx != CUDA_SUCCESS) \
         ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
-  #define CURT_CHECK(expr) do { \
-      cudaError_t res_xxxxxx = (expr); \
-      if(UPCXX_ASSERT_ENABLED && res_xxxxxx != cudaSuccess) \
-        ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
+  #define CU_CHECK_ALWAYS_VERBOSE(expr) do { \
+      CUresult res_xxxxxx = (expr); \
+      if_pf (res_xxxxxx != CUDA_SUCCESS) \
+        ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
     } while(0)
+
 
   #define CURT_CHECK_ALWAYS(expr) do { \
       cudaError_t res_xxxxxx = (expr); \
-      if(res_xxxxxx != cudaSuccess) \
+      if_pf (res_xxxxxx != cudaSuccess) \
         ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
+
+  #if UPCXXI_ASSERT_ENABLED
+    #define CU_CHECK(expr)   CU_CHECK_ALWAYS(expr)
+    #define CURT_CHECK(expr) CURT_CHECK_ALWAYS(expr)
+  #else
+    #define CU_CHECK(expr)   ((void)(expr))
+    #define CURT_CHECK(expr) ((void)(expr))
+  #endif
 
   namespace upcxx {
     namespace cuda {
@@ -64,7 +64,7 @@
         CUstream stream;
         CUdeviceptr segment_to_free;
 
-        #if UPCXX_CUDA_USE_MK
+        #if UPCXXI_CUDA_USE_MK
           // gex objects...
           gex_EP_t ep;
           gex_MK_t kind;

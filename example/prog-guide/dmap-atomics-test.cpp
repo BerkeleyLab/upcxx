@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     }
      // periodically call progress to allow incoming RPCs to be processed
     if (i % 10 == 0) upcxx::progress();
- }
+  }
   // setup atomic domain with only the operations needed
   upcxx::atomic_domain<int64_t> ad({upcxx::atomic_op::load, upcxx::atomic_op::add});
   // distributed object to keep track of number of inserts expected at every process

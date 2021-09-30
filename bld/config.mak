@@ -9,12 +9,12 @@
 UPCXX_CONFIG_SCRIPTS = \
 	upcxx_defines.sh \
 	builtin_assume_aligned.sh \
-	hidden_am_concurrency_level.sh \
-	maxeps.sh \
-	native_npam.sh \
+	builtin_launder.sh \
+	gasnet_macros.sh \
 	issue400_workaround.sh
 # Scripts (in $(upcxx_src)/utils/config/gasnet) to be run IN ORDER
 GASNET_CONFIG_SCRIPTS = \
+	conduit_warnings.sh \
 	config_status.sh \
 	openmp.sh
 

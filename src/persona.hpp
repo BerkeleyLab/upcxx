@@ -54,9 +54,9 @@ namespace upcxx {
       pros_deferred_trivial_;
     
   public: //private!
-    backend::persona_state UPCXX_INTERNAL_ONLY(backend_state_);
-    cuda::persona_state UPCXX_INTERNAL_ONLY(cuda_state_);
-    std::intptr_t UPCXX_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
+    backend::persona_state UPCXXI_INTERNAL_ONLY(backend_state_);
+    cuda::persona_state UPCXXI_INTERNAL_ONLY(cuda_state_);
+    std::intptr_t UPCXXI_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
   
   private:
     persona* get_owner() const;
@@ -69,8 +69,8 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      UPCXX_INTERNAL_ONLY(backend_state_)(),
-      UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
+      UPCXXI_INTERNAL_ONLY(backend_state_)(),
+      UPCXXI_INTERNAL_ONLY(undischarged_n_)(0) {
     }
   
   public:
@@ -80,8 +80,8 @@ namespace upcxx {
       peer_inbox_(),
       self_inbox_(),
       pros_deferred_trivial_(),
-      UPCXX_INTERNAL_ONLY(backend_state_)(),
-      UPCXX_INTERNAL_ONLY(undischarged_n_)(0) {
+      UPCXXI_INTERNAL_ONLY(backend_state_)(),
+      UPCXXI_INTERNAL_ONLY(undischarged_n_)(0) {
     }
     
     bool active_with_caller() const;
@@ -143,7 +143,7 @@ namespace upcxx {
   
   public:
     template<typename Fn>
-    UPCXX_NODISCARD
+    UPCXXI_NODISCARD
     auto lpc(Fn &&fn)
       -> typename detail::future_from_tuple_t<
         detail::future_kind_shref<detail::future_header_ops_general>, // the default future kind
@@ -399,7 +399,7 @@ namespace upcxx {
   }
   
   inline bool persona::active_with_caller() const {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return active_with_caller(detail::the_persona_tls);
   }
   
@@ -413,7 +413,7 @@ namespace upcxx {
 
   template<typename Fn>
   void persona::lpc_ff(Fn &&fn) {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     this->lpc_ff(detail::the_persona_tls, std::forward<Fn>(fn));
   }
   
@@ -426,13 +426,13 @@ namespace upcxx {
   }
   
   template<typename Fn>
-  UPCXX_NODISCARD
+  UPCXXI_NODISCARD
   auto persona::lpc(Fn &&fn)
     -> typename detail::future_from_tuple_t<
       detail::future_kind_shref<detail::future_header_ops_general>, // the default future kind
       typename detail::lpc_results_type<Fn>
     > {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     
     using results_type = typename detail::lpc_results_type<Fn>;
     using results_promise = detail::tuple_types_into_t<results_type, promise>;
@@ -496,13 +496,13 @@ namespace upcxx {
   }
   
   inline persona_scope::persona_scope(persona &p, detail::persona_tls &tls) {
-    UPCXX_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(persona &p)");
+    UPCXXI_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(persona &p)");
     this->lock_ = nullptr;
     this->unlocker_ = nullptr;
     
     bool was_active = p.active();
     UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
-    if (UPCXX_BACKEND_GASNET_SEQ && &p == &master_persona()) 
+    if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
        UPCXX_ASSERT(tls.is_primordial_thread,
         "When compiled in threadmode=seq, only the primordial thread may acquire the master persona.\n"
         "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n"
@@ -536,7 +536,7 @@ namespace upcxx {
   
   template<typename Mutex>
   persona_scope::persona_scope(Mutex &lock, persona &p, detail::persona_tls &tls) {
-    UPCXX_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(Mutex &lock, persona &p)");
+    UPCXXI_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(Mutex &lock, persona &p)");
     this->lock_ = &lock;
     this->unlocker_ = (void(*)(void*))[](void *lock) {
       static_cast<Mutex*>(lock)->unlock();
@@ -546,7 +546,7 @@ namespace upcxx {
     
     bool was_active = p.active();
     UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
-    if (UPCXX_BACKEND_GASNET_SEQ && &p == &master_persona()) 
+    if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
        UPCXX_ASSERT(tls.is_primordial_thread,
         "When compiled in threadmode=seq, only the primordial thread may acquire the master persona.\n"
         "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n"
@@ -595,24 +595,24 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   
   inline persona& default_persona() {
-    //UPCXX_ASSERT_INIT(); // allow default_persona() outside init()
+    //UPCXXI_ASSERT_INIT(); // allow default_persona() outside init()
     detail::persona_tls &tls = detail::the_persona_tls;
     return tls.default_persona;
   }
   
   inline persona& current_persona() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     detail::persona_tls &tls = detail::the_persona_tls;
     return *tls.get_top_persona();
   }
   
   inline persona_scope& default_persona_scope() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     return persona_scope::the_default_dummy_;
   }
   
   inline persona_scope& top_persona_scope() {
-    UPCXX_ASSERT_INIT();
+    UPCXXI_ASSERT_INIT();
     detail::persona_tls &tls = detail::the_persona_tls;
     detail::persona_scope_raw *top = tls.get_top_scope();
     return top == &tls.default_scope_raw
@@ -636,7 +636,7 @@ namespace upcxx {
         tls.flip_burstable(level);
         {
           persona_scope_redundant tmp(p, tls);
-          fn();
+          std::forward<Fn>(fn)();
         }
         tls.flip_burstable(level);
       }
@@ -667,7 +667,7 @@ namespace upcxx {
     
     promise_meta *meta = &pro_hdr->pro_meta;
 
-    #if UPCXX_ASSERT_ENABLED
+    #if UPCXXI_ASSERT_ENABLED
       void *target_queue = future_header_promise<T...>::is_trivially_deletable
           ? (void*)&per.pros_deferred_trivial_
           : (void*)&per.self_inbox_[user];
@@ -748,7 +748,7 @@ namespace upcxx {
     persona_tls &tls = *this;
     persona_scope_raw *ps = tls.get_top_scope();
     persona *p = ps->get_persona(tls);
-    return p->UPCXX_INTERNAL_ONLY(undischarged_n_) != 0;
+    return p->UPCXXI_INTERNAL_ONLY(undischarged_n_) != 0;
   }
   
   inline bool detail::persona_tls::progress_required(persona_scope &bottom) {
@@ -760,7 +760,7 @@ namespace upcxx {
     
     while(true) {
       persona *p = ps->get_persona(tls);
-      if(p->UPCXX_INTERNAL_ONLY(undischarged_n_) != 0)
+      if(p->UPCXXI_INTERNAL_ONLY(undischarged_n_) != 0)
         return true;
       if(ps == bot)
         return false;
@@ -833,15 +833,18 @@ namespace upcxx {
     if(-1 != tls.get_progressing())
       return 0;
     tls.set_progressing((int)progress_level::user);
-    tls.flip_burstable(progress_level::user);
+    UPCXX_ASSERT(!tls.is_burstable(progress_level::user));
+    tls.flip_burstable(progress_level::user); // enable
     
     int exec_n = 0;
     tls.foreach_active_as_top([&](persona &p) {
       exec_n += tls.burst_internal(p);
-      exec_n += tls.burst_user(p);
+      tls.flip_burstable(progress_level::user); // disable
+        exec_n += tls.burst_user(p);
+      tls.flip_burstable(progress_level::user); // enable
     });
     
-    tls.flip_burstable(progress_level::user);
+    tls.flip_burstable(progress_level::user); // disable
     tls.set_progressing(-1);
     return exec_n;
   }

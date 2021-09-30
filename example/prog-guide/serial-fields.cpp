@@ -10,7 +10,7 @@ class dist_reduction {
         // Used to store a local sum reduction result on each rank
         double partial_sum_reduction;
 
-        // Default constructor used by UPC++ serialization
+        // Default constructor used by UPC++ deserialization
         dist_reduction() {
             for (int i = 0; i < N; i++) { values[i] = 1.; }
         }

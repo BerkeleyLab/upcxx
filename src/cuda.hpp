@@ -9,6 +9,13 @@
 
 #include <cstdint>
 
+#if UPCXXI_CUDA_ENABLED
+  // cuda feature macro
+  #define UPCXX_KIND_CUDA 202103L
+#else
+  #undef UPCXX_KIND_CUDA
+#endif
+
 namespace upcxx {
 
   class cuda_device {
@@ -67,7 +74,10 @@ namespace upcxx {
       device_allocator_core(cuda_device &dev, void *base, std::size_t size);
       device_allocator_core(device_allocator_core&&) = default;
       void destroy();
-      ~device_allocator_core();
+
+      // Issue 490
+      void real_destructor();
+      ~device_allocator_core() { real_destructor(); }
     };
 
   }

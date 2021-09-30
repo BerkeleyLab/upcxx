@@ -104,8 +104,6 @@ check: force
 	 echo ; sleep 5
 	@$(MAKE) $(MAKE_HERE) do-tests UPCXX_BINDIR=$(upcxx_bld)/bin UPCXX_QUIET=1 UPCXX_SKIP_REBUILD=1
 	@$(MAKE) $(MAKE_HERE) do-run-tests UPCXX_QUIET=1 UPCXX_SKIP_REBUILD=1
-	@echo 'Recommended next steps:';  \
-	 echo "  If you have not already, you may now '$(GMAKE_SHORT) install'"
 
 .PHONY: check
 
@@ -541,7 +539,7 @@ do-test-xml: force
 
 do-dev-target: force
 	@echo "========";                                 \
-	 echo "Running developer-mode $(TARGET) target";  \
+	 echo "Running maintainer-mode $(TARGET) target";  \
 	 echo "   UPCXX_CODEMODE=$(UPCXX_CODEMODE)";      \
 	 echo "   NETWORKS: $(NETWORKS)";                 \
 	 echo "========"; sleep 2

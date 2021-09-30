@@ -1,7 +1,8 @@
 # UPC++ Implementation Defined Behavior #
 
 This document describes stable features supported by this implementation that
-go beyond the requirements of the UPC++ Specification.
+go beyond the requirements of the UPC++ Specification, or are specified
+as implementation-defined behavior.
 
 ## Version Identification and Compilation Settings ##
 
@@ -13,6 +14,11 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
   * `UPCXX_SPEC_VERSION`:
     An integer literal providing the revision of the UPC++ specification
     to which this implementation adheres. See the specification for the specified value.
+  * `UPCXX_KIND_CUDA`:
+    An integer literal providing the version number of the CUDA memory-kind
+    feature to which this implementation adheres, defined only when the library
+    is built with CUDA enabled. See the UPC++ specification for the specified
+    value.
 
   * `UPCXX_THREADMODE`:
     This is either undefined (for the default "seq" threadmode) or defined to
@@ -28,6 +34,156 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     defined to a non-zero integer value.  Identifiers corresponding to other
     networks are undefined.  Examples include `UPCXX_NETWORK_IBV` and
     `UPCXX_NETWORK_ARIES`.
+
+## Eagerness of Future and Promise Completions ##
+
+Future and promise completions default to eager notification. Thus:
+
+  * `source_cx::as_future()` and `operation_cx::as_future()` are equivalent to
+    `source_cx::as_eager_future()` and `operation_cx::as_eager_future()`,
+    respectively
+  * `source_cx::as_promise(p)` and `operation_cx::as_promise(p)` are equivalent
+    to `source_cx::as_eager_promise(p)` and `operation_cx::as_eager_promise(p)`,
+    respectively
+
+The default can be changed on a per-translation-unit basis by defining the
+`UPCXX_DEFER_COMPLETION` macro prior to including `upcxx/upcxx.hpp`. Defining
+the macro to a non-zero value makes the default deferred (so that `as_future()`
+and `as_promise(p)` are equivalent to `as_defer_future()` and
+`as_defer_promise(p)`, respectively), while defining it to 0 makes the default
+eager.
+
+## Exceptions thrown from RPC ##
+
+The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw an
+exception if they encounter resource exhaustion while trying to inject the
+RPC. In the current release, this should only occur when the RPC payload is
+somewhat large (over a few KiB) and the shared heap on the initiating 
+process fails to allocate a temporary buffer large enough to hold the
+serialized RPC. 
+
+In releases prior to 2021.9.0, such conditions led to an immediate fatal error.
+Starting in 2021.9.0, an `rpc` or `rpc_ff` call encountering this condition
+will instead throw a `upcxx::bad_shared_alloc` exception, where the `what()`
+member function includes information about the shared heap state at the
+point of failure. The exception may be thrown before or after serialization
+of the function arguments. In all other ways, a call throwing such an exception 
+is effectively "cancelled" -- it will not lead to invocation of the 
+function object at the target, nor will it deliver any event notifications
+(for example, a promise passed using an `as_promise()` completion will
+remain unchanged by the exceptional call).
+
+
+## Assertion Macros ##
+
+This implementation provides assertion macros to facilitate debugging on
+distributed systems. Unlike the standard `assert()` macro, the macros below
+print a backtrace and/or freeze to allow a debugger to be attached before
+aborting program execution.
+
+  * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:
+    Evaluates `test`, and if the result is a false value, outputs `message` if
+    provided and diagnostic information to standard error, optionally prints a
+    backtrace and/or freezes for debugger, and aborts execution by calling
+    `std::abort()`. `message` may be any expression such that `std::cerr <<
+    message` is well-formed; for instance, it may itself include
+    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, "error! x = "
+    << x)`). `message` is only evaluated when `test` produces a false value. If
+    `message` is not provided, it defaults to a string that includes a textual
+    representation of `test`. In all cases, this macro expands to an expression
+    with type `void`.
+  * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:
+    In the "debug" codemode, provides the same behavior as
+    `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, this macro expands to a
+    side-effect-free expression with type `void` that does not evaluate the
+    arguments.
+
+## Experimental Features ##
+
+Several unspecified, experimental features are implemented in the
+`upcxx::experimental` namespace. These include the following:
+
+  * broadcast of Serializable but non-TriviallySerializable values:
+
+    ```c++
+    template<typename T, typename Cx=/*unspecified*/>
+    RType broadcast(T &&value, intrank_t root, const team &team=world(),
+                    Cx &&completions=operation_cx::as_future());
+    ```
+
+  * reduction of Serializable but non-TriviallySerializable values:
+
+    ```c++
+    constexpr /*unspecified*/ op_add;
+    constexpr /*unspecified*/ op_mul;
+    constexpr /*unspecified*/ op_min;
+    constexpr /*unspecified*/ op_max;
+    constexpr /*unspecified*/ op_bit_and;
+    constexpr /*unspecified*/ op_bit_or;
+    constexpr /*unspecified*/ op_bit_xor;
+
+    template<typename T, typename Cx=/*unspecified*/>
+    RType broadcast(T &&value, intrank_t root, const team &team=world(),
+                    Cx &&completions=operation_cx::as_future());
+    template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
+    RType reduce_one(T &&value, BinaryOp &&op, intrank_t root,
+                     const team &team = world(),
+                     Cx &&completions=operation_cx::as_future());
+    template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
+    RType reduce_all(T &&value, BinaryOp &&op, const team &team = world(),
+                     Cx &&completions=operation_cx::as_future());
+    ```
+
+  * utilities for reading environment variables:
+
+    ```c++
+    template<class T>
+    T os_env(const std::string &name);
+    template<class T>
+    T os_env(const std::string &name, const T &otherwise);
+    std::int64_t os_env(const std::string &name, const std::int64_t &otherwise,
+                        std::size_t mem_size_multiplier);
+    ```
+
+  * `ostream`-like class that prints to a stream with an optional prefix and as
+    much atomicity as possible:
+
+    ```c++
+    class say {
+    public:
+      say(std::ostream &output, const char *prefix="[%d] ");
+      say(const char *prefix="[%d] ");
+      ~say();
+      template<typename T>
+      say& operator<<(T const &that);
+    };
+    ```
+
+In addition, the implementation provides the following unspecified,
+experimental macro:
+
+  * variant of `upcxx_memberof` that can be used on a type `T` that is either
+    standard-layout (in which case the equivalent, specified `upcxx_memberof`
+    should be used instead), or for which the compiler conditionally supports
+    `offsetof`:
+
+    ```c++
+    // Macro: function template syntax used for clarity
+    template<typename T, memory_kind Kind>
+    global_ptr<MType, Kind> upcxx_experimental_memberof_unsafe(
+        global_ptr<T, Kind> ptr, member-designator MEMBER
+    )
+    ```
+
+These features are subject to change or removal at any time. If you find any of
+them useful, please send an email to `upcxx@googlegroups.com`, and we will
+consider adding them to the specification proper.
+
+Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
+are intended solely for internal use by the implementation (e.g.
+`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`). Similarly, all identifiers
+with the `UPCXXI` or `upcxxi` prefix are intended for internal use by the
+implementation.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 
@@ -53,7 +209,8 @@ additional restrictions on the client application:
 
   * Shared-heap allocation/deallocation (e.g. `upcxx::allocate/deallocate/new_/
     new_array/delete_/delete_array`) must be called from the primordial thread
-    while holding the master persona.
+    while holding the master persona. The same applies to `device_allocator`
+    functions that manipulate a device heap.
 
 Note that these restrictions must be respected by all object files linked into
 the final executable, as they are all sharing the same libupcxx.
@@ -76,8 +233,7 @@ Types of communication that do not experience restriction:
 The legality of lpc and progress from the non-primordial thread permits users
 to orchestrate their own "funneling" strategy, e.g.:
 
-```
-#!c++
+```c++
 
 // How a non-primordial thread can tell the master persona to put an rpc on the
 // wire on its behalf.
@@ -103,8 +259,7 @@ upcxx and thread B is blocking for a upcxx condition before servicing OpenMP.
 
 The following example has such a deadlock:
 
-```
-#!c++
+```c++
 
 #pragma omp parallel num_threads(2)
 {
@@ -136,8 +291,7 @@ RPCs from other processes.
 Another deadlock issue can arise from failing to discharge personas before
 they cease to be attentive:
 
-```
-#!c++
+```c++
 
 int got = -1;
 

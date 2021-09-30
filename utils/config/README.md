@@ -1,6 +1,6 @@
 # README for utils/config directory
 
-**This information is of value to developers only.**
+**This information is of value to maintainers only.**
 
 ## Basics:
 
@@ -13,7 +13,8 @@ Everything on `stdout` is sent to the corresponding config file.
 
 All `stderr` is provided to the user. Exiting non-zero stops the build.
 
-Scripts are run after GASNet has been built.  This should allow a very wide
+Scripts are run after GASNet has been configured (for makefile fragments)
+or built (for the `upcxx_config.hpp` headers).  This should allow a very wide
 variety of tests to be constructed.  However, be aware that it is not (in
 general) possible to execute test codes when cross-compiling.
 
