@@ -1,7 +1,7 @@
 ## Guide to C++ standard libraries for non-GNU compilers on Linux
 
 This document describes how to use a non-GNU C++ compiler (such as from
-Clang/LLVM, Intel or PGI) with UPC++ on a Linux system where the default
+Clang/LLVM, Intel or PGI/Nvidia) with UPC++ on a Linux system where the default
 C++ standard library is not recent enough to meet the requirements of UPC++.
 
 Due to its use of C++11 features, UPC++ requires a fairly modern C++ compiler
@@ -20,7 +20,7 @@ document to provide detailed guidance in this respect.  However, a good rule
 of thumb is to avoid use of a `g++` newer than the non-GNU compiler.
 
 The remainder of this document consists of sections each covering one compiler
-family: Clang/LLVM, Intel or PGI.  For each compiler family there is a
+family: Clang/LLVM, Intel or PGI/Nvidia.  For each compiler family there is a
 description of how to query the C++ standard library to be used, and two
 approaches to override it:
 
@@ -174,15 +174,16 @@ Additionally, as demonstrated in the examples, both response files and
 
 
 
-## PGI
+## PGI and Nvidia
 
 ### Query
 
-One can determine the C++ library to be used by `pgc++` by examining its
+One can determine the C++ library to be used by `pgc++` or `nvc++` by examining its
 standard include path looking for GCC installation directories.  The following
-example extracts relevant information from verbose compiler output, and
+examples extract relevant information from verbose compiler output, and
 indicates that an installation of GCC 9.1.0 is being used.
 
+For PGI versions through 20.4:  
 ```bash
 $ pgc++ -v -E /dev/null 2>&1 | perl -ne 'if(m/stdinc ([^ ]*)/){print($1=~tr/:/\n/r);}'
 /usr/local/pgi/linux86-64-llvm/19.7/include-gcc70
@@ -193,13 +194,27 @@ $ pgc++ -v -E /dev/null 2>&1 | perl -ne 'if(m/stdinc ([^ ]*)/){print($1=~tr/:/\n
 /usr/local/gcc/9.1.0/lib/gcc/x86_64-pc-linux-gnu/9.1.0/include-fixed
 ```
 
+For PGI and NVHPC versions 20.9 and newer:  
+```bash
+$ nvc++ -v -E /dev/null 2>&1 >/dev/null | perl -0x20 -ne 'if(m,^-I/,) {print("$_\n");}'
+-I/usr/local/nvidia/hpc_sdk/Linux_x86_64/21.5/compilers/include-gcc70
+-I/usr/local/nvidia/hpc_sdk/Linux_x86_64/21.5/compilers/include
+-I/usr/local/gcc/9.1.0/include/c++/9.1.0
+-I/usr/local/gcc/9.1.0/include/c++/9.1.0/x86_64-pc-linux-gnu
+-I/usr/local/gcc/9.1.0/include/c++/9.1.0/backward
+-I/usr/local/gcc/9.1.0/lib/gcc/x86_64-pc-linux-gnu/9.1.0/include
+-I/usr/local/include
+[truncated]
+```
+
 If the command above yields an empty result, one can look for the
-colon-separated list following `-stdinc` in the output of the command
-`pgc++ -v -E /dev/null`.
+colon-separated list following `-stdinc` (for PGI <= 20.4) or the
+`-I` options (PGI or NVHPC >= 20.9) in the output of the compiler
+commands above (the portions before `| perl ...`).
 
 ### Temporary Override
 
-The PGI compilers do not provide a simple means to override the GCC
+The PGI and NVHPC compilers do not provide a simple means to override the GCC
 installation from which the C++ standard library and headers are used.
 Instead this information is contained in a configuration file, which one
 must generate as described in the following "Permanent Override" section.
@@ -209,8 +224,8 @@ using `CXX="pgc++ -rc=[full path to config file]"`.
 
 ### Permanent Override
 
-For detailed instructions on configuration and installation of the PGI
-compiler suite, the reader is advised to consult the vendor-provided
+For detailed instructions on configuration and installation of the PGI or
+NVHPC compiler suite, the reader is advised to consult the vendor-provided
 documentation, where one should look for information on the `makelocalrc`
 utility.  The basic usage instructions for `makelocalrc` are available by
 running it with no arguments.  The following assumes one has read and
@@ -237,12 +252,13 @@ $ makelocalrc [output options] -gcc $(which gcc) -g++ $(which g++) -g77 $(which 
 ```
 
 Note that while the option `-g++` has been used in the example above, the
-correct option may be either `-g++` or `-gpp`, depending on the PGI version.
+correct option may be either `-g++` or `-gpp`, depending on the compiler version.
 
 A system administrator can install a _global_ configuration file.  However,
 any user may create a _private_ configuration file, and either set the
-environment variable `PGI_LOCALRC` to its location or use the `-rc` command
-line option to pass it at each compiler invocation.
+environment variable `PGI_LOCALRC` (<= 20.4) or `NVLOCALRC` (>= 20.9) to its
+location or use the `-rc` command line option to pass it at each compiler
+invocation.
 
 ### Runtime Linker Search Path
 
@@ -251,20 +267,20 @@ Nearly all approaches to control of the runtime linker search path given in
 static linking of compiler-dependent libraries, where `pgc++` is not command
 line compatible with `g++` and has no equivalent.
 
-We are not aware of any official documentation on the format of a PGI localrc
+We are not aware of any official documentation on the format of a localrc
 file.  However, much useful information be found online in the
-[PGI User Forums](https://www.pgroup.com/userforum/index.php), and especially
-in the "Licenses and Installation" section.  Based on information found
+[NVIDIA Developer Forums](https://forums.developer.nvidia.com/), and especially
+in the "Legacy PGI Compilers" section.  Based on information found
 there, we can recommend (but cannot warranty) addition of a line such as the
-one below to the end of any PGI localrc file.  This instructs `pgc++` to add
+one below to the end of any localrc file.  This instructs the compiler to add
 the given directory to the executable's RPATH.
 
-```
+```text
 set LOCALCOMPLIB=/usr/local/gcc/6.4.0/lib64;
 ```
 
 Alternatively, other sources recommend the following:
 
-```
+```text
 append USRRPATH=-rpath /usr/local/gcc/6.4.0/lib64;
 ```
