@@ -79,7 +79,8 @@ For the default `UPCXX_USE_UPC_ALLOC=yes` mode: (recommended)
   UPC++ shared allocations. In this mode, UPC++ shared heap controls are disabled and the size of the
   shared heap (shared by both models) is controlled by Berkeley UPC Runtime.
   See documentation for `upcrun -shared-heap` and `UPC_SHARED_HEAP_SIZE` for details on controlling size.
-  Note that UPC++ shared heap allocation failures (ie out of memory) are fatal in this mode.
+  *Note that UPC++ shared heap allocation failures (i.e. out of memory) are always immediately fatal in this mode,
+  even in cases where the specification or documentation state an exception should be thrown for that case.*
 
 For `UPCXX_USE_UPC_ALLOC=no` mode:
 

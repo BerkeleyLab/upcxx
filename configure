@@ -424,8 +424,8 @@ check_tool_path() {
 # Default GASNet source
 # Enable offline installers with an embedded GASNet-EX tarball
 #
-GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz' # Un-comment for development
-#GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2021.3.0.tar.gz' # Un-comment for release
+#GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz' # Un-comment for development
+GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2021.9.0.tar.gz' # Un-comment for release
 #GASNET_DEFAULT='NONE' # Un-comment for snapshots
 gex_offline=`/bin/ls "$UPCXX_SRC"/src/GASNet-{stable,2???.*}.tar.gz 2> /dev/null | sort -t. -k1,1 -k2,2n -k3n | tail -1`
 if [[ -n "$GASNET" ]]; then
@@ -662,7 +662,7 @@ else
       ;; # OK
     *)
       echo "ERROR: UPCXX_MPSC_QUEUE='$UPCXX_MPSC_QUEUE' is not a valid value."
-      echo_and_die 'See docs/build-devel.md for valid values and additional info.'
+      echo_and_die 'See docs/maintainer.md for valid values and additional info.'
       ;;
   esac
 fi
@@ -868,7 +868,7 @@ for cmd in shasum sha1sum md5sum md5; do
   fi
 done
 if [[ -z "$UPCXX_CSUMCMD" ]]; then
-  warnings+="\nWARNING: The developer targets 'exe' and 'run' are unavailable due to\n"
+  warnings+="\nWARNING: The maintainer targets 'exe' and 'run' are unavailable due to\n"
   warnings+="WARNING: lack of a usable checksum utility.\n"
 fi
 

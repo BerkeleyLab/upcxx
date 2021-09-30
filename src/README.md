@@ -1,4 +1,4 @@
-# Developer's Road Map of "upcxx/src"
+# Maintainer's Road Map of "upcxx/src"
 
 The intent of this document is to arm the reader with enough context to be able
 to understand the source code and its comments. When this document disagrees

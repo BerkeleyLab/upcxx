@@ -1,6 +1,6 @@
 # README for utils/config directory
 
-**This information is of value to developers only.**
+**This information is of value to maintainers only.**
 
 ## Basics:
 

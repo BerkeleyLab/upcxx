@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Try to find OpenMP support, unless configured using --(disable|without)-openmp
-# Such support is *optional* for inclusion in developer's tests
+# Such support is *optional* for inclusion in maintainer's tests
 
 set -e
 function cleanup { rm -f conftest.cpp conftest; }

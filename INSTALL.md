@@ -9,7 +9,7 @@ For information on using UPC++, see: [README.md](README.md)
 ### Supported Platforms
 
 UPC++ makes aggressive use of template meta-programming techniques, and requires
-a modern C++11/14 compiler and corresponding STL implementation.
+a modern C++ compiler and corresponding standard library implementation.
 
 The current release is known to work on the following configurations:
 
@@ -344,7 +344,7 @@ pass the appropriate value for your system:
 * `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
 * `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
 
-When Intel compilers are being used (usually the default for these systems),
+When Intel compilers are being used (a common default for these systems),
 `g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
 then you may need to explicitly load a `gcc` environment module, e.g.:
 
@@ -466,7 +466,7 @@ This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory kinds
 on selected platforms using modern NVIDIA-branded GPUs and Mellanox-branded InfiniBand
 network hardware, when using the native ibv-conduit. Additional requirements:
 
-* Linux OS with x86-64 or ppc64le CPU (not ARM)
+* Linux OS with x86\_64 or ppc64le CPU (not ARM)
 * Recent Mellanox-branded InfiniBand network hardware
 * GPUDirect RDMA drivers installed
 * ibv-conduit built from the current version of GASNet-EX (the default for this release)
@@ -545,24 +545,21 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 
 #### Known problems with GDR-accelerated memory kinds
 
-There are several known defects in the current GASNet GDR Put implementation, arising from
-a mismatch between the vendor's overly weak memory model for GDR transfers and 
-traditional RMA Put completion semantics. This UPC++ version includes a workaround
-for these defects that automatically converts Put-like `upcxx::copy` operations into
-use of wire-level GDR Gets from the target rank. This workaround is automatically
-enabled for runs using multi-rail InfiniBand or PSHM shared-memory bypass which are
-known to be affected.  The workaround can also be explicitly controlled by
-setting envvar `UPCXX_BUG4148_WORKAROUND` to 0 or 1.  For details on this GDR
-defect, see the following GASNet bug report:
+Older versions of GASNet-EX, including those embedded in UPC++ releases prior to
+2021.9.0, had multiple known defects in the GASNet GDR Put implementation and an
+issue with incorrectly early source completion of GDR Puts.  To the best of our
+knowledge, these problems have all been resolved.  For more information see:
 
 * [bug 4148: GDR and multi-rail or PSHM](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4148)
-
-There is additionally an issue with incorrectly early source completion of GDR Puts:
-
 * [bug 4150: GDR Put source completion](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4150)
 
-if encountered, this problem can be avoided by explicitly setting `UPCXX_BUG4148_WORKAROUND=1`
-to activate the same workaround (which is effective for both problems).
+UPC++ still retains a workaround for those defects that converts Put-like
+`upcxx::copy` operations into use of wire-level GDR Gets from the target rank.
+This workaround is automatically enabled for runs using GASNet-EX versions old
+enough to have these defects, when also using multi-rail InfiniBand or PSHM
+shared-memory bypass (which are known to have been affected).  However, the
+workaround can also be explicitly controlled by setting envvar
+`UPCXX_BUG4148_WORKAROUND` to 0 or 1.
 
 Finally, there is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
 causes crashes inside the IB Verbs network stack during small gets into device memory on some

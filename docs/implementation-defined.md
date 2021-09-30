@@ -53,7 +53,7 @@ and `as_promise(p)` are equivalent to `as_defer_future()` and
 `as_defer_promise(p)`, respectively), while defining it to 0 makes the default
 eager.
 
-## Exceptions thrown from `rpc` and `rpc_ff` ##
+## Exceptions thrown from RPC ##
 
 The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw an
 exception if they encounter resource exhaustion while trying to inject the

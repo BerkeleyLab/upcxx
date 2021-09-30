@@ -539,7 +539,7 @@ do-test-xml: force
 
 do-dev-target: force
 	@echo "========";                                 \
-	 echo "Running developer-mode $(TARGET) target";  \
+	 echo "Running maintainer-mode $(TARGET) target";  \
 	 echo "   UPCXX_CODEMODE=$(UPCXX_CODEMODE)";      \
 	 echo "   NETWORKS: $(NETWORKS)";                 \
 	 echo "========"; sleep 2
