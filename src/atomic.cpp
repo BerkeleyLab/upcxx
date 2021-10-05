@@ -82,6 +82,7 @@ extern std::string opset_to_string(gex_OP_t opset) {
 /* bit_flavor: 0=unsigned, 1=signed, 2=floating*/
 template<>
 template<upcxx::atomic_op opcode>
+GASNETT_HOT
 gex_Event_t atomic_domain_untyped<4,0>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
@@ -91,6 +92,7 @@ gex_Event_t atomic_domain_untyped<4,0>::inject<opcode>::doit(
 }
 template<>
 template<upcxx::atomic_op opcode>
+GASNETT_HOT
 gex_Event_t atomic_domain_untyped<4,1>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
@@ -100,6 +102,7 @@ gex_Event_t atomic_domain_untyped<4,1>::inject<opcode>::doit(
 }
 template<>
 template<upcxx::atomic_op opcode>
+GASNETT_HOT
 gex_Event_t atomic_domain_untyped<4,2>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
@@ -109,6 +112,7 @@ gex_Event_t atomic_domain_untyped<4,2>::inject<opcode>::doit(
 }
 template<>
 template<upcxx::atomic_op opcode>
+GASNETT_HOT
 gex_Event_t atomic_domain_untyped<8,0>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
@@ -118,6 +122,7 @@ gex_Event_t atomic_domain_untyped<8,0>::inject<opcode>::doit(
 }
 template<>
 template<upcxx::atomic_op opcode>
+GASNETT_HOT
 gex_Event_t atomic_domain_untyped<8,1>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
@@ -127,6 +132,7 @@ gex_Event_t atomic_domain_untyped<8,1>::inject<opcode>::doit(
 }
 template<>
 template<upcxx::atomic_op opcode>
+GASNETT_HOT
 gex_Event_t atomic_domain_untyped<8,2>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
