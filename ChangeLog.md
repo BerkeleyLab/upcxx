@@ -30,7 +30,7 @@ Improvements to on-node communication:
 
 This release features a number of synergistic optimizations that streamline
 interprocess communication operations that are satisfied on-node using
-shared memory bypass. For details, see: https://doi.org/10.25344/S42C71
+shared memory bypass. For details, see: [doi:10.25344/S42C71](https://doi.org/10.25344/S42C71)
 
 * New `as_eager_future()`, `as_defer_future()`, `as_eager_promise()`, and
   `as_defer_promise()` calls for requesting eager or deferred notification of
