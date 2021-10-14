@@ -352,8 +352,9 @@ namespace backend {
 #if UPCXXI_BACKEND
   #define UPCXXI_ASSERT_INIT_NAMED(fnname) \
     UPCXX_ASSERT(::upcxx::backend::init_count != 0, \
-     "Attempted to invoke " << fnname << " while the UPC++ library was not initialized. " \
-     "Please call upcxx::init() to initialize the library before calling this function.")
+     "Attempted to invoke " << fnname << " while the UPC++ library was not initialized " \
+     "(before the first call to upcxx::init() or after the last call to upcxx::finalize()). " \
+     "This function may only be called while the UPC++ library is in the initialized state.")
 #else
   #define UPCXXI_ASSERT_INIT_NAMED(fnname) ((void)0)
 #endif
