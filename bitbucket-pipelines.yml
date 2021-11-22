@@ -9,15 +9,21 @@ definitions:
   options:
     max-time: 60
   variables: &variables
-    - name: _LEAVE_BLANK_FOR_DEFAULTS_
     - name: CI_DEV_CHECK
+      default: 0
     - name: CI_RUN_TESTS
+      default: 1
     - name: CI_NETWORKS
+      default: smp udp
     - name: CI_RANKS
+      default: 4
+    - name: CI_CONFIGURE_ARGS
+    - name: CI_EXTRAFLAGS
+      default: -Werror
+    - name: CI_MAKE_PARALLEL
+      default: -j8
     - name: CI_TESTS
     - name: CI_NO_TESTS
-    - name: CI_EXTRAFLAGS
-    - name: CI_CONFIGURE_ARGS
   steps:
     - step: &build-test
           name: Build and Test
