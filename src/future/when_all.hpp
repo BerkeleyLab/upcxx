@@ -67,7 +67,7 @@ namespace upcxx {
       return to_fast_future(static_cast<ArgFu&&>(arg));
     }
     // zero component optimization
-    inline auto when_all() -> decltype(detail::make_fast_future()) {
+    inline auto when_all_fast() -> decltype(detail::make_fast_future()) {
       return detail::make_fast_future();
     }
   }
@@ -102,5 +102,9 @@ namespace upcxx {
     return detail::make_fast_future();
   }
   
+  // Fix issue #512: Allow ADL invocation of when_all
+  namespace detail {
+    using upcxx::when_all;
+  }
 }
 #endif
