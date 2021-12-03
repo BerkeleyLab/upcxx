@@ -14,6 +14,8 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #512: ADL fails with `when_all`
+
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
 
