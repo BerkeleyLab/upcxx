@@ -192,6 +192,7 @@ if [[ $dohelp ]] ; then
 upcxx is a compiler wrapper that is intended as a drop-in replacement for your
 C++ compiler that appends the flags necessary to compile/link with the UPC++ library.
 Most arguments are passed through without change to the C++ compiler.
+Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications
 
 Usage: upcxx [options] file...
 upcxx Wrapper Options:
@@ -225,6 +226,7 @@ elif [[ $doversion ]] ; then
     gexhash=" / $gexhash"
   fi
   echo "UPC++ version $version $githash$gexhash"
+  echo "Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications"
   echo "Copyright (c) 2021, The Regents of the University of California,"
   echo "through Lawrence Berkeley National Laboratory."
   echo "https://upcxx.lbl.gov"
