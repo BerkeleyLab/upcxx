@@ -87,6 +87,7 @@ gex_Event_t atomic_domain_untyped<4,0>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_U32(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr), 
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
@@ -97,6 +98,7 @@ gex_Event_t atomic_domain_untyped<4,1>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_I32(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr), 
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
@@ -107,6 +109,7 @@ gex_Event_t atomic_domain_untyped<4,2>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_FLT(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
@@ -117,6 +120,7 @@ gex_Event_t atomic_domain_untyped<8,0>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_U64(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
@@ -127,6 +131,7 @@ gex_Event_t atomic_domain_untyped<8,1>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_I64(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
@@ -137,6 +142,7 @@ gex_Event_t atomic_domain_untyped<8,2>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
         proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_DBL(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
