@@ -105,7 +105,8 @@ namespace upcxx {
       #endif
       UPCXXI_INTERNAL_ONLY(rank_)(rank),
       UPCXXI_INTERNAL_ONLY(raw_ptr_)(const_cast<T*>(raw)) {
-      static_assert(std::is_trivially_copyable<global_ptr<T,KindSet>>::value, "Internal error.");
+      static_assert(std::is_trivially_copyable<global_ptr<T,Kind>>::value, "Internal error.");
+      static_assert(sizeof(global_ptr) <= 16, "global_ptr should be 128-bits or less");
       UPCXXI_GPTR_CHK(*this);
     }
 
