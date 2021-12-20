@@ -266,7 +266,7 @@ namespace backend {
   }
 
   void validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
-                           memory_kind KindSet, size_t T_align, const char *T_name, 
+                           memory_kind Kind, size_t T_align, const char *T_name, 
                            const char *short_context, const char *context);
 }}
   

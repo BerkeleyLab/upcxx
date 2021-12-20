@@ -1371,7 +1371,7 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
 
 GASNETT_COLD
 void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
-                                  memory_kind KindSet, size_t T_align, const char *T_name, 
+                                  memory_kind Kind, size_t T_align, const char *T_name, 
                                   const char *short_context, const char *context) {
   if_pf (!upcxx::initialized()) return; // don't perform checking before init
   if_pf (!T_name) T_name = "";
@@ -1383,11 +1383,11 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
   auto pretty_type = [&]() {
     std::string s("global_ptr<");
     s = s + T_name + ", ";
-    switch (KindSet) {
+    switch (Kind) {
       case memory_kind::host:        s += "host"; break;
       case memory_kind::cuda_device: s += "cuda_device"; break;
       case memory_kind::any:         s += "any"; break;
-      default:                       s = s + "unknown_kind(" + std::to_string((int)KindSet) + ")";
+      default:                       s = s + "unknown_kind(" + std::to_string((int)Kind) + ")";
     }
     return s + ">";
   };
@@ -1418,8 +1418,8 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
     }
 
     if_pf (
-        (KindSet == memory_kind::host && heap_idx != 0) // host should always be heap_idx 0
-     || ((int(KindSet) & int(memory_kind::host)) == 0 && heap_idx == 0) // non-host gptr cannot ref host device
+        (Kind == memory_kind::host && heap_idx != 0) // host should always be heap_idx 0
+     || (Kind != memory_kind::host && Kind != memory_kind::any && heap_idx == 0) // non-host gptr cannot ref host device
      || (heap_idx < 0) // currently never use negative heap_idx
      || (heap_idx >= backend::heap_state::max_heaps) // invalid heap_idx
       ) {

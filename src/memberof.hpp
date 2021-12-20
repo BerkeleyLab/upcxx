@@ -60,12 +60,12 @@ namespace upcxx {
       using type = typename decay_array<T>::type;
     };
 
-    template<typename T, memory_kind KindSet>
-    using decayed_gp_t = global_ptr<typename decay_array<T>::type, KindSet>;
+    template<typename T, memory_kind Kind>
+    using decayed_gp_t = global_ptr<typename decay_array<T>::type, Kind>;
 
-    template<typename T, memory_kind KindSet>
-    decayed_gp_t<T, KindSet>
-    decay_array_gp(global_ptr<T, KindSet> gp) {
+    template<typename T, memory_kind Kind>
+    decayed_gp_t<T, Kind>
+    decay_array_gp(global_ptr<T, Kind> gp) {
       return reinterpret_pointer_cast<typename decay_array<T>::type>(gp);
     }
   }

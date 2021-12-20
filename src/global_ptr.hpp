@@ -37,14 +37,14 @@ namespace upcxx {
   //////////////////////////////////////////////////////////////////////////////
   // global_ptr
   
-  template<typename T, memory_kind KindSet = memory_kind::host>
-  class global_ptr : public global_ptr<const T, KindSet> {
+  template<typename T, memory_kind Kind = memory_kind::host>
+  class global_ptr : public global_ptr<const T, Kind> {
   public:
     using element_type = T;
     using pointer_type = T*;
     #include <upcxx/global_ptr_impl.hpp>
 
-    using base_type = global_ptr<const T, KindSet>;
+    using base_type = global_ptr<const T, Kind>;
 
     // allow construction from a pointer-to-non-const
     explicit global_ptr(detail::internal_only, intrank_t rank, T *raw,
@@ -54,13 +54,13 @@ namespace upcxx {
 
     template <typename U>
     explicit global_ptr(detail::internal_only,
-                        const global_ptr<U, KindSet> &other, std::ptrdiff_t offset):
+                        const global_ptr<U, Kind> &other, std::ptrdiff_t offset):
       base_type(detail::internal_only(), other, offset) {
     }
 
-    template<memory_kind KindSet1,
-             typename = typename std::enable_if<((int)KindSet & (int)KindSet1) == (int)KindSet1>::type>
-    global_ptr(global_ptr<const T,KindSet1> const &that):
+    template<memory_kind FromKind,
+             typename = typename std::enable_if<(Kind == FromKind || Kind == memory_kind::any)>::type>
+    global_ptr(global_ptr<const T,FromKind> const &that):
       base_type(that) {
     }
 
@@ -74,14 +74,14 @@ namespace upcxx {
     }
   };
 
-  template<typename T, memory_kind KindSet>
-  class global_ptr<const T, KindSet> {
+  template<typename T, memory_kind Kind>
+  class global_ptr<const T, Kind> {
   public:
     using element_type = const T;
     using pointer_type = const T*;
     #include <upcxx/global_ptr_impl.hpp>
 
-    static constexpr memory_kind kind = KindSet;
+    static constexpr memory_kind kind = Kind;
 
     void check(bool allow_null=true, const char *short_context=nullptr, const char *context=nullptr) const {
         void *this_sanity_check = (void*)this;
@@ -93,7 +93,7 @@ namespace upcxx {
         #endif
           backend::validate_global_ptr(allow_null, UPCXXI_INTERNAL_ONLY(rank_),
                                        reinterpret_cast<void*>(UPCXXI_INTERNAL_ONLY(raw_ptr_)),
-                                       UPCXXI_INTERNAL_ONLY(heap_idx_), KindSet, align,
+                                       UPCXXI_INTERNAL_ONLY(heap_idx_), Kind, align,
                                        detail::typename_of<T>(), 
                                        short_context, context);
     }
@@ -113,7 +113,7 @@ namespace upcxx {
     // global_ptr offset and reinterpret in a single operation
     template <typename U>
     explicit global_ptr(detail::internal_only, 
-                        const global_ptr<U, KindSet> &other, std::ptrdiff_t offset):
+                        const global_ptr<U, Kind> &other, std::ptrdiff_t offset):
       #if UPCXXI_MANY_KINDS
         UPCXXI_INTERNAL_ONLY(heap_idx_)(other.UPCXXI_INTERNAL_ONLY(heap_idx_)),
       #endif
@@ -126,9 +126,9 @@ namespace upcxx {
         UPCXXI_GPTR_CHK_NONNULL(*this);
       }
 
-    template<memory_kind KindSet1,
-             typename = typename std::enable_if<((int)KindSet & (int)KindSet1) == (int)KindSet1>::type>
-    global_ptr(global_ptr<const T,KindSet1> const &that):
+    template<memory_kind FromKind,
+             typename = typename std::enable_if<(Kind == FromKind || Kind == memory_kind::any)>::type>
+    global_ptr(global_ptr<const T,FromKind> const &that):
       global_ptr(detail::internal_only(),
                  that.UPCXXI_INTERNAL_ONLY(rank_),
                  that.UPCXXI_INTERNAL_ONLY(raw_ptr_),
@@ -149,7 +149,7 @@ namespace upcxx {
       UPCXXI_ASSERT_VALID_DEFINITELY_LOCAL();
       return 
         // is static host kind or dynamic host kind or null:
-        (KindSet == memory_kind::host || UPCXXI_INTERNAL_ONLY(heap_idx_) == 0) 
+        (Kind == memory_kind::host || UPCXXI_INTERNAL_ONLY(heap_idx_) == 0) 
         &&
         // statically one local_team or is null or rank in my local_team:
         (/*constexpr*/backend::all_ranks_definitely_local || 
@@ -178,7 +178,7 @@ namespace upcxx {
     const T* local() const {
       UPCXXI_ASSERT_INIT();
       UPCXXI_GPTR_CHK(*this);
-      UPCXX_ASSERT_ALWAYS(KindSet == memory_kind::host || UPCXXI_INTERNAL_ONLY(heap_idx_) == 0,
+      UPCXX_ASSERT_ALWAYS(Kind == memory_kind::host || UPCXXI_INTERNAL_ONLY(heap_idx_) == 0,
                    "global_ptr<T>::local() does not create device pointers. Use device_allocator<Device>::local(gptr) instead.");
       // locality checks for host pointers handled in backend::localize_memory()
       return static_cast<T*>(
@@ -198,10 +198,10 @@ namespace upcxx {
     UPCXXI_ATTRIB_PURE
     memory_kind dynamic_kind() const {
       UPCXXI_GPTR_CHK(*this);
-      if(0 == (int(KindSet) & (int(KindSet)-1))) // determines if KindSet is a singleton set
-        return KindSet;
-      else
+      if (Kind == memory_kind::any)
         return UPCXXI_INTERNAL_ONLY(heap_idx_) == 0 ? memory_kind::host : memory_kind::cuda_device;
+      else
+        return Kind;
     }
     
     UPCXXI_ATTRIB_PURE
@@ -321,30 +321,32 @@ namespace upcxx {
                            ptr.UPCXXI_INTERNAL_ONLY(heap_idx_));
   }
 
-  template<memory_kind K, typename T, memory_kind K1>
+  template<memory_kind ToK, typename T, memory_kind FromK>
   UPCXXI_ATTRIB_CONST
-  // sfinae out if there is no overlap between the two KindSet's
-  typename std::enable_if<(int(K) & int(K1)) != 0 , global_ptr<T,K>>::type
-  static_kind_cast(global_ptr<T,K1> p) {
+  // sfinae out if the kinds are statically incompatible
+  typename std::enable_if<ToK == FromK || ToK == memory_kind::any || FromK == memory_kind::any,
+                          global_ptr<T,ToK>>::type
+  static_kind_cast(global_ptr<T,FromK> p) {
     UPCXXI_GPTR_CHK(p);
-    return global_ptr<T,K>(detail::internal_only(),
+    return global_ptr<T,ToK>(detail::internal_only(),
                            p.UPCXXI_INTERNAL_ONLY(rank_),
                            p.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                            p.UPCXXI_INTERNAL_ONLY(heap_idx_));
   }
   
-  template<memory_kind K, typename T, memory_kind K1>
+  template<memory_kind ToK, typename T, memory_kind FromK>
   UPCXXI_ATTRIB_CONST
-  // sfinae out if there is no overlap between the two KindSet's
-  typename std::enable_if<(int(K) & int(K1)) != 0 , global_ptr<T,K>>::type
-  dynamic_kind_cast(global_ptr<T,K1> p) {
+  // sfinae out if the kinds are statically incompatible
+  typename std::enable_if<ToK == FromK || ToK == memory_kind::any || FromK == memory_kind::any,
+                          global_ptr<T,ToK>>::type
+  dynamic_kind_cast(global_ptr<T,FromK> p) {
     UPCXXI_GPTR_CHK(p);
-    return ((int)p.dynamic_kind() & (int)K) != 0
-        ? global_ptr<T,K>(
+    return (ToK == memory_kind::any || ToK == p.dynamic_kind())
+        ? global_ptr<T,ToK>(
           detail::internal_only(), p.UPCXXI_INTERNAL_ONLY(rank_),
           p.UPCXXI_INTERNAL_ONLY(raw_ptr_), p.UPCXXI_INTERNAL_ONLY(heap_idx_)
         )
-        : global_ptr<T,K>(nullptr);
+        : global_ptr<T,ToK>(nullptr);
   }
 
   template<typename T, memory_kind K>

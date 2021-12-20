@@ -6,10 +6,10 @@
 #include <cstdint>
 
 namespace upcxx {
-  enum class memory_kind : std::uint16_t {
-    host=1,
-    cuda_device=2,
-    any = 1 | 2
+  enum class memory_kind : std::uint8_t {
+    host=0,
+    cuda_device=1,
+    any = 2
   };
 }
 #endif
