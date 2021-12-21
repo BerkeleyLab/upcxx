@@ -4,12 +4,25 @@
 #define UPCXXI_MANY_KINDS (0 || UPCXXI_CUDA_ENABLED)
 
 #include <cstdint>
+#include <string>
 
 namespace upcxx {
   enum class memory_kind : std::uint8_t {
     host=0,
     cuda_device=1,
-    any = 2
+    any = 2 // should remain last
   };
+
+  namespace detail {
+    inline std::string to_string(memory_kind kind) {
+      switch (kind) {
+        case memory_kind::host:        return "host";
+        case memory_kind::cuda_device: return "cuda_device";
+        case memory_kind::any:         return "any";
+        default:                       
+          return std::string("unknown(") + std::to_string((int)kind) + ")"; 
+      }
+    }
+  }
 }
 #endif

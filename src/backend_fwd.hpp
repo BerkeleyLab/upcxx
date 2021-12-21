@@ -24,6 +24,7 @@
 #include <upcxx/future/fwd.hpp>
 #include <upcxx/diagnostic.hpp>
 #include <upcxx/upcxx_config.hpp>
+#include <upcxx/memory_kind.hpp>
 #include <gasnet_fwd.h>
 
 #include <cstddef>
@@ -216,10 +217,6 @@ namespace backend {
   #endif
     static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
 
-    enum class memory_kind : std::uint32_t { 
-      host = 0x40514051, 
-      cuda = 0xC0DAC0DA,
-    };
     heap_state(memory_kind k) : my_kind(k) {}
     memory_kind kind() { return my_kind; }
 
@@ -259,6 +256,7 @@ namespace backend {
       UPCXX_ASSERT(heap_idx > 0 && heap_idx < max_heaps, "invalid heap_idx (corrupted global_ptr?)");
       heap_state *&hs = heaps[heap_idx];
       UPCXX_ASSERT(hs || allow_null, "heap_idx referenced a null heap");
+      UPCXX_ASSERT(!hs || (hs->kind() != memory_kind::host && hs->kind() < memory_kind::any), "invalid kind in heap_state");
       return hs;
     }
   };

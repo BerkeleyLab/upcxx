@@ -1370,7 +1370,7 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
 }
 
 GASNETT_COLD
-void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
+void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::uint32_t heap_idx,
                                   memory_kind dynamic_kind, memory_kind Kind, size_t T_align, const char *T_name, 
                                   const char *short_context, const char *context) {
   if_pf (!upcxx::initialized()) return; // don't perform checking before init
@@ -1381,15 +1381,8 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
   UPCXX_ASSERT_ALWAYS(backend::rank_me < backend::rank_n);
 
   auto pretty_type = [&]() {
-    std::string s("global_ptr<");
-    s = s + T_name + ", ";
-    switch (Kind) {
-      case memory_kind::host:        s += "host"; break;
-      case memory_kind::cuda_device: s += "cuda_device"; break;
-      case memory_kind::any:         s += "any"; break;
-      default:                       s = s + "unknown_kind(" + std::to_string((int)Kind) + ")";
-    }
-    return s + ">";
+    return std::string("global_ptr<") + 
+            T_name + ", " + detail::to_string(Kind) + ">";
   };
 
   bool error = false;
@@ -1420,10 +1413,17 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
     if_pf (
         (Kind == memory_kind::host && heap_idx != 0) // host should always be heap_idx 0
      || (Kind != memory_kind::host && Kind != memory_kind::any && heap_idx == 0) // non-host gptr cannot ref host device
-     || (heap_idx < 0) // currently never use negative heap_idx
      || (heap_idx >= backend::heap_state::max_heaps) // invalid heap_idx
       ) {
       ss << pretty_type() << " representation corrupted, bad heap_idx\n";
+      error = true; break;
+    }
+
+    if_pf ( dynamic_kind >= memory_kind::any // invalid garbage
+         || (Kind != memory_kind::any && dynamic_kind != Kind) // static type mismatch
+         || ((dynamic_kind == memory_kind::host) != (heap_idx == 0)) // dynamic_type/heap_idx mismatch
+      ) {
+      ss << pretty_type() << " representation corrupted, bad dynamic_kind\n";
       error = true; break;
     }
 
@@ -1448,6 +1448,11 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           if_pf (!hs || !hs->alloc_base) {
             ss << pretty_type() << " representation corrupted or stale pointer, "
                << "heap_idx does not correspond to an active device segment\n";
+            error = true; break;
+          }
+          if_pf (dynamic_kind != hs->kind()) {
+            ss << pretty_type() << " representation corrupted or stale pointer, "
+               << "dynamic_kind does not correspond to an active device segment\n";
             error = true; break;
           }
           std::tie(owner_vbase, size) = hs->alloc_base->seg_.segment_range();
@@ -1502,7 +1507,8 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
 
   if_pf (error) {
     if (short_context && *short_context) ss << " in " << short_context;
-    ss << "\n  rank = " << rank << ", raw_ptr = " << raw_ptr << ", heap_idx = " << heap_idx;
+    ss << "\n  rank = " << rank << ", raw_ptr = " << raw_ptr 
+       << ", heap_idx = " << heap_idx << ", dynamic_kind = " << detail::to_string(dynamic_kind);
     detail::fatal_error(ss.str(), "fatal global_ptr error", context);
   }
 }

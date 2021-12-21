@@ -71,11 +71,11 @@
           gex_Segment_t segment;
         #endif
 
-	device_state() : backend::heap_state(backend::heap_state::memory_kind::cuda) {}
+	device_state() : backend::heap_state(memory_kind::cuda_device) {}
 
         static device_state *get(std::int32_t heap_idx, bool allow_null = false) {
           backend::heap_state *hs = backend::heap_state::get(heap_idx, allow_null);
-	  if (hs) UPCXX_ASSERT(hs->kind() == backend::heap_state::memory_kind::cuda);
+	  if (hs) UPCXX_ASSERT(hs->kind() == memory_kind::cuda_device);
           return static_cast<device_state*>(hs);
         }
       };
