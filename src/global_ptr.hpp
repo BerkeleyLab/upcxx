@@ -48,8 +48,8 @@ namespace upcxx {
 
     // allow construction from a pointer-to-non-const
     explicit global_ptr(detail::internal_only, intrank_t rank, T *raw,
-                        int heap_idx = 0):
-      base_type(detail::internal_only(), rank, raw, heap_idx) {
+                        unsigned int heap_idx = 0, memory_kind dynamic_kind = Kind):
+      base_type(detail::internal_only(), rank, raw, heap_idx, dynamic_kind) {
     }
 
     template <typename U>
@@ -93,15 +93,17 @@ namespace upcxx {
         #endif
           backend::validate_global_ptr(allow_null, UPCXXI_INTERNAL_ONLY(rank_),
                                        reinterpret_cast<void*>(UPCXXI_INTERNAL_ONLY(raw_ptr_)),
-                                       UPCXXI_INTERNAL_ONLY(heap_idx_), Kind, align,
+                                       UPCXXI_INTERNAL_ONLY(heap_idx_), UPCXXI_INTERNAL_ONLY(dynamic_kind_),
+                                       Kind, align,
                                        detail::typename_of<T>(), 
                                        short_context, context);
     }
     
     explicit global_ptr(detail::internal_only, intrank_t rank, const T *raw,
-                        int heap_idx = 0):
+                        unsigned int heap_idx = 0, memory_kind dynamic_kind = Kind):
       #if UPCXXI_MANY_KINDS
         UPCXXI_INTERNAL_ONLY(heap_idx_)(heap_idx),
+        UPCXXI_INTERNAL_ONLY(dynamic_kind_)(dynamic_kind),
       #endif
       UPCXXI_INTERNAL_ONLY(rank_)(rank),
       UPCXXI_INTERNAL_ONLY(raw_ptr_)(const_cast<T*>(raw)) {
@@ -116,6 +118,7 @@ namespace upcxx {
                         const global_ptr<U, Kind> &other, std::ptrdiff_t offset):
       #if UPCXXI_MANY_KINDS
         UPCXXI_INTERNAL_ONLY(heap_idx_)(other.UPCXXI_INTERNAL_ONLY(heap_idx_)),
+        UPCXXI_INTERNAL_ONLY(dynamic_kind_)(other.UPCXXI_INTERNAL_ONLY(dynamic_kind_)),
       #endif
       UPCXXI_INTERNAL_ONLY(rank_)(other.UPCXXI_INTERNAL_ONLY(rank_)),
       UPCXXI_INTERNAL_ONLY(raw_ptr_)(reinterpret_cast<T*>(
@@ -132,7 +135,8 @@ namespace upcxx {
       global_ptr(detail::internal_only(),
                  that.UPCXXI_INTERNAL_ONLY(rank_),
                  that.UPCXXI_INTERNAL_ONLY(raw_ptr_),
-                 that.UPCXXI_INTERNAL_ONLY(heap_idx_)) {
+                 that.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                 that.UPCXXI_INTERNAL_ONLY(dynamic_kind_)) {
       UPCXXI_GPTR_CHK(*this);
     }
     
@@ -199,7 +203,7 @@ namespace upcxx {
     memory_kind dynamic_kind() const {
       UPCXXI_GPTR_CHK(*this);
       if (Kind == memory_kind::any)
-        return UPCXXI_INTERNAL_ONLY(heap_idx_) == 0 ? memory_kind::host : memory_kind::cuda_device;
+        return UPCXXI_INTERNAL_ONLY(dynamic_kind_);
       else
         return Kind;
     }
@@ -279,9 +283,11 @@ namespace upcxx {
   
   public: //private!
     #if UPCXXI_MANY_KINDS
-      std::int32_t UPCXXI_INTERNAL_ONLY(heap_idx_);
+      std::uint32_t UPCXXI_INTERNAL_ONLY(heap_idx_) : 24;
+      memory_kind   UPCXXI_INTERNAL_ONLY(dynamic_kind_) : 8;
     #else
-      static constexpr std::int32_t UPCXXI_INTERNAL_ONLY(heap_idx_) = 0;
+      static constexpr std::uint32_t UPCXXI_INTERNAL_ONLY(heap_idx_) = 0;
+      static constexpr memory_kind   UPCXXI_INTERNAL_ONLY(dynamic_kind_) = memory_kind::host;
     #endif
     intrank_t UPCXXI_INTERNAL_ONLY(rank_);
     T* UPCXXI_INTERNAL_ONLY(raw_ptr_);
@@ -298,7 +304,8 @@ namespace upcxx {
     return global_ptr<T,K>(detail::internal_only(),
                            ptr.UPCXXI_INTERNAL_ONLY(rank_),
                            static_cast<T*>(ptr.UPCXXI_INTERNAL_ONLY(raw_ptr_)),
-                           ptr.UPCXXI_INTERNAL_ONLY(heap_idx_));
+                           ptr.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                           ptr.UPCXXI_INTERNAL_ONLY(dynamic_kind_));
   }
 
   template<typename T, typename U, memory_kind K>
@@ -308,7 +315,8 @@ namespace upcxx {
     return global_ptr<T,K>(detail::internal_only(),
                            ptr.UPCXXI_INTERNAL_ONLY(rank_),
                            reinterpret_cast<T*>(ptr.UPCXXI_INTERNAL_ONLY(raw_ptr_)),
-                           ptr.UPCXXI_INTERNAL_ONLY(heap_idx_));
+                           ptr.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                           ptr.UPCXXI_INTERNAL_ONLY(dynamic_kind_));
   }
 
   template<typename T, typename U, memory_kind K>
@@ -318,7 +326,8 @@ namespace upcxx {
     return global_ptr<T,K>(detail::internal_only(),
                            ptr.UPCXXI_INTERNAL_ONLY(rank_),
                            const_cast<T*>(ptr.UPCXXI_INTERNAL_ONLY(raw_ptr_)),
-                           ptr.UPCXXI_INTERNAL_ONLY(heap_idx_));
+                           ptr.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                           ptr.UPCXXI_INTERNAL_ONLY(dynamic_kind_));
   }
 
   template<memory_kind ToK, typename T, memory_kind FromK>
@@ -331,7 +340,8 @@ namespace upcxx {
     return global_ptr<T,ToK>(detail::internal_only(),
                            p.UPCXXI_INTERNAL_ONLY(rank_),
                            p.UPCXXI_INTERNAL_ONLY(raw_ptr_),
-                           p.UPCXXI_INTERNAL_ONLY(heap_idx_));
+                           p.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                           p.UPCXXI_INTERNAL_ONLY(dynamic_kind_));
   }
   
   template<memory_kind ToK, typename T, memory_kind FromK>
@@ -342,9 +352,11 @@ namespace upcxx {
   dynamic_kind_cast(global_ptr<T,FromK> p) {
     UPCXXI_GPTR_CHK(p);
     return (ToK == memory_kind::any || ToK == p.dynamic_kind())
-        ? global_ptr<T,ToK>(
-          detail::internal_only(), p.UPCXXI_INTERNAL_ONLY(rank_),
-          p.UPCXXI_INTERNAL_ONLY(raw_ptr_), p.UPCXXI_INTERNAL_ONLY(heap_idx_)
+        ? global_ptr<T,ToK>(detail::internal_only(), 
+                           p.UPCXXI_INTERNAL_ONLY(rank_),
+                           p.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                           p.UPCXXI_INTERNAL_ONLY(heap_idx_),
+                           p.UPCXXI_INTERNAL_ONLY(dynamic_kind_)
         )
         : global_ptr<T,ToK>(nullptr);
   }
