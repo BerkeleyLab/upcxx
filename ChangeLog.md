@@ -9,6 +9,8 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* Performance improvements to `atomic_domain` operations using shared-memory bypass.
+
 Infrastructure changes:
 
 Notable issues resolved
