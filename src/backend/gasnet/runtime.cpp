@@ -88,8 +88,6 @@ bool backend::verbose_noise = false;
 
 backend::heap_state *backend::heap_state::heaps[backend::heap_state::max_heaps] = {/*nullptr...*/};
 int backend::heap_state::heap_count = 1; // host segment is implicitly idx 0
-bool backend::heap_state::use_mk_ = false;  // set by heap_state::init()
-bool backend::heap_state::recycle = false; // set by heap_state::init()
 
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
@@ -258,15 +256,6 @@ namespace {
 #include <upcxx/dl_malloc.h>
 
 void upcxx::backend::heap_state::init() {
-  heap_state::use_mk_ = false 
-  #if UPCXXI_CUDA_ENABLED
-     || upcxx::cuda::use_mk()
-  #endif
-  /* || otherkind::use_mk() ... */;
-
-  // currently we do not recycle heap_idx when using GASNet memory kinds,
-  // until GASNet grows the ability to recycle endpoints
-  heap_state::recycle = !heap_state::use_mk_;
 
 }
 
@@ -1458,7 +1447,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           std::tie(owner_vbase, size) = hs->alloc_base->seg_.segment_range();
           UPCXX_ASSERT(owner_vbase && size);
         }
-        else if (backend::heap_state::use_mk()) { // query GEX for remote device EP
+        else if (backend::heap_state::use_mk) { // query GEX for remote device EP
           UPCXX_ASSERT(endpoint0 != GEX_EP_INVALID);
           tm = gex_TM_Pair(endpoint0, heap_idx);
         }
@@ -2710,11 +2699,4 @@ namespace upcxx { namespace experimental {
 // Other library ident strings live in watermark.cpp
 
 GASNETT_IDENT(UPCXXI_IdentString_Network, "$UPCXXNetwork: " _STRINGIFY(GASNET_CONDUIT_NAME) " $");
-
-// requires cuda_internal.hpp
-#if UPCXXI_CUDA_USE_MK
-  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 1 $");
-#else
-  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 0 $");
-#endif
 

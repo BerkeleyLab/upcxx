@@ -10,12 +10,6 @@ using std::size_t;
 using std::uint64_t;
 
 #if UPCXXI_CUDA_ENABLED
-#if UPCXXI_CUDA_USE_MK
-  bool upcxx::cuda::use_mk() { return true; }
-#else
-  bool upcxx::cuda::use_mk() { return false; }
-#endif
-
 namespace {
   GASNETT_COLD
   detail::segment_allocator make_segment(int heap_idx, void *base, size_t size) {
@@ -121,7 +115,7 @@ namespace {
 
       throw upcxx::bad_segment_alloc("cuda_device", report_size, report_rank);
     } else {
-      #if UPCXXI_CUDA_USE_MK
+      #if UPCXXI_GEX_MK_CUDA
       gex_TM_t TM0 = upcxx::backend::gasnet::handle_of(upcxx::world()); UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
       if (st) {
         int ok;
@@ -254,7 +248,7 @@ upcxx::cuda_device::cuda_device(int device):
       st->alloc_base = nullptr;
       st->segment_to_free = reinterpret_cast<CUdeviceptr>(nullptr);
 
-      #if UPCXXI_CUDA_USE_MK
+      #if UPCXXI_GEX_MK_CUDA
       {
         int ok;
         gex_TM_t TM0 = backend::gasnet::handle_of(upcxx::world()); UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
@@ -318,7 +312,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
       UPCXX_ASSERT(st->alloc_base == &::tombstone);
     }
 
-    #if UPCXXI_CUDA_USE_MK
+    #if UPCXXI_GEX_MK_CUDA
     // TODO: once they are provided, eventually will do:
     //   gex_Segment_Destroy()
     //   gex_MK_Destroy()

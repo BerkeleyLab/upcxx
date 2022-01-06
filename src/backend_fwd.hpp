@@ -217,6 +217,12 @@ namespace backend {
   #endif
     static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
 
+  #if UPCXXI_GEX_MK_CUDA // || ...
+    static constexpr bool use_mk = true;
+  #else
+    static constexpr bool use_mk = false;
+  #endif
+
     heap_state(memory_kind k) : my_kind(k) {}
     memory_kind kind() { return my_kind; }
 
@@ -224,13 +230,13 @@ namespace backend {
     memory_kind const my_kind; // serves as both tag and magic
     static heap_state *heaps[max_heaps];
     static int heap_count;
-    static bool recycle;
-    static bool use_mk_;
+
+    // currently we do not recycle heap_idx when using GASNet memory kinds,
+    // until GASNet grows the ability to recycle endpoints
+    static constexpr bool recycle = !use_mk;
 
   public:
     static void init();
-    UPCXXI_ATTRIB_CONST
-    static bool use_mk() { return use_mk_; }
     static int alloc_index() {
       UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
       int idx;

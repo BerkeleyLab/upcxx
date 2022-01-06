@@ -62,6 +62,11 @@ GASNETT_IDENT(UPCXXI_IdentString_GASNetVersion, "$UPCXXGASNetVersion: "
 #else
   GASNETT_IDENT(UPCXXI_IdentString_CUDAEnabled, "$UPCXXCUDAEnabled: 0 $");
 #endif
+#if UPCXXI_GEX_MK_CUDA
+  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 1 $");
+#else
+  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 0 $");
+#endif
 
 GASNETT_IDENT(UPCXXI_IdentString_AssertEnabled, "$UPCXXAssertEnabled: " _STRINGIFY(UPCXXI_ASSERT_ENABLED) " $");
 

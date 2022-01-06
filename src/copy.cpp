@@ -78,7 +78,7 @@ void upcxx::detail::rma_copy_remote(
     std::size_t size, 
     gasnet::handle_cb *cb
   ) {
-#if UPCXXI_CUDA_USE_MK
+#if UPCXXI_GEX_MK_CUDA
   const bool isput = (rank_s == upcxx::rank_me());
 
   gex_EP_Index_t local_ep_idx;
@@ -130,7 +130,7 @@ void upcxx::detail::rma_copy_remote(
   cb->handle = reinterpret_cast<uintptr_t>(h);
   gasnet::register_cb(cb);
   gasnet::after_gasnet();
-#else // !UPCXXI_CUDA_USE_MK
+#else // !UPCXXI_GEX_MK_CUDA
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy()");
 #endif
 }
@@ -155,7 +155,7 @@ void upcxx::detail::rma_copy_get(
     void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXXI_CUDA_USE_MK
+  #if UPCXXI_GEX_MK_CUDA
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
   #endif
 
@@ -173,7 +173,7 @@ void upcxx::detail::rma_copy_put(
     intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXXI_CUDA_USE_MK
+  #if UPCXXI_GEX_MK_CUDA
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
 

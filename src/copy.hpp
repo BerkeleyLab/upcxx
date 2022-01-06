@@ -301,7 +301,7 @@ namespace upcxx {
         })
       );
     }
-    else if (backend::heap_state::use_mk() && 
+    else if (backend::heap_state::use_mk && 
              rank_s == initiator && // MK put to different-rank
              ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
       ) { // convert MK put into MK get, as an optimization to reduce completion latency
@@ -362,7 +362,7 @@ namespace upcxx {
       // initiator
       if (!must_ack) delete cxs_here;
     }
-    else if (backend::heap_state::use_mk()) { // MK-enabled GASNet backend
+    else if (backend::heap_state::use_mk) { // MK-enabled GASNet backend
       // GASNet will do a direct source-to-dest memory transfer.
       // No bounce buffering, we just need to orchestrate the completions
       
@@ -689,7 +689,7 @@ namespace upcxx {
                 UPCXX_ASSERT(buf_s == reinterpret_cast<T*>(p_raw));
                 heap_s = detail::host_heap;
               }
-              else if (backend::heap_state::use_mk()) { // performance: peer-segment only profitable for MK, see above
+              else if (backend::heap_state::use_mk) { // performance: peer-segment only profitable for MK, see above
                 rank_s = p_rank; // a co-located peer
                 buf_s = reinterpret_cast<T*>(p_raw);
                 heap_s = detail::host_heap;

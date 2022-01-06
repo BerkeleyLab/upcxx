@@ -18,6 +18,7 @@ function probe_macro {
 #include <gasnetex.h>
 #include <gasnet_tools.h>
 #include <gasnet_portable_platform.h>
+#include <gasnet_mk.h>
 
 #ifdef $1
   $TOKEN1+$2+$TOKEN2
@@ -39,11 +40,13 @@ _EOF
   barevar=${3%%(*}
   if [[ $result = $UNDEF && $4 ]]; then
     echo "#undef $barevar // $1 not defined"
+    eval unset $barevar
   elif [[ $result = $UNDEF && !$4 ]]; then
     echo "Missing required definition of $1" >&2
     exit 1
   else
     echo "#define $3 $result"
+    eval $barevar=\"$result\"
   fi
 }
 
@@ -53,6 +56,13 @@ probe_macro GASNETT_PURE     GASNETT_PURE     UPCXXI_ATTRIB_PURE
 probe_macro GASNETT_CONST    GASNETT_CONST    UPCXXI_ATTRIB_CONST
 
 probe_macro GASNET_MAXEPS GASNET_MAXEPS UPCXXI_MAXEPS
+if [[ $UPCXXI_MAXEPS -gt 1 ]] ; then
+  probe_macro GASNET_HAVE_MK_CLASS_CUDA_UVA GASNET_HAVE_MK_CLASS_CUDA_UVA UPCXXI_GEX_MK_CUDA 1
+  probe_macro GASNET_HAVE_MK_CLASS_HIP      GASNET_HAVE_MK_CLASS_HIP      UPCXXI_GEX_MK_HIP  1
+else
+  echo "#undef UPCXXI_GEX_MK_CUDA"
+  echo "#undef UPCXXI_GEX_MK_HIP"
+fi
 
 probe_macro GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM UPCXXI_NATIVE_NP_ALLOC_REQ_MEDIUM 1
 

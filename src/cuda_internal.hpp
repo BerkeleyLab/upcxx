@@ -10,13 +10,12 @@
   #include <cuda.h>
   #include <cuda_runtime_api.h>
 
-  // Decide whether GASNet has native memory kinds support
-  #include <gasnet_mk.h>
-  #ifndef UPCXXI_MAXEPS
-  #error Missing UPCXXI_MAXEPS definition
-  #endif
-  #if UPCXXI_MAXEPS > 1 && GASNET_HAVE_MK_CLASS_CUDA_UVA
-    #define UPCXXI_CUDA_USE_MK 1
+  #if UPCXXI_GEX_MK_CUDA
+    #include <gasnet_mk.h>
+    // Validate GASNet native memory kinds support
+    #if GASNET_MAXEPS <= 1 || !GASNET_HAVE_MK_CLASS_CUDA_UVA
+    #error Internal error: missing expected GASNet MK CUDA support
+    #endif
   #endif
 
   namespace upcxx {
@@ -57,14 +56,13 @@
 
   namespace upcxx {
     namespace cuda {
-      bool use_mk(); // true iff using GASNet memory kinds
       struct device_state : public backend::heap_state {
         int device_id;
         CUcontext context;
         CUstream stream;
         CUdeviceptr segment_to_free;
 
-        #if UPCXXI_CUDA_USE_MK
+        #if UPCXXI_GEX_MK_CUDA
           // gex objects...
           gex_EP_t ep;
           gex_MK_t kind;
