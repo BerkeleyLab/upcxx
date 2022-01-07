@@ -214,7 +214,13 @@ commands above (the portions before `| perl ...`).
 
 ### Temporary Override
 
-The PGI and NVHPC compilers do not provide a simple means to override the GCC
+NVHPC compilers 21.11 and newer support a `--gcc-toolchain` option to specify a
+non-default C++ standard library.  Its argument is an installation directory as
+would be passed as the `--prefix` when configuring GCC.  For example, if
+`/usr/local/gcc/9.1.0/bin/g++` is a suitable `g++` version, then one might
+configure UPC++ with `CXX="nvc++ --gcc-toolchain=/usr/local/gcc/9.1.0"`.
+
+Compilers prior to 21.11 did not provide a simple means to override the GCC
 installation from which the C++ standard library and headers are used.
 Instead this information is contained in a configuration file, which one
 must generate as described in the following "Permanent Override" section.
