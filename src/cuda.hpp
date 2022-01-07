@@ -2,7 +2,7 @@
 #define _62341dee_845f_407c_9241_cd36da9f0e1c
 
 #include <upcxx/backend_fwd.hpp>
-#include <upcxx/cuda_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
 #include <upcxx/device_allocator.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/memory_kind.hpp>

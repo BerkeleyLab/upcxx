@@ -2,7 +2,7 @@
 #define _850ece2c_7b55_43a8_9e57_8cbd44974055
 
 #include <upcxx/backend_fwd.hpp>
-#include <upcxx/cuda_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
 #include <upcxx/future.hpp>
 #include <upcxx/intru_queue.hpp>
 #include <upcxx/lpc.hpp>
