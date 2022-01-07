@@ -16,7 +16,7 @@ using upcxx::detail::lpc_base;
 void upcxx::detail::rma_copy_local(
     int heap_d, void *buf_d,
     int heap_s, void const *buf_s, std::size_t size,
-    cuda::event_cb *cb
+    backend::device_cb *cb
   ) {
 
   const bool host_d = (heap_d == host_heap || heap_d == private_heap);
@@ -60,10 +60,10 @@ void upcxx::detail::rma_copy_local(
     CUevent event;
     CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
     CU_CHECK(cuEventRecord(event, st->stream));
-    cb->cu_event = (void*)event;
+    cb->event = (void*)event;
 
     persona *per = detail::the_persona_tls.get_top_persona();
-    per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.enqueue(cb);
+    per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.enqueue(cb);
     
     {CUcontext dump; CU_CHECK(cuCtxPopCurrent(&dump));}
   #else

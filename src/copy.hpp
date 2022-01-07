@@ -25,7 +25,7 @@ namespace upcxx {
     void rma_copy_local(
         int heap_d, void *buf_d,
         int heap_s, void const *buf_s, std::size_t size,
-        cuda::event_cb *cb
+        backend::device_cb *cb
       );
     void rma_copy_remote(
         int heap_s, intrank_t rank_s, void const * buf_s,
@@ -288,7 +288,7 @@ namespace upcxx {
           ) : nullptr);
       if (copy_traits::want_remote) initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
       detail::rma_copy_local(heap_d, buf_d, heap_s, buf_s, size,
-        cuda::make_event_cb([=]() {
+        backend::make_device_cb([=]() {
           cxs_here->template operator()<source_cx_event>();
           cxs_here->template operator()<operation_cx_event>();
           delete cxs_here;
@@ -459,7 +459,7 @@ namespace upcxx {
                       if(heap_d == host_heap)
                         bounce_d_cont();
                       else
-                        detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(std::move(bounce_d_cont)));
+                        detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, backend::make_device_cb(std::move(bounce_d_cont)));
                     }
                   );
                 })
@@ -474,7 +474,7 @@ namespace upcxx {
             
             detail::rma_copy_local(
               host_heap, bounce_s, heap_s, buf_s, size,
-              cuda::make_event_cb(make_bounce_s_cont(bounce_s))
+              backend::make_device_cb(make_bounce_s_cont(bounce_s))
             );
           }
         }
@@ -539,7 +539,7 @@ namespace upcxx {
                     if(heap_d == host_heap)
                       bounce_d_cont();
                     else
-                      detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, cuda::make_event_cb(std::move(bounce_d_cont)));
+                      detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, backend::make_device_cb(std::move(bounce_d_cont)));
                   }) // make_handle_cb
                 ); // rma_copy_get
               }, 
@@ -568,7 +568,7 @@ namespace upcxx {
       else {
         void *bounce_s = backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);
         
-        detail::rma_copy_local(host_heap, bounce_s, heap_s, buf_s, size, cuda::make_event_cb(make_bounce_s_cont(bounce_s)));
+        detail::rma_copy_local(host_heap, bounce_s, heap_s, buf_s, size, backend::make_device_cb(make_bounce_s_cont(bounce_s)));
       }
 
       if (!must_ack) delete cxs_here;

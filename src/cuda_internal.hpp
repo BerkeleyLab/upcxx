@@ -79,5 +79,7 @@
       };
     }
   }
+#else // !UPCXXI_CUDA_ENABLED
+  namespace upcxx { namespace cuda {} } // empty namespace still exists
 #endif
 #endif

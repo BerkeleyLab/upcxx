@@ -6,18 +6,18 @@
 #include <utility>
 
 namespace upcxx {
-  namespace cuda {
-    struct event_cb {
-      detail::intru_queue_intruder<event_cb> intruder;
-      void *cu_event;
+  namespace backend {
+    struct device_cb {
+      detail::intru_queue_intruder<device_cb> intruder;
+      void *event;
       virtual void execute_and_delete() = 0;
     };
 
     template<typename Fn>
-    struct event_cb_fn final: event_cb {
+    struct device_cb_fn final: device_cb {
       Fn fn;
-      event_cb_fn(const Fn &f): fn(f) {}
-      event_cb_fn(Fn &&f): fn(std::move(f)) {}
+      device_cb_fn(const Fn &f): fn(f) {}
+      device_cb_fn(Fn &&f): fn(std::move(f)) {}
       void execute_and_delete() {
         fn();
         delete this;
@@ -25,22 +25,24 @@ namespace upcxx {
     };
 
     template<typename Fn>
-    event_cb_fn<typename std::remove_reference<Fn>::type>*
-    make_event_cb(Fn &&fn) {
-      return new event_cb_fn<typename std::remove_reference<Fn>::type>(std::forward<Fn>(fn));
+    device_cb_fn<typename std::remove_reference<Fn>::type>*
+    make_device_cb(Fn &&fn) {
+      return new device_cb_fn<typename std::remove_reference<Fn>::type>(std::forward<Fn>(fn));
     }
 
     // This type is contained within `__thread` storage, so it must be:
     //   1. trivially destructible.
     //   2. constexpr constructible equivalent to zero-initialization.
-    struct persona_state {
+    struct persona_device_state {
     #if UPCXXI_CUDA_ENABLED
-      // queue of pending events
-      detail::intru_queue<
-          event_cb,
+      struct persona_cuda_state {
+        // queue of pending events
+        detail::intru_queue<
+          device_cb,
           detail::intru_queue_safety::none,
-          &event_cb::intruder
-        > event_cbs;
+          &device_cb::intruder
+        > cbs;
+      } cuda;
     #endif
     };
   }

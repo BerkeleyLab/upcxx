@@ -55,7 +55,7 @@ namespace upcxx {
     
   public: //private!
     backend::persona_state UPCXXI_INTERNAL_ONLY(backend_state_);
-    cuda::persona_state UPCXXI_INTERNAL_ONLY(cuda_state_);
+    backend::persona_device_state UPCXXI_INTERNAL_ONLY(device_state_);
     std::intptr_t UPCXXI_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
   
   private:

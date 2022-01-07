@@ -2027,12 +2027,12 @@ RpcAsLpc* rpc_as_lpc::build_rdzv_lz(
 
 namespace {
   GASNETT_HOT
-  void burst_cuda(persona *per) {
+  void burst_device(persona *per) {
   #if UPCXXI_CUDA_ENABLED
-    while(cuda::event_cb *cb = per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
-      if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->cu_event)) {
-        CU_CHECK(cuEventDestroy((CUevent)cb->cu_event));
-        per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.dequeue();
+    while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
+      if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->event)) {
+        CU_CHECK(cuEventDestroy((CUevent)cb->event));
+        per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
         cb->execute_and_delete();
       }
       else
@@ -2057,7 +2057,7 @@ void gasnet::after_gasnet() {
     exec_n = 0;
     
     tls.foreach_active_as_top([&](persona &p) {
-      burst_cuda(&p);
+      burst_device(&p);
       
       #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
@@ -2107,7 +2107,7 @@ static inline void do_progress() {
     exec_n = 0;
     
     tls.foreach_active_as_top([&](persona &p) {
-      burst_cuda(&p);
+      burst_device(&p);
       
       #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
