@@ -915,6 +915,10 @@ void init_localheap_tables(void) {
     void *owner_vbase_vp, *local_vbase_vp;
     uintptr_t size;
 
+    // silence "may be used uninitialized" warnings in the presence of -Wall + LTO
+    owner_vbase_vp = local_vbase_vp = 0;
+    size = 0;
+
     gex_Segment_QueryBound(
       /*team*/world_tm,
       /*rank*/backend::pshm_peer_lb + p,
