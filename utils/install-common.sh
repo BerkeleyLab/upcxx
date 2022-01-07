@@ -124,6 +124,11 @@ EOF
   mkdir -p $docdir
   cp -f -R README.md ChangeLog.md LICENSE.txt docs $docdir
   chmod -R a+rX $docdir
+  # install version.git, if appropriate
+  if [[ -d .git ]]; then
+    githash=$(git describe --dirty --long --always 2>/dev/null | head -n 1)
+    [[ -n $githash ]] && echo "$githash" > $docdir/docs/version.git
+  fi
   # install cmake module
   cmakedir="${DESTDIR}${install_to}/share/cmake/UPCXX"
   mkdir -p $cmakedir
