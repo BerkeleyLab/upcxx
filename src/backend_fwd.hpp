@@ -218,8 +218,10 @@ namespace backend {
     static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
 
   #if UPCXXI_GEX_MK_CUDA // || ...
+    #define UPCXXI_GEX_MK_ANY 1
     static constexpr bool use_mk = true;
   #else
+    #undef  UPCXXI_GEX_MK_ANY
     static constexpr bool use_mk = false;
   #endif
 

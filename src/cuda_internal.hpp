@@ -5,6 +5,7 @@
 #include <upcxx/diagnostic.hpp>
 
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
+#include <upcxx/device_internal.hpp>
 
 #if UPCXXI_CUDA_ENABLED
   #include <cuda.h>
@@ -54,32 +55,15 @@
     #define CURT_CHECK(expr) ((void)(expr))
   #endif
 
-  namespace upcxx {
-    namespace cuda {
-      struct device_state : public backend::heap_state {
+  namespace upcxx { namespace backend {
+    template<>
+    struct device_heap_state<cuda_device> : public device_heap_state_base<cuda_device> {
         int device_id;
         CUcontext context;
         CUstream stream;
         CUdeviceptr segment_to_free;
-
-        #if UPCXXI_GEX_MK_CUDA
-          // gex objects...
-          gex_EP_t ep;
-          gex_MK_t kind;
-          gex_Segment_t segment;
-        #endif
-
-	device_state() : backend::heap_state(memory_kind::cuda_device) {}
-
-        static device_state *get(std::int32_t heap_idx, bool allow_null = false) {
-          backend::heap_state *hs = backend::heap_state::get(heap_idx, allow_null);
-	  if (hs) UPCXX_ASSERT(hs->kind() == memory_kind::cuda_device);
-          return static_cast<device_state*>(hs);
-        }
-      };
-    }
-  }
-#else // !UPCXXI_CUDA_ENABLED
-  namespace upcxx { namespace cuda {} } // empty namespace still exists
+    };
+    using cuda_heap_state = device_heap_state<cuda_device>;
+  }} // namespace
 #endif
 #endif

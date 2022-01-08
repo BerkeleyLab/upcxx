@@ -8,10 +8,12 @@ using namespace std;
 
 namespace detail = upcxx::detail;
 namespace gasnet = upcxx::backend::gasnet;
-namespace cuda = upcxx::cuda;
 
 using upcxx::memory_kind;
 using upcxx::detail::lpc_base;
+#if UPCXXI_CUDA_ENABLED
+using upcxx::backend::cuda_heap_state;
+#endif
 
 void upcxx::detail::rma_copy_local(
     int heap_d, void *buf_d,
@@ -32,13 +34,13 @@ void upcxx::detail::rma_copy_local(
   #if UPCXXI_CUDA_ENABLED
     int heap_main = !host_d ? heap_d : heap_s;
     UPCXX_ASSERT(heap_main > 0);
-    cuda::device_state *st = cuda::device_state::get(heap_main);
+    cuda_heap_state *st = cuda_heap_state::get(heap_main);
     
     CU_CHECK(cuCtxPushCurrent(st->context));
 
     if(!host_d && !host_s) {
-      cuda::device_state *st_d = cuda::device_state::get(heap_d);
-      cuda::device_state *st_s = cuda::device_state::get(heap_s);
+      cuda_heap_state *st_d = cuda_heap_state::get(heap_d);
+      cuda_heap_state *st_s = cuda_heap_state::get(heap_s);
       
       // device to device
       CU_CHECK(cuMemcpyPeerAsync(
@@ -100,7 +102,7 @@ void upcxx::detail::rma_copy_remote(
     UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
     local_ep = gex_TM_QueryEP(TM0);
   } else { // local using device EP
-    cuda::device_state *st = cuda::device_state::get(local_ep_idx);
+    cuda_heap_state *st = cuda_heap_state::get(local_ep_idx);
     local_ep = st->ep;
     UPCXX_ASSERT(st->segment != GEX_SEGMENT_INVALID);
   }

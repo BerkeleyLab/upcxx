@@ -21,7 +21,6 @@
 namespace backend = upcxx::backend;
 namespace detail  = upcxx::detail;
 namespace gasnet  = upcxx::backend::gasnet;
-namespace cuda    = upcxx::cuda;
 
 using upcxx::intrank_t;
 using upcxx::persona;

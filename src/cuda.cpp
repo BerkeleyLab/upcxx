@@ -10,11 +10,12 @@ using std::size_t;
 using std::uint64_t;
 
 #if UPCXXI_CUDA_ENABLED
+using upcxx::backend::cuda_heap_state;
+
 namespace {
   GASNETT_COLD
   detail::segment_allocator make_segment(int heap_idx, void *base, size_t size) {
-    upcxx::cuda::device_state *st = heap_idx <= 0 ? nullptr :
-                                    upcxx::cuda::device_state::get(heap_idx);
+    cuda_heap_state *st = heap_idx <= 0 ? nullptr : cuda_heap_state::get(heap_idx);
     uint64_t failed_alloc = 0;
 
     if (st) { // creating a real device heap, possibly allocating memory
@@ -242,7 +243,7 @@ upcxx::cuda_device::cuda_device(int device):
       }
       CU_CHECK_ALWAYS_VERBOSE(cuCtxPushCurrent(ctx));
 
-      cuda::device_state *st = new cuda::device_state{};
+      cuda_heap_state *st = new cuda_heap_state{};
       st->context = ctx;
       st->device_id = device;
       st->alloc_base = nullptr;
@@ -300,7 +301,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
   if (!is_active()) return;
 
   #if UPCXXI_CUDA_ENABLED
-    cuda::device_state *st = cuda::device_state::get(heap_idx_);
+    cuda_heap_state *st = cuda_heap_state::get(heap_idx_);
     UPCXX_ASSERT(st != nullptr);
     UPCXX_ASSERT(st->device_id == device_);
 
@@ -339,7 +340,7 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
 upcxx::cuda_device::id_type 
 upcxx::cuda_device::device_id(detail::internal_only, int heap_idx) {
   #if UPCXXI_CUDA_ENABLED
-    cuda::device_state *st = cuda::device_state::get(heap_idx);
+    cuda_heap_state *st = cuda_heap_state::get(heap_idx);
     int id = st->device_id;
     UPCXX_ASSERT(id != invalid_device_id);
     return id;
@@ -381,7 +382,7 @@ void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
   if (!is_active()) return;
 
   #if UPCXXI_CUDA_ENABLED  
-      cuda::device_state *st = cuda::device_state::get(heap_idx_);
+      cuda_heap_state *st = cuda_heap_state::get(heap_idx_);
       UPCXX_ASSERT(st);
      
       if(st->segment_to_free) {
