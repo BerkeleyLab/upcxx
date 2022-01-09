@@ -183,7 +183,6 @@ namespace upcxx {
 #endif
 
 namespace upcxx {
-namespace detail { struct device_allocator_base; }
 namespace backend {
   extern int init_count;
   extern intrank_t rank_n;
@@ -205,68 +204,6 @@ namespace backend {
     #else
       // personas carry no extra state
     #endif
-  };
-
-  struct heap_state {
-    detail::device_allocator_base *alloc_base;
-
-  #if UPCXXI_CUDA_ENABLED && UPCXXI_MAXEPS > 1
-    static constexpr int max_heaps = UPCXXI_MAXEPS;
-  #else
-    static constexpr int max_heaps = 33;
-  #endif
-    static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
-
-  #if UPCXXI_GEX_MK_CUDA // || ...
-    #define UPCXXI_GEX_MK_ANY 1
-    static constexpr bool use_mk = true;
-  #else
-    #undef  UPCXXI_GEX_MK_ANY
-    static constexpr bool use_mk = false;
-  #endif
-
-    heap_state(memory_kind k) : my_kind(k) {}
-    memory_kind kind() { return my_kind; }
-
-  protected:
-    memory_kind const my_kind; // serves as both tag and magic
-    static heap_state *heaps[max_heaps];
-    static int heap_count;
-
-    // currently we do not recycle heap_idx when using GASNet memory kinds,
-    // until GASNet grows the ability to recycle endpoints
-    static constexpr bool recycle = !use_mk;
-
-  public:
-    static void init();
-    static int alloc_index() {
-      UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
-      int idx;
-      if (recycle) {
-        for (idx=1; idx < max_heaps; idx++) {
-          if (!heaps[idx]) break;
-        }
-      } else {
-        idx = heap_count;
-      }
-      UPCXX_ASSERT_ALWAYS(idx < max_heaps && heaps[idx] == nullptr, "internal error on heap creation");
-      heap_count++;
-      return idx;
-    }
-    static void free_index(int heap_idx) {
-      UPCXX_ASSERT_ALWAYS(heaps[heap_idx] == nullptr && heap_count > 1, "internal error on heap destruction");
-      if (recycle) heap_count--;
-    }
-
-    // retrieve reference to heap_state pointer at heap_idx, with bounds-checking
-    static inline heap_state *&get(std::int32_t heap_idx, bool allow_null = false) {
-      UPCXX_ASSERT(heap_count <= max_heaps, "internal error in backend::heap_state::get");
-      UPCXX_ASSERT(heap_idx > 0 && heap_idx < max_heaps, "invalid heap_idx (corrupted global_ptr?)");
-      heap_state *&hs = heaps[heap_idx];
-      UPCXX_ASSERT(hs || allow_null, "heap_idx referenced a null heap");
-      UPCXX_ASSERT(!hs || (hs->kind() != memory_kind::host && hs->kind() < memory_kind::any), "invalid kind in heap_state");
-      return hs;
-    }
   };
 
   void quiesce(const team &tm, entry_barrier eb);
