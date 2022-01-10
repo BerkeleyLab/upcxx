@@ -57,18 +57,12 @@ namespace upcxx {
 
   private:
     static id_type device_id(detail::internal_only, int heap_idx);
+    static constexpr std::size_t min_alignment() { return 16; }
   };
 
   namespace detail {
-    template<size_t val> 
-    struct device_allocator_core_min_align {
-      static constexpr std::size_t min_alignment = val;
-    };
-    template<size_t val>
-    constexpr std::size_t device_allocator_core_min_align<val>::min_alignment; // see issue #333
-
     template<>
-    struct device_allocator_core<cuda_device>: device_allocator_base, device_allocator_core_min_align<16> {
+    struct device_allocator_core<cuda_device>: device_allocator_base {
 
       device_allocator_core();
       device_allocator_core(cuda_device &dev, void *base, std::size_t size);

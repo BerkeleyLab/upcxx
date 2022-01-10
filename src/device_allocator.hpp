@@ -41,10 +41,6 @@ namespace upcxx {
     // specialized per device type
     template<typename Device>
     struct device_allocator_core; /*: device_allocator_base {
-      static constexpr std::size_t min_alignment;
-      template<typename T>
-      static constexpr std::size_t default_alignment();
-      static id_type device_id(detail::internal_only, int heap_idx);
 
       device_allocator_core(); // non-collective default constructor
 
@@ -107,7 +103,7 @@ namespace upcxx {
       lock_.lock();
       void *ptr = this->seg_.allocate(
           n*sizeof(T),
-          std::max<std::size_t>(align, this->min_alignment)
+          std::max<std::size_t>(align, Device::min_alignment())
         );
       lock_.unlock();
       
