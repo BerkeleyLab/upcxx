@@ -31,7 +31,7 @@ namespace backend {
     static constexpr bool use_mk = false;
   #endif
 
-    heap_state(memory_kind k) : my_kind(k) {}
+    heap_state(memory_kind k) : alloc_base(nullptr), my_kind(k) {}
     memory_kind kind() { return my_kind; }
 
   protected:

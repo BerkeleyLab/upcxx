@@ -55,6 +55,14 @@ namespace upcxx {
 
     void destroy(upcxx::entry_barrier eb = entry_barrier::user);
 
+    static constexpr bool use_gex_mk(detail::internal_only) {
+      #if UPCXXI_GEX_MK_CUDA
+        return true;
+      #else
+        return false;
+      #endif
+    }
+
   private:
     static id_type device_id(detail::internal_only, int heap_idx);
     static constexpr std::size_t min_alignment() { return 16; }

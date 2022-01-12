@@ -36,7 +36,7 @@ void upcxx::detail::rma_copy_local(
     UPCXX_ASSERT(heap_main > 0);
     cuda_heap_state *st = cuda_heap_state::get(heap_main);
     
-    CU_CHECK(cuCtxPushCurrent(st->context));
+    auto with = cuda::context<0>(st->context);
 
     if(!host_d && !host_s) {
       cuda_heap_state *st_d = cuda_heap_state::get(heap_d);
@@ -66,8 +66,7 @@ void upcxx::detail::rma_copy_local(
 
     persona *per = detail::the_persona_tls.get_top_persona();
     per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.enqueue(cb);
-    
-    {CUcontext dump; CU_CHECK(cuCtxPopCurrent(&dump));}
+
   #else
     UPCXXI_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
   #endif

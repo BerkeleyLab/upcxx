@@ -3,7 +3,6 @@
 
 #include <upcxx/backend_fwd.hpp>
 #include <upcxx/concurrency.hpp>
-#include <upcxx/cuda.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/segment_allocator.hpp>
 
@@ -57,11 +56,12 @@ namespace upcxx {
   }
   
   template<typename Device>
-  class device_allocator: public detail::device_allocator_core<Device> {
+  class device_allocator: protected detail::device_allocator_core<Device> {
     detail::par_mutex lock_;
     
   public:
     using device_type = Device;
+    using detail::device_allocator_base::is_active;
 
     device_allocator():
       detail::device_allocator_core<Device>() { }
