@@ -205,17 +205,6 @@ void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char
   upcxx::detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
 }
 
-GASNETT_COLD
-void upcxx::cuda::curt_failed(cudaError_t res, const char *file, int line, const char *expr) {
-  const char *errname, *errstr;
-  errname = cudaGetErrorName(res);
-  errstr = cudaGetErrorString(res);
-  
-  std::stringstream ss;
-  ss << expr <<"\n  error="<<errname<<": "<<errstr;
-  
-  upcxx::detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
-}
 #endif
 
 GASNETT_COLD

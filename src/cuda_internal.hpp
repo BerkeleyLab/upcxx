@@ -9,7 +9,6 @@
 
 #if UPCXXI_CUDA_ENABLED
   #include <cuda.h>
-  #include <cuda_runtime_api.h>
 
   #if UPCXXI_GEX_MK_CUDA
     #include <gasnet_mk.h>
@@ -23,8 +22,6 @@
     namespace cuda {
       UPCXXI_ATTRIB_NORETURN
       void cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose = false);
-      UPCXXI_ATTRIB_NORETURN
-      void curt_failed(cudaError_t res, const char *file, int line, const char *expr);
     }
   }
   
@@ -41,18 +38,10 @@
     } while(0)
 
 
-  #define CURT_CHECK_ALWAYS(expr) do { \
-      cudaError_t res_xxxxxx = (expr); \
-      if_pf (res_xxxxxx != cudaSuccess) \
-        ::upcxx::cuda::curt_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
-    } while(0)
-
   #if UPCXXI_ASSERT_ENABLED
     #define CU_CHECK(expr)   CU_CHECK_ALWAYS(expr)
-    #define CURT_CHECK(expr) CURT_CHECK_ALWAYS(expr)
   #else
     #define CU_CHECK(expr)   ((void)(expr))
-    #define CURT_CHECK(expr) ((void)(expr))
   #endif
 
   namespace upcxx { namespace backend {
