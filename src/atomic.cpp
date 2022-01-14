@@ -28,7 +28,7 @@ static_assert(
   "Mismatch between underying gasnet handle size and UPC++ implementation"
 );
 
-#define FORALL_OPS(FN) \
+#define FORALL_FPOPS(FN) \
         FN(load)    FN(store) \
         FN(compare_exchange) \
         FN(add)     FN(fetch_add) \
@@ -37,10 +37,15 @@ static_assert(
         FN(dec)     FN(fetch_dec) \
         FN(mul)     FN(fetch_mul) \
         FN(min)     FN(fetch_min) \
-        FN(max)     FN(fetch_max) \
+        FN(max)     FN(fetch_max) 
+
+#define FORALL_INTOPS(FN) \
+        FORALL_FPOPS(FN) \
         FN(bit_and) FN(fetch_bit_and) \
         FN(bit_or)  FN(fetch_bit_or)  \
         FN(bit_xor) FN(fetch_bit_xor) 
+
+#define FORALL_OPS FORALL_INTOPS
 
 namespace upcxx { namespace detail {
 
@@ -76,50 +81,68 @@ extern std::string opset_to_string(gex_OP_t opset) {
 
 /* bit_flavor: 0=unsigned, 1=signed, 2=floating*/
 template<>
-gex_Event_t atomic_domain_untyped<4,0>::inject( 
+template<upcxx::atomic_op opcode>
+GASNETT_HOT
+gex_Event_t atomic_domain_untyped<4,0>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
-        atomic_op opcode, proxy_type val1, proxy_type val2, gex_Flags_t flags) {
+        proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_U32(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr), 
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
 template<>
-gex_Event_t atomic_domain_untyped<4,1>::inject( 
+template<upcxx::atomic_op opcode>
+GASNETT_HOT
+gex_Event_t atomic_domain_untyped<4,1>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
-        atomic_op opcode, proxy_type val1, proxy_type val2, gex_Flags_t flags) {
+        proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_I32(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr), 
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
 template<>
-gex_Event_t atomic_domain_untyped<4,2>::inject( 
+template<upcxx::atomic_op opcode>
+GASNETT_HOT
+gex_Event_t atomic_domain_untyped<4,2>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
-        atomic_op opcode, proxy_type val1, proxy_type val2, gex_Flags_t flags) {
+        proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_FLT(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
 template<>
-gex_Event_t atomic_domain_untyped<8,0>::inject( 
+template<upcxx::atomic_op opcode>
+GASNETT_HOT
+gex_Event_t atomic_domain_untyped<8,0>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
-        atomic_op opcode, proxy_type val1, proxy_type val2, gex_Flags_t flags) {
+        proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_U64(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
 template<>
-gex_Event_t atomic_domain_untyped<8,1>::inject( 
+template<upcxx::atomic_op opcode>
+GASNETT_HOT
+gex_Event_t atomic_domain_untyped<8,1>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
-        atomic_op opcode, proxy_type val1, proxy_type val2, gex_Flags_t flags) {
+        proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_I64(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
 template<>
-gex_Event_t atomic_domain_untyped<8,2>::inject( 
+template<upcxx::atomic_op opcode>
+GASNETT_HOT
+gex_Event_t atomic_domain_untyped<8,2>::inject<opcode>::doit(
         std::uintptr_t ad, void *result_ptr, intrank_t jobrank, void *raw_ptr,
-        atomic_op opcode, proxy_type val1, proxy_type val2, gex_Flags_t flags) {
+        proxy_type val1, proxy_type val2, gex_Flags_t flags) {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXXI_ASSUME(flags & GEX_FLAG_RANK_IS_JOBRANK);
   return gex_AD_OpNB_DBL(reinterpret_cast<gex_AD_t>(ad), reinterpret_cast<proxy_type*>(result_ptr),
                          jobrank, raw_ptr, (gex_OP_t)opcode, val1, val2, flags);
 }
@@ -199,10 +222,19 @@ void upcxx::detail::atomic_domain_untyped<size,bit_flavor>::real_destructor() {
   }
 }
 
-template struct upcxx::detail::atomic_domain_untyped<4,0>;
-template struct upcxx::detail::atomic_domain_untyped<4,1>;
-template struct upcxx::detail::atomic_domain_untyped<4,2>;
-template struct upcxx::detail::atomic_domain_untyped<8,0>;
-template struct upcxx::detail::atomic_domain_untyped<8,1>;
-template struct upcxx::detail::atomic_domain_untyped<8,2>;
+// instantiate template code for all supported combos
+#define UPCXXI_AD_INJECT(op) \
+  template struct UPCXXI_CONCAT(base,__LINE__)::inject<atomic_op::op>;
+
+#define UPCXXI_AD_INST(size, flavor, inj) \
+  template struct upcxx::detail::atomic_domain_untyped<size,flavor>;  \
+  using UPCXXI_CONCAT(base,__LINE__) = typename upcxx::detail::atomic_domain_untyped<size,flavor>; \
+  inj
+
+UPCXXI_AD_INST(4,0,FORALL_INTOPS(UPCXXI_AD_INJECT))
+UPCXXI_AD_INST(4,1,FORALL_INTOPS(UPCXXI_AD_INJECT))
+UPCXXI_AD_INST(4,2,FORALL_FPOPS(UPCXXI_AD_INJECT))
+UPCXXI_AD_INST(8,0,FORALL_INTOPS(UPCXXI_AD_INJECT))
+UPCXXI_AD_INST(8,1,FORALL_INTOPS(UPCXXI_AD_INJECT))
+UPCXXI_AD_INST(8,2,FORALL_FPOPS(UPCXXI_AD_INJECT))
 

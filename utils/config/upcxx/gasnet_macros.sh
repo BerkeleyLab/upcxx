@@ -36,8 +36,9 @@ _EOF
   if [[ $UPCXX_VERBOSE ]] ; then
     echo "// probe_macro($1, $2, $3, $4) => ($result)"
   fi
+  barevar=${3%%(*}
   if [[ $result = $UNDEF && $4 ]]; then
-    echo "#undef $3 // $1 not defined"
+    echo "#undef $barevar // $1 not defined"
   elif [[ $result = $UNDEF && !$4 ]]; then
     echo "Missing required definition of $1" >&2
     exit 1
@@ -65,6 +66,12 @@ probe_macro gasneti_builtin_unreachable "gasneti_builtin_unreachable()" "UPCXXI_
 probe_macro GASNETT_PREDICT_TRUE  "GASNETT_PREDICT_TRUE(expr)"  "UPCXXI_PREDICT_TRUE(expr)"
 probe_macro GASNETT_PREDICT_FALSE "GASNETT_PREDICT_FALSE(expr)" "UPCXXI_PREDICT_FALSE(expr)"
 
+if [[ $UPCXX_ASSERT = 0 ]]; then
+  # conditionally define UPCXXI_ASSUME iff GASNet assertions are off and gasnett_assume exists (2021.9.0+)
+  # otherwise we define it to UPCXX_ASSERT below
+  probe_macro gasnett_assume "gasnett_assume(expr)" "UPCXXI_ASSUME(expr)" 1
+fi
+
 # probe platform identification macros
 for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ; do
   name="PLATFORM_$feature"
@@ -72,6 +79,15 @@ for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ; do
 done
 
 cat <<_EOF
+
+// ASSUME: States simple expression cond is always true, as an annotation directive to guide compiler analysis.
+// Becomes an assertion in DEBUG mode and an analysis directive (when available) in NDEBUG mode.
+// This notably differs from typical assertions in that the expression must remain valid in NDEBUG mode
+// (because it is not preprocessed away), and furthermore may or may not be evaluated at runtime.
+// To ensure portability and performance, cond should NOT contain any function calls or side-effects.
+#ifndef UPCXXI_ASSUME
+#define UPCXXI_ASSUME UPCXX_ASSERT
+#endif
 
 // replacements for if statement, with branch prediction annotation
 #define UPCXXI_IF_PT(expr) if (UPCXXI_PREDICT_TRUE(expr))
