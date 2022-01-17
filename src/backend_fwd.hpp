@@ -229,14 +229,11 @@ namespace backend {
     static int heap_count;
     static bool recycle;
     static bool use_mk_;
-    static bool bug4148_workaround_;
 
   public:
     static void init();
     UPCXXI_ATTRIB_CONST
     static bool use_mk() { return use_mk_; }
-    UPCXXI_ATTRIB_CONST
-    static bool bug4148_workaround() { return bug4148_workaround_; }
     static int alloc_index() {
       UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
       int idx;

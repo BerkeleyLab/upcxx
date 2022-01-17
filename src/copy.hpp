@@ -303,11 +303,8 @@ namespace upcxx {
     }
     else if (backend::heap_state::use_mk() && 
              rank_s == initiator && // MK put to different-rank
-             ( ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
-               || // using GDR and UPCXX_BUG4148_WORKAROUND
-               ((heap_d > 0 || heap_s > 0) && backend::heap_state::bug4148_workaround())
-             ) 
-      ) { // convert MK put into MK get, either as an optimization or to avoid correctness bug 4148
+             ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
+      ) { // convert MK put into MK get, as an optimization to reduce completion latency
       UPCXX_ASSERT(rank_d != initiator);
       UPCXX_ASSERT(heap_d != private_heap);
       void *eff_buf_s = buf_s;

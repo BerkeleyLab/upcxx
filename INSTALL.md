@@ -545,23 +545,7 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 
 #### Known problems with GDR-accelerated memory kinds
 
-Older versions of GASNet-EX, including those embedded in UPC++ releases prior to
-2021.9.0, had multiple known defects in the GASNet GDR Put implementation and an
-issue with incorrectly early source completion of GDR Puts.  To the best of our
-knowledge, these problems have all been resolved.  For more information see:
-
-* [bug 4148: GDR and multi-rail or PSHM](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4148)
-* [bug 4150: GDR Put source completion](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4150)
-
-UPC++ still retains a workaround for those defects that converts Put-like
-`upcxx::copy` operations into use of wire-level GDR Gets from the target rank.
-This workaround is automatically enabled for runs using GASNet-EX versions old
-enough to have these defects, when also using multi-rail InfiniBand or PSHM
-shared-memory bypass (which are known to have been affected).  However, the
-workaround can also be explicitly controlled by setting envvar
-`UPCXX_BUG4148_WORKAROUND` to 0 or 1.
-
-Finally, there is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
+There is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
 causes crashes inside the IB Verbs network stack during small gets into device memory on some
 platforms. This problem can be worked-around by setting `MLX5_SCATTER_TO_CQE=0`, 
 but this setting has a global negative impact on RMA Get operations (even those
