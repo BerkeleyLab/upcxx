@@ -238,18 +238,6 @@ export TEST_ARGS_CUDA_MICROBENCHMARK='-t 1 -w 1'
 export TEST_ARGS_MISC_PERF='1000'
 export TEST_ARGS_RPC_PERF='100 10 1048576'
 
-ifeq ($(strip $(UPCXX_PLATFORM_IBV_CUDA_HAS_BUG_4148)),1)
-  # Run-time measures to eliminate multiple communications paths, and
-  # thus avoid known failures attributable to GASNet bug 4148
-  test_ibv_cuda_bug_4148 = \
-	COPY_COVER
-  ifneq ($(strip $(GASNET_IBV_PORTS)),) # non-empty
-    # Reduce GASNET_IBV_PORTS, if any, to its first '+'-delimited element
-    TEST_IBV_SINGLE_PORT_SETTING = GASNET_IBV_PORTS=$(shell cut -d+ -f1 <<<$(GASNET_IBV_PORTS))
-  endif
-endif
-$(foreach test,$(test_ibv_cuda_bug_4148), $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) GASNET_SUPERNODE_MAXSIZE=1 $(TEST_IBV_SINGLE_PORT_SETTING)))
-
 #
 # End of configuration
 #
