@@ -528,22 +528,8 @@ void upcxx::init() {
   // issue 495: forbid GASNet-level progress threads in SEQ mode
   #if UPCXXI_BACKEND_GASNET_SEQ && GASNET_HIDDEN_AM_CONCURRENCY_LEVEL 
     // static information indicates GASNet MIGHT have a progress thread
-    bool maybe_progress_thread = true;
-
-    // bug 4330: GASNet versions prior to 2021.8.5 botch the GASNET_HIDDEN_AM_CONCURRENCY_LEVEL define for ibv-conduit
-    // this clause can be removed once we raise GEX floor to 2021.9.0:
-    #if GASNET_CONDUIT_IBV && UPCXXI_GEX_VERSION < 20210805 // if this is an affected ibv-conduit version 
-      #if GASNETC_IBV_RCV_THREAD  // bug 4330: this GASNet internal symbol gives the correct value
-        maybe_progress_thread = true;
-      #else
-        maybe_progress_thread = false;
-      #endif
-    #endif
-
-    #if UPCXXI_GEX_VERSION >= 20210807
-      // 2021.8.7 added a direct dynamic query
-      maybe_progress_thread = bool(gex_System_QueryHiddenAMConcurrencyLevel());
-    #endif
+    // GASNet 2021.8.7 added a dynamic query
+    bool maybe_progress_thread = bool(gex_System_QueryHiddenAMConcurrencyLevel());
 
     if (maybe_progress_thread) 
       UPCXXI_FATAL_ERROR(
