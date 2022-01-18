@@ -82,6 +82,11 @@ namespace upcxx {
       ~device_allocator_core() { real_destructor(); }
     };
 
-  }
+    #if UPCXXI_CUDA_ENABLED
+      extern void cuda_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s, 
+                                  std::size_t size, backend::device_cb *cb);
+    #endif
+
+  } // namespace detail
 }
 #endif

@@ -32,41 +32,7 @@ void upcxx::detail::rma_copy_local(
   }
   else { // one or both sides on device
   #if UPCXXI_CUDA_ENABLED
-    int heap_main = !host_d ? heap_d : heap_s;
-    UPCXX_ASSERT(heap_main > 0);
-    cuda_heap_state *st = cuda_heap_state::get(heap_main);
-    
-    auto with = cuda::context<0>(st->context);
-
-    if(!host_d && !host_s) {
-      cuda_heap_state *st_d = cuda_heap_state::get(heap_d);
-      cuda_heap_state *st_s = cuda_heap_state::get(heap_s);
-      
-      // device to device
-      CU_CHECK(cuMemcpyPeerAsync(
-        reinterpret_cast<CUdeviceptr>(buf_d), st_d->context,
-        reinterpret_cast<CUdeviceptr>(buf_s), st_s->context,
-        size, st->stream
-      ));
-    }
-    else if(!host_d) {
-      // host to device
-      CU_CHECK(cuMemcpyHtoDAsync(reinterpret_cast<CUdeviceptr>(buf_d), buf_s, size, st->stream));
-    }
-    else {
-      UPCXX_ASSERT(!host_s);
-      // device to host
-      CU_CHECK(cuMemcpyDtoHAsync(buf_d, reinterpret_cast<CUdeviceptr>(buf_s), size, st->stream));
-    }
-
-    CUevent event;
-    CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
-    CU_CHECK(cuEventRecord(event, st->stream));
-    cb->event = (void*)event;
-
-    persona *per = detail::the_persona_tls.get_top_persona();
-    per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.enqueue(cb);
-
+    detail::cuda_copy_local(heap_d,buf_d,heap_s,buf_s,size,cb);
   #else
     UPCXXI_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
   #endif

@@ -98,6 +98,49 @@ void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char
   upcxx::detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
 }
 
+GASNETT_HOT
+extern void upcxx::detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s,
+                                           std::size_t size, backend::device_cb *cb) {
+  UPCXX_ASSERT(buf_d && buf_s && cb);
+  const bool host_d = heap_d < 1;
+  const bool host_s = heap_s < 1;
+  UPCXX_ASSERT(!host_d || !host_s);
+
+  int heap_main = !host_d ? heap_d : heap_s;
+  UPCXX_ASSERT(heap_main > 0);
+  cuda_heap_state *st = cuda_heap_state::get(heap_main);
+
+  auto with = cuda::context<0>(st->context);
+
+  if(!host_d && !host_s) {
+    cuda_heap_state *st_d = cuda_heap_state::get(heap_d);
+    cuda_heap_state *st_s = cuda_heap_state::get(heap_s);
+
+    // device to device
+    CU_CHECK(cuMemcpyPeerAsync(
+      reinterpret_cast<CUdeviceptr>(buf_d), st_d->context,
+      reinterpret_cast<CUdeviceptr>(buf_s), st_s->context,
+      size, st->stream
+    ));
+  }
+  else if(!host_d) {
+    // host to device
+    CU_CHECK(cuMemcpyHtoDAsync(reinterpret_cast<CUdeviceptr>(buf_d), buf_s, size, st->stream));
+  }
+  else {
+    UPCXX_ASSERT(!host_s);
+    // device to host
+    CU_CHECK(cuMemcpyDtoHAsync(buf_d, reinterpret_cast<CUdeviceptr>(buf_s), size, st->stream));
+  }
+
+  CUevent event;
+  CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
+  CU_CHECK(cuEventRecord(event, st->stream));
+  cb->event = (void*)event;
+
+  persona *per = detail::the_persona_tls.get_top_persona();
+  per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.enqueue(cb);
+}
 #endif
 
 GASNETT_COLD
