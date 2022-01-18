@@ -8,6 +8,7 @@
 #include <upcxx/os_env.hpp>
 #include <upcxx/reduce.hpp>
 #include <upcxx/team.hpp>
+#include <upcxx/copy.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -1447,7 +1448,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
           std::tie(owner_vbase, size) = hs->alloc_base->seg_.segment_range();
           UPCXX_ASSERT(owner_vbase && size);
         }
-        else if (backend::heap_state::use_mk) { // query GEX for remote device EP
+        else if (detail::native_gex_mk(dynamic_kind)) { // query GEX for remote device EP
           UPCXX_ASSERT(endpoint0 != GEX_EP_INVALID);
           tm = gex_TM_Pair(endpoint0, heap_idx);
         }

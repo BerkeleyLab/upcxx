@@ -43,11 +43,7 @@ namespace backend {
   public: 
     static constexpr int max_heaps = max_heaps_cat[0] + max_heaps_cat[1];
     static_assert(max_heaps >= 1, "bad value of max_heaps");
-  #if UPCXXI_GEX_MK_ANY
-    static constexpr bool use_mk = true;
-  #else
-    static constexpr bool use_mk = false;
-  #endif
+
   private:
     static heap_state *heaps[max_heaps];
     static int heap_count[2];

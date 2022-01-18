@@ -12,30 +12,6 @@ namespace gasnet = upcxx::backend::gasnet;
 using upcxx::memory_kind;
 using upcxx::detail::lpc_base;
 
-void upcxx::detail::rma_copy_local(
-    int heap_d, void *buf_d,
-    int heap_s, void const *buf_s, std::size_t size,
-    backend::device_cb *cb
-  ) {
-
-  const bool host_d = (heap_d == host_heap || heap_d == private_heap);
-  const bool host_s = (heap_s == host_heap || heap_s == private_heap);
-
-  if( host_d && host_s) { // both sides in local host memory
-    UPCXX_ASSERT((char*)buf_d + size <= buf_s || (char*)buf_s + size <= buf_d,
-                 "Source and destination regions in upcxx::copy must not overlap");
-    std::memcpy(buf_d, buf_s, size);
-    cb->execute_and_delete();
-  }
-  else { // one or both sides on device
-  #if UPCXXI_CUDA_ENABLED
-    detail::cuda_copy_local(heap_d,buf_d,heap_s,buf_s,size,cb);
-  #else
-    UPCXXI_FATAL_ERROR("Unrecognized heaps in upcxx::copy() -- gptr corruption?");
-  #endif
-  }
-}
-
 void upcxx::detail::rma_copy_remote(
     int heap_s, intrank_t rank_s, void const * buf_s,
     int heap_d, intrank_t rank_d, void * buf_d,

@@ -22,17 +22,53 @@ namespace upcxx {
     void rma_copy_get_nonlocal(void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
     void rma_copy_get(void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
     void rma_copy_put(intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
-    void rma_copy_local(
-        int heap_d, void *buf_d,
-        int heap_s, void const *buf_s, std::size_t size,
-        backend::device_cb *cb
-      );
     void rma_copy_remote(
         int heap_s, intrank_t rank_s, void const * buf_s,
         int heap_d, intrank_t rank_d, void * buf_d,
         std::size_t size,      
         backend::gasnet::handle_cb *cb
     );
+
+    template<typename Fn>     
+    inline void rma_copy_local(
+      int heap_d, void *buf_d, memory_kind kind_d,
+      int heap_s, void const *buf_s, memory_kind kind_s,
+      std::size_t size, Fn &&fn) {
+      
+      if (kind_d == memory_kind::host && kind_s == memory_kind::host) {
+        UPCXX_ASSERT((char*)buf_d + size <= buf_s || (char*)buf_s + size <= buf_d,
+                     "Source and destination regions in upcxx::copy must not overlap");
+        std::memcpy(buf_d, buf_s, size);
+        fn();
+        return;
+      }
+
+      // one or both sides on (same) device kind
+      UPCXX_ASSERT(kind_s == kind_d || kind_d == memory_kind::host || kind_s == memory_kind::host);
+      auto cb = backend::make_device_cb(std::forward<Fn>(fn));
+
+      #if UPCXXI_CUDA_ENABLED
+        if (kind_d == memory_kind::cuda_device || kind_s == memory_kind::cuda_device) {
+          detail::cuda_copy_local(heap_d,buf_d,heap_s,buf_s,size,cb);
+          return;
+        }
+      #endif
+
+      UPCXXI_INVOKE_UB("Unrecognized device kinds in upcxx::copy() -- gptr corruption?");      
+    }
+
+    UPCXXI_ATTRIB_CONST inline bool native_gex_mk(memory_kind k) {
+      switch (k) {
+        case memory_kind::host:        
+                     return true;
+        #if UPCXXI_CUDA_ENABLED
+          case memory_kind::cuda_device: 
+                     return cuda_device::use_gex_mk(detail::internal_only());
+        #endif
+        default: // includes memory_kind::any
+          UPCXXI_INVOKE_UB("Internal error, bad kind query: " << to_string(k));
+      }
+    }
 
     constexpr int host_heap = 0;
     constexpr int private_heap = -1;
@@ -91,21 +127,25 @@ namespace upcxx {
     }
 
   // forward declaration
-  template<typename Cxs>
+  template<memory_kind Ks, memory_kind Kd, typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
-  copy_general(const int heap_s, const intrank_t rank_s, void *const buf_s,
-               const int heap_d, const intrank_t rank_d, void *const buf_d,
+  copy_general(const int heap_s, const intrank_t rank_s, void *const buf_s, memory_kind kind_s_,
+               const int heap_d, const intrank_t rank_d, void *const buf_d, memory_kind kind_d_,
                const std::size_t size, Cxs &&cxs);
 
   // special case: 3rd party copy
-  template<bool HostOnly, typename Cxs>
+  template<memory_kind Ks, memory_kind Kd, typename Cxs>
   typename detail::copy_traits<Cxs>::return_t UPCXXI_ATTRIB_NOINLINE
-  copy_3rdparty(const int heap_s, const intrank_t rank_s, void *const buf_s,
-                const int heap_d, const intrank_t rank_d, void *const buf_d,
+  copy_3rdparty(const int heap_s, const intrank_t rank_s, void *const buf_s, memory_kind kind_s_,
+                const int heap_d, const intrank_t rank_d, void *const buf_d, memory_kind kind_d_,
                 const std::size_t size, Cxs &&cxs) {
 
     using copy_traits = detail::copy_traits<Cxs>;
     using deserialized_cxs_remote_bound_t = typename copy_traits::deserialized_cxs_remote_bound_t;
+
+    // dynamic_kind arguments are only used for kind::any
+    const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
+    const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
 
     const intrank_t initiator = upcxx::rank_me();
     persona *initiator_per = &upcxx::current_persona();
@@ -125,15 +165,15 @@ namespace upcxx {
               new deserialized_cxs_remote_bound_t(std::move(cxs_remote_bound)) : nullptr);
          
           future<> f;
-          if (HostOnly) {
+          if (kind_s == memory_kind::host && kind_d == memory_kind::host) { // host-only
             UPCXX_ASSERT(heap_s == detail::host_heap && heap_d == detail::host_heap);
             UPCXX_ASSERT(rank_d == upcxx::rank_me());
             global_ptr<char> src(detail::internal_only(), rank_s, reinterpret_cast<char*>(buf_s));
             f = upcxx::rget(src, reinterpret_cast<char*>(buf_d), size, operation_cx_as_internal_future );
           } else {
-            f = detail::copy_general( heap_s, rank_s, buf_s,
-                                      heap_d, rank_d, buf_d,
-                                      size, operation_cx_as_internal_future );
+            f = detail::copy_general<Ks,Kd>( heap_s, rank_s, buf_s, kind_s,
+                                             heap_d, rank_d, buf_d, kind_d,
+                                             size, operation_cx_as_internal_future );
           } 
           f.then([=]() {
             if (copy_traits::want_remote) {
@@ -250,24 +290,35 @@ namespace upcxx {
 #endif
 
   // detail::copy_general
-  template<typename Cxs>
+  template<memory_kind Ks, memory_kind Kd, typename Cxs>
   typename detail::copy_traits<Cxs>::return_t
-  copy_general(const int heap_s, const intrank_t rank_s, void *const buf_s,
-               const int heap_d, const intrank_t rank_d, void *const buf_d,
+  copy_general(const int heap_s, const intrank_t rank_s, void *const buf_s, memory_kind kind_s_,
+               const int heap_d, const intrank_t rank_d, void *const buf_d, memory_kind kind_d_,
                const std::size_t size, Cxs &&cxs) {
+
+    // dynamic_kind arguments are only used for kind::any
+    const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
+    const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
+    #if UPCXXI_MANY_DEVICE_KINDS
+      const bool dual_device_kind = (kind_s != kind_d && kind_s != memory_kind::host && kind_d != memory_kind::host);
+    #else
+      constexpr bool dual_device_kind = false;
+    #endif
 
     #if UPCXXI_COPY_OPTIMIZEHOST
       // only reach this function for calls involving device memory
       UPCXX_ASSERT(heap_s > 0 || heap_d > 0);
+      UPCXX_ASSERT(kind_s != memory_kind::host || kind_d != memory_kind::host);
     #endif
     
     using copy_traits = detail::copy_traits<Cxs>;
     using deserialized_cxs_remote_bound_t = typename copy_traits::deserialized_cxs_remote_bound_t;
 
     const intrank_t initiator = upcxx::rank_me();
-    if (initiator != rank_d && initiator != rank_s) { // 3rd party copy
-      return copy_3rdparty</*HostOnly=*/false>(heap_s, rank_s, buf_s, 
-                                               heap_d, rank_d, buf_d, size, std::forward<Cxs>(cxs));
+    UPCXXI_IF_PF (initiator != rank_d && initiator != rank_s) { // 3rd party copy
+      return copy_3rdparty<Ks,Kd>(heap_s, rank_s, buf_s, kind_s,
+                                  heap_d, rank_d, buf_d, kind_d,
+                                  size, std::forward<Cxs>(cxs));
     }
 
     auto cxs_here = new typename copy_traits::cxs_here_t(std::forward<Cxs>(cxs));
@@ -276,7 +327,7 @@ namespace upcxx {
 
     auto returner = typename copy_traits::returner(*cxs_here);
 
-    if (rank_d == rank_s) { // fully loopback on the calling process
+    if (rank_d == rank_s && !dual_device_kind) { // fully loopback on the calling process
       UPCXX_ASSERT(rank_d == initiator); 
       // Issue #421: synchronously deserialize remote completions into the heap to avoid a PGI optimizer problem
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
@@ -287,8 +338,8 @@ namespace upcxx {
             )
           ) : nullptr);
       if (copy_traits::want_remote) initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
-      detail::rma_copy_local(heap_d, buf_d, heap_s, buf_s, size,
-        backend::make_device_cb([=]() {
+      detail::rma_copy_local(heap_d, buf_d, kind_d, heap_s, buf_s, kind_s, size,
+        [=]() {
           cxs_here->template operator()<source_cx_event>();
           cxs_here->template operator()<operation_cx_event>();
           delete cxs_here;
@@ -298,12 +349,19 @@ namespace upcxx {
                                            /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
             delete cxs_remote_heaped;
           }
-        })
+        }
       );
+      return returner();
     }
-    else if (backend::heap_state::use_mk && 
-             rank_s == initiator && // MK put to different-rank
-             ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
+    #if UPCXXI_GEX_MK_ALL // all/any devices using native kinds
+      constexpr bool use_gex_mk = true;    
+    #elif UPCXXI_GEX_MK_ANY // devices using mix of native and reference kinds
+      const bool use_gex_mk = native_gex_mk(kind_d) && native_gex_mk(kind_s);
+    #else // all we have is reference kinds
+      constexpr bool use_gex_mk = false;
+    #endif
+    if (  use_gex_mk && rank_s == initiator && // MK put to different-rank
+        ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
       ) { // convert MK put into MK get, as an optimization to reduce completion latency
       UPCXX_ASSERT(rank_d != initiator);
       UPCXX_ASSERT(heap_d != private_heap);
@@ -362,7 +420,7 @@ namespace upcxx {
       // initiator
       if (!must_ack) delete cxs_here;
     }
-    else if (backend::heap_state::use_mk) { // MK-enabled GASNet backend
+    else if (use_gex_mk) { // MK-enabled GASNet backend
       // GASNet will do a direct source-to-dest memory transfer.
       // No bounce buffering, we just need to orchestrate the completions
       
@@ -459,7 +517,9 @@ namespace upcxx {
                       if(heap_d == host_heap)
                         bounce_d_cont();
                       else
-                        detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, backend::make_device_cb(std::move(bounce_d_cont)));
+                        detail::rma_copy_local(heap_d, buf_d, kind_d, 
+                                               host_heap, bounce_d, memory_kind::host, 
+                                               size, std::move(bounce_d_cont));
                     }
                   );
                 })
@@ -473,8 +533,9 @@ namespace upcxx {
             void *bounce_s = backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);
             
             detail::rma_copy_local(
-              host_heap, bounce_s, heap_s, buf_s, size,
-              backend::make_device_cb(make_bounce_s_cont(bounce_s))
+              host_heap, bounce_s, memory_kind::host,
+              heap_s, buf_s, kind_s,
+              size, make_bounce_s_cont(bounce_s)
             );
           }
         }
@@ -539,7 +600,9 @@ namespace upcxx {
                     if(heap_d == host_heap)
                       bounce_d_cont();
                     else
-                      detail::rma_copy_local(heap_d, buf_d, host_heap, bounce_d, size, backend::make_device_cb(std::move(bounce_d_cont)));
+                      detail::rma_copy_local(heap_d, buf_d, kind_d,
+                                             host_heap, bounce_d, memory_kind::host,
+                                             size, std::move(bounce_d_cont));
                   }) // make_handle_cb
                 ); // rma_copy_get
               }, 
@@ -568,7 +631,9 @@ namespace upcxx {
       else {
         void *bounce_s = backend::gasnet::allocate(size, 64, &backend::gasnet::sheap_footprint_rdzv);
         
-        detail::rma_copy_local(host_heap, bounce_s, heap_s, buf_s, size, backend::make_device_cb(make_bounce_s_cont(bounce_s)));
+        detail::rma_copy_local(host_heap, bounce_s, memory_kind::host,
+                               heap_s, buf_s, kind_s,
+                               size, make_bounce_s_cont(bounce_s));
       }
 
       if (!must_ack) delete cxs_here;
@@ -596,8 +661,10 @@ namespace upcxx {
     using copy_traits = detail::copy_traits<Cxs>;
     copy_traits::template assert_sane<T>();
 
+    const memory_kind kind_s = ( Ks == memory_kind::any ? src.dynamic_kind() : Ks);
+
     #if UPCXXI_COPY_OPTIMIZEHOST
-      if (Ks == memory_kind::host || src.dynamic_kind() == memory_kind::host)
+      if (kind_s == memory_kind::host)
         return detail::copy_as_rget(
                  src.UPCXXI_INTERNAL_ONLY(rank_),
                  src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
@@ -635,11 +702,12 @@ namespace upcxx {
             }
           }
         #endif
-        return detail::copy_general( 
+        return detail::copy_general<Ks,memory_kind::host>( 
                  src.UPCXXI_INTERNAL_ONLY(heap_idx_),
                  src.UPCXXI_INTERNAL_ONLY(rank_),
                  src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
-                 heap_d, rank_d, buf_d,
+                 kind_s,
+                 heap_d, rank_d, buf_d, memory_kind::host,
                  n * sizeof(T), std::forward<Cxs>(cxs) );
       }
   }
@@ -658,8 +726,10 @@ namespace upcxx {
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     detail::copy_traits<Cxs>::template assert_sane<T>();
 
+    const memory_kind kind_d = ( Kd == memory_kind::any ? dest.dynamic_kind() : Kd);
+
     #if UPCXXI_COPY_OPTIMIZEHOST
-      if (Kd == memory_kind::host || dest.dynamic_kind() == memory_kind::host)
+      if (kind_d == memory_kind::host)
         return detail::copy_as_rput(
                  const_cast<T*>(src),
                  dest.UPCXXI_INTERNAL_ONLY(rank_),
@@ -689,7 +759,7 @@ namespace upcxx {
                 UPCXX_ASSERT(buf_s == reinterpret_cast<T*>(p_raw));
                 heap_s = detail::host_heap;
               }
-              else if (backend::heap_state::use_mk) { // performance: peer-segment only profitable for MK, see above
+              else if (detail::native_gex_mk(kind_d)) { // performance: peer-segment only profitable for MK, see above
                 rank_s = p_rank; // a co-located peer
                 buf_s = reinterpret_cast<T*>(p_raw);
                 heap_s = detail::host_heap;
@@ -697,11 +767,12 @@ namespace upcxx {
             }
           }
         #endif
-        return detail::copy_general( 
-                 heap_s, rank_s, buf_s,
+        return detail::copy_general<memory_kind::host,Kd>( 
+                 heap_s, rank_s, buf_s, memory_kind::host,
                  dest.UPCXXI_INTERNAL_ONLY(heap_idx_),
                  dest.UPCXXI_INTERNAL_ONLY(rank_),
                  dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 kind_d,
                  n * sizeof(T), std::forward<Cxs>(cxs) );
       }
   }
@@ -721,9 +792,11 @@ namespace upcxx {
     using copy_traits = detail::copy_traits<Cxs>;
     copy_traits::template assert_sane<T>();
 
+    const memory_kind kind_s = ( Ks == memory_kind::any ? src.dynamic_kind()  : Ks);
+    const memory_kind kind_d = ( Kd == memory_kind::any ? dest.dynamic_kind() : Kd);
+
     #if UPCXXI_COPY_OPTIMIZEHOST
-      if ( ( Ks == memory_kind::host || src.dynamic_kind()  == memory_kind::host ) &&
-           ( Kd == memory_kind::host || dest.dynamic_kind() == memory_kind::host ) ) {
+      if ( kind_s == memory_kind::host && kind_d == memory_kind::host ) {
         // generalized host-to-host copy
         // Here we use is_local/local to leverage shared-memory bypass for pointers that
         // happen to reference shared objects owned by a co-located peer.
@@ -741,19 +814,19 @@ namespace upcxx {
                  src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
                  dest.local(), n * sizeof(T), std::forward<Cxs>(cxs) );
         else
-          return detail::copy_3rdparty</*HostOnly=*/true>(
+          return detail::copy_3rdparty<memory_kind::host,memory_kind::host>(
                  src.UPCXXI_INTERNAL_ONLY(heap_idx_), src.UPCXXI_INTERNAL_ONLY(rank_),
-                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_), kind_s,
                  dest.UPCXXI_INTERNAL_ONLY(heap_idx_), dest.UPCXXI_INTERNAL_ONLY(rank_),
-                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_), kind_d,
                  n*sizeof(T), std::forward<Cxs>(cxs) );
       } else
     #endif
-        return detail::copy_general(
+        return detail::copy_general<Ks,Kd>(
                  src.UPCXXI_INTERNAL_ONLY(heap_idx_), src.UPCXXI_INTERNAL_ONLY(rank_),
-                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 src.UPCXXI_INTERNAL_ONLY(raw_ptr_), kind_s,
                  dest.UPCXXI_INTERNAL_ONLY(heap_idx_), dest.UPCXXI_INTERNAL_ONLY(rank_),
-                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_),
+                 dest.UPCXXI_INTERNAL_ONLY(raw_ptr_), kind_d,
                  n*sizeof(T), std::forward<Cxs>(cxs) );
   }
 
