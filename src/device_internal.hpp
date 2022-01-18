@@ -13,13 +13,8 @@ namespace upcxx { namespace backend {
   template<typename Device>
   struct device_heap_state; // : public device_heap_state_base<Device>
 
-  template<typename Device>
-  struct device_heap_state_base : public backend::heap_state {
-    using DevPtr = typename Device::template pointer<void>;
-    static constexpr DevPtr nullp = Device::template null_pointer<void>();
-    static constexpr bool use_gex_mk = Device::use_gex_mk(detail::internal_only());
-    DevPtr segment_to_free;
-
+  struct device_heap_state_generic : public backend::heap_state {
+    // this GASNet-visible class houses device-independent state
     #if UPCXXI_GEX_MK_ANY
       // objects for using GEX memory kinds
       gex_EP_t ep;
@@ -27,16 +22,32 @@ namespace upcxx { namespace backend {
       gex_Segment_t segment;
     #endif
 
-    device_heap_state_base() : heap_state(Device::kind) {
+    device_heap_state_generic(memory_kind k) : heap_state(k) {
       #if UPCXXI_GEX_MK_ANY
         ep =      GEX_EP_INVALID;
         kind =    GEX_MK_INVALID;
         segment = GEX_SEGMENT_INVALID;
       #endif
+    }
+
+    static inline device_heap_state_generic *get(std::int32_t heap_idx, bool allow_null = false) {
+      return static_cast<device_heap_state_generic*>(heap_state::get(heap_idx, allow_null));
+    }
+  };
+
+  template<typename Device>
+  struct device_heap_state_base : public device_heap_state_generic {
+    // this class template factors device-independent code parameterized by Device
+    using DevPtr = typename Device::template pointer<void>;
+    static constexpr DevPtr nullp = Device::template null_pointer<void>();
+    static constexpr bool use_gex_mk = Device::use_gex_mk(detail::internal_only());
+    DevPtr segment_to_free;
+
+    device_heap_state_base() : device_heap_state_generic(Device::kind) {
       segment_to_free = nullp;
     }
 
-    static device_heap_state<Device> *get(std::int32_t heap_idx, bool allow_null = false) {
+    static inline device_heap_state<Device> *get(std::int32_t heap_idx, bool allow_null = false) {
       heap_state *hs = heap_state::get(heap_idx, allow_null);
       if (hs) UPCXX_ASSERT(hs->kind() == Device::kind);
       return static_cast<device_heap_state<Device>*>(hs);

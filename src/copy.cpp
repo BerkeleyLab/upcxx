@@ -1,5 +1,5 @@
 #include <upcxx/copy.hpp>
-#include <upcxx/cuda_internal.hpp>
+#include <upcxx/device_internal.hpp>
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 
 #include <cstring>
@@ -11,9 +11,6 @@ namespace gasnet = upcxx::backend::gasnet;
 
 using upcxx::memory_kind;
 using upcxx::detail::lpc_base;
-#if UPCXXI_CUDA_ENABLED
-using upcxx::backend::cuda_heap_state;
-#endif
 
 void upcxx::detail::rma_copy_local(
     int heap_d, void *buf_d,
@@ -45,7 +42,7 @@ void upcxx::detail::rma_copy_remote(
     std::size_t size, 
     gasnet::handle_cb *cb
   ) {
-#if UPCXXI_GEX_MK_CUDA
+#if UPCXXI_GEX_MK_ANY
   const bool isput = (rank_s == upcxx::rank_me());
 
   gex_EP_Index_t local_ep_idx;
@@ -67,7 +64,7 @@ void upcxx::detail::rma_copy_remote(
     UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
     local_ep = gex_TM_QueryEP(TM0);
   } else { // local using device EP
-    cuda_heap_state *st = cuda_heap_state::get(local_ep_idx);
+    auto st = backend::device_heap_state_generic::get(local_ep_idx);
     local_ep = st->ep;
     UPCXX_ASSERT(st->segment != GEX_SEGMENT_INVALID);
   }
@@ -97,7 +94,7 @@ void upcxx::detail::rma_copy_remote(
   cb->handle = reinterpret_cast<uintptr_t>(h);
   gasnet::register_cb(cb);
   gasnet::after_gasnet();
-#else // !UPCXXI_GEX_MK_CUDA
+#else // !UPCXXI_GEX_MK_ANY
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy()");
 #endif
 }
@@ -122,7 +119,7 @@ void upcxx::detail::rma_copy_get(
     void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXXI_GEX_MK_CUDA
+  #if UPCXXI_GEX_MK_ALL
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
   #endif
 
@@ -140,7 +137,7 @@ void upcxx::detail::rma_copy_put(
     intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXXI_GEX_MK_CUDA
+  #if UPCXXI_GEX_MK_ALL
     UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
 

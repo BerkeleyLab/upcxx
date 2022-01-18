@@ -24,11 +24,16 @@ namespace backend {
     static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
 
   #if UPCXXI_GEX_MK_CUDA // || ...
-    #define UPCXXI_GEX_MK_ANY 1
+    #define UPCXXI_GEX_MK_ANY 1 // true iff ANY memory kind is using GASNet MK
     static constexpr bool use_mk = true;
   #else
     #undef  UPCXXI_GEX_MK_ANY
     static constexpr bool use_mk = false;
+  #endif
+  #if (!UPCXXI_CUDA_ENABLED || UPCXXI_GEX_MK_CUDA) // && ...
+    #define UPCXXI_GEX_MK_ALL 1 // true iff ALL memory kinds are using GASNet MK
+  #else
+    #undef  UPCXXI_GEX_MK_ALL
   #endif
 
     heap_state(memory_kind k) : alloc_base(nullptr), my_kind(k) {}
