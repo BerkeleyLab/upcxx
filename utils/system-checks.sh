@@ -104,6 +104,20 @@ _EOF
     return 0
 }
 
+# Wrapper for cpp_extract_expr() operating on gasnet_portable_platform.h
+#
+# Arguments:
+#   compiler: literal 'CC' or 'CXX'
+#       expr: string to be expanded between a pair of delimiters
+#      regex: bash regular expression used to extract the actual result
+#
+cpp_extract_pp_expr() {
+    local gasnet_includes=''
+    [[ -d $GASNET/other   ]] && gasnet_includes="-I$GASNET/other"   # source
+    [[ -d $GASNET/include ]] && gasnet_includes="-I$GASNET/include" # install
+    cpp_extract_expr "$1" "$2" "$3" "$gasnet_includes" '#include "gasnet_portable_platform.h"'
+}
+
 # For probing for lowest acceptable (for its libstdc++) g++ version.
 # These are defaults, which may be overridden per-platform (such as Cray XC).
 MIN_GNU_MAJOR=6
@@ -288,6 +302,46 @@ check_intel_compiler() {
        check_intel_toolchain_gcc
        ;;
    esac
+}
+
+# Determine if compiler families match
+check_family_match() {
+    if ! cpp_extract_pp_expr CXX PLATFORM_COMPILER_FAMILYNAME '[A-Z]+'; then
+        echo "ERROR: regex match failed probing '$CXX' for C++ compiler family"
+        return 4
+    fi
+    local cxx_family="${UPCXX_REMATCH[0]}"
+
+    if ! cpp_extract_pp_expr CC PLATFORM_COMPILER_FAMILYNAME '[A-Z]+'; then
+        echo "ERROR: regex match failed probing '$CC' for C compiler family"
+        return 4
+    fi
+    local cc_family="${UPCXX_REMATCH[0]}"
+
+    [[ $cxx_family = $cc_family ]] && return 0 || return 1
+}
+
+# Determine if compiler versions match
+# Meaningless if family does not match
+check_version_match() {
+    if ! cpp_extract_pp_expr CXX '(PLATFORM_COMPILER_VERSION)' '\(.*\)'; then
+        echo "ERROR: regex match failed probing '$CXX' for C++ compiler version"
+        return 4
+    fi
+
+    # strips any possible suffixes from integer constants:
+    local cxx_version="${UPCXX_REMATCH[0]//[uUlL]}"
+
+    if ! cpp_extract_pp_expr CC '(PLATFORM_COMPILER_VERSION)' '\(.*\)'; then
+        echo "ERROR: regex match failed probing '$CC' for C compiler version"
+        return 4
+    fi
+
+    # strips any possible suffixes from integer constants:
+    local cc_version="${UPCXX_REMATCH[0]//[uUlL]}"
+
+    # Use arithmetic evaluation to allow for minor differences in the actual expressions
+    return $(( $cxx_version != $cc_version ))  # equality returns 0 (success)
 }
 
 # check whether $CXX might be a C compiler
@@ -597,6 +651,28 @@ platform_sanity_checks() {
             # Arm Ltd's clang not yet tested
             if echo "$CXXVERS" | egrep '^Arm C' 2>&1 > /dev/null ; then
               COMPILER_GOOD=
+            fi
+        fi
+
+        local COMPILER_MISMATCH=
+        if ! check_family_match; then
+            COMPILER_MISMATCH='families'
+        elif ! check_version_match; then
+            COMPILER_MISMATCH='versions'
+        fi
+        if [[ -n $COMPILER_MISMATCH ]]; then
+            if (( $UPCXX_ALLOW_COMPILER_MISMATCH )); then
+                warnings+="WARNING: CXX and CC report different $COMPILER_MISMATCH (see above)."
+                warnings+="WARNING: Therefore, this configuration is officially unsupported.\n"
+            else
+                echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the compilers'
+                echo "ERROR: detected by configure (see above) report different $COMPILER_MISMATCH."
+                echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
+                echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
+                echo 'ERROR: See INSTALL.md for the full list of supported compilers.'
+                echo 'ERROR: Alternatively, configuring with `--enable-allow-mismatched-compilers`'
+                echo 'ERROR: will disable this sanity check, but result in an unsupported build.'
+                exit 1
             fi
         fi
 

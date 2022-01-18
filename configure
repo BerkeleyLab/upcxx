@@ -80,6 +80,13 @@ Usage:
         Specify the C and C++ compilers to use.
         Override the values of $CC and $CXX, if any.
         The (platform dependent) default is usually appropriate.
+  --enable-allow-mismatched-compilers
+  --disable-allow-mismatched-compilers
+        Controls compiler version sanity checking
+        By default, this configure script rejects use of CXX and CC which do
+        not appear to be from the same release.  The enable form of this option
+        converts this behavior to a warning, while the disable form restores
+        the default (error) behavior.
   --with-cross(=...)
   --without-cross
         Control cross-compilation.
@@ -288,6 +295,8 @@ while [[ $# -gt 0 ]]; do
       warnings+='WARNING: This mode has not been carefully tuned and is not recommended for general use.\n'
       warnings+='WARNING: If this feature matters to you, please let us know!\n'
       ;;
+    -with-allow-compiler-mismatch)    UPCXX_ALLOW_COMPILER_MISMATCH=1;;
+    -without-allow-compiler-mismatch) UPCXX_ALLOW_COMPILER_MISMATCH=0;;
 
     # Passed explicitly to GASNet's configure, potentially after some processing:
     -with-cc?(=*))              CC="$(get_arg_val $arg)";    export CC;;

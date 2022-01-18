@@ -191,6 +191,10 @@ the desired instance of `bash`:
 ```bash
 /usr/gnu/bin/bash <upcxx-source-path>/configure ...
 ```
+By default, the configure script will attempt to enforce use of C++ and C
+compilers which report the same family and version.  If necessary, this
+can be disabled using `--enable-allow-compiler-mismatch`.  However,
+installation of UPC\+\+ configured in this manner is not supported.
 
 #### 2. Compiling UPC\+\+
 
