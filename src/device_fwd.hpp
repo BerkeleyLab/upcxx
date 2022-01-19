@@ -6,6 +6,17 @@
 
 #include <utility>
 
+#if UPCXXI_GEX_MK_CUDA // || ...
+  #define UPCXXI_GEX_MK_ANY 1 // true iff ANY memory kind is using GASNet MK
+#else
+  #undef  UPCXXI_GEX_MK_ANY
+#endif
+#if (!UPCXXI_CUDA_ENABLED || UPCXXI_GEX_MK_CUDA) // && ...
+  #define UPCXXI_GEX_MK_ALL 1 // true iff ALL memory kinds are using GASNet MK
+#else
+  #undef  UPCXXI_GEX_MK_ALL
+#endif
+
 namespace upcxx {
 namespace detail { struct device_allocator_base; }
 namespace backend {
@@ -13,65 +24,73 @@ namespace backend {
   // backend::heap_state: base class for managing state
   // associated with a particular dynamically created device heap,
   // and the global table of such states, indexed by heap_idx
-  struct heap_state {
-    detail::device_allocator_base *alloc_base;
-
-  #if UPCXXI_CUDA_ENABLED && UPCXXI_MAXEPS > 1
-    static constexpr int max_heaps = UPCXXI_MAXEPS;
+  class heap_state {
+  
+  private: // native[0] heaps correspond to GASNet EPs, reference[1] heaps do not.
+  #if !UPCXXI_MANY_KINDS // no device support
+    static constexpr int max_heaps_cat[2] = { 1, 0 };
+  #elif UPCXXI_GEX_MK_ANY && UPCXXI_MAXEPS > 1
+    static constexpr int max_heaps_cat[2] = { UPCXXI_MAXEPS, UPCXXI_MAXEPS };
   #else
-    static constexpr int max_heaps = 33;
+    static constexpr int max_heaps_cat[2] = { 1, 32};
   #endif
-    static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
 
-  #if UPCXXI_GEX_MK_CUDA // || ...
-    #define UPCXXI_GEX_MK_ANY 1 // true iff ANY memory kind is using GASNet MK
+  // object state:
+  public:   detail::device_allocator_base *alloc_base;
+  private:  memory_kind const my_kind;
+
+  // static state:
+  public: 
+    static constexpr int max_heaps = max_heaps_cat[0] + max_heaps_cat[1];
+    static_assert(max_heaps >= 1, "bad value of max_heaps");
+  #if UPCXXI_GEX_MK_ANY
     static constexpr bool use_mk = true;
   #else
-    #undef  UPCXXI_GEX_MK_ANY
     static constexpr bool use_mk = false;
   #endif
-  #if (!UPCXXI_CUDA_ENABLED || UPCXXI_GEX_MK_CUDA) // && ...
-    #define UPCXXI_GEX_MK_ALL 1 // true iff ALL memory kinds are using GASNet MK
-  #else
-    #undef  UPCXXI_GEX_MK_ALL
-  #endif
+  private:
+    static heap_state *heaps[max_heaps];
+    static int heap_count[2];
 
+  public:
     heap_state(memory_kind k) : alloc_base(nullptr), my_kind(k) {}
     memory_kind kind() { return my_kind; }
 
-  protected:
-    memory_kind const my_kind; // serves as both tag and magic
-    static heap_state *heaps[max_heaps];
-    static int heap_count;
-
-    // currently we do not recycle heap_idx when using GASNet memory kinds,
-    // until GASNet grows the ability to recycle endpoints
-    static constexpr bool recycle = !use_mk;
-
-  public:
     static void init();
-    static int alloc_index() {
-      UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
+    static int alloc_index(bool uses_gex_mk) {
+      // currently we do not recycle heap_idx when using GASNet memory kinds,
+      // until GASNet grows the ability to recycle endpoints
+      const bool recycle = !uses_gex_mk;
+      const int cat = !uses_gex_mk;
+
+      UPCXX_ASSERT_ALWAYS(heap_count[cat] < max_heaps_cat[cat], "exceeded max device opens: " << max_heaps_cat[cat]);
       int idx;
       if (recycle) {
-        for (idx=1; idx < max_heaps; idx++) {
+        int base = (uses_gex_mk ? 1 : max_heaps_cat[0]);
+        int lim = base + max_heaps_cat[cat];
+        for (idx=base; idx < lim; idx++) {
           if (!heaps[idx]) break;
         }
+        UPCXX_ASSERT(idx > 0 && idx < lim);
       } else {
-        idx = heap_count;
+        idx = heap_count[cat];
       }
       UPCXX_ASSERT_ALWAYS(idx < max_heaps && heaps[idx] == nullptr, "internal error on heap creation");
-      heap_count++;
+      heap_count[cat]++;
       return idx;
     }
     static void free_index(int heap_idx) {
-      UPCXX_ASSERT_ALWAYS(heaps[heap_idx] == nullptr && heap_count > 1, "internal error on heap destruction");
-      if (recycle) heap_count--;
+      UPCXX_ASSERT_ALWAYS(heap_idx > 0 && heap_idx < max_heaps, "invalid free_index: " << heap_idx);
+      const bool uses_gex_mk = (heap_idx < max_heaps_cat[0]);
+      const int cat = !uses_gex_mk;
+      const bool recycle = !uses_gex_mk;
+      UPCXX_ASSERT_ALWAYS(heaps[heap_idx] == nullptr && heap_count[cat] > 0, "internal error on heap destruction");
+      if (recycle) heap_count[cat]--;
     }
 
     // retrieve reference to heap_state pointer at heap_idx, with bounds-checking
     static inline heap_state *&get(std::int32_t heap_idx, bool allow_null = false) {
-      UPCXX_ASSERT(heap_count <= max_heaps, "internal error in backend::heap_state::get");
+      UPCXX_ASSERT(heap_count[0] <= max_heaps_cat[0] && heap_count[1] <= max_heaps_cat[1]);
       UPCXX_ASSERT(heap_idx > 0 && heap_idx < max_heaps, "invalid heap_idx (corrupted global_ptr?)");
       heap_state *&hs = heaps[heap_idx];
       UPCXX_ASSERT(hs || allow_null, "heap_idx referenced a null heap");

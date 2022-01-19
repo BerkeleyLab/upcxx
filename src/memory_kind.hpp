@@ -1,7 +1,17 @@
 #ifndef _0d062c0a_ca33_4b3f_b70f_278c00e3a1f1
 #define _0d062c0a_ca33_4b3f_b70f_278c00e3a1f1
 
-#define UPCXXI_MANY_KINDS (0 || UPCXXI_CUDA_ENABLED)
+#if UPCXXI_CUDA_ENABLED // || ...
+#define UPCXXI_MANY_KINDS 1 // true iff this build supports device allocation
+#else
+#undef  UPCXXI_MANY_KINDS
+#endif
+
+#if 1 < UPCXXI_CUDA_ENABLED // + ...
+#define UPCXXI_MANY_DEVICE_KINDS 1 // true iff this build supports allocation on more than one device kind
+#else
+#undef  UPCXXI_MANY_DEVICE_KINDS
+#endif
 
 #include <cstdint>
 #include <string>

@@ -86,7 +86,8 @@ intrank_t backend::rank_me; // leave undefined so valgrind can catch it.
 bool backend::verbose_noise = false;
 
 backend::heap_state *backend::heap_state::heaps[backend::heap_state::max_heaps] = {/*nullptr...*/};
-int backend::heap_state::heap_count = 1; // host segment is implicitly idx 0
+int backend::heap_state::heap_count[2] = { 1, 0 }; // host segment is implicitly idx 0
+constexpr int backend::heap_state::max_heaps_cat[2]; // because C++ constexpr rules are stupid
 
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;

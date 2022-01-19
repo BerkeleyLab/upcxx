@@ -154,7 +154,7 @@ upcxx::cuda_device::cuda_device(int device):
 
   #if UPCXXI_CUDA_ENABLED
     if (device != invalid_device_id) {
-      heap_idx_ = backend::heap_state::alloc_index();
+      heap_idx_ = backend::heap_state::alloc_index(use_gex_mk(detail::internal_only()));
       CUcontext ctx;
       CUresult res = cuDevicePrimaryCtxRetain(&ctx, device);
       if(res == CUDA_ERROR_NOT_INITIALIZED) {
