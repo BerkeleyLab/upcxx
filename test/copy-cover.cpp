@@ -10,23 +10,22 @@
 #ifndef USE_CUDA
   #if UPCXX_KIND_CUDA 
     #define USE_CUDA 1
-  #else
-    #define USE_CUDA 0
   #endif
 #endif
 #if USE_CUDA && !UPCXX_KIND_CUDA
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 
-
-#if USE_CUDA
-  #include <cuda_runtime_api.h>
-  #include <cuda.h>
-  int dev_n;
-  constexpr int max_dev_n = 2;
-#else
-  constexpr int dev_n = 0;
+#ifndef HEAPS_PER_KIND
+#define HEAPS_PER_KIND 2
 #endif
+#ifndef ALLOCS_PER_HEAP
+#define ALLOCS_PER_HEAP 3
+#endif
+constexpr unsigned heaps_per_kind = HEAPS_PER_KIND;
+constexpr unsigned allocs_per_heap = ALLOCS_PER_HEAP;
+
+int dev_n_cuda = 0;
 
 using namespace upcxx;
 
@@ -35,6 +34,71 @@ using val_t = std::uint32_t;
 
 using any_ptr = global_ptr<val_t, memory_kind::any>;
 long errs = 0;
+
+// Factored kind-independent device buffer state
+template<typename Device>
+struct DeviceState {
+  static int device_n() {
+    int dev_n = Device::device_n();
+    int lo = upcxx::reduce_all(dev_n, upcxx::op_fast_min).wait();
+    int hi = upcxx::reduce_all(dev_n, upcxx::op_fast_max).wait();
+
+    if(!rank_me()) { // output
+      if (lo != hi)
+        say("")<<"Notice: not all ranks report the same number of GPUs: min="<<lo<<" max="<<hi;
+      if (!lo)
+        say("")<<"WARNING: UPC++ GPU support is compiled-in, but could not find sufficient GPU support at runtime.";
+    }
+    return lo; // ensure single-valued device count
+  }
+
+  Device* gpu[heaps_per_kind] = {};
+  device_allocator<Device>* seg[heaps_per_kind] = {};
+  global_ptr<val_t, Device::kind> dev_ptrs[heaps_per_kind][allocs_per_heap] = {};
+
+  // Collectively create heaps_per_kind device heaps for this Device kind, spread across dev_n GPUs
+  // Allocate allocs_per_heap objects of maxelems*2 val_t's
+  // and insert corresponding buffers into ptrs_out, spread across neighbors
+  void create(size_t maxelems, int dev_n, std::vector<any_ptr> &ptrs_out) {
+    int me = upcxx::rank_me();
+    int ranks = upcxx::rank_n();
+    for (unsigned dev = 0; dev < heaps_per_kind; dev++) {
+      size_t align = Device::template default_alignment<val_t>();
+      size_t allocsz = maxelems*2*sizeof(val_t);
+      allocsz = align*((allocsz+align-1)/align);
+      align = 4096;
+      if (allocsz > align) { // more than one page gets a full page
+        allocsz = align*((allocsz+align-1)/align);
+      }
+      UPCXX_ASSERT(!gpu[dev] && !seg[dev]);
+      gpu[dev] = new Device(dev%dev_n);
+      seg[dev] = new device_allocator<Device>(*gpu[dev], allocsz*allocs_per_heap);
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        dev_ptrs[dev][i] = seg[dev]->template allocate<val_t>(maxelems*2);
+        assert(dev_ptrs[dev][i]);
+        int rank = (me+i)%ranks;
+        dist_object<any_ptr> dobj(dev_ptrs[dev][i]);
+        any_ptr gp = dobj.fetch(rank).wait();
+        ptrs_out.push_back(gp);
+        barrier();
+      }
+    }
+  }
+
+  // clean up all the resources allocated by create()
+  void destroy() {
+    for (unsigned dev = 0; dev < heaps_per_kind; dev++) {
+      UPCXX_ASSERT(gpu[dev] && seg[dev]);
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        seg[dev]->deallocate(dev_ptrs[dev][i]);
+        dev_ptrs[dev][i] = nullptr;
+      }
+      delete seg[dev]; seg[dev] = nullptr;
+      gpu[dev]->destroy();
+      delete gpu[dev]; gpu[dev] = nullptr;
+    }
+  }
+};
 
 int main(int argc, char *argv[]) {
   upcxx::init();
@@ -51,79 +115,37 @@ int main(int argc, char *argv[]) {
     if (bufsz <= 0) bufsz = 1024*1024;
     if (bufsz < sizeof(val_t)) bufsz = sizeof(val_t);
     maxelems = bufsz / sizeof(val_t);
-    if (!me) say("") << "Running with iters=" << iters << " bufsz=" << maxelems*sizeof(val_t) << " bytes"; 
+    if (!me) say("") << "Running with iters=" << iters << " bufsz=" << maxelems*sizeof(val_t) << " bytes\n"
+                     << "  using " << heaps_per_kind << " heaps per device kind and "
+                     << allocs_per_heap << " buffer allocations per heap.";
   }
 
   {
     if(me == 0 && ranks < 3)
       say("") << "Advice: consider using 3 (or more) ranks to cover three-party cases for upcxx::copy.";
 
-    #if USE_CUDA
-    {
-      cuInit(0);
-      cuDeviceGetCount(&dev_n);
-
-      int lo = upcxx::reduce_all(dev_n, upcxx::op_fast_min).wait();
-      int hi = upcxx::reduce_all(dev_n, upcxx::op_fast_max).wait();
-
-      if(me == 0 && lo != hi)
-        say("")<<"Notice: not all ranks report the same number of GPUs: min="<<lo<<" max="<<hi;
-
-      if (!lo) {
-        if (!me) say("")<<"WARNING: UPC++ CUDA support is compiled-in, but could not find sufficient GPU support at runtime.";
-        dev_n = lo;
-      }
-    }
-    #endif
-
-    say()<<"Running with devices="<<dev_n;
-   
     std::vector<any_ptr> ptrs;
-    constexpr int allocs_per_heap = 3;
     // fill ptrs with global ptrs to buffers, with allocs_per_heap
 
-    global_ptr<val_t> host_ptrs[allocs_per_heap];
-    for (int i=0; i < allocs_per_heap; i++) {
+    global_ptr<val_t> host_ptrs[allocs_per_heap] = {};
     #if USE_HOST
-      host_ptrs[i] = upcxx::new_array<val_t>(maxelems*2);
-      int rank = (me+i)%ranks;
-      dist_object<any_ptr> dobj(host_ptrs[i]);
-      any_ptr gp = dobj.fetch(rank).wait();
-      ptrs.push_back(gp);
-      barrier();
-    #else
-      host_ptrs[i] = nullptr;
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        host_ptrs[i] = upcxx::new_array<val_t>(maxelems*2);
+        int rank = (me+i)%ranks;
+        dist_object<any_ptr> dobj(host_ptrs[i]);
+        any_ptr gp = dobj.fetch(rank).wait();
+        ptrs.push_back(gp);
+        barrier();
+      }
     #endif
-    }
 
     #if USE_CUDA
-      cuda_device* gpu[max_dev_n] = {};
-      device_allocator<cuda_device>* seg[max_dev_n] = {};
-      global_ptr<val_t, memory_kind::cuda_device> cuda_ptrs[max_dev_n][allocs_per_heap] = {};
-
-    if (dev_n) {
-      for (int dev = 0; dev < max_dev_n; dev++) {
-        size_t align = cuda_device::default_alignment<val_t>();
-        size_t allocsz = maxelems*2*sizeof(val_t);
-        allocsz = align*((allocsz+align-1)/align);
-        align = 4096;
-        if (allocsz > align) { // more than one page gets a full page
-          allocsz = align*((allocsz+align-1)/align);
-        }
-        gpu[dev] = new cuda_device(dev%dev_n);
-        seg[dev] = new device_allocator<cuda_device>(*gpu[dev], allocsz*allocs_per_heap);
-        for (int i=0; i < allocs_per_heap; i++) {
-          cuda_ptrs[dev][i] = seg[dev]->allocate<val_t>(maxelems*2);
-          assert(cuda_ptrs[dev][i]);
-          int rank = (me+i)%ranks;
-          dist_object<any_ptr> dobj(cuda_ptrs[dev][i]);
-          any_ptr gp = dobj.fetch(rank).wait();
-          ptrs.push_back(gp);
-          barrier();
-        }
-      }
-    }
+      // open the devices, allocate and distribute device buffers, appending to ptrs:
+      DeviceState<cuda_device> devstate_cuda;
+      dev_n_cuda = devstate_cuda.device_n();
+      if (dev_n_cuda) devstate_cuda.create(maxelems, dev_n_cuda, ptrs);
     #endif
+    say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs";
 
     val_t *priv_src = new val_t[maxelems];
     val_t *priv_dst = new val_t[maxelems];
@@ -293,21 +315,14 @@ int main(int argc, char *argv[]) {
     delete [] priv_src;
     delete [] priv_dst;
 
-    for (int i=0; i < allocs_per_heap; i++) {
-      upcxx::delete_array(host_ptrs[i]);
-    }
+    #if USE_HOST
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        upcxx::delete_array(host_ptrs[i]);
+      }
+    #endif
     
     #if USE_CUDA
-    if (dev_n) {
-      for (int dev = 0; dev < max_dev_n; dev++) {
-        for (int i=0; i < allocs_per_heap; i++) {
-          seg[dev]->deallocate(cuda_ptrs[dev][i]);
-        }
-        delete seg[dev];
-        gpu[dev]->destroy();
-        delete gpu[dev];
-      }
-    }
+      if (dev_n_cuda) devstate_cuda.destroy();
     #endif
   }
     
