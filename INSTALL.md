@@ -530,7 +530,7 @@ compiler as was passed to the UPC++ `configure` script.
 UPC++ CUDA operation can be validated using the following programs in the source tree:
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `cuda_device`
-* `bench/cuda_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+* `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
 * `example/cuda_vecadd`: demonstration of using UPC++ `cuda_device` to orchestrate
   communication for a program invoking CUDA computational kernels on the GPU.
 

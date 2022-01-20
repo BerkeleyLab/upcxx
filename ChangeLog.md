@@ -29,6 +29,7 @@ All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
+* `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
 
 * Prior to this release, the configure script would permit values of `CXX` and
   `CC` which had different families or versions (as long as they were

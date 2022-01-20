@@ -125,7 +125,7 @@ test_exclude_all += \
 
 # Conditionally exclude tests that require a valid CUDA device at runtime:
 test_requires_cuda_device = \
-	bench/cuda_microbenchmark.cpp \
+	bench/gpu_microbenchmark.cpp \
 	test/bad-segment-alloc.cpp \
 	test/regression/issue432.cpp \
 	example/prog-guide/h-d.cpp \
@@ -203,7 +203,7 @@ ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
 test_pgi_debug_symbols_broken = \
-	CUDA_MICROBENCHMARK \
+	GPU_MICROBENCHMARK \
 	RPC_CTOR_TRACE \
 	NODISCARD \
 	MEMBEROF \
@@ -234,7 +234,7 @@ $(foreach test,$(test_seq_threaded), \
 
 # Tweak benchmarks for efficient coverage, these parameters are too small for good measurements
 export TEST_ENV_PUT_FLOOD=fixed_iters=10
-export TEST_ARGS_CUDA_MICROBENCHMARK='-t 1 -w 1'
+export TEST_ARGS_GPU_MICROBENCHMARK='-t 1 -w 1'
 export TEST_ARGS_MISC_PERF='1000'
 export TEST_ARGS_RPC_PERF='100 10 1048576'
 
