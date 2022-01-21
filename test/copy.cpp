@@ -1,16 +1,30 @@
 #include <upcxx/upcxx.hpp>
-#include "util.hpp"
+#define CHECK UPCXX_ASSERT_ALWAYS
 
+// this test runs with at most one device kind, in the following priority order:
+#undef DEVICE
 #if UPCXX_KIND_CUDA
+  #define DEVICE cuda_device
   #include <cuda_runtime_api.h>
   #include <cuda.h>
   constexpr int max_dev_n = 32;
   int dev_n;
-  #define CHECK UPCXX_ASSERT_ALWAYS
+  #define DEVICE_INIT()    CHECK(cuInit(0) == CUDA_SUCCESS)
+  #define DEVICE_SET(id)   CHECK(cudaSetDevice(id) == cudaSuccess)
+  #define DEVICE_MEMCPY_D2H(dst, src, sz) \
+         CHECK(cuMemcpyDtoH(dst, src, sz) == CUDA_SUCCESS)
+  #define DEVICE_MEMCPY_H2D(dst, src, sz) \
+         CHECK(cuMemcpyHtoD(dst, src, sz) == CUDA_SUCCESS)
+  #define DEVICE_SYNC() do { \
+          CHECK(cuCtxSynchronize() == CUDA_SUCCESS); /* issue #241 */ \
+          CHECK(cudaDeviceSynchronize() == cudaSuccess); \
+    } while(0)
 #else
   constexpr int max_dev_n = 0; // set to num GPU/process
   constexpr int dev_n = 0;
 #endif
+
+#include "util.hpp" // defines Device = DEVICE
 
 constexpr int rounds = 4;
     
@@ -24,15 +38,19 @@ int main() {
   print_test_header();
   {
     int me = upcxx::rank_me();
-    UPCXX_ASSERT_ALWAYS(upcxx::rank_n() >= 2, "Set ranks>=2 please.");
+    if (upcxx::rank_n() < 2) {
+      print_test_skipped("test requires two or more ranks");
+      upcxx::finalize();
+      return 0;
+    }
 
-    if(me == 0 && upcxx::rank_n() == 2)
-      std::cerr << "Advice: consider using 3 (or more) ranks to cover three-party cases for upcxx::copy.\n";
+    if(me == 0 && upcxx::rank_n() < 3)
+      say("") << "Advice: consider using 3 (or more) ranks to cover three-party cases for upcxx::copy.";
 
-    #if UPCXX_KIND_CUDA
+    #ifdef DEVICE
     {
-      CHECK(cuInit(0) == CUDA_SUCCESS);
-      CHECK(cuDeviceGetCount(&dev_n) == CUDA_SUCCESS);
+      DEVICE_INIT();
+      dev_n = Device::device_n();
       if(dev_n >= max_dev_n)
         dev_n = max_dev_n-1;
 
@@ -40,17 +58,15 @@ int main() {
       int hi = upcxx::reduce_all(dev_n, upcxx::op_fast_max).wait();
 
       if(me == 0 && lo != hi)
-        std::cerr<<"Notice: not all ranks report the same number of GPUs: min="<<lo<<" max="<<hi<<"\n";
+        say("")<<"Notice: not all ranks report the same number of GPUs: min="<<lo<<" max="<<hi;
 
       dev_n = lo;
       if (me == 0 && !dev_n)
-        std::cerr<<"WARNING: UPC++ CUDA support is compiled-in, but could not find sufficient GPU support at runtime."<<std::endl;
+        say("")<<"WARNING: UPC++ GPU support is compiled-in, but could not find sufficient GPU support at runtime.";
     }
     #endif
 
-    if(me == 0) {
-      std::cerr<<"Running with devices="<<dev_n<<'\n';
-    }
+    if(me == 0) say("")<<"Running with devices="<<dev_n;
     
     // buf[rank][1+device][shadow=0|1]
     std::array<std::array<any_ptr<int>,2>,1+max_dev_n> buf[2];
@@ -62,13 +78,13 @@ int main() {
         buf[me][0][0].local()[i] = (i%(1<<17)%10) + (i>>17)*10 + (0*100) + (me*1000);
     }
 
-    #if UPCXX_KIND_CUDA
-      cuda_device* gpu[max_dev_n];
-      device_allocator<cuda_device>* seg[max_dev_n];
+    #ifdef DEVICE
+      Device* gpu[max_dev_n];
+      device_allocator<Device>* seg[max_dev_n];
       for(int dev=1; dev < 1+dev_n; dev++) {
         if(me < 2) {
-          gpu[dev-1] = new cuda_device(dev-1);
-          seg[dev-1] = new device_allocator<cuda_device>(*gpu[dev-1], 32<<20);
+          gpu[dev-1] = new Device(dev-1);
+          seg[dev-1] = new device_allocator<Device>(*gpu[dev-1], 32<<20);
 
           buf[me][dev][0] = seg[dev-1]->allocate<int>(1<<20);
           buf[me][dev][1] = seg[dev-1]->allocate<int>(1<<20);
@@ -76,23 +92,21 @@ int main() {
           int *tmp = new int[1<<20];
           for(int i=0; i < 1<<20; i++)
             tmp[i] = (i%(1<<17)%10) + (i>>17)*10 + (dev*100) + (me*1000);
-          CHECK(cudaSetDevice(dev-1) == cudaSuccess);
-          CHECK(
-          cuMemcpyHtoD(
+          DEVICE_SET(dev-1);
+          DEVICE_MEMCPY_H2D(
             reinterpret_cast<CUdeviceptr>(
               seg[dev-1]->local(
-                upcxx::static_kind_cast<memory_kind::cuda_device>(buf[me][dev][0])
+                upcxx::static_kind_cast<Device::kind>(buf[me][dev][0])
               )
             ),
             tmp, sizeof(int)<<20
-          ) == CUDA_SUCCESS);
-          CHECK(cuCtxSynchronize() == CUDA_SUCCESS); // issue #241
-          CHECK(cudaDeviceSynchronize() == cudaSuccess);
+          );
+          DEVICE_SYNC();
           delete[] tmp;
         }
         else {
-          gpu[dev-1] = new cuda_device(cuda_device::invalid_device_id);
-          seg[dev-1] = new device_allocator<cuda_device>(*gpu[dev-1], 0);
+          gpu[dev-1] = new Device(Device::invalid_device_id);
+          seg[dev-1] = new device_allocator<Device>(*gpu[dev-1], 0);
         }
       }
     #endif
@@ -150,7 +164,7 @@ int main() {
             }
 
             all.wait();
-            std::cerr<<"done round="<<round<<" initiator="<<initiator<<'\n';
+            say()<<"done round="<<round<<" initiator="<<initiator;
           }
         }
         
@@ -182,18 +196,17 @@ int main() {
           if(dd == 0)
             tmp = buf[me][dd][rounds%2].local() + (dp<<17);
           else {
-          #if UPCXX_KIND_CUDA
+          #ifdef DEVICE
             tmp = new int[1<<17];
-            CHECK(cudaSetDevice(dd-1) == cudaSuccess);
-            CHECK(
-            cuMemcpyDtoH(tmp,
+            DEVICE_SET(dd-1);
+            DEVICE_MEMCPY_D2H(tmp,
               reinterpret_cast<CUdeviceptr>(
                 seg[dd-1]->local(
-                  static_kind_cast<memory_kind::cuda_device>(buf[me][dd][rounds%2])
+                  static_kind_cast<Device::kind>(buf[me][dd][rounds%2])
                 ) + (dp<<17)
               ),
               sizeof(int)<<17
-            ) == CUDA_SUCCESS);
+            );
           #endif
           }
           
@@ -215,11 +228,11 @@ int main() {
       upcxx::delete_array(upcxx::static_kind_cast<memory_kind::host>(buf[me][0][1]));
     }
     
-    #if UPCXX_KIND_CUDA
+    #ifdef DEVICE
       for(int dev=1; dev < 1+dev_n; dev++) {
         if(me < 2) {
-          seg[dev-1]->deallocate(upcxx::static_kind_cast<memory_kind::cuda_device>(buf[me][dev][0]));
-          seg[dev-1]->deallocate(upcxx::static_kind_cast<memory_kind::cuda_device>(buf[me][dev][1]));
+          seg[dev-1]->deallocate(upcxx::static_kind_cast<Device::kind>(buf[me][dev][0]));
+          seg[dev-1]->deallocate(upcxx::static_kind_cast<Device::kind>(buf[me][dev][1]));
         }
         gpu[dev-1]->destroy();
         delete gpu[dev-1];
