@@ -30,6 +30,16 @@ say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); }
 #define UTIL_ATTRIB_NOINLINE __attribute__((__noinline__))
 #endif
 
+// Default GPU device, used by several tests
+#ifndef DEVICE
+  #if UPCXX_KIND_CUDA
+    #define DEVICE cuda_device
+  #endif
+#endif
+#ifdef DEVICE
+  using Device = upcxx::DEVICE;
+#endif
+
 template<typename=void>
 std::string hostname() {
   char hostname[255] = {};
