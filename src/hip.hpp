@@ -1,0 +1,94 @@
+#ifndef _fb4d4046_9f23_43b8_9d94_fcb1c2aa0c85
+#define _fb4d4046_9f23_43b8_9d94_fcb1c2aa0c85
+
+#include <upcxx/backend_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
+#include <upcxx/device_allocator.hpp>
+#include <upcxx/global_ptr.hpp>
+#include <upcxx/memory_kind.hpp>
+
+#include <cstdint>
+
+#if UPCXXI_HIP_ENABLED
+  // hip feature macro
+  #define UPCXX_KIND_HIP 202103L
+#else
+  #undef UPCXX_KIND_HIP
+#endif
+
+namespace upcxx {
+
+  class hip_device {
+    friend struct detail::device_allocator_core<hip_device>;
+    friend class device_allocator<hip_device>;
+    int device_;
+    int heap_idx_;
+    
+  public:
+    template<typename T>
+    using pointer = T*;
+    using id_type = int;
+
+    template<typename T>
+    static constexpr T* null_pointer() { return nullptr; }
+    
+    static constexpr memory_kind kind = memory_kind::hip_device;
+
+    static constexpr id_type invalid_device_id = -1;
+
+    hip_device(int device = invalid_device_id);
+    hip_device(hip_device const&) = delete;
+    hip_device(hip_device&& other) : 
+      device_(other.device_), heap_idx_(other.heap_idx_) {
+      other.device_ = invalid_device_id; 
+      other.heap_idx_ = -1;
+    }
+    ~hip_device();
+
+    int device_id() const { return device_; }
+    bool is_active() const { return device_ != invalid_device_id; }
+
+    static id_type device_n();
+
+    template<typename T>
+    static constexpr std::size_t default_alignment() {
+      return alignof(T) < 256 ? 256 : alignof(T);
+    }
+
+    void destroy(upcxx::entry_barrier eb = entry_barrier::user);
+
+    static constexpr bool use_gex_mk(detail::internal_only) {
+      #if UPCXXI_GEX_MK_HIP
+        return true;
+      #else
+        return false;
+      #endif
+    }
+
+  private:
+    static id_type device_id(detail::internal_only, int heap_idx);
+    static constexpr std::size_t min_alignment() { return 16; }
+  };
+
+  namespace detail {
+    template<>
+    struct device_allocator_core<hip_device>: device_allocator_base {
+
+      device_allocator_core();
+      device_allocator_core(hip_device &dev, void *base, std::size_t size);
+      device_allocator_core(device_allocator_core&&) = default;
+      void destroy();
+
+      // Issue 490
+      void real_destructor();
+      ~device_allocator_core() { real_destructor(); }
+    };
+
+    #if UPCXXI_HIP_ENABLED
+      extern void hip_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s, 
+                                  std::size_t size, backend::device_cb *cb);
+    #endif
+
+  } // namespace detail
+}
+#endif

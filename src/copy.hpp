@@ -3,6 +3,7 @@
 
 #include <upcxx/backend.hpp>
 #include <upcxx/cuda.hpp>
+#include <upcxx/hip.hpp>
 #include <upcxx/completion.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/rput.hpp>
@@ -53,6 +54,12 @@ namespace upcxx {
           return;
         }
       #endif
+      #if UPCXXI_HIP_ENABLED
+        if (kind_d == memory_kind::hip_device || kind_s == memory_kind::hip_device) {
+          detail::hip_copy_local(heap_d,buf_d,heap_s,buf_s,size,cb);
+          return;
+        }
+      #endif
 
       UPCXXI_INVOKE_UB("Unrecognized device kinds in upcxx::copy() -- gptr corruption?");      
     }
@@ -64,6 +71,10 @@ namespace upcxx {
         #if UPCXXI_CUDA_ENABLED
           case memory_kind::cuda_device: 
                      return cuda_device::use_gex_mk(detail::internal_only());
+        #endif
+        #if UPCXXI_HIP_ENABLED
+          case memory_kind::hip_device: 
+                     return hip_device::use_gex_mk(detail::internal_only());
         #endif
         default: // includes memory_kind::any
           UPCXXI_INVOKE_UB("Internal error, bad kind query: " << to_string(k));
@@ -304,6 +315,7 @@ namespace upcxx {
     #else
       constexpr bool dual_device_kind = false;
     #endif
+    const bool same_proc = (rank_d == rank_s);
 
     #if UPCXXI_COPY_OPTIMIZEHOST
       // only reach this function for calls involving device memory
@@ -327,7 +339,7 @@ namespace upcxx {
 
     auto returner = typename copy_traits::returner(*cxs_here);
 
-    if (rank_d == rank_s && !dual_device_kind) { // fully loopback on the calling process
+    if (same_proc && !dual_device_kind) { // fully loopback on the calling process
       UPCXX_ASSERT(rank_d == initiator); 
       // Issue #421: synchronously deserialize remote completions into the heap to avoid a PGI optimizer problem
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
@@ -353,10 +365,10 @@ namespace upcxx {
       );
       return returner();
     }
-    #if UPCXXI_GEX_MK_ALL // all/any devices using native kinds
-      constexpr bool use_gex_mk = true;    
+    #if UPCXXI_GEX_MK_ALL // all devices using native kinds
+      const bool use_gex_mk = !same_proc; // GASNet MK cannot currently handle loopback
     #elif UPCXXI_GEX_MK_ANY // devices using mix of native and reference kinds
-      const bool use_gex_mk = native_gex_mk(kind_d) && native_gex_mk(kind_s);
+      const bool use_gex_mk = native_gex_mk(kind_d) && native_gex_mk(kind_s) && !same_proc;
     #else // all we have is reference kinds
       constexpr bool use_gex_mk = false;
     #endif
@@ -464,7 +476,7 @@ namespace upcxx {
       );
     }
     else if(rank_d == initiator) {
-      UPCXX_ASSERT(rank_s != initiator);
+      UPCXX_ASSERT(rank_s != initiator || dual_device_kind);
       UPCXX_ASSERT(heap_s != private_heap);
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
         copy_traits::want_remote ?
@@ -542,7 +554,8 @@ namespace upcxx {
       );
     }
     else {
-      UPCXX_ASSERT(rank_s == initiator && rank_d != initiator);
+      UPCXX_ASSERT(rank_s == initiator);
+      UPCXX_ASSERT(rank_d != initiator || dual_device_kind);
       UPCXX_ASSERT(heap_d != private_heap);
       /* We are the source, so semantically this is a PUT even though we use a
        * GET to transfer over network.

@@ -95,8 +95,11 @@ void upcxx::detail::rma_copy_get(
     void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXXI_GEX_MK_ALL
-    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
+  #if UPCXXI_GEX_MK_ALL 
+    #if UPCXXI_MANY_DEVICE_KINDS // dual-kind loopback with gex_mk reaches here
+      UPCXXI_IF_PF (rank_s != backend::rank_me)
+    #endif
+        UPCXXI_INVOKE_UB("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
   #endif
 
   gex_Event_t h = gex_RMA_GetNB(
@@ -113,8 +116,11 @@ void upcxx::detail::rma_copy_put(
     intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t size,
     gasnet::handle_cb *cb
   ) {
-  #if UPCXXI_GEX_MK_ALL
-    UPCXXI_FATAL_ERROR("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
+  #if UPCXXI_GEX_MK_ALL 
+    #if UPCXXI_MANY_DEVICE_KINDS // dual-kind loopback with gex_mk reaches here
+      UPCXXI_IF_PF (rank_d != backend::rank_me)
+    #endif
+        UPCXXI_INVOKE_UB("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
 
   gex_Event_t h = gex_RMA_PutNB(

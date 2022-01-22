@@ -6,12 +6,14 @@
 
 #include <utility>
 
-#if UPCXXI_GEX_MK_CUDA // || ...
+#if UPCXXI_GEX_MK_CUDA \
+ || UPCXXI_GEX_MK_HIP // || ...
   #define UPCXXI_GEX_MK_ANY 1 // true iff ANY memory kind is using GASNet MK
 #else
   #undef  UPCXXI_GEX_MK_ANY
 #endif
-#if (!UPCXXI_CUDA_ENABLED || UPCXXI_GEX_MK_CUDA) // && ...
+#if (!UPCXXI_CUDA_ENABLED || UPCXXI_GEX_MK_CUDA) \
+ && (!UPCXXI_HIP_ENABLED  || UPCXXI_GEX_MK_HIP) // && ...
   #define UPCXXI_GEX_MK_ALL 1 // true iff ALL memory kinds are using GASNet MK
 #else
   #undef  UPCXXI_GEX_MK_ALL
@@ -127,12 +129,16 @@ namespace backend {
   #if UPCXXI_CUDA_ENABLED
     struct persona_cuda_state {
       // queue of pending events
-      detail::intru_queue<
-        device_cb,
-        detail::intru_queue_safety::none,
-        &device_cb::intruder
-      > cbs;
+      detail::intru_queue< device_cb, detail::intru_queue_safety::none,
+                           &device_cb::intruder > cbs;
     } cuda;
+  #endif
+  #if UPCXXI_HIP_ENABLED
+    struct persona_hip_state {
+      // queue of pending events
+      detail::intru_queue< device_cb, detail::intru_queue_safety::none,
+                           &device_cb::intruder > cbs;
+    } hip;
   #endif
   };
 

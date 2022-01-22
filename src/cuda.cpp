@@ -189,7 +189,6 @@ upcxx::cuda_device::cuda_device(int device):
       cuda_heap_state *st = new cuda_heap_state{};
       st->context = ctx;
       st->device_id = device;
-      st->segment_to_free = nullptr;
 
       #if UPCXXI_GEX_MK_CUDA
       { // construct GASNet-level memory kind and endpoint

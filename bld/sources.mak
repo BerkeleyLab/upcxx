@@ -16,6 +16,7 @@ libupcxx_sources = \
 	diagnostic.cpp               \
 	digest.cpp                   \
 	global_fnptr.cpp             \
+	hip.cpp                      \
 	os_env.cpp                   \
 	persona.cpp                  \
 	reduce.cpp                   \

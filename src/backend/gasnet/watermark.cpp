@@ -68,6 +68,19 @@ GASNETT_IDENT(UPCXXI_IdentString_GASNetVersion, "$UPCXXGASNetVersion: "
   GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 0 $");
 #endif
 
+#if UPCXXI_HIP_ENABLED
+  #include <upcxx/hip.hpp>
+  GASNETT_IDENT(UPCXXI_IdentString_KindHIP, "$UPCXXKindHIP: " _STRINGIFY(UPCXX_KIND_HIP) " $");
+  GASNETT_IDENT(UPCXXI_IdentString_HIPEnabled, "$UPCXXHIPEnabled: 1 $");
+#else
+  GASNETT_IDENT(UPCXXI_IdentString_HIPEnabled, "$UPCXXHIPEnabled: 0 $");
+#endif
+#if UPCXXI_GEX_MK_HIP
+  GASNETT_IDENT(UPCXXI_IdentString_HIPGASNet, "$UPCXXHIPGASNet: 1 $");
+#else
+  GASNETT_IDENT(UPCXXI_IdentString_HIPGASNet, "$UPCXXHIPGASNet: 0 $");
+#endif
+
 GASNETT_IDENT(UPCXXI_IdentString_AssertEnabled, "$UPCXXAssertEnabled: " _STRINGIFY(UPCXXI_ASSERT_ENABLED) " $");
 
 #if UPCXXI_MPSC_QUEUE_ATOMIC

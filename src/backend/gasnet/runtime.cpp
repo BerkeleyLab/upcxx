@@ -5,6 +5,7 @@
 
 #include <upcxx/concurrency.hpp>
 #include <upcxx/cuda_internal.hpp>
+#include <upcxx/hip_internal.hpp>
 #include <upcxx/os_env.hpp>
 #include <upcxx/reduce.hpp>
 #include <upcxx/team.hpp>
@@ -2031,9 +2032,20 @@ namespace {
   void burst_device(persona *per) {
   #if UPCXXI_CUDA_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
-      if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->event)) {
+      if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
         CU_CHECK(cuEventDestroy((CUevent)cb->event));
         per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
+        cb->execute_and_delete();
+      }
+      else
+        break;
+    }
+  #endif
+  #if UPCXXI_HIP_ENABLED
+    while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.peek()) {
+      if(hipEventQuery((hipEvent_t)cb->event) == hipSuccess) {
+        UPCXXI_HIP_CHECK(hipEventDestroy((hipEvent_t)cb->event));
+        per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.dequeue();
         cb->execute_and_delete();
       }
       else
