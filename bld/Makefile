@@ -223,6 +223,9 @@ else
 UPCXX_META_COMPILERS := GASNET
 endif
 RUNTIME_LIBS = $(GASNET_LIBS)
+ifeq ($(UPCXX_HIP),1)
+RUNTIME_LIBS += $(UPCXX_HIP_LIBFLAGS)
+endif
 ifeq ($(UPCXX_CUDA),1)
 RUNTIME_LIBS += $(UPCXX_CUDA_LIBFLAGS)
 endif
@@ -305,6 +308,9 @@ UPCXX_DEFINES += -DUPCXXI_BACKEND_GASNET_PAR=1
 endif
 ifeq ($(UPCXX_CUDA),1)
 UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
+endif
+ifeq ($(UPCXX_HIP),1)
+UPCXX_DEFINES += -DUPCXXI_HIP_ENABLED=1 $(UPCXX_HIP_CPPFLAGS)
 endif
 
 # For git cloned source trees, embed git-describe output in runtime.o
