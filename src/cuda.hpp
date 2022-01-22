@@ -48,6 +48,8 @@ namespace upcxx {
     int device_id() const { return device_; }
     bool is_active() const { return device_ != invalid_device_id; }
 
+    static id_type device_n();
+
     template<typename T>
     static constexpr std::size_t default_alignment() {
       return alignof(T) < 256 ? 256 : alignof(T);

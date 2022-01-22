@@ -143,6 +143,24 @@ extern void upcxx::detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, 
 }
 #endif
 
+int upcxx::cuda_device::device_n() {
+  #if UPCXXI_CUDA_ENABLED
+    int dev_n = -1;
+    CUresult res = cuDeviceGetCount(&dev_n);
+    if (res == CUDA_ERROR_NOT_INITIALIZED) {
+       if (cuInit(0) == CUDA_ERROR_NO_DEVICE) { 
+         return 0; // cuInit can give this error when no devices are visible
+       } else CU_CHECK_ALWAYS_VERBOSE(cuInit(0));
+    } 
+    if (res != CUDA_SUCCESS) {
+      CU_CHECK_ALWAYS_VERBOSE(cuDeviceGetCount(&dev_n));
+    }
+    return dev_n;
+  #else
+    return 0;
+  #endif
+}
+
 GASNETT_COLD
 upcxx::cuda_device::cuda_device(int device):
   device_(device), heap_idx_(-1) {
