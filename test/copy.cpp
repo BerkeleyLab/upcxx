@@ -3,7 +3,21 @@
 
 // this test runs with at most one device kind, in the following priority order:
 #undef DEVICE
-#if UPCXX_KIND_CUDA
+#if UPCXX_KIND_HIP
+  #define DEVICE hip_device
+  #include <hip/hip_runtime_api.h>
+  constexpr int max_dev_n = 32;
+  int dev_n;
+  #define DEVICE_INIT()    CHECK(hipInit(0) == hipSuccess)
+  #define DEVICE_SET(id)   CHECK(hipSetDevice(id) == hipSuccess)
+  #define DEVICE_MEMCPY_D2H(dst, src, sz) \
+         CHECK(hipMemcpyDtoH(dst, reinterpret_cast<hipDeviceptr_t>(src), sz) == hipSuccess)
+  #define DEVICE_MEMCPY_H2D(dst, src, sz) \
+         CHECK(hipMemcpyHtoD(reinterpret_cast<hipDeviceptr_t>(dst), src, sz) == hipSuccess)
+  #define DEVICE_SYNC() do { \
+          CHECK(hipDeviceSynchronize() == hipSuccess); \
+    } while(0)
+#elif UPCXX_KIND_CUDA
   #define DEVICE cuda_device
   #include <cuda_runtime_api.h>
   #include <cuda.h>
@@ -12,9 +26,9 @@
   #define DEVICE_INIT()    CHECK(cuInit(0) == CUDA_SUCCESS)
   #define DEVICE_SET(id)   CHECK(cudaSetDevice(id) == cudaSuccess)
   #define DEVICE_MEMCPY_D2H(dst, src, sz) \
-         CHECK(cuMemcpyDtoH(dst, src, sz) == CUDA_SUCCESS)
+         CHECK(cuMemcpyDtoH(dst, reinterpret_cast<CUdeviceptr>(src), sz) == CUDA_SUCCESS)
   #define DEVICE_MEMCPY_H2D(dst, src, sz) \
-         CHECK(cuMemcpyHtoD(dst, src, sz) == CUDA_SUCCESS)
+         CHECK(cuMemcpyHtoD(reinterpret_cast<CUdeviceptr>(dst), src, sz) == CUDA_SUCCESS)
   #define DEVICE_SYNC() do { \
           CHECK(cuCtxSynchronize() == CUDA_SUCCESS); /* issue #241 */ \
           CHECK(cudaDeviceSynchronize() == cudaSuccess); \
@@ -94,12 +108,8 @@ int main() {
             tmp[i] = (i%(1<<17)%10) + (i>>17)*10 + (dev*100) + (me*1000);
           DEVICE_SET(dev-1);
           DEVICE_MEMCPY_H2D(
-            reinterpret_cast<CUdeviceptr>(
-              seg[dev-1]->local(
-                upcxx::static_kind_cast<Device::kind>(buf[me][dev][0])
-              )
-            ),
-            tmp, sizeof(int)<<20
+              seg[dev-1]->local( upcxx::static_kind_cast<Device::kind>(buf[me][dev][0]) ),
+              tmp, sizeof(int)<<20
           );
           DEVICE_SYNC();
           delete[] tmp;
@@ -200,12 +210,8 @@ int main() {
             tmp = new int[1<<17];
             DEVICE_SET(dd-1);
             DEVICE_MEMCPY_D2H(tmp,
-              reinterpret_cast<CUdeviceptr>(
-                seg[dd-1]->local(
-                  static_kind_cast<Device::kind>(buf[me][dd][rounds%2])
-                ) + (dp<<17)
-              ),
-              sizeof(int)<<17
+                seg[dd-1]->local( static_kind_cast<Device::kind>(buf[me][dd][rounds%2]) ) + (dp<<17),
+                sizeof(int)<<17
             );
           #endif
           }

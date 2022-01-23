@@ -11,8 +11,7 @@
 using namespace upcxx;
 
 volatile bool cuda_enabled;
-upcxx::cuda_device *gpu_device;
-upcxx::device_allocator<upcxx::cuda_device> *gpu_alloc;
+volatile bool hip_enabled;
 
 std::vector<std::function<void()>> post_fini;
 
@@ -68,6 +67,8 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
       else      di2.destroy(lev);
     }
   }
+
+  assert(Device::device_n() >= 1);
 
   // deliberately create three heaps on the same device
   // managed via pointer for precision testing of destruction
@@ -178,6 +179,22 @@ int main() {
   int me = upcxx::rank_me();
 
   // check that required device members exist with sane-looking values
+  // note these should be defined even when HIP kind is disabled
+  assert_same<hip_device::id_type, int>();
+  assert_same<hip_device::pointer<double>, double *>();
+  assert(hip_device::null_pointer<double>() == nullptr);
+  assert(hip_device::default_alignment<double>() > 0);
+  assert(hip_device::kind == memory_kind::hip_device);
+  assert(hip_device::invalid_device_id != 0);
+  assert(hip_device::device_n() >= 0);
+  #if UPCXX_KIND_HIP
+    hip_enabled = true;
+  #endif
+  if (hip_enabled) { 
+    run_test<hip_device>(0, 2<<20);
+  }
+
+  // check that required device members exist with sane-looking values
   // note these should be defined even when CUDA kind is disabled
   assert_same<cuda_device::id_type, int>();
   assert_same<cuda_device::pointer<double>, double *>();
@@ -185,6 +202,7 @@ int main() {
   assert(cuda_device::default_alignment<double>() > 0);
   assert(cuda_device::kind == memory_kind::cuda_device);
   assert(cuda_device::invalid_device_id != 0);
+  assert(cuda_device::device_n() >= 0);
   #if UPCXX_KIND_CUDA
     cuda_enabled = true;
   #endif

@@ -16,6 +16,15 @@
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 
+#ifndef USE_HIP
+  #if UPCXX_KIND_HIP 
+    #define USE_HIP 1
+  #endif
+#endif
+#if USE_HIP && !UPCXX_KIND_HIP
+  #error requested USE_HIP but this UPC++ install does not have HIP support
+#endif
+
 #ifndef HEAPS_PER_KIND
 #define HEAPS_PER_KIND 2
 #endif
@@ -26,6 +35,7 @@ constexpr unsigned heaps_per_kind = HEAPS_PER_KIND;
 constexpr unsigned allocs_per_heap = ALLOCS_PER_HEAP;
 
 int dev_n_cuda = 0;
+int dev_n_hip = 0;
 
 using namespace upcxx;
 
@@ -145,7 +155,16 @@ int main(int argc, char *argv[]) {
       dev_n_cuda = devstate_cuda.device_n();
       if (dev_n_cuda) devstate_cuda.create(maxelems, dev_n_cuda, ptrs);
     #endif
-    say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs";
+
+    #if USE_HIP
+      // open the devices, allocate and distribute device buffers, appending to ptrs:
+      DeviceState<hip_device> devstate_hip;
+      dev_n_hip = devstate_hip.device_n();
+      if (dev_n_hip) devstate_hip.create(maxelems, dev_n_hip, ptrs);
+    #endif
+
+    say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs, "
+                          <<dev_n_hip<<" HIP GPUs";
 
     val_t *priv_src = new val_t[maxelems];
     val_t *priv_dst = new val_t[maxelems];
@@ -323,6 +342,9 @@ int main(int argc, char *argv[]) {
     
     #if USE_CUDA
       if (dev_n_cuda) devstate_cuda.destroy();
+    #endif
+    #if USE_HIP
+      if (dev_n_hip)  devstate_hip.destroy();
     #endif
   }
     

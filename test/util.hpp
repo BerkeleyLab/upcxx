@@ -32,7 +32,9 @@ say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); }
 
 // Default GPU device, used by several tests
 #ifndef DEVICE
-  #if UPCXX_KIND_CUDA
+  #if UPCXX_KIND_HIP
+    #define DEVICE hip_device
+  #elif UPCXX_KIND_CUDA
     #define DEVICE cuda_device
   #endif
 #endif

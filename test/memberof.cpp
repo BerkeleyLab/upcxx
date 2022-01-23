@@ -416,6 +416,9 @@ int main() {
   upcxx::init();
   print_test_header();
 
+  #if UPCXX_KIND_HIP
+    if (std::is_same<Device, upcxx::hip_device>::value) gpu_enabled = true;
+  #endif
   #if UPCXX_KIND_CUDA
     if (std::is_same<Device, upcxx::cuda_device>::value) gpu_enabled = true;
   #endif

@@ -9,7 +9,9 @@ using namespace std;
 using namespace upcxx;
 
 #ifndef DEVICE
-  #if UPCXX_KIND_CUDA
+  #if UPCXX_KIND_HIP
+    #define DEVICE hip_device
+  #elif UPCXX_KIND_CUDA
     #define DEVICE cuda_device
   #else
     #error This test requires UPC++ built with device support.
