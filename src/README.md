@@ -640,3 +640,112 @@ that.
   Target immediately does address translation and enqueues sender's command as
   lpc, no GET == zero copy! `cleanup` AM's back to sender to `upcxx::deallocate`
   command.
+
+## Memory Kinds
+
+### Memory Kind constants
+
+The `memory_kind` enum lives in "memory\_kind.hpp", and many class templates and
+function templates elsewhere are parametric on its values. Our implementation
+maintains and relies on the unspecified invariant that values form a 0-based
+enumeration, where 0 is host memory and the max value is `memory_kind::any`.
+Preprocessor defines in from "memory\_kind.hpp" and "device\_fwd.hpp" advertise
+properties of the configured-in memory kinds for conditional compilation in
+runtime code.
+
+### Memory Kind implementation strategy
+
+GASNet provides a memory kinds feature that enables offloaded, direct
+GPU<->network transfers, using technologies such as GPU Direct RDMA on NVIDIA
+GPUs. Such features have the potential to provide enormous performance
+advantages by eliminating intermediate copies and host CPU involvement, so the
+goal is to use these features whenever possible. However the availability of
+these features is highly dependent on hardware, OS, network stack and other
+system-specific details. As a result, GASNet-level memory kinds currently only
+function over a subset of network conduits and configurations, and have some
+usage caveats.
+
+As such, the UPC++ implementation includes a fallback reference implementation
+of each memory kind which requires only device driver support and does not rely
+upon the corresponding GASNet memory kind. At configure time, each libupcxx
+build determines whether "native" GASNet memory kinds or "reference" memory
+kinds will be used for each enabled memory kind; this information is advertised
+to runtime code in `UPCXXI_GEX_MK_*` defines. Every UPC++-level device class
+provides an internal `static constexpr use_gex_mk()` query indicating whether
+that memory kind is configured to use native GASNet memory kinds. These boolean
+settings are commonly set independently to different values even within a
+single UPC++ install (for example, some GASNet conduits lack memory kinds
+support entirely). 
+
+### Devices and Heaps
+
+Devices like `cuda_device` and `hip_device` are classes that exist mostly to
+provide a user-facing API (static contants, typedefs, a few standard methods,
+etc), but the objects themselves contain very little state -- basically just a
+`device_id` (which also serves as active bit) and a `heap_idx`.
+
+`heap_idx` is an internal, process-local index into a process-wide, fixed-size
+registry of device heaps maintained by `backend::heap_state`. These indexes are
+stored as an explicit field in `global_ptr` for device-enabled builds and
+identify the heap which contains the raw address. This explicit design means we
+never need to "search" for an address within a table of heap boundaries to
+identify the corresponding heap/device. `heap_idx==0` always corresponds to the
+host shared memory heap created by `upcxx::init()`, although it has no
+corresponding `heap_state` object. `heap_idx==-1` is used internally by
+`upcxx::copy()` to indicate the private host heap, which also has no
+corresponding `heap_state` object. Other (positive) heap indexes correspond to
+heaps created for devices and active heaps have a corresponding `heap_state`
+object tracking their state. `heap_idx`'s corresponding to heaps using native
+GASNet memory kinds maintain the invariant of numerical equality to the
+corresponding GASNet endpoint index, which is used for issuing kind-enabled
+GASNet communication. Aside from the special case of `heap_idx==0`, we notably
+do NOT maintain any single-valued invariants for `heap_idx` values across
+processes, because the user-facing design does not allow it. In particular,
+`heap_idx` validity is a rank-specific property, and `heap_idx` values
+corresponding to a reference device kind are only meaningful to the process
+owning that heap.
+
+`heap_state` is the base class for an inheritance hierarchy that pulls in
+kind-independent GASNet objects (for heaps using native kinds) and
+kind-specific driver state into a `device_heap_state<Device>` object, which
+tracks state information for an open device. Each `heap_state` object also
+contains a pointer to a `detail::device_allocator_base` object, a base class
+for a hierarchy ending in the user-facing `upcxx::device_allocator<Device>`.
+That hierarchy pulls in device-specific code from
+`detail::device_allocator_core<Device>`, and includes a device-independent
+`detail::segment_allocator` that implements the actual user-facing allocator
+(operating within an abstract range of device addresses corresponding to the
+device heap).
+
+### `upcxx::copy()` Data Movement and Events
+
+Everything described thus far is basically setup boilerplate for creating and
+destroying devices and heap allocators to reach steady-state. The main point of
+this feature is, of course, to enable data movement involving devices, via the
+main workhorse `upcxx::copy()`. Its implementation lives in "copy.hpp", which
+contains a dizzying number of specialized implementations, where a combination
+of static and dynamic information about the requested transfer is used to
+select the code path used to service a particular copy request. Examples
+include specializations for: optimizing host-to-host copies via `rput`/`rget`,
+recognizing host buffers belonging to `local_team()` peers and leveraging
+explicit shared-memory bypass, converting put-like copies into RDMA gets to
+optimize remote completion latency, and dispatching to a native GASNet memory
+kinds RDMA vs mediating a reference memory kinds transfer that explicitly
+stages through host memory on one or both sides.
+
+The details of the copy logic tree are beyond the scope of this overview.
+However the key interaction with individual memory kinds takes place in
+`detail::rma_copy_local`, where each kind provides a callback (e.g.
+`detail::cuda_copy_local()`) that transfers data between locally-mapped host
+buffers and/or device buffers with affinity to this process of the same kind
+(but possibly different devices of that kind). In addition to the obvious
+buffer addresses, heap indexes and buffer length, the callback is also provided
+a pointer to a heap-allocated `backend::device_cb` object that encapsulates an
+opaque continuation. The kind callback function is responsible for populating
+the opaque `device_cb.event` field to represent the in-flight asynchronous
+device transfer, and queueing the `device_cb` onto a kind-specific queue that
+lives in `backend::persona_device_state` (which is part of the persona state
+for the initiating persona). Those queues are serviced during internal progress
+by some kind-specific code in `burst_device()` to reap device event completions
+and execute the `device_cb` continuation.
+

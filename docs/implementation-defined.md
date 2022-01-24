@@ -19,6 +19,11 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     feature to which this implementation adheres, defined only when the library
     is built with CUDA enabled. See the UPC++ specification for the specified
     value.
+  * `UPCXX_KIND_HIP`:
+    An integer literal providing the version number of the ROCm/HIP memory-kind
+    feature to which this implementation adheres, defined only when the library
+    is built with ROCm/HIP enabled. See the UPC++ specification for the specified
+    value.
 
   * `UPCXX_THREADMODE`:
     This is either undefined (for the default "seq" threadmode) or defined to
@@ -180,8 +185,8 @@ them useful, please send an email to `upcxx@googlegroups.com`, and we will
 consider adding them to the specification proper.
 
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
-are intended solely for internal use by the implementation (e.g.
-`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`). Similarly, all identifiers
+are intended solely for internal use by the implementation (e.g. `upcxx::backend`,
+`upcxx::detail`, `upcxx::cuda`, `upcxx::hip`). Similarly, all identifiers
 with the `UPCXXI` or `upcxxi` prefix are intended for internal use by the
 implementation.
 
