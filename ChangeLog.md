@@ -17,6 +17,7 @@ Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #512: ADL fails with `when_all`
+* issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
@@ -27,6 +28,14 @@ All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
+
+* Prior to this release, the configure script would permit values of `CXX` and
+  `CC` which had different families or versions (as long as they were
+  link-compatible).  This was particularly easy to do on a Linux system if
+  specifying a non-default `CXX` while retaining the default `CC=gcc`.   Such
+  mixed configurations are now prohibited.  While there is a configure option
+  to convert the enforcement to a warning, such configurations are officially
+  unsupported.
 
 ### 2021.09.30: Release 2021.9.0
 
