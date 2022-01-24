@@ -9,6 +9,10 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* NEW: Memory Kinds support for AMD GPUs using ROCm/HIP, see [INSTALL.md](INSTALL.md).
+    New `configure --enable-hip` flag activates new `upcxx::hip_device` class.
+    This includes native offload support for `upcxx::copy()` using ROCmRDMA on 
+    recent InfiniBand network hardware - see GASNet-EX documentation for details.
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
 
 Infrastructure changes:
