@@ -7,7 +7,7 @@
 # Built by 'make tests` and `make check`
 ###
 
-testprograms_seq = \
+test_sources_seq = \
 	test/hello_upcxx.cpp \
 	test/atomics.cpp \
 	test/collectives.cpp \
@@ -22,10 +22,13 @@ testprograms_seq = \
 	test/vis_stress.cpp \
 	test/uts/uts_ranks.cpp
 
-testprograms_par = \
+test_sources_par = \
 	test/rput_thread.cpp \
 	test/uts/uts_hybrid.cpp \
 	test/view.cpp
+
+test_progs_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(test_sources_par))))
+test_progs_par = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_par),$(test_sources_seq))))
 
 ###
 # Section 2: Maintainer/development tests
@@ -257,12 +260,15 @@ export TEST_ARGS_RPC_PERF='100 10 1048576'
 
 # exclude untracked files, if any
 ifneq ($(wildcard $(upcxx_src)/.git),)
-test_exclude_all += $(shell cd $(upcxx_src) && git ls-files --others -- $(test_dirs) | grep '\.cpp$$')
+test_exclude_all += $(shell cd $(upcxx_src) && git ls-files --others -- $(test_dirs) | grep -e '\.cpp$$' -e '\.sh$$')
 endif
 
 # compose the pieces above
-tests_raw = $(subst $(upcxx_src)/,,$(foreach dir,$(test_dirs),$(wildcard $(upcxx_src)/$(dir)/*.cpp)))
+tests_raw = $(subst $(upcxx_src)/,,$(foreach dir,$(test_dirs), \
+                                             $(wildcard $(upcxx_src)/$(dir)/*.cpp $(upcxx_src)/$(dir)/*.sh)))
 tests_filter_out_seq = $(test_exclude_all) $(test_exclude_seq) $(test_exclude_fail_all) $(test_exclude_fail_seq)
 tests_filter_out_par = $(test_exclude_all) $(test_exclude_par) $(test_exclude_fail_all) $(test_exclude_fail_par)
-testprograms_dev_seq = $(filter-out $(tests_filter_out_seq),$(tests_raw))
-testprograms_dev_par = $(filter-out $(tests_filter_out_par),$(tests_raw))
+test_sources_dev_seq = $(filter-out $(tests_filter_out_seq),$(tests_raw))
+test_sources_dev_par = $(filter-out $(tests_filter_out_par),$(tests_raw))
+test_progs_dev_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(tests_raw))))
+test_progs_dev_par = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_par),$(tests_raw))))
