@@ -903,14 +903,28 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
   # PREpend to allow user to disable if needed
   GASNET_CONFIGURE_ARGS="--enable-kind-hip ${GASNET_CONFIGURE_ARGS}"
 
-  trap - ERR # suspend error handler
-  [[ -z $HIP_HOME ]] && HIP_HOME="$(dirname $(dirname $(which hipcc)))"
-  if [[ -z $HIP_HOME ]]  || ! [[ -f $HIP_HOME/include/hip/hip_runtime_api.h ]] ; then
-    echo_and_die 'Failed to find ROCm/HIP developer tools, please pass --with-hip-home=/hip/install/prefix'
+  HIP_HEADER="include/hip/hip_runtime_api.h"
+  hipcc="hipcc"
+  if [[ -z $HIP_HOME ]] && type -p $hipcc >/dev/null ; then # try probing hipcc
+    HIP_HOME="$(dirname $(dirname $(type -p $hipcc)))"
+    if ! [[ -f $HIP_HOME/$HIP_HEADER ]] ; then
+      for hip_maybe in \
+         $($hipcc -print-rocm-search-dirs 2>&1 | grep "search path" | cut -d: -f2) ; do
+         if [[ -f $hip_maybe/$HIP_HEADER ]] ; then
+           HIP_HOME=$hip_maybe
+           break
+         fi
+      done
+    fi
   fi
-  trap failure_and_die ERR  # restore error handler
+  if [[ -z $HIP_HOME ]] || ! [[ -f $HIP_HOME/$HIP_HEADER ]] ; then
+    echo_and_die 'Failed to find ROCm/HIP developer tools, please pass --with-hip-home=/hip/install/prefix'
+  else
+    GASNET_CONFIGURE_ARGS+=" --with-hip-home='$HIP_HOME'"
+  fi
 
-  export UPCXX_HIP_CPPFLAGS="-I${HIP_HOME}/include"
+  # -isystem silences obnoxious warnings from ROCm headers that are not pedantic-clean
+  export UPCXX_HIP_CPPFLAGS="-I${HIP_HOME}/include -isystem ${HIP_HOME}/include"
   case ${hip_platform} in
     amd|hcc|'')
       UPCXX_HIP_CPPFLAGS+=" -D__HIP_PLATFORM_AMD__= -D__HIP_PLATFORM_HCC__="
