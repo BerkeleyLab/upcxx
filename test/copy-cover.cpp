@@ -66,12 +66,14 @@ struct DeviceState {
   device_allocator<Device>* seg[heaps_per_kind] = {};
   global_ptr<val_t, Device::kind> dev_ptrs[heaps_per_kind][allocs_per_heap] = {};
 
-  // Collectively create heaps_per_kind device heaps for this Device kind, spread across dev_n GPUs
+  // Collectively create heaps_per_kind device heaps for this Device kind, spread across all GPUs
   // Allocate allocs_per_heap objects of maxelems*2 val_t's
   // and insert corresponding buffers into ptrs_out, spread across neighbors
-  void create(size_t maxelems, int dev_n, std::vector<any_ptr> &ptrs_out) {
+  void create(size_t maxelems, std::vector<any_ptr> &ptrs_out) {
     int me = upcxx::rank_me();
     int ranks = upcxx::rank_n();
+    int dev_n = Device::device_n();
+    assert(dev_n > 0);
     for (unsigned dev = 0; dev < heaps_per_kind; dev++) {
       size_t align = Device::template default_alignment<val_t>();
       size_t allocsz = maxelems*2*sizeof(val_t);
@@ -81,7 +83,8 @@ struct DeviceState {
         allocsz = align*((allocsz+align-1)/align);
       }
       UPCXX_ASSERT(!gpu[dev] && !seg[dev]);
-      gpu[dev] = new Device(dev%dev_n);
+      int dev_id = ( dev + local_team().rank_me() ) % dev_n;
+      gpu[dev] = new Device(dev_id);
       seg[dev] = new device_allocator<Device>(*gpu[dev], allocsz*allocs_per_heap);
       for (unsigned i=0; i < allocs_per_heap; i++) {
         dev_ptrs[dev][i] = seg[dev]->template allocate<val_t>(maxelems*2);
@@ -153,14 +156,14 @@ int main(int argc, char *argv[]) {
       // open the devices, allocate and distribute device buffers, appending to ptrs:
       DeviceState<cuda_device> devstate_cuda;
       dev_n_cuda = devstate_cuda.device_n();
-      if (dev_n_cuda) devstate_cuda.create(maxelems, dev_n_cuda, ptrs);
+      if (dev_n_cuda) devstate_cuda.create(maxelems, ptrs);
     #endif
 
     #if USE_HIP
       // open the devices, allocate and distribute device buffers, appending to ptrs:
       DeviceState<hip_device> devstate_hip;
       dev_n_hip = devstate_hip.device_n();
-      if (dev_n_hip) devstate_hip.create(maxelems, dev_n_hip, ptrs);
+      if (dev_n_hip) devstate_hip.create(maxelems, ptrs);
     #endif
 
     say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs, "
