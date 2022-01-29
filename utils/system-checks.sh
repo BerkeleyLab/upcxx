@@ -668,21 +668,39 @@ platform_sanity_checks() {
             fi
         fi
 
+        check_family_match
+        local COMPILER_MISMATCH_RC=$?
         local COMPILER_MISMATCH=
-        if ! check_family_match; then
+        if (( COMPILER_MISMATCH_RC )); then
             COMPILER_MISMATCH='families'
-        elif ! check_version_match; then
-            COMPILER_MISMATCH='versions'
+        else
+            check_version_match
+            COMPILER_MISMATCH_RC=$?
+            if (( COMPILER_MISMATCH_RC )); then
+              COMPILER_MISMATCH='versions'
+            fi
         fi
-        if [[ -n $COMPILER_MISMATCH ]]; then
+        if (( COMPILER_MISMATCH_RC )); then
             if (( $UPCXX_ALLOW_COMPILER_MISMATCH )); then
-                warnings+="WARNING: CXX and CC report different $COMPILER_MISMATCH (see above)."
+                if (( COMPILER_MISMATCH_RC > 1 )); then
+                    warnings+="\nWARNING: The probe for compiler $COMPILER_MISMATCH failed (see above).\n"
+                else
+                    warnings+="\nWARNING: CXX and CC report different $COMPILER_MISMATCH (see above).\n"
+                fi
                 warnings+="WARNING: Therefore, this configuration is officially unsupported.\n"
             else
-                echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the compilers'
-                echo "ERROR: detected by configure (see above) report different $COMPILER_MISMATCH."
-                echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
-                echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
+                echo
+                if (( COMPILER_MISMATCH_RC > 1 )); then
+                    echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the probe for'
+                    echo "ERROR: compiler $COMPILER_MISMATCH failed (see above)."
+                    echo 'ERROR: Please that ensure you are configuring with valid (and matched)'
+                    echo 'ERROR: values for `--with-cxx=...` and `--with-cc=...`.'
+                else
+                    echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the compilers'
+                    echo "ERROR: detected by configure (see above) report different $COMPILER_MISMATCH."
+                    echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
+                    echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
+                fi
                 echo 'ERROR: See INSTALL.md for the full list of supported compilers.'
                 echo 'ERROR: Alternatively, configuring with `--enable-allow-compiler-mismatch`'
                 echo 'ERROR: will disable this sanity check, but result in an unsupported build.'
