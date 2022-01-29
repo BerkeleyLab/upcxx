@@ -670,7 +670,7 @@ platform_sanity_checks() {
                 echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
                 echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
                 echo 'ERROR: See INSTALL.md for the full list of supported compilers.'
-                echo 'ERROR: Alternatively, configuring with `--enable-allow-mismatched-compilers`'
+                echo 'ERROR: Alternatively, configuring with `--enable-allow-compiler-mismatch`'
                 echo 'ERROR: will disable this sanity check, but result in an unsupported build.'
                 exit 1
             fi
