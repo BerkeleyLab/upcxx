@@ -93,12 +93,26 @@ cpp_extract_expr() {
       ${token1}+${expr}+${token2}
 _EOF
 
+    # Run preprocessor, capturing output and checking exit code
+    local output; # merging `local` and assignment would lose exit code
+    local DETAIL_LOG=config-detail.log
+    rm -f $DETAIL_LOG
+    if ! output=$(eval $cmd $conftest 2> $DETAIL_LOG); then
+      echo "ERROR: preprocessor test failed."
+      if [[ -s $DETAIL_LOG ]]; then
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+      else
+        rm -f $DETAIL_LOG
+      fi
+      return 3;
+    fi
+    rm -f $DETAIL_LOG
+
     # Strip our delimiters and any whitespace introduced by the preprocessor
     local space=$' \t\n\v\f\r' # [:space:] == space, tab, newline, vertical tab, form feed, carriage return
     local delim="[$space]*\+[$space]*"
-    if ! [[ $(eval $cmd $conftest) =~ ${token1}${delim}(${regex})${delim}${token2} ]]; then
-      return $?
-    fi
+    [[ "$output" =~ ${token1}${delim}(${regex})${delim}${token2} ]] || return $?
 
     UPCXX_REMATCH=("${BASH_REMATCH[@]:1}")  # "shifted" to remove full match with our delimeters
     return 0
