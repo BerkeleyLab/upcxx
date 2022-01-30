@@ -96,9 +96,6 @@ void upcxx::detail::rma_copy_get(
     gasnet::handle_cb *cb
   ) {
   #if UPCXXI_GEX_MK_ALL 
-    #if UPCXXI_MANY_DEVICE_KINDS // dual-kind loopback with gex_mk reaches here
-      UPCXXI_IF_PF (rank_s != backend::rank_me)
-    #endif
         UPCXXI_INVOKE_UB("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_get");
   #endif
 
@@ -117,9 +114,6 @@ void upcxx::detail::rma_copy_put(
     gasnet::handle_cb *cb
   ) {
   #if UPCXXI_GEX_MK_ALL 
-    #if UPCXXI_MANY_DEVICE_KINDS // dual-kind loopback with gex_mk reaches here
-      UPCXXI_IF_PF (rank_d != backend::rank_me)
-    #endif
         UPCXXI_INVOKE_UB("Internal error in upcxx::copy() -- unexpected call to detail::rma_copy_put");
   #endif
 

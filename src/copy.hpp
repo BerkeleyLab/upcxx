@@ -30,11 +30,16 @@ namespace upcxx {
         backend::gasnet::handle_cb *cb
     );
 
+    constexpr int host_heap = 0;
+    constexpr int private_heap = -1;
+
     template<typename Fn>     
     inline void rma_copy_local(
       int heap_d, void *buf_d, memory_kind kind_d,
       int heap_s, void const *buf_s, memory_kind kind_s,
       std::size_t size, Fn &&fn) {
+      UPCXX_ASSERT((kind_s == memory_kind::host) == (heap_s == host_heap || heap_s == private_heap));
+      UPCXX_ASSERT((kind_d == memory_kind::host) == (heap_d == host_heap || heap_d == private_heap));
       
       if (kind_d == memory_kind::host && kind_s == memory_kind::host) {
         UPCXX_ASSERT((char*)buf_d + size <= buf_s || (char*)buf_s + size <= buf_d,
@@ -80,9 +85,6 @@ namespace upcxx {
           UPCXXI_INVOKE_UB("Internal error, bad kind query: " << to_string(k));
       }
     }
-
-    constexpr int host_heap = 0;
-    constexpr int private_heap = -1;
 
     template<typename Cxs>
     struct copy_traits {
@@ -310,12 +312,6 @@ namespace upcxx {
     // dynamic_kind arguments are only used for kind::any
     const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
     const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
-    #if UPCXXI_MANY_DEVICE_KINDS
-      const bool dual_device_kind = (kind_s != kind_d && kind_s != memory_kind::host && kind_d != memory_kind::host);
-    #else
-      constexpr bool dual_device_kind = false;
-    #endif
-    const bool same_proc = (rank_d == rank_s);
 
     #if UPCXXI_COPY_OPTIMIZEHOST
       // only reach this function for calls involving device memory
@@ -339,8 +335,13 @@ namespace upcxx {
 
     auto returner = typename copy_traits::returner(*cxs_here);
 
-    if (same_proc && !dual_device_kind) { // fully loopback on the calling process
-      UPCXX_ASSERT(rank_d == initiator); 
+    if (rank_d == rank_s) { // fully loopback on the calling process
+      UPCXX_ASSERT(rank_d == initiator && rank_s == initiator); 
+      #if UPCXXI_MANY_DEVICE_KINDS
+        const bool dual_device_kind = (kind_s != kind_d && kind_s != memory_kind::host && kind_d != memory_kind::host);
+      #else
+        constexpr bool dual_device_kind = false;
+      #endif
       // Issue #421: synchronously deserialize remote completions into the heap to avoid a PGI optimizer problem
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
         copy_traits::want_remote ?
@@ -350,7 +351,7 @@ namespace upcxx {
             )
           ) : nullptr);
       if (copy_traits::want_remote) initiator_per->UPCXXI_INTERNAL_ONLY(undischarged_n_)++;
-      detail::rma_copy_local(heap_d, buf_d, kind_d, heap_s, buf_s, kind_s, size,
+      auto completion =
         [=]() {
           cxs_here->template operator()<source_cx_event>();
           cxs_here->template operator()<operation_cx_event>();
@@ -361,14 +362,33 @@ namespace upcxx {
                                            /*known_active=*/std::integral_constant<bool, !UPCXXI_BACKEND_GASNET_PAR>());
             delete cxs_remote_heaped;
           }
-        }
-      );
+        };
+      if (!dual_device_kind) { // easy/common case: at most one device kind
+        detail::rma_copy_local(heap_d, buf_d, kind_d, 
+                               heap_s, buf_s, kind_s, size, 
+                               std::move(completion));
+      } else { // hard/uncommon case: dual_device_kind
+        // we don't currently have support for same-process direct copies between different kinds,
+        // (and GASNet MK forbids same-process loopback) so we stage through host heap for this case. 
+        // This case is not intended to be optimal (e.g. wrt source_cx), just correct.
+        void *bounce = detail::alloc_aligned(size, 64);
+        detail::rma_copy_local(private_heap, bounce, memory_kind::host, 
+                               heap_s, buf_s, kind_s, size, 
+          [=]() {
+            detail::rma_copy_local(heap_d, buf_d, kind_d, 
+                                   private_heap, bounce, memory_kind::host, size, 
+                                   [=]() {
+                                     std::free(bounce);
+                                     completion();
+                                   });
+          });
+      }
       return returner();
     }
     #if UPCXXI_GEX_MK_ALL // all devices using native kinds
-      const bool use_gex_mk = !same_proc; // GASNet MK cannot currently handle loopback
+      constexpr bool use_gex_mk = true;
     #elif UPCXXI_GEX_MK_ANY // devices using mix of native and reference kinds
-      const bool use_gex_mk = native_gex_mk(kind_d) && native_gex_mk(kind_s) && !same_proc;
+      const bool use_gex_mk = native_gex_mk(kind_d) && native_gex_mk(kind_s);
     #else // all we have is reference kinds
       constexpr bool use_gex_mk = false;
     #endif
@@ -476,7 +496,7 @@ namespace upcxx {
       );
     }
     else if(rank_d == initiator) {
-      UPCXX_ASSERT(rank_s != initiator || dual_device_kind);
+      UPCXX_ASSERT(rank_s != initiator);
       UPCXX_ASSERT(heap_s != private_heap);
       deserialized_cxs_remote_bound_t *cxs_remote_heaped = (
         copy_traits::want_remote ?
@@ -555,7 +575,7 @@ namespace upcxx {
     }
     else {
       UPCXX_ASSERT(rank_s == initiator);
-      UPCXX_ASSERT(rank_d != initiator || dual_device_kind);
+      UPCXX_ASSERT(rank_d != initiator);
       UPCXX_ASSERT(heap_d != private_heap);
       /* We are the source, so semantically this is a PUT even though we use a
        * GET to transfer over network.
