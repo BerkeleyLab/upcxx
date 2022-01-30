@@ -126,9 +126,15 @@ _EOF
 #      regex: bash regular expression used to extract the actual result
 #
 cpp_extract_pp_expr() {
-    local gasnet_includes=''
-    [[ -d $GASNET/other   ]] && gasnet_includes="-I$GASNET/other"   # source
-    [[ -d $GASNET/include ]] && gasnet_includes="-I$GASNET/include" # install
+    local gasnet_src='none'
+    if [[ "$GASNET_TYPE" == 'source' ]]; then
+        # $GASNET is the source directory
+        gasnet_src="$GASNET"
+    elif [[ $(grep ^TOP_SRCDIR $GASNET/Makefile) =~ TOP_SRCDIR( *)=( *)(.*) ]]; then
+        # Must find the source directory in $GASNET/Makefile
+        gasnet_src="${BASH_REMATCH[3]}"
+    fi
+    local gasnet_includes="-I${gasnet_src}/other"
     cpp_extract_expr "$1" "$2" "$3" "$gasnet_includes" '#include "gasnet_portable_platform.h"'
 }
 
