@@ -93,12 +93,26 @@ cpp_extract_expr() {
       ${token1}+${expr}+${token2}
 _EOF
 
+    # Run preprocessor, capturing output and checking exit code
+    local output; # merging `local` and assignment would lose exit code
+    local DETAIL_LOG=config-detail.log
+    rm -f $DETAIL_LOG
+    if ! output=$(eval $cmd $conftest 2> $DETAIL_LOG); then
+      echo "ERROR: preprocessor test failed."
+      if [[ -s $DETAIL_LOG ]]; then
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+      else
+        rm -f $DETAIL_LOG
+      fi
+      return 3;
+    fi
+    rm -f $DETAIL_LOG
+
     # Strip our delimiters and any whitespace introduced by the preprocessor
     local space=$' \t\n\v\f\r' # [:space:] == space, tab, newline, vertical tab, form feed, carriage return
     local delim="[$space]*\+[$space]*"
-    if ! [[ $(eval $cmd $conftest) =~ ${token1}${delim}(${regex})${delim}${token2} ]]; then
-      return $?
-    fi
+    [[ "$output" =~ ${token1}${delim}(${regex})${delim}${token2} ]] || return $?
 
     UPCXX_REMATCH=("${BASH_REMATCH[@]:1}")  # "shifted" to remove full match with our delimeters
     return 0
@@ -112,9 +126,15 @@ _EOF
 #      regex: bash regular expression used to extract the actual result
 #
 cpp_extract_pp_expr() {
-    local gasnet_includes=''
-    [[ -d $GASNET/other   ]] && gasnet_includes="-I$GASNET/other"   # source
-    [[ -d $GASNET/include ]] && gasnet_includes="-I$GASNET/include" # install
+    local gasnet_src='none'
+    if [[ "$GASNET_TYPE" == 'source' ]]; then
+        # $GASNET is the source directory
+        gasnet_src="$GASNET"
+    elif [[ $(grep ^TOP_SRCDIR $GASNET/Makefile) =~ TOP_SRCDIR( *)=( *)(.*) ]]; then
+        # Must find the source directory in $GASNET/Makefile
+        gasnet_src="${BASH_REMATCH[3]}"
+    fi
+    local gasnet_includes="-I${gasnet_src}/other"
     cpp_extract_expr "$1" "$2" "$3" "$gasnet_includes" '#include "gasnet_portable_platform.h"'
 }
 
@@ -654,23 +674,41 @@ platform_sanity_checks() {
             fi
         fi
 
+        check_family_match
+        local COMPILER_MISMATCH_RC=$?
         local COMPILER_MISMATCH=
-        if ! check_family_match; then
+        if (( COMPILER_MISMATCH_RC )); then
             COMPILER_MISMATCH='families'
-        elif ! check_version_match; then
-            COMPILER_MISMATCH='versions'
+        else
+            check_version_match
+            COMPILER_MISMATCH_RC=$?
+            if (( COMPILER_MISMATCH_RC )); then
+              COMPILER_MISMATCH='versions'
+            fi
         fi
-        if [[ -n $COMPILER_MISMATCH ]]; then
+        if (( COMPILER_MISMATCH_RC )); then
             if (( $UPCXX_ALLOW_COMPILER_MISMATCH )); then
-                warnings+="WARNING: CXX and CC report different $COMPILER_MISMATCH (see above)."
+                if (( COMPILER_MISMATCH_RC > 1 )); then
+                    warnings+="\nWARNING: The probe for compiler $COMPILER_MISMATCH failed (see above).\n"
+                else
+                    warnings+="\nWARNING: CXX and CC report different $COMPILER_MISMATCH (see above).\n"
+                fi
                 warnings+="WARNING: Therefore, this configuration is officially unsupported.\n"
             else
-                echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the compilers'
-                echo "ERROR: detected by configure (see above) report different $COMPILER_MISMATCH."
-                echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
-                echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
+                echo
+                if (( COMPILER_MISMATCH_RC > 1 )); then
+                    echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the probe for'
+                    echo "ERROR: compiler $COMPILER_MISMATCH failed (see above)."
+                    echo 'ERROR: Please that ensure you are configuring with valid (and matched)'
+                    echo 'ERROR: values for `--with-cxx=...` and `--with-cc=...`.'
+                else
+                    echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the compilers'
+                    echo "ERROR: detected by configure (see above) report different $COMPILER_MISMATCH."
+                    echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
+                    echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
+                fi
                 echo 'ERROR: See INSTALL.md for the full list of supported compilers.'
-                echo 'ERROR: Alternatively, configuring with `--enable-allow-mismatched-compilers`'
+                echo 'ERROR: Alternatively, configuring with `--enable-allow-compiler-mismatch`'
                 echo 'ERROR: will disable this sanity check, but result in an unsupported build.'
                 exit 1
             fi
