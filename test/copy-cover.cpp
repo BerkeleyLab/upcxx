@@ -1,5 +1,5 @@
 #include <string>
-
+#include <iomanip>
 #include <upcxx/upcxx.hpp>
 #include "util.hpp"
 
@@ -40,7 +40,8 @@ int dev_n_hip = 0;
 using namespace upcxx;
 
 using val_t = std::uint32_t;
-#define VAL(rank, step, idx) ((val_t)(((rank)&0xFFFF << 16) | ((step)&0xFF << 8) | ((idx)&0xFF) ))
+#define VAL(rank, step, idx) ((val_t)((((rank)&0xFFFF) << 16) | (((step)&0xFF) << 8) | ((idx)&0xFF) ))
+#define DEAD(step) ((val_t)(0xFFFF0000 | ((step)&0xFFFF)))
 
 using any_ptr = global_ptr<val_t, memory_kind::any>;
 long errs = 0;
@@ -198,7 +199,7 @@ int main(int argc, char *argv[]) {
         #else
           int killfreq = 7;
         #endif
-        const val_t dead = (val_t)step;
+        const val_t dead = DEAD(step);
         #if SKIP_RC_ONLY
           const bool rconly = false;
         #else
@@ -294,7 +295,18 @@ int main(int argc, char *argv[]) {
           val_t expect = VAL(me, step, i);
           if (got != expect && !mismatch.size()) {
             std::ostringstream oss;
-            oss << " i=" << i << " expect=" << expect << " got=" << got;
+            oss << std::setbase(16)
+                << " i=0x" << i;
+            oss.fill('0');
+            oss << " expect=0x" <<std::setw(5) << expect 
+                << " got=0x" <<std::setw(5) << got;
+            if (i == 0) { // heuristic detection of kill values
+              std::int64_t deadchk = (std::int64_t)dead - (std::int64_t)got;
+              if (deadchk == 0) 
+                oss << ", DEAD"; // matches kill write from this step
+              else if (deadchk > 0 && deadchk <= 2*bufcnt*bufcnt) 
+                oss << ", dead"; // matches kill write from a recent step
+            }
             mismatch = oss.str();
           }
         }
@@ -309,12 +321,15 @@ int main(int argc, char *argv[]) {
           const char * Aheap  = (bufA.dynamic_kind() == memory_kind::host ? "host" : "device");
           const char * Bwhere = who(bufB.where());
           const char * Bheap  = (bufB.dynamic_kind() == memory_kind::host ? "host" : "device");
-          say() << "ERROR: Mismatch at round="<<round<<" bufsz="<<(bufelems*sizeof(val_t))
-                <<" step="<<step
+          say() << "ERROR: Mismatch at round="<<round
+                <<" bufsz="<<std::setw(5)<<(bufelems*sizeof(val_t))
                 <<" A="<<A<<"("<<Awhere<<Aheap<<")"
                 <<" B="<<B<<"("<<Bwhere<<Bheap<<")"
+                <<std::setfill('0')
+                <<" step=0x"<<std::setw(4)<<std::hex<<step
                 <<mismatch
-                <<(kill1?", kill1":"")<<(kill2?", kill2":"")<<(kill3?", kill3":"");
+                <<(kill1?", kill1":"")<<(kill2?", kill2":"")<<(kill3?", kill3":"")
+                <<(rconly?", rconly":"");
           errs++;
         }
 
