@@ -125,6 +125,26 @@ struct DeviceState {
   }
 };
 
+std::string bufdesc(any_ptr ptr) {
+  int me = upcxx::rank_me();
+  int ranks = upcxx::rank_n();
+  int rank = ptr.where();
+  memory_kind kind = ptr.dynamic_kind();
+  std::string res("other ");
+  if (rank == me) res = "my "; 
+  if (rank == (me+1)%ranks) res = "his ";
+  if (rank == (me+2)%ranks) res = "her ";
+  if (kind == memory_kind::host) res += "host";
+  #if USE_CUDA
+  else if (kind == memory_kind::cuda_device) res += "cuda";
+  #endif
+  #if USE_HIP
+  else if (kind == memory_kind::hip_device) res += "hip";
+  #endif
+  else res += "UNKNOWN";
+  return res;
+}
+
 int main(int argc, char *argv[]) {
   upcxx::init();
   print_test_header();
@@ -181,9 +201,56 @@ int main(int argc, char *argv[]) {
     say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs, "
                           <<dev_n_hip<<" HIP GPUs";
 
+    const int bufcnt = ptrs.size();
+
+    #if !SKIP_SANITY
+    { // optional basic sanity checks for buffer layout and simple copy
+      size_t bufelems = 2*maxelems;
+      auto gp_tmp = upcxx::new_array<val_t>(bufelems);
+      auto lp_tmp = gp_tmp.local();
+
+      upcxx::barrier();
+      for (int A=0; A < bufcnt; A++) {
+        for(size_t i=0; i < bufelems; i++) {
+          if (A > 0) UPCXX_ASSERT_ALWAYS(lp_tmp[i] == VAL(me, A-1, i));
+          lp_tmp[i] = VAL(me, A, i);
+        }
+        any_ptr buf = ptrs[A];
+        upcxx::copy(gp_tmp, buf, bufelems).wait();
+      }
+      upcxx::barrier();
+      for (int A=0; A < bufcnt; A++) {
+        for(size_t i=0; i < bufelems; i++) {
+          lp_tmp[i] = 0;
+        }
+        any_ptr buf = ptrs[A];
+        upcxx::copy(buf, gp_tmp, bufelems).wait();
+        for(size_t i=0; i < bufelems; i++) {
+          val_t got = lp_tmp[i];
+          val_t expect = VAL(me, A, i);
+          if (got != expect) {
+            say() << "ERROR: Failed sanity check at " 
+                  <<" A="<<A<<"("<<bufdesc(buf)<<")"
+                  << std::setbase(16)
+                  << std::setfill('0')
+                  << " i=0x" << i
+                  << " expect=0x" <<std::setw(5) << expect
+                  << " got=0x" <<std::setw(5) << got;
+            errs++;
+            break;
+          }
+        }
+      }
+      
+      upcxx::delete_array(gp_tmp);
+      upcxx::barrier();
+      if(!me) say("") << "Sanity check complete.";
+      upcxx::barrier();
+    }
+    #endif
+
     val_t *priv_src = new val_t[maxelems];
     val_t *priv_dst = new val_t[maxelems];
-    const int bufcnt = ptrs.size();
 
     uint64_t step = 0;
     static uint64_t rc_count = 0;
@@ -304,7 +371,7 @@ int main(int argc, char *argv[]) {
         for(size_t i=0; i < bufelems; i++) {
           val_t got = priv_dst[i];
           val_t expect = VAL(me, step, i);
-          if (got != expect && !mismatch.size()) {
+          if (got != expect) {
             std::ostringstream oss;
             oss << std::setbase(16)
                 << " i=0x" << i;
@@ -319,23 +386,14 @@ int main(int argc, char *argv[]) {
                 oss << ", dead"; // matches kill write from a recent step
             }
             mismatch = oss.str();
+            break;
           }
         }
         if (mismatch.size()) { // diagnose failure
-          auto who = [=](int rank) { 
-            if (rank == me) return "my "; 
-            if (rank == (me+1)%ranks) return "his ";
-            if (rank == (me+2)%ranks) return "her ";
-            return "other ";
-          };
-          const char * Awhere = who(bufA.where());
-          const char * Aheap  = (bufA.dynamic_kind() == memory_kind::host ? "host" : "device");
-          const char * Bwhere = who(bufB.where());
-          const char * Bheap  = (bufB.dynamic_kind() == memory_kind::host ? "host" : "device");
           say() << "ERROR: Mismatch at round="<<round
                 <<" bufsz="<<std::setw(5)<<(bufelems*sizeof(val_t))
-                <<" A="<<A<<"("<<Awhere<<Aheap<<")"
-                <<" B="<<B<<"("<<Bwhere<<Bheap<<")"
+                <<" A="<<A<<"("<<bufdesc(bufA)<<")"
+                <<" B="<<B<<"("<<bufdesc(bufB)<<")"
                 <<std::setfill('0')
                 <<" step=0x"<<std::setw(4)<<std::hex<<step
                 <<mismatch
