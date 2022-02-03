@@ -18,6 +18,7 @@ Notable issues resolved
 
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
+* spec issue 188: Add `cuda_device::device_n()`
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
