@@ -50,7 +50,18 @@ long errs = 0;
 template<typename Device>
 struct DeviceState {
   static int device_n() {
-    int dev_n = Device::device_n();
+    #if UPCXX_VERSION >= 20210903
+      return Device::device_n();
+    #else
+      static bool firstcall = true;
+      if (!rank_me() && firstcall)
+        say("") << "WARNING: Device::device_n() support missing. Blindly assuming 1 GPU per process..";
+      firstcall = false;
+      return 1;
+    #endif
+  }
+  static int device_n_min() {
+    int dev_n = device_n();
     int lo = upcxx::reduce_all(dev_n, upcxx::op_fast_min).wait();
     int hi = upcxx::reduce_all(dev_n, upcxx::op_fast_max).wait();
 
@@ -73,7 +84,7 @@ struct DeviceState {
   void create(size_t maxelems, std::vector<any_ptr> &ptrs_out) {
     int me = upcxx::rank_me();
     int ranks = upcxx::rank_n();
-    int dev_n = Device::device_n();
+    int dev_n = device_n();
     assert(dev_n > 0);
     for (unsigned dev = 0; dev < heaps_per_kind; dev++) {
       size_t align = Device::template default_alignment<val_t>();
@@ -156,14 +167,14 @@ int main(int argc, char *argv[]) {
     #if USE_CUDA
       // open the devices, allocate and distribute device buffers, appending to ptrs:
       DeviceState<cuda_device> devstate_cuda;
-      dev_n_cuda = devstate_cuda.device_n();
+      dev_n_cuda = devstate_cuda.device_n_min();
       if (dev_n_cuda) devstate_cuda.create(maxelems, ptrs);
     #endif
 
     #if USE_HIP
       // open the devices, allocate and distribute device buffers, appending to ptrs:
       DeviceState<hip_device> devstate_hip;
-      dev_n_hip = devstate_hip.device_n();
+      dev_n_hip = devstate_hip.device_n_min();
       if (dev_n_hip) devstate_hip.create(maxelems, ptrs);
     #endif
 
