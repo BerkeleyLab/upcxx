@@ -186,9 +186,8 @@ consider adding them to the specification proper.
 
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
 are intended solely for internal use by the implementation (e.g. `upcxx::backend`,
-`upcxx::detail`, `upcxx::cuda`, `upcxx::hip`). Similarly, all identifiers
-with the `UPCXXI` or `upcxxi` prefix are intended for internal use by the
-implementation.
+`upcxx::detail`). Similarly, all identifiers with the `UPCXXI` or `upcxxi`
+prefix are intended solely for internal use by the implementation.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 

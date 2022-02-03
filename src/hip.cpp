@@ -9,7 +9,7 @@ using std::uint64_t;
 
 #if UPCXXI_HIP_ENABLED
 using upcxx::backend::hip_heap_state;
-namespace hip = upcxx::hip;
+namespace hip = upcxx::detail::hip;
 
 namespace {
   GASNETT_COLD
@@ -25,7 +25,7 @@ namespace {
         default: // other unknown errors are immediately fatal:
           std::string s("Requested hip allocation failed: size=");
           s += std::to_string(sz);
-          upcxx::hip::hip_failed(r, __FILE__, __LINE__, s.c_str());
+          hip::hip_failed(r, __FILE__, __LINE__, s.c_str());
       }
       return p;
     };
@@ -90,7 +90,7 @@ static std::string get_hip_info() {
 }
 
 GASNETT_COLD
-void upcxx::hip::hip_failed(hipError_t res, const char *file, int line, const char *expr, bool report_verbose) {
+void hip::hip_failed(hipError_t res, const char *file, int line, const char *expr, bool report_verbose) {
   const char *errname = hipGetErrorName(res);
   const char *errstr  = hipGetErrorString(res);
   

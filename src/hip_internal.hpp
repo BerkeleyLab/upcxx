@@ -20,13 +20,13 @@
   #define UPCXXI_HIP_CHECK_ALWAYS(expr) do { \
       hipError_t res_xxxxxx = (expr); \
       if_pf (res_xxxxxx != hipSuccess) \
-        ::upcxx::hip::hip_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
+        ::upcxx::detail::hip::hip_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
   #define UPCXXI_HIP_CHECK_ALWAYS_VERBOSE(expr) do { \
       hipError_t res_xxxxxx = (expr); \
       if_pf (res_xxxxxx != hipSuccess) \
-        ::upcxx::hip::hip_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
+        ::upcxx::detail::hip::hip_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
     } while(0)
 
 
@@ -37,6 +37,7 @@
   #endif
 
   namespace upcxx {
+   namespace detail {
     namespace hip {
       UPCXXI_ATTRIB_NORETURN
       void hip_failed(hipError_t res, const char *file, int line, const char *expr, bool report_verbose = false);
@@ -77,8 +78,7 @@
           }
         }
       };
-    }
-  }
+  }}} // namespace upcxx::detail::hip
   
   namespace upcxx { namespace backend {
     template<>

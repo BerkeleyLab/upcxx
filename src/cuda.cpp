@@ -9,7 +9,7 @@ using std::uint64_t;
 
 #if UPCXXI_CUDA_ENABLED
 using upcxx::backend::cuda_heap_state;
-namespace cuda = upcxx::cuda;
+namespace cuda = upcxx::detail::cuda;
 
 namespace {
   GASNETT_COLD
@@ -25,7 +25,7 @@ namespace {
         default: // other unknown errors are immediately fatal:
           std::string s("Requested cuda allocation failed: size=");
           s += std::to_string(sz);
-          upcxx::cuda::cu_failed(r, __FILE__, __LINE__, s.c_str());
+          cuda::cu_failed(r, __FILE__, __LINE__, s.c_str());
       }
       return reinterpret_cast<void*>(p);
     };
@@ -83,7 +83,7 @@ static std::string get_cuda_info() {
 }
 
 GASNETT_COLD
-void upcxx::cuda::cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose) {
+void cuda::cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose) {
   const char *errname="", *errstr="";
   cuGetErrorName(res, &errname);
   cuGetErrorString(res, &errstr);
@@ -182,7 +182,7 @@ upcxx::cuda_device::cuda_device(int device):
       if (res != CUDA_SUCCESS) {
         std::string callstr("cuDevicePrimaryCtxRetain() failed for device=");
         callstr += std::to_string(device);
-        upcxx::cuda::cu_failed(res, __FILE__, __LINE__, callstr.c_str(), true);
+        cuda::cu_failed(res, __FILE__, __LINE__, callstr.c_str(), true);
       }
       auto with = cuda::context<2>(ctx);
 

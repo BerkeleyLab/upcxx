@@ -20,13 +20,13 @@
   #define CU_CHECK_ALWAYS(expr) do { \
       CUresult res_xxxxxx = (expr); \
       if_pf (res_xxxxxx != CUDA_SUCCESS) \
-        ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
+        ::upcxx::detail::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
   #define CU_CHECK_ALWAYS_VERBOSE(expr) do { \
       CUresult res_xxxxxx = (expr); \
       if_pf (res_xxxxxx != CUDA_SUCCESS) \
-        ::upcxx::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
+        ::upcxx::detail::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
     } while(0)
 
 
@@ -37,6 +37,7 @@
   #endif
 
   namespace upcxx {
+   namespace detail {
     namespace cuda {
       UPCXXI_ATTRIB_NORETURN
       void cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose = false);
@@ -70,8 +71,7 @@
             UPCXX_ASSERT_ALWAYS(out == ctx_, "Unexpected cuCtxPopCurrent outcome -- misbalanced context?");
         }
       };
-    }
-  }
+  }}} // namespace upcxx::detail::cuda
   
   namespace upcxx { namespace backend {
     template<>
