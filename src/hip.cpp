@@ -114,17 +114,38 @@ extern void upcxx::detail::hip_copy_local(int heap_d, void *buf_d, int heap_s, v
   const bool host_s = heap_s < 1;
   UPCXX_ASSERT(!host_d || !host_s);
 
-  int heap_main = !host_d ? heap_d : heap_s;
+  // hipMemcpy documentation recommends using the source device as the primary device
+  // for cross-device peer-to-peer transfers.
+  // HOWEVER: doing so leads to data validation failures in test/copy-cover
+  // when the dev-to-dev transfer is surrounded by ROCmRDMA xfers, indicating a consistency problem.
+  // This was observed using ROCm/4.5.0 on Spock (Cray EX SS-10) with ucx-conduit
+  // and also ROCm/4.5.2 on JLSE MI100 (AMD EPYC 7543) with ucx and ibv conduits.
+  // TODO: Figure out what's actually going on here and why the vendor recommendation doesn't work.
+  constexpr bool favor_source = false;
+  int heap_main = ( favor_source ? ( !host_s ? heap_s : heap_d )
+                                 : ( !host_d ? heap_d : heap_s ) );
   UPCXX_ASSERT(heap_main > 0);
   hip_heap_state *st = hip_heap_state::get(heap_main);
 
   auto with = hip::context<0>(st->device_id);
 
   if(!host_d && !host_s) {
+    // device to device
     hip_heap_state *st_d = hip_heap_state::get(heap_d);
     hip_heap_state *st_s = hip_heap_state::get(heap_s);
 
-    // device to device
+    #if UPCXXI_ASSERT_ENABLED && !UPCXXI_HIP_SKIP_PEER_ACCESS_CHECK
+      // HIP docs claim that peer access (memory cross-mapping between devices)
+      // is optional but important for performance. 
+      // It appears to be enabled by default, but let's complain if someone turns it off...
+      hip_heap_state *st_other = ( favor_source ? st_d : st_s );
+      if (st->device_id != st_other->device_id) {
+        int peerAccessEnabled = -1;
+        UPCXXI_HIP_CHECK(hipDeviceCanAccessPeer(&peerAccessEnabled, st->device_id, st_other->device_id));
+        UPCXX_ASSERT(peerAccessEnabled == 1);
+      }
+    #endif
+
   #if 1
     UPCXXI_HIP_CHECK(hipMemcpyPeerAsync(
       buf_d, st_d->device_id,
