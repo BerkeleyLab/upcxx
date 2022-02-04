@@ -582,7 +582,8 @@ UPC++ includes support for RMA communication operations on memory buffers
 resident in a ROCm/HIP-compatible AMD GPU.  Specific requirements:
 
 * Modern AMD-branded HIP-compatible GPU hardware
-* AMD ROCm drivers version 4.0 or later. 
+* AMD ROCm drivers version 4.5.0 or later (earlier versions of ROCm MIGHT also
+  work, but are not recommended)
 
 #### Additional System Requirements for ROCmRDMA-accelerated memory kinds:
 
@@ -630,7 +631,7 @@ your system. If this automatic detection fails, then you may need to manually
 override the following option to `configure`:
 
 * `--with-hip-home=...`: the install prefix for the ROCm/HIP developer tools 
-   Eg `--with-hip-home=/opt/rocm-4.2.0/hip`
+   Eg `--with-hip-home=/opt/rocm-4.5.0/hip`
 
 Note that you must build UPC++ with the same host compiler toolchain as is used
 by `hipcc` when compiling any UPC++ ROCm programs. That is, both UPC++ and your
