@@ -35,12 +35,15 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   // test inactive devices and allocators
   for (int i=0; i < 20+upcxx::rank_me(); i++) { 
     Device di = Device();
-    assert(!di.is_active());
+    gpu_device *gdi = &di;
+    assert(!di.is_active()); assert(!gdi->is_active());
     assert(di.device_id() == id_invalid);
+    assert(gdi->kind() == Device::kind);
     Device di2(std::move(di));
-    assert(!di.is_active());
+    gpu_device *gdi2 = &di2;
+    assert(!di.is_active()); assert(!gdi->is_active());
     assert(di.device_id() == id_invalid);
-    assert(!di2.is_active());
+    assert(!di2.is_active()); assert(!gdi2->is_active());
     assert(di2.device_id() == id_invalid);
 
     Allocator ai = Allocator();
@@ -55,15 +58,17 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     assert(ai.to_global_ptr(dp_null) == gp_null);
     ai.deallocate(gp_null);
 
-    if (i < 6) { // sometimes explicit destroy
+    if (i < 12) { // sometimes explicit destroy
       entry_barrier lev;
       switch (i % 3) { // with varying eb
         case 0: lev = entry_barrier::user; break;
         case 1: lev = entry_barrier::internal; break;
         case 2: lev = entry_barrier::none; break;
       }
-      if (i < 3) di.destroy(lev);
-      else      di2.destroy(lev);
+      if (i < 3)       di.destroy(lev);
+      else if (i < 6)  di2.destroy(lev);
+      else if (i < 9)  gdi->destroy(lev);
+      else if (i < 12) gdi2->destroy(lev);
     }
   }
 
@@ -72,39 +77,49 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   // deliberately create three heaps on the same device
   // managed via pointer for precision testing of destruction
   Device *d0 = new Device(id);
+  gpu_device *gd0 = d0;
   Allocator *a0 = new Allocator(*d0, heap_size);
-  assert(d0->is_active()); assert(a0->is_active());
+  assert(d0->is_active()); assert(gd0->is_active()); 
+  assert(a0->is_active());
   assert(d0->device_id() == id);
 
   bool have1 = rank_me()%2;
   Device *d1 = new Device(have1?id:id_invalid);
+  gpu_device *gd1 = d1;
   Allocator *a1 = new Allocator(*d1, heap_size);
-  assert(d1->is_active() == have1); assert(a1->is_active() == have1);
+  assert(d1->is_active() == have1); assert(gd1->is_active() == have1); 
+  assert(a1->is_active() == have1);
   assert(d1->device_id() == (have1?id:id_invalid));
   if (have1 && rank_me()%3) { // test moving an active device
     Device *d1a = new Device(std::move(*d1));
     assert(!d1->is_active());
     delete d1;
     d1 = d1a;
-    assert(d1->is_active()); assert(a1->is_active());
+    gd1 = d1a;
+    assert(d1->is_active()); assert(gd1->is_active()); 
+    assert(a1->is_active());
   }
 
   bool have2 = !(rank_me()%2);
   Device *d2 = new Device(have2?id:id_invalid);
+  gpu_device *gd2 = d2;
   Allocator *a2 = new Allocator(*d2, heap_size);
-  assert(d2->is_active() == have2); assert(a2->is_active() == have2);
+  assert(d2->is_active() == have2); assert(gd2->is_active() == have2); 
+  assert(a2->is_active() == have2);
   assert(d2->device_id() == (have2?id:id_invalid));
   if (have2 && rank_me()%3) { // test moving an active allocator
     Allocator *a2a = new Allocator(std::move(*a2));
     assert(!a2->is_active());
     delete a2;
     a2 = a2a;
-    assert(d2->is_active()); assert(a2->is_active());
+    assert(d2->is_active()); assert(gd2->is_active()); 
+    assert(a2->is_active());
   }
 
   // and a device with no heap
   Device *d3 = new Device(id);
-  assert(d3->is_active());
+  gpu_device *gd3 = d3;
+  assert(d3->is_active()); assert(gd3->is_active());
   assert(d3->device_id() == id);
 
   // allocate some objects
@@ -140,14 +155,14 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   //a2->deallocate(gp2); // deliberate leak
 
   d0->destroy(); // normal destruction
-  assert(!d0->is_active());
+  assert(!d0->is_active()); assert(!gd0->is_active());
   assert(!a0->is_active());
   delete d0; delete a0;
 
   delete a1;     // allocator destructor,
-  assert(d1->is_active() == have1);
-  d1->destroy(); // ... then device destroy
-  delete d1;
+  assert(d1->is_active() == have1); assert(gd1->is_active() == have1);
+  gd1->destroy(); // ... then device destroy
+  delete gd1;
 
   d3->destroy(); // destroy with no allocator
   delete d3;
