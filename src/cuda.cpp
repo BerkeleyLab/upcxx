@@ -163,7 +163,7 @@ int upcxx::cuda_device::device_n() {
 
 GASNETT_COLD
 upcxx::cuda_device::cuda_device(int device):
-  device_(device), heap_idx_(-1) {
+  gpu_device(detail::internal_only(), device, memory_kind::cuda_device) {
 
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
@@ -210,13 +210,6 @@ upcxx::cuda_device::cuda_device(int device):
 }
 
 GASNETT_COLD
-upcxx::cuda_device::~cuda_device() {
-  if(backend::init_count > 0) { // we don't assert on leaks after finalization
-    UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::cuda_device must have destroy() called before destructor.");
-  }
-}
-
-GASNETT_COLD
 void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
@@ -254,19 +247,6 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
   
   device_ = invalid_device_id; // deactivate
   heap_idx_ = -1;
-}
-
-upcxx::cuda_device::id_type 
-upcxx::cuda_device::device_id(detail::internal_only, int heap_idx) {
-  #if UPCXXI_CUDA_ENABLED
-    cuda_heap_state *st = cuda_heap_state::get(heap_idx);
-    int id = st->device_id;
-    UPCXX_ASSERT(id != invalid_device_id);
-    return id;
-  #else
-    UPCXXI_FATAL_ERROR("Internal error on device_allocator::device_id()");
-    return invalid_device_id;
-  #endif
 }
 
 // non-collective default constructor
@@ -327,3 +307,7 @@ void detail::device_allocator_core<upcxx::cuda_device>::real_destructor() {
 
   destroy();
 }
+
+template
+upcxx::cuda_device::id_type upcxx::gpu_device::heap_idx_to_device_id<upcxx::cuda_device>(int);
+

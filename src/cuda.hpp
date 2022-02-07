@@ -18,35 +18,22 @@
 
 namespace upcxx {
 
-  class cuda_device {
+  class cuda_device final : public gpu_device {
     friend struct detail::device_allocator_core<cuda_device>;
     friend class device_allocator<cuda_device>;
-    int device_;
-    int heap_idx_;
     
   public:
-    template<typename T>
-    using pointer = T*;
-    using id_type = int;
-
-    template<typename T>
-    static constexpr T* null_pointer() { return nullptr; }
+    using gpu_device::id_type;
+    using gpu_device::pointer; 
+    using gpu_device::null_pointer;
+    using gpu_device::invalid_device_id;
+    using gpu_device::device_id;
     
     static constexpr memory_kind kind = memory_kind::cuda_device;
 
-    static constexpr id_type invalid_device_id = -1;
-
     cuda_device(int device = invalid_device_id);
     cuda_device(cuda_device const&) = delete;
-    cuda_device(cuda_device&& other) : 
-      device_(other.device_), heap_idx_(other.heap_idx_) {
-      other.device_ = invalid_device_id; 
-      other.heap_idx_ = -1;
-    }
-    ~cuda_device();
-
-    int device_id() const { return device_; }
-    bool is_active() const { return device_ != invalid_device_id; }
+    cuda_device(cuda_device&& other) : gpu_device(std::move(other)) {}
 
     static id_type device_n();
 
@@ -55,7 +42,7 @@ namespace upcxx {
       return alignof(T) < 256 ? 256 : alignof(T);
     }
 
-    void destroy(upcxx::entry_barrier eb = entry_barrier::user);
+    void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
 
     static constexpr bool use_gex_mk(detail::internal_only) {
       #if UPCXXI_GEX_MK_CUDA
@@ -66,7 +53,6 @@ namespace upcxx {
     }
 
   private:
-    static id_type device_id(detail::internal_only, int heap_idx);
     static constexpr std::size_t min_alignment() { return 16; }
   };
 

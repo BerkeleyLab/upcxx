@@ -1,6 +1,7 @@
 #ifndef _1c3c7029_0525_47d5_b67d_48d7e2dba80a
 #define _1c3c7029_0525_47d5_b67d_48d7e2dba80a
 
+#include <upcxx/backend_fwd.hpp>
 #include <upcxx/intru_queue.hpp>
 #include <upcxx/memory_kind.hpp>
 
@@ -142,5 +143,53 @@ namespace backend {
   #endif
   };
 
-} } // namespace
+} // namespace backend
+
+class gpu_device {
+ protected:
+  // factored internal state:
+  int device_;
+  int heap_idx_;
+  const memory_kind kind_;
+
+  // factored static goop:
+  template<typename T>
+  using pointer = T*;
+  using id_type = int;  
+
+  static constexpr id_type invalid_device_id = -1;
+
+  template<typename T>
+  static constexpr T* null_pointer() { return nullptr; }
+
+  // factored methods:
+  id_type device_id() const { return device_; }
+
+  gpu_device(detail::internal_only, id_type device, memory_kind kind) : 
+     device_(device), heap_idx_(-1), kind_(kind) {};
+  gpu_device(gpu_device const&) = delete;
+  gpu_device(gpu_device&& other) :
+    device_(other.device_), heap_idx_(other.heap_idx_), kind_(other.kind_) {
+    other.device_ = invalid_device_id;
+    other.heap_idx_ = -1;
+  }
+  template<typename Device>
+  static typename Device::id_type heap_idx_to_device_id(int heap_idx);
+
+ public:
+  memory_kind kind() const { return kind_; }
+  /*virtual*/ bool is_active() const { return device_ != invalid_device_id; }
+
+  virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
+
+  virtual ~gpu_device() { 
+    if(backend::init_count > 0) { // we don't assert on leaks after finalization
+      UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::" << detail::to_string(kind_)
+                           << " must have destroy() called before destructor.");
+    } 
+  }
+
+};
+
+} // namespace upcxx
 #endif

@@ -180,8 +180,7 @@ namespace upcxx {
         #endif
         UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
           "device_allocator::device_id() invoked with a pointer from an inactive device.");
-        return Device::device_id(detail::internal_only(),
-                                 gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
+        return Device::template heap_idx_to_device_id<Device>(gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
       }
     }
     

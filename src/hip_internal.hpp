@@ -83,7 +83,6 @@
   namespace upcxx { namespace backend {
     template<>
     struct device_heap_state<hip_device> : public device_heap_state_base<hip_device> {
-        int device_id;
         hipStream_t stream;
     };
     using hip_heap_state = device_heap_state<hip_device>;

@@ -202,8 +202,8 @@ int upcxx::hip_device::device_n() {
 }
 
 GASNETT_COLD
-upcxx::hip_device::hip_device(int device):
-  device_(device), heap_idx_(-1) {
+upcxx::hip_device::hip_device(int device): 
+  gpu_device(detail::internal_only(), device, memory_kind::hip_device) {
 
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
@@ -237,13 +237,6 @@ upcxx::hip_device::hip_device(int device):
   #else
     UPCXX_ASSERT_ALWAYS(device == invalid_device_id);
   #endif
-}
-
-GASNETT_COLD
-upcxx::hip_device::~hip_device() {
-  if(backend::init_count > 0) { // we don't assert on leaks after finalization
-    UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::hip_device must have destroy() called before destructor.");
-  }
 }
 
 GASNETT_COLD
@@ -283,19 +276,6 @@ void upcxx::hip_device::destroy(upcxx::entry_barrier eb) {
   
   device_ = invalid_device_id; // deactivate
   heap_idx_ = -1;
-}
-
-upcxx::hip_device::id_type 
-upcxx::hip_device::device_id(detail::internal_only, int heap_idx) {
-  #if UPCXXI_HIP_ENABLED
-    hip_heap_state *st = hip_heap_state::get(heap_idx);
-    int id = st->device_id;
-    UPCXX_ASSERT(id != invalid_device_id);
-    return id;
-  #else
-    UPCXXI_FATAL_ERROR("Internal error on device_allocator::device_id()");
-    return invalid_device_id;
-  #endif
 }
 
 // non-collective default constructor
@@ -356,3 +336,7 @@ void detail::device_allocator_core<upcxx::hip_device>::real_destructor() {
 
   destroy();
 }
+
+template
+upcxx::hip_device::id_type upcxx::gpu_device::heap_idx_to_device_id<upcxx::hip_device>(int);
+

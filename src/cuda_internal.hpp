@@ -76,7 +76,6 @@
   namespace upcxx { namespace backend {
     template<>
     struct device_heap_state<cuda_device> : public device_heap_state_base<cuda_device> {
-        int device_id;
         CUcontext context;
         CUstream stream;
     };
