@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <stdio.h>
+#include <unistd.h>
 
 // backwards-compatibility hacks for convenience of defect archaeology:
 // ensure up-to-date versions of this header (and tests relying on it) still compile unchanged with older releases
@@ -30,6 +31,35 @@ say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); }
 #endif
 
 template<typename=void>
+std::string hostname() {
+  char hostname[255] = {};
+  int result = gethostname(hostname, sizeof(hostname));
+  if (result || !hostname[0]) {
+    return strerror(errno);
+  } else {
+    return hostname;
+  }
+}
+
+template<typename=void>
+std::string util_ranktxt() {
+  // caches the rank information for this process
+  static std::string result;
+  static bool valid = false;
+  if (valid) return result;
+  std::ostringstream oss;
+  oss << " (";
+  if (upcxx::initialized()) {
+    valid = true;
+    oss << "rank " << upcxx::rank_me() << "/"  << upcxx::rank_n() << ": ";
+  }
+  oss << hostname();
+  oss << ")";
+  result = oss.str();
+  return result;
+}
+
+template<typename=void>
 std::string test_name(const char *file) {
     size_t pos = std::string{file}.rfind("/");
     if (pos == std::string::npos) return std::string(file);
@@ -51,7 +81,7 @@ void print_test_header_inner(const char *file) {
 template<typename=void>
 void print_test_success_inner(bool success=true) {
     flush_all_output();
-    say("") << "Test result: "<< (success?"SUCCESS":"ERROR");
+    say("") << "Test result: "<< (success?"SUCCESS":"ERROR") << util_ranktxt();
 }
 
 template<typename=void>
@@ -66,6 +96,7 @@ void print_test_skipped_inner(const char *reason, const char *success_msg="SUCCE
 
   template<typename=void>
   void print_test_header_(const char *file) {
+      util_ranktxt(); // populate cache
       if(!upcxx::initialized() || !upcxx::rank_me()) {
           print_test_header_inner(file);
       }

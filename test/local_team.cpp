@@ -15,8 +15,7 @@ int main() {
 
     upcxx::team const &locals = upcxx::local_team();
 
-    if(upcxx::rank_me() == 0)
-      std::cout<<"local_team.rank_n() = "<<locals.rank_n()<<'\n';
+    say()<<"local_team: "<<locals.rank_me()<<"/"<<locals.rank_n()<< ": "<<hostname();
     upcxx::barrier();
 
     UPCXX_ASSERT_ALWAYS(upcxx::world().rank_n() == upcxx::rank_n());
