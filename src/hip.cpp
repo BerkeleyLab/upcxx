@@ -3,13 +3,15 @@
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 
 namespace detail = upcxx::detail;
+using upcxx::hip_device;
+using upcxx::gpu_device;
 
 using std::size_t;
 using std::uint64_t;
 
 #if UPCXXI_HIP_ENABLED
 using upcxx::backend::hip_heap_state;
-namespace hip = upcxx::detail::hip;
+namespace hip = detail::hip;
 
 namespace {
   GASNETT_COLD
@@ -40,7 +42,7 @@ namespace {
                                              where.c_str(), dev_alloc, dev_free);
   } // make_segment
 
-  detail::device_allocator_core<upcxx::hip_device> tombstone;
+  detail::device_allocator_core<hip_device> tombstone;
 } // anon namespace
 
 GASNETT_COLD
@@ -102,11 +104,11 @@ void hip::hip_failed(hipError_t res, const char *file, int line, const char *exp
     ss << "\n\nHIP info:\n" << get_hip_info();
   }
   
-  upcxx::detail::fatal_error(ss.str(), "HIP call failed", nullptr, file, line);
+  detail::fatal_error(ss.str(), "HIP call failed", nullptr, file, line);
 }
 
 GASNETT_HOT
-extern void upcxx::detail::hip_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s_,
+extern void detail::hip_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s_,
                                            std::size_t size, backend::device_cb *cb) {
   void *buf_s = const_cast<void *>(buf_s_);
   UPCXX_ASSERT(buf_d && buf_s && cb);
@@ -180,7 +182,7 @@ extern void upcxx::detail::hip_copy_local(int heap_d, void *buf_d, int heap_s, v
 }
 #endif
 
-int upcxx::hip_device::device_n() {
+int hip_device::device_n() {
   #if UPCXXI_HIP_ENABLED
     int dev_n = -1;
     hipError_t res = hipInit(0);
@@ -202,7 +204,7 @@ int upcxx::hip_device::device_n() {
 }
 
 GASNETT_COLD
-upcxx::hip_device::hip_device(int device): 
+hip_device::hip_device(int device): 
   gpu_device(detail::internal_only(), device, memory_kind::hip_device) {
 
   UPCXXI_ASSERT_INIT();
@@ -240,7 +242,7 @@ upcxx::hip_device::hip_device(int device):
 }
 
 GASNETT_COLD
-void upcxx::hip_device::destroy(upcxx::entry_barrier eb) {
+void hip_device::destroy(upcxx::entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
@@ -260,8 +262,8 @@ void upcxx::hip_device::destroy(upcxx::entry_barrier eb) {
     #endif
     
     if (st->alloc_base) {
-      detail::device_allocator_core<upcxx::hip_device>* alloc = 
-        static_cast<detail::device_allocator_core<upcxx::hip_device>*>(st->alloc_base);
+      detail::device_allocator_core<hip_device>* alloc = 
+        static_cast<detail::device_allocator_core<hip_device>*>(st->alloc_base);
       UPCXX_ASSERT(alloc);
       alloc->destroy();
       UPCXX_ASSERT(st->alloc_base == &::tombstone);
@@ -280,13 +282,13 @@ void upcxx::hip_device::destroy(upcxx::entry_barrier eb) {
 
 // non-collective default constructor
 GASNETT_COLD
-detail::device_allocator_core<upcxx::hip_device>::device_allocator_core():
+detail::device_allocator_core<hip_device>::device_allocator_core():
   detail::device_allocator_base(-1/*inactive*/, segment_allocator(nullptr, 0)) { }
 
 // collective constructor with a (possibly inactive) device
 GASNETT_COLD
-detail::device_allocator_core<upcxx::hip_device>::device_allocator_core(
-    upcxx::hip_device &dev, void *base, size_t size
+detail::device_allocator_core<hip_device>::device_allocator_core(
+    hip_device &dev, void *base, size_t size
   ):
   detail::device_allocator_base(
     dev.heap_idx_,
@@ -306,7 +308,7 @@ detail::device_allocator_core<upcxx::hip_device>::device_allocator_core(
 }
 
 GASNETT_COLD
-void detail::device_allocator_core<upcxx::hip_device>::destroy() {
+void detail::device_allocator_core<hip_device>::destroy() {
   if (!is_active()) return;
 
   #if UPCXXI_HIP_ENABLED  
@@ -326,7 +328,7 @@ void detail::device_allocator_core<upcxx::hip_device>::destroy() {
 }
 
 GASNETT_COLD
-void detail::device_allocator_core<upcxx::hip_device>::real_destructor() {
+void detail::device_allocator_core<hip_device>::real_destructor() {
   if(upcxx::initialized()) {
     // The thread safety restriction of this call still applies when upcxx isn't
     // initialized, we just have no good way of asserting it so we conditionalize
@@ -338,5 +340,5 @@ void detail::device_allocator_core<upcxx::hip_device>::real_destructor() {
 }
 
 template
-upcxx::hip_device::id_type upcxx::gpu_device::heap_idx_to_device_id<upcxx::hip_device>(int);
+hip_device::id_type gpu_device::heap_idx_to_device_id<hip_device>(int);
 

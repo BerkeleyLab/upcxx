@@ -3,13 +3,15 @@
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 
 namespace detail = upcxx::detail;
+using upcxx::cuda_device;
+using upcxx::gpu_device;
 
 using std::size_t;
 using std::uint64_t;
 
 #if UPCXXI_CUDA_ENABLED
 using upcxx::backend::cuda_heap_state;
-namespace cuda = upcxx::detail::cuda;
+namespace cuda = detail::cuda;
 
 namespace {
   GASNETT_COLD
@@ -40,7 +42,7 @@ namespace {
                                              where.c_str(), dev_alloc, dev_free);
   } // make_segment
 
-  detail::device_allocator_core<upcxx::cuda_device> tombstone;
+  detail::device_allocator_core<cuda_device> tombstone;
 } // anon namespace
 
 GASNETT_COLD
@@ -95,11 +97,11 @@ void cuda::cu_failed(CUresult res, const char *file, int line, const char *expr,
     ss << "\n\nCUDA info:\n" << get_cuda_info();
   }
   
-  upcxx::detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
+  detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
 }
 
 GASNETT_HOT
-extern void upcxx::detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s,
+extern void detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s,
                                            std::size_t size, backend::device_cb *cb) {
   UPCXX_ASSERT(buf_d && buf_s && cb);
   const bool host_d = heap_d < 1;
@@ -143,7 +145,7 @@ extern void upcxx::detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, 
 }
 #endif
 
-int upcxx::cuda_device::device_n() {
+int cuda_device::device_n() {
   #if UPCXXI_CUDA_ENABLED
     int dev_n = -1;
     CUresult res = cuDeviceGetCount(&dev_n);
@@ -162,7 +164,7 @@ int upcxx::cuda_device::device_n() {
 }
 
 GASNETT_COLD
-upcxx::cuda_device::cuda_device(int device):
+cuda_device::cuda_device(int device):
   gpu_device(detail::internal_only(), device, memory_kind::cuda_device) {
 
   UPCXXI_ASSERT_INIT();
@@ -210,7 +212,7 @@ upcxx::cuda_device::cuda_device(int device):
 }
 
 GASNETT_COLD
-void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
+void cuda_device::destroy(upcxx::entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
@@ -230,8 +232,8 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
     #endif
     
     if (st->alloc_base) {
-      detail::device_allocator_core<upcxx::cuda_device>* alloc = 
-        static_cast<detail::device_allocator_core<upcxx::cuda_device>*>(st->alloc_base);
+      detail::device_allocator_core<cuda_device>* alloc = 
+        static_cast<detail::device_allocator_core<cuda_device>*>(st->alloc_base);
       UPCXX_ASSERT(alloc);
       alloc->destroy();
       UPCXX_ASSERT(st->alloc_base == &::tombstone);
@@ -251,13 +253,13 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
 
 // non-collective default constructor
 GASNETT_COLD
-detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core():
+detail::device_allocator_core<cuda_device>::device_allocator_core():
   detail::device_allocator_base(-1/*inactive*/, segment_allocator(nullptr, 0)) { }
 
 // collective constructor with a (possibly inactive) device
 GASNETT_COLD
-detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core(
-    upcxx::cuda_device &dev, void *base, size_t size
+detail::device_allocator_core<cuda_device>::device_allocator_core(
+    cuda_device &dev, void *base, size_t size
   ):
   detail::device_allocator_base(
     dev.heap_idx_,
@@ -277,7 +279,7 @@ detail::device_allocator_core<upcxx::cuda_device>::device_allocator_core(
 }
 
 GASNETT_COLD
-void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
+void detail::device_allocator_core<cuda_device>::destroy() {
   if (!is_active()) return;
 
   #if UPCXXI_CUDA_ENABLED  
@@ -297,7 +299,7 @@ void detail::device_allocator_core<upcxx::cuda_device>::destroy() {
 }
 
 GASNETT_COLD
-void detail::device_allocator_core<upcxx::cuda_device>::real_destructor() {
+void detail::device_allocator_core<cuda_device>::real_destructor() {
   if(upcxx::initialized()) {
     // The thread safety restriction of this call still applies when upcxx isn't
     // initialized, we just have no good way of asserting it so we conditionalize
@@ -309,5 +311,5 @@ void detail::device_allocator_core<upcxx::cuda_device>::real_destructor() {
 }
 
 template
-upcxx::cuda_device::id_type upcxx::gpu_device::heap_idx_to_device_id<upcxx::cuda_device>(int);
+cuda_device::id_type gpu_device::heap_idx_to_device_id<cuda_device>(int);
 
