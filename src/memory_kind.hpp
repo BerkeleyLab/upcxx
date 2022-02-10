@@ -22,6 +22,10 @@ namespace upcxx {
     cuda_device=1,
     hip_device=2,
     any = 3 // should remain last
+    // backend::validate_global_ptr() relies on the following invariants
+    // for the values of this enum, to enable concise/efficient validation:
+    // 1. memory_kind::any is the largest value, and 
+    // 2. the valid values form a "dense", 0-based set of unique values
   };
 
   namespace detail {
