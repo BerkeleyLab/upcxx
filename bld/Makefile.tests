@@ -452,11 +452,13 @@ do-run-tests: force
 	      : $$((++skipped)); continue;                              \
            fi ; \
 	   echo "Running $$test"; : $$((++total));                      \
+	   conduit=$${test##*-};                                        \
+	   stem=$$(echo $$test | $(PERL) -pe 's/^test-//; s/-'$$conduit'$$//; s/-(opt|debug)$$//; s/-(seq|par)$$//'); \
 	   if [[ -n '$(UPCXX_BINDIR)' ]]; then                          \
 	     runcmd='$(UPCXX_BINDIR)/upcxx-run';                        \
 	   else                                                         \
 	     : Amortize cost of upcxx-run lookups;                      \
-	     conduit=$${test##*-}; runvar=runcmd_$$conduit;             \
+	     runvar=runcmd_$$conduit;                                   \
 	     if [[ -z $${!runvar} ]]; then                              \
 	       case $(UPCXX_CODEMODE) in                                \
 	        opt) vars='DBGSYM=0 ASSERT=0 OPTLEV=3 GASNET_CODEMODE=opt';;   \
@@ -469,7 +471,7 @@ do-run-tests: force
 	   fi;                                                          \
 	   if (( $(UPCXX_DRY_RUN) )); then runcmd=": $$runcmd"; fi;  \
 	   output=$(TEST_OUTPUT)/$$test-run.out ;                       \
-	   ( stem=$$(echo $$test | $(PERL) -pe 's/^test-//; s/-'$$conduit'$$//; s/-(opt|debug)$$//; s/-(seq|par)$$//'); \
+	   (                                                            \
 	     test_args=TEST_ARGS_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');\
 	     test_env=TEST_ENV_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');  \
 	     if [[ -n "$${!test_env}" ]] ; then                         \
@@ -479,7 +481,7 @@ do-run-tests: force
 	     fi;                                                        \
 	     date ;                                                     \
 	     set -x ;                                                   \
-	     $$runcmd -np $$ranks -- $$test_env $$run_wrapper ./$$test $$(eval echo $${!test_args}) \
+	     $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper ./$$test $$(eval echo $${!test_args}) \
 	   ) &> $$output;                                               \
 	   exitcode=$$?;                                                \
 	   header=4; firstout=$$(($$header+1));                         \
