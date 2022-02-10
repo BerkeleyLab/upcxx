@@ -347,6 +347,27 @@ above, the following practices are encouraged:
   appropriate use of warning suppression flags or output filtering should be
   employed.  This is one use of the compiler family variables.
 
+Finally, there is a mechanism for tests which cannot be run directly using
+`upcxx-run ... [full-test-name]`.  If a script compiling a test also generates
+a matching file with a `.runcmd` suffix then it is used to construct the final
+arguments to `upcxx-run`.  In the absence of a `.runcmd` tests are run using
+
+```bash
+upcxx-run ... ./[full-test-name] [app-args]
+```
+
+When a `.runcmd` exists this becomes approximately
+```bash
+env RANKS=... NETWORK=...  upcxx-run ... $(./[full-test-name].runcmd [app-args])
+```
+
+This passes the application arguments to the `.runcmd`, allowing it to either
+consume them or forward them to the test by echoing them.  One can derive the
+full name of the test from `basename $0 .runcmd`.  The settings of `RANKS` and
+`NETWORK` in the environment provide other pertinent information.  In addition,
+any settings given in `TEST_ENV_[short-test-name]` will also be in the
+environment of the `.runcmd`.
+
 See [hello_via_shell.sh](../test/hello_via_shell.sh) for an example script
 demonstrating several of the best practices given above.
 

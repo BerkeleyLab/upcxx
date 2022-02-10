@@ -443,9 +443,10 @@ do-run-tests: force
 	   fi;                                                          \
 	 fi;                                                            \
 	 total=0; failed=0; skipped=0;                                  \
+	 export UPCXX_SKIP_REBUILD=1;                                   \
 	 echo "Running tests with RANKS=$$ranks";                       \
 	 for test in $(call ALL_TESTS,$(NETWORKS)); do                  \
-	   [[ -x $$test ]] || continue;                                 \
+	   [[ -x $$test || -x $$test.runcmd ]] || continue;             \
 	   if ! [[ "$$test" =~ $(call TEST_PATTERN,$(TESTS)) ]] || \
 	        [[ "$$test" =~ $(call TEST_PATTERN,$(NO_TESTS) $(test_exclude_compile_only)) ]] ; then \
 	      (( $(UPCXX_VERBOSE) )) && echo Skipping filtered $$test ; \
@@ -479,9 +480,15 @@ do-run-tests: force
 	     else                                                       \
 	       unset test_env;                                          \
 	     fi;                                                        \
+	     export RANKS=$$ranks NETWORK=$$conduit ;                   \
 	     date ;                                                     \
+	     if [[ -x $$test.runcmd ]]; then                            \
+	       command=$$($$test_env ./$$test.runcmd $$(eval echo $${!test_args}));\
+	     else                                                       \
+	       command="./$$test $$(eval echo $${!test_args})";         \
+	     fi;                                                        \
 	     set -x ;                                                   \
-	     $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper ./$$test $$(eval echo $${!test_args}) \
+	     $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper $$command; \
 	   ) &> $$output;                                               \
 	   exitcode=$$?;                                                \
 	   header=4; firstout=$$(($$header+1));                         \
