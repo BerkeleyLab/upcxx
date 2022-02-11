@@ -148,7 +148,7 @@ namespace backend {
 class gpu_device {
  protected:
   // factored internal state:
-  int device_;
+  int device_id_;
   int heap_idx_;
   const memory_kind kind_;
 
@@ -163,14 +163,14 @@ class gpu_device {
   static constexpr T* null_pointer() { return nullptr; }
 
   // factored methods:
-  id_type device_id() const { return device_; }
+  id_type device_id() const { return device_id_; }
 
-  gpu_device(detail::internal_only, id_type device, memory_kind kind) : 
-     device_(device), heap_idx_(-1), kind_(kind) {};
+  gpu_device(detail::internal_only, id_type device_id, memory_kind kind) : 
+     device_id_(device_id), heap_idx_(-1), kind_(kind) {};
   gpu_device(gpu_device const&) = delete;
   gpu_device(gpu_device&& other) :
-    device_(other.device_), heap_idx_(other.heap_idx_), kind_(other.kind_) {
-    other.device_ = invalid_device_id;
+    device_id_(other.device_id_), heap_idx_(other.heap_idx_), kind_(other.kind_) {
+    other.device_id_ = invalid_device_id;
     other.heap_idx_ = -1;
   }
   template<typename Device>
@@ -178,7 +178,7 @@ class gpu_device {
 
  public:
   memory_kind kind() const { return kind_; }
-  /*virtual*/ bool is_active() const { return device_ != invalid_device_id; }
+  /*virtual*/ bool is_active() const { return device_id_ != invalid_device_id; }
 
   virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
 

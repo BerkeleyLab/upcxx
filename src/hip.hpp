@@ -31,7 +31,7 @@ namespace upcxx {
     
     static constexpr memory_kind kind = memory_kind::hip_device;
 
-    hip_device(id_type device = invalid_device_id);
+    hip_device(id_type device_id = invalid_device_id);
     hip_device(hip_device const&) = delete;
     hip_device(hip_device&& other) : gpu_device(std::move(other)) {}
 

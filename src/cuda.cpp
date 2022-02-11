@@ -164,8 +164,8 @@ int cuda_device::device_n() {
 }
 
 GASNETT_COLD
-cuda_device::cuda_device(int device):
-  gpu_device(detail::internal_only(), device, memory_kind::cuda_device) {
+cuda_device::cuda_device(id_type device_id):
+  gpu_device(detail::internal_only(), device_id, memory_kind::cuda_device) {
 
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
@@ -173,32 +173,32 @@ cuda_device::cuda_device(int device):
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
 
   #if UPCXXI_CUDA_ENABLED
-    if (device != invalid_device_id) {
+    if (device_id != invalid_device_id) {
       heap_idx_ = backend::heap_state::alloc_index(use_gex_mk(detail::internal_only()));
       CUcontext ctx;
-      CUresult res = cuDevicePrimaryCtxRetain(&ctx, device);
+      CUresult res = cuDevicePrimaryCtxRetain(&ctx, device_id);
       if(res == CUDA_ERROR_NOT_INITIALIZED) {
         CU_CHECK_ALWAYS_VERBOSE(cuInit(0));
-        res = cuDevicePrimaryCtxRetain(&ctx, device);
+        res = cuDevicePrimaryCtxRetain(&ctx, device_id);
       }
       if (res != CUDA_SUCCESS) {
-        std::string callstr("cuDevicePrimaryCtxRetain() failed for device=");
-        callstr += std::to_string(device);
+        std::string callstr("cuDevicePrimaryCtxRetain() failed for device ");
+        callstr += std::to_string(device_id);
         cuda::cu_failed(res, __FILE__, __LINE__, callstr.c_str(), true);
       }
       auto with = cuda::context<2>(ctx);
 
       cuda_heap_state *st = new cuda_heap_state{};
       st->context = ctx;
-      st->device_id = device;
+      st->device_id = device_id;
 
       #if UPCXXI_GEX_MK_CUDA
       { // construct GASNet-level memory kind and endpoint
-        std::string where = std::string("CUDA device ") + std::to_string(device);
+        std::string where = std::string("CUDA device ") + std::to_string(device_id);
         gex_MK_Create_args_t args;
         args.gex_flags = 0;
         args.gex_class = GEX_MK_CLASS_CUDA_UVA;
-        args.gex_args.gex_class_cuda_uva.gex_CUdevice = device;
+        args.gex_args.gex_class_cuda_uva.gex_CUdevice = device_id;
         st->create_endpoint(args, heap_idx_, where.c_str());
       }
       #endif
@@ -207,7 +207,7 @@ cuda_device::cuda_device(int device):
       backend::heap_state::get(heap_idx_,true) = st;
     }
   #else
-    UPCXX_ASSERT_ALWAYS(device == invalid_device_id);
+    UPCXX_ASSERT_ALWAYS(device_id == invalid_device_id);
   #endif
 }
 
@@ -225,7 +225,7 @@ void cuda_device::destroy(upcxx::entry_barrier eb) {
   #if UPCXXI_CUDA_ENABLED
     cuda_heap_state *st = cuda_heap_state::get(heap_idx_);
     UPCXX_ASSERT(st != nullptr);
-    UPCXX_ASSERT(st->device_id == device_);
+    UPCXX_ASSERT(st->device_id == device_id_);
 
     #if UPCXXI_GEX_MK_CUDA
       st->destroy_endpoint("cuda_device");
@@ -247,7 +247,7 @@ void cuda_device::destroy(upcxx::entry_barrier eb) {
     delete st;
   #endif
   
-  device_ = invalid_device_id; // deactivate
+  device_id_ = invalid_device_id; // deactivate
   heap_idx_ = -1;
 }
 

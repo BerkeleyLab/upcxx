@@ -49,16 +49,16 @@
         int dev_new; // only valid for check_level > 0
         static constexpr int tombstone = 0xBADBABE;
        public:
-        inline context(int device) {
-          UPCXX_ASSERT(device >= 0, "tried to push an invalid device");
+        inline context(int device_id) {
+          UPCXX_ASSERT(device_id >= 0, "tried to push an invalid device");
           UPCXXI_HIP_CHECK(hipGetDevice(&dev_old)); // no documented errors
           UPCXX_ASSERT(dev_old != tombstone);
           switch (check_level) {
-            case 0: UPCXXI_HIP_CHECK(hipSetDevice(device)); break;
-            case 1: UPCXXI_HIP_CHECK_ALWAYS(hipSetDevice(device)); break;
-            case 2: UPCXXI_HIP_CHECK_ALWAYS_VERBOSE(hipSetDevice(device)); break;
+            case 0: UPCXXI_HIP_CHECK(hipSetDevice(device_id)); break;
+            case 1: UPCXXI_HIP_CHECK_ALWAYS(hipSetDevice(device_id)); break;
+            case 2: UPCXXI_HIP_CHECK_ALWAYS_VERBOSE(hipSetDevice(device_id)); break;
           }
-          if (check_level) dev_new = device;
+          if (check_level) dev_new = device_id;
         }
         inline context(context&& other) : dev_old(other.dev_old), dev_new(other.dev_new) {
           other.dev_old = tombstone;

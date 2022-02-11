@@ -204,8 +204,8 @@ int hip_device::device_n() {
 }
 
 GASNETT_COLD
-hip_device::hip_device(int device): 
-  gpu_device(detail::internal_only(), device, memory_kind::hip_device) {
+hip_device::hip_device(id_type device_id): 
+  gpu_device(detail::internal_only(), device_id, memory_kind::hip_device) {
 
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_ALWAYS_MASTER();
@@ -213,22 +213,22 @@ hip_device::hip_device(int device):
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
 
   #if UPCXXI_HIP_ENABLED
-    if (device != invalid_device_id) {
+    if (device_id != invalid_device_id) {
       heap_idx_ = backend::heap_state::alloc_index(use_gex_mk(detail::internal_only()));
 
       UPCXXI_HIP_CHECK_ALWAYS_VERBOSE(hipInit(0));
-      auto with = hip::context<2>(device);
+      auto with = hip::context<2>(device_id);
 
       hip_heap_state *st = new hip_heap_state{};
-      st->device_id = device;
+      st->device_id = device_id;
 
       #if UPCXXI_GEX_MK_HIP
       { // construct GASNet-level memory kind and endpoint
-        std::string where = std::string("HIP device ") + std::to_string(device);
+        std::string where = std::string("HIP device ") + std::to_string(device_id);
         gex_MK_Create_args_t args;
         args.gex_flags = 0;
         args.gex_class = GEX_MK_CLASS_HIP;
-        args.gex_args.gex_class_hip.gex_hipDevice = device;
+        args.gex_args.gex_class_hip.gex_hipDevice = device_id;
         st->create_endpoint(args, heap_idx_, where.c_str());
       }
       #endif
@@ -237,7 +237,7 @@ hip_device::hip_device(int device):
       backend::heap_state::get(heap_idx_,true) = st;
     }
   #else
-    UPCXX_ASSERT_ALWAYS(device == invalid_device_id);
+    UPCXX_ASSERT_ALWAYS(device_id == invalid_device_id);
   #endif
 }
 
@@ -255,7 +255,7 @@ void hip_device::destroy(upcxx::entry_barrier eb) {
   #if UPCXXI_HIP_ENABLED
     hip_heap_state *st = hip_heap_state::get(heap_idx_);
     UPCXX_ASSERT(st != nullptr);
-    UPCXX_ASSERT(st->device_id == device_);
+    UPCXX_ASSERT(st->device_id == device_id_);
 
     #if UPCXXI_GEX_MK_HIP
       st->destroy_endpoint("hip_device");
@@ -276,7 +276,7 @@ void hip_device::destroy(upcxx::entry_barrier eb) {
     delete st;
   #endif
   
-  device_ = invalid_device_id; // deactivate
+  device_id_ = invalid_device_id; // deactivate
   heap_idx_ = -1;
 }
 
