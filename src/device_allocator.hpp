@@ -34,7 +34,7 @@ namespace upcxx {
         }
       }
 
-      bool is_active() const { return heap_idx_ >= 0; }
+      inline bool is_active() const { return heap_idx_ >= 0; }
     };
 
     // specialized per device type
@@ -54,19 +54,59 @@ namespace upcxx {
       void release();
     };*/
   }
-  
+
+  // device-independent public abstract base class:
+  class heap_allocator {
+   private:
+    memory_kind kind_;
+
+   protected:
+    heap_allocator(detail::internal_only, memory_kind kind) : kind_(kind) {}
+
+    virtual global_ptr<char,memory_kind::any> allocate_raw(std::size_t n, std::size_t align,
+                                                           std::size_t sizeof_T, std::size_t alignof_T) = 0;
+    virtual void deallocate_raw(global_ptr<char,memory_kind::any>) = 0;
+
+   public:
+    memory_kind kind() const { return kind_; }
+    virtual ~heap_allocator() {}
+
+    virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
+
+    virtual bool is_active() const = 0;
+    
+    template<typename T>
+    UPCXXI_NODISCARD
+    global_ptr<T,memory_kind::any> allocate(std::size_t n=1, std::size_t align = 0) {
+      UPCXXI_ASSERT_INIT();
+      return reinterpret_pointer_cast<T>(allocate_raw(n, align, sizeof(T), alignof(T)));
+    }
+
+    template<typename T, memory_kind K>
+    void deallocate(global_ptr<T,K> p) {
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_GPTR_CHK(p);
+      deallocate_raw(reinterpret_pointer_cast<char>(p));
+    }
+
+  };
+ 
+  // device-dependent public concrete class:
   template<typename Device>
-  class device_allocator: protected detail::device_allocator_core<Device> {
+  class device_allocator final : 
+    public heap_allocator, protected detail::device_allocator_core<Device> {
     detail::par_mutex lock_;
     
   public:
     using device_type = Device;
-    using detail::device_allocator_base::is_active;
 
-    device_allocator():
+    static constexpr memory_kind kind = Device::kind;
+
+    device_allocator(): heap_allocator(detail::internal_only(), Device::kind),
       detail::device_allocator_core<Device>() { }
 
     device_allocator(Device &dev, typename Device::template pointer<void> base, std::size_t size):
+      heap_allocator(detail::internal_only(), Device::kind),
       detail::device_allocator_core<Device>(
         (UPCXXI_ASSERT_INIT(),
          UPCXXI_ASSERT_ALWAYS_MASTER(),
@@ -74,14 +114,18 @@ namespace upcxx {
          dev), base, size) { }
 
     device_allocator(Device &dev, std::size_t size):
+      heap_allocator(detail::internal_only(), Device::kind),
       detail::device_allocator_core<Device>(
         (UPCXXI_ASSERT_INIT(),
          UPCXXI_ASSERT_ALWAYS_MASTER(),
          UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ(),
          dev), Device::template null_pointer<void>(), size) { }
     
+    ~device_allocator() override = default;
+
     device_allocator(device_allocator &&that):
-      // base class move ctor
+      // base class move ctors
+      heap_allocator(std::move(that)),
       detail::device_allocator_core<Device>::device_allocator_core(
         static_cast<detail::device_allocator_core<Device>&&>(
           ( UPCXXI_ASSERT_MASTER_HELD_IFSEQ(), // required to ensure thread-safety wrt allocate
@@ -92,6 +136,24 @@ namespace upcxx {
         )
       ) {
     }
+
+    void destroy(upcxx::entry_barrier eb = entry_barrier::user) override {
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_ALWAYS_MASTER();
+      UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+      UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
+      if (!is_active()) {
+        backend::quiesce(upcxx::world(), eb);
+        return;
+      }
+      backend::heap_state *hs = backend::heap_state::get(this->heap_idx_);
+      UPCXX_ASSERT(hs->alloc_base == this);
+      UPCXX_ASSERT(hs->device_base);
+      UPCXX_ASSERT(hs->device_base->is_active());    
+      hs->device_base->destroy(eb);
+    }
+
+    bool is_active() const override { return detail::device_allocator_base::is_active(); }
 
     template<typename T>
     UPCXXI_NODISCARD
@@ -123,13 +185,23 @@ namespace upcxx {
       UPCXXI_ASSERT_INIT();
       UPCXXI_GPTR_CHK(p);
       if(p) {
-        UPCXX_ASSERT(this->is_active(), "device_allocator::daallocate() invoked on an inactive device.");
+        UPCXX_ASSERT(this->is_active(), "device_allocator::deallocate() invoked on an inactive device.");
         UPCXX_ASSERT(p.UPCXXI_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
                      p.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me());
         UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
         lock_.lock();
         this->seg_.deallocate(p.UPCXXI_INTERNAL_ONLY(raw_ptr_));
         lock_.unlock();
+      }
+    }
+    template<typename T>
+    void deallocate(global_ptr<T,memory_kind::any> p) {
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_GPTR_CHK(p);
+      if (p) {
+        UPCXX_ASSERT(p.dynamic_kind() == Device::kind, 
+                    "device_allocator::deallocate() invoked with a pointer of the wrong memory kind");
+        deallocate(static_kind_cast<Device::kind>(p));
       }
     }
 
@@ -197,6 +269,21 @@ namespace upcxx {
       UPCXX_ASSERT(hs->alloc_base && hs->alloc_base->is_active(), 
         "device_allocator::device_id() invoked with a pointer from an inactive device.");
       return gp.UPCXXI_INTERNAL_ONLY(raw_ptr_);
+    }
+
+   protected:
+
+    global_ptr<char,memory_kind::any> 
+    allocate_raw(std::size_t n, std::size_t align,
+                 std::size_t sizeof_T, std::size_t alignof_T) override {
+      if (align == 0) { // 0 == default_alignment<T>()
+        align = Device::default_alignment_erased(sizeof_T, alignof_T, Device::normal_alignment);
+      }
+      return allocate<char>(n * sizeof_T, align);
+    }
+
+    void deallocate_raw(global_ptr<char,memory_kind::any> p) override {
+      deallocate(p);
     }
   };
 }
