@@ -2,7 +2,7 @@
 #define _850ece2c_7b55_43a8_9e57_8cbd44974055
 
 #include <upcxx/backend_fwd.hpp>
-#include <upcxx/cuda_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
 #include <upcxx/future.hpp>
 #include <upcxx/intru_queue.hpp>
 #include <upcxx/lpc.hpp>
@@ -55,7 +55,7 @@ namespace upcxx {
     
   public: //private!
     backend::persona_state UPCXXI_INTERNAL_ONLY(backend_state_);
-    cuda::persona_state UPCXXI_INTERNAL_ONLY(cuda_state_);
+    backend::persona_device_state UPCXXI_INTERNAL_ONLY(device_state_);
     std::intptr_t UPCXXI_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
   
   private:

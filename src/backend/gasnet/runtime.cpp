@@ -5,9 +5,11 @@
 
 #include <upcxx/concurrency.hpp>
 #include <upcxx/cuda_internal.hpp>
+#include <upcxx/hip_internal.hpp>
 #include <upcxx/os_env.hpp>
 #include <upcxx/reduce.hpp>
 #include <upcxx/team.hpp>
+#include <upcxx/copy.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -21,7 +23,6 @@
 namespace backend = upcxx::backend;
 namespace detail  = upcxx::detail;
 namespace gasnet  = upcxx::backend::gasnet;
-namespace cuda    = upcxx::cuda;
 
 using upcxx::intrank_t;
 using upcxx::persona;
@@ -87,9 +88,8 @@ intrank_t backend::rank_me; // leave undefined so valgrind can catch it.
 bool backend::verbose_noise = false;
 
 backend::heap_state *backend::heap_state::heaps[backend::heap_state::max_heaps] = {/*nullptr...*/};
-int backend::heap_state::heap_count = 1; // host segment is implicitly idx 0
-bool backend::heap_state::use_mk_ = false;  // set by heap_state::init()
-bool backend::heap_state::recycle = false; // set by heap_state::init()
+int backend::heap_state::heap_count[2] = { 1, 0 }; // host segment is implicitly idx 0
+constexpr int backend::heap_state::max_heaps_cat[2]; // because C++ constexpr rules are stupid
 
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
@@ -258,15 +258,6 @@ namespace {
 #include <upcxx/dl_malloc.h>
 
 void upcxx::backend::heap_state::init() {
-  heap_state::use_mk_ = false 
-  #if UPCXXI_CUDA_ENABLED
-     || upcxx::cuda::use_mk()
-  #endif
-  /* || otherkind::use_mk() ... */;
-
-  // currently we do not recycle heap_idx when using GASNet memory kinds,
-  // until GASNet grows the ability to recycle endpoints
-  heap_state::recycle = !heap_state::use_mk_;
 
 }
 
@@ -1370,8 +1361,8 @@ intrank_t backend::team_rank_to_world(const team &tm, intrank_t peer) {
 }
 
 GASNETT_COLD
-void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::int32_t heap_idx,
-                                  memory_kind KindSet, size_t T_align, const char *T_name, 
+void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr, std::uint32_t heap_idx,
+                                  memory_kind dynamic_kind, memory_kind Kind, size_t T_align, const char *T_name, 
                                   const char *short_context, const char *context) {
   if_pf (!upcxx::initialized()) return; // don't perform checking before init
   if_pf (!T_name) T_name = "";
@@ -1381,15 +1372,8 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
   UPCXX_ASSERT_ALWAYS(backend::rank_me < backend::rank_n);
 
   auto pretty_type = [&]() {
-    std::string s("global_ptr<");
-    s = s + T_name + ", ";
-    switch (KindSet) {
-      case memory_kind::host:        s += "host"; break;
-      case memory_kind::cuda_device: s += "cuda_device"; break;
-      case memory_kind::any:         s += "any"; break;
-      default:                       s = s + "unknown_kind(" + std::to_string((int)KindSet) + ")";
-    }
-    return s + ">";
+    return std::string("global_ptr<") + 
+            T_name + ", " + detail::to_string(Kind) + ">";
   };
 
   bool error = false;
@@ -1418,12 +1402,19 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
     }
 
     if_pf (
-        (KindSet == memory_kind::host && heap_idx != 0) // host should always be heap_idx 0
-     || ((int(KindSet) & int(memory_kind::host)) == 0 && heap_idx == 0) // non-host gptr cannot ref host device
-     || (heap_idx < 0) // currently never use negative heap_idx
+        (Kind == memory_kind::host && heap_idx != 0) // host should always be heap_idx 0
+     || (Kind != memory_kind::host && Kind != memory_kind::any && heap_idx == 0) // non-host gptr cannot ref host device
      || (heap_idx >= backend::heap_state::max_heaps) // invalid heap_idx
       ) {
       ss << pretty_type() << " representation corrupted, bad heap_idx\n";
+      error = true; break;
+    }
+
+    if_pf ( dynamic_kind >= memory_kind::any // invalid garbage
+         || (Kind != memory_kind::any && dynamic_kind != Kind) // static type mismatch
+         || ((dynamic_kind == memory_kind::host) != (heap_idx == 0)) // dynamic_type/heap_idx mismatch
+      ) {
+      ss << pretty_type() << " representation corrupted, bad dynamic_kind\n";
       error = true; break;
     }
 
@@ -1450,10 +1441,15 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
                << "heap_idx does not correspond to an active device segment\n";
             error = true; break;
           }
+          if_pf (dynamic_kind != hs->kind()) {
+            ss << pretty_type() << " representation corrupted or stale pointer, "
+               << "dynamic_kind does not correspond to an active device segment\n";
+            error = true; break;
+          }
           std::tie(owner_vbase, size) = hs->alloc_base->seg_.segment_range();
           UPCXX_ASSERT(owner_vbase && size);
         }
-        else if (backend::heap_state::use_mk()) { // query GEX for remote device EP
+        else if (detail::native_gex_mk(dynamic_kind)) { // query GEX for remote device EP
           UPCXX_ASSERT(endpoint0 != GEX_EP_INVALID);
           tm = gex_TM_Pair(endpoint0, heap_idx);
         }
@@ -1502,7 +1498,8 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
 
   if_pf (error) {
     if (short_context && *short_context) ss << " in " << short_context;
-    ss << "\n  rank = " << rank << ", raw_ptr = " << raw_ptr << ", heap_idx = " << heap_idx;
+    ss << "\n  rank = " << rank << ", raw_ptr = " << raw_ptr 
+       << ", heap_idx = " << heap_idx << ", dynamic_kind = " << detail::to_string(dynamic_kind);
     detail::fatal_error(ss.str(), "fatal global_ptr error", context);
   }
 }
@@ -2032,12 +2029,23 @@ RpcAsLpc* rpc_as_lpc::build_rdzv_lz(
 
 namespace {
   GASNETT_HOT
-  void burst_cuda(persona *per) {
+  void burst_device(persona *per) {
   #if UPCXXI_CUDA_ENABLED
-    while(cuda::event_cb *cb = per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.peek()) {
-      if(CUDA_SUCCESS == cuEventQuery((CUevent)cb->cu_event)) {
-        CU_CHECK(cuEventDestroy((CUevent)cb->cu_event));
-        per->UPCXXI_INTERNAL_ONLY(cuda_state_).event_cbs.dequeue();
+    while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
+      if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
+        CU_CHECK(cuEventDestroy((CUevent)cb->event));
+        per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
+        cb->execute_and_delete();
+      }
+      else
+        break;
+    }
+  #endif
+  #if UPCXXI_HIP_ENABLED
+    while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.peek()) {
+      if(hipEventQuery((hipEvent_t)cb->event) == hipSuccess) {
+        UPCXXI_HIP_CHECK(hipEventDestroy((hipEvent_t)cb->event));
+        per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.dequeue();
         cb->execute_and_delete();
       }
       else
@@ -2062,7 +2070,7 @@ void gasnet::after_gasnet() {
     exec_n = 0;
     
     tls.foreach_active_as_top([&](persona &p) {
-      burst_cuda(&p);
+      burst_device(&p);
       
       #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
@@ -2112,7 +2120,7 @@ static inline void do_progress() {
     exec_n = 0;
     
     tls.foreach_active_as_top([&](persona &p) {
-      burst_cuda(&p);
+      burst_device(&p);
       
       #if UPCXXI_BACKEND_GASNET_SEQ
         if(&p == &backend::master)
@@ -2704,11 +2712,4 @@ namespace upcxx { namespace experimental {
 // Other library ident strings live in watermark.cpp
 
 GASNETT_IDENT(UPCXXI_IdentString_Network, "$UPCXXNetwork: " _STRINGIFY(GASNET_CONDUIT_NAME) " $");
-
-// requires cuda_internal.hpp
-#if UPCXXI_CUDA_USE_MK
-  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 1 $");
-#else
-  GASNETT_IDENT(UPCXXI_IdentString_CUDAGASNet, "$UPCXXCUDAGASNet: 0 $");
-#endif
 

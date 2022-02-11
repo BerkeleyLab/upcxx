@@ -122,9 +122,16 @@ struct match_const<T, false> {
   using tricksy_type = tricksy;
 };
 
-volatile bool cuda_enabled;
-upcxx::cuda_device *gpu_device;
-upcxx::device_allocator<upcxx::cuda_device> *gpu_alloc;
+#ifndef DEVICE
+  // this test always compiles statically with a device to detect compile-time bugs, 
+  // even in builds where no device is runtime-enabled
+  #define DEVICE cuda_device
+  using Device = upcxx::DEVICE;
+#endif
+
+volatile bool gpu_enabled;
+Device *gpu_device;
+upcxx::device_allocator<Device> *gpu_alloc;
 
 namespace perverse {
   namespace std { // check for insufficiently qualified macro use of ::std
@@ -215,16 +222,16 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
 
   #if 1
   // test memory kinds
-  upcxx::global_ptr<T,upcxx::memory_kind::cuda_device> gpu_o;
-  if (cuda_enabled) {
+  upcxx::global_ptr<T,Device::kind> gpu_o;
+  if (gpu_enabled) {
     gpu_o = gpu_alloc->allocate<T>(1);
   }
-  if (cuda_enabled) { // deliberately separated to discourage optimizations that might hide static errors for non-CUDA
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_f0 = upcxx_memberof(gpu_o, f0);
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_f1 = upcxx_memberof(gpu_o, f1);
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_f2 = upcxx_memberof(gpu_o, f2);
+  if (gpu_enabled) { // deliberately separated to discourage optimizations that might hide static errors for non-CUDA
+    upcxx::global_ptr<char_t,Device::kind> gpu_f0 = upcxx_memberof(gpu_o, f0);
+    upcxx::global_ptr<char_t,Device::kind> gpu_f1 = upcxx_memberof(gpu_o, f1);
+    upcxx::global_ptr<char_t,Device::kind> gpu_f2 = upcxx_memberof(gpu_o, f2);
     assert(gpu_f0 && gpu_f1 && gpu_f2);
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_base = upcxx::reinterpret_pointer_cast<char_t>(gpu_o);
+    upcxx::global_ptr<char_t,Device::kind> gpu_base = upcxx::reinterpret_pointer_cast<char_t>(gpu_o);
     ssize_t gd0 = gpu_f0 - gpu_base;
     ssize_t gd1 = gpu_f1 - gpu_base;
     ssize_t gd2 = gpu_f2 - gpu_base;
@@ -328,12 +335,12 @@ void check_general(bool has_virtual) {
 
   #if 1
   // test memory kinds
-  upcxx::global_ptr<T,upcxx::memory_kind::cuda_device> gpu_o;
-  if (cuda_enabled) {
+  upcxx::global_ptr<T,Device::kind> gpu_o;
+  if (gpu_enabled) {
     if (!upcxx::rank_me()) gpu_o = gpu_alloc->allocate<T>(1);
     gpu_o = upcxx::broadcast(gpu_o, 0).wait();
   }
-  if (cuda_enabled) { // deliberately separated to discourage optimizations that might hide static errors for non-CUDA
+  if (gpu_enabled) { // deliberately separated to discourage optimizations that might hide static errors for non-CUDA
     auto fut0 = upcxx_memberof_general(gpu_o, f0);
     auto fut1 = upcxx_memberof_general(gpu_o, f1);
     auto fut2 = upcxx_memberof_general(gpu_o, f2);
@@ -342,11 +349,11 @@ void check_general(bool has_virtual) {
     bool all_ready = fut0.ready() && fut1.ready() && fut2.ready();
     if (expect_ready) assert(all_ready);
     else assert(!all_ready);
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_f0 = fut0.wait();
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_f1 = fut1.wait();
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_f2 = fut2.wait();
+    upcxx::global_ptr<char_t,Device::kind> gpu_f0 = fut0.wait();
+    upcxx::global_ptr<char_t,Device::kind> gpu_f1 = fut1.wait();
+    upcxx::global_ptr<char_t,Device::kind> gpu_f2 = fut2.wait();
     assert(gpu_f0 && gpu_f1 && gpu_f2);
-    upcxx::global_ptr<char_t,upcxx::memory_kind::cuda_device> gpu_base = upcxx::reinterpret_pointer_cast<char_t>(gpu_o);
+    upcxx::global_ptr<char_t,Device::kind> gpu_base = upcxx::reinterpret_pointer_cast<char_t>(gpu_o);
     ssize_t gd0 = gpu_f0 - gpu_base;
     ssize_t gd1 = gpu_f1 - gpu_base;
     ssize_t gd2 = gpu_f2 - gpu_base;
@@ -409,12 +416,15 @@ int main() {
   upcxx::init();
   print_test_header();
 
-  #if UPCXX_KIND_CUDA
-    cuda_enabled = true;
+  #if UPCXX_KIND_HIP
+    if (std::is_same<Device, upcxx::hip_device>::value) gpu_enabled = true;
   #endif
-  if (cuda_enabled) {
-    gpu_device = new upcxx::cuda_device( 0 ); // Open device 0
-    gpu_alloc = new upcxx::device_allocator<upcxx::cuda_device>(*gpu_device, 16*1024);
+  #if UPCXX_KIND_CUDA
+    if (std::is_same<Device, upcxx::cuda_device>::value) gpu_enabled = true;
+  #endif
+  if (gpu_enabled) {
+    gpu_device = new Device( 0 ); // Open device 0
+    gpu_alloc = new upcxx::device_allocator<Device>(*gpu_device, 16*1024);
   }
 
   T(A); 
@@ -430,7 +440,7 @@ int main() {
   check_general<V>(true);
   check_general<const V>(true);
 
-  if (cuda_enabled) {
+  if (gpu_enabled) {
     gpu_device->destroy();
     delete gpu_device;
     delete gpu_alloc;

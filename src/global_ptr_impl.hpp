@@ -63,11 +63,11 @@
       return old;
     }
 
-    friend struct std::less<global_ptr<element_type,KindSet>>;
-    friend struct std::less_equal<global_ptr<element_type,KindSet>>;
-    friend struct std::greater<global_ptr<element_type,KindSet>>;
-    friend struct std::greater_equal<global_ptr<element_type,KindSet>>;
-    friend struct std::hash<global_ptr<element_type,KindSet>>;
+    friend struct std::less<global_ptr<element_type,Kind>>;
+    friend struct std::less_equal<global_ptr<element_type,Kind>>;
+    friend struct std::greater<global_ptr<element_type,Kind>>;
+    friend struct std::greater_equal<global_ptr<element_type,Kind>>;
+    friend struct std::hash<global_ptr<element_type,Kind>>;
 
     template<typename U, typename V, memory_kind K>
     friend global_ptr<U,K> reinterpret_pointer_cast(global_ptr<V,K> ptr);

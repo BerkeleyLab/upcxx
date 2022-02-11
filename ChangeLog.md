@@ -9,6 +9,10 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* NEW: Memory Kinds support for AMD GPUs using ROCm/HIP, see [INSTALL.md](INSTALL.md).
+    New `configure --enable-hip` flag activates new `upcxx::hip_device` class.
+    This includes native offload support for `upcxx::copy()` using ROCmRDMA on 
+    recent InfiniBand network hardware - see GASNet-EX documentation for details.
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
 
 Infrastructure changes:
@@ -18,6 +22,7 @@ Notable issues resolved
 
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
+* spec issue 188: Add `cuda_device::device_n()`
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
@@ -28,6 +33,7 @@ All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
+* `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
 
 * Prior to this release, the configure script would permit values of `CXX` and
   `CC` which had different families or versions (as long as they were

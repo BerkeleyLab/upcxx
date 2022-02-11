@@ -153,6 +153,7 @@ in the following sections, below:
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
@@ -490,12 +491,12 @@ native memory kinds acceleration for additional GPU and network variants.
 
 #### `configure` Command for Enabling CUDA GPU Support
 
-To activate the UPC++ support for CUDA, pass `--with-cuda` to the `configure`
+To activate the UPC++ support for CUDA, pass `--enable-cuda` to the `configure`
 script:
 
 ```bash
 cd <upcxx-source-path>
-./configure --prefix=<upcxx-install-path> --with-cuda
+./configure --prefix=<upcxx-install-path> --enable-cuda
 ```
 
 This will detect whether the requirements for GDR acceleration are met and
@@ -504,7 +505,7 @@ For troubleshooting installation of GASNet's GDR support, please see
 [docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
 in the GASNet memory_kinds distribution.
 
-`configure --with-cuda` expects to find the NVIDIA `nvcc` compiler wrapper in your `$PATH` and
+`configure --enable-cuda` expects to find the NVIDIA `nvcc` compiler wrapper in your `$PATH` and
 will attempt to extract the correct build settings for your system.  If this
 automatic extraction fails (resulting in preprocessor or linker errors
 mentioning CUDA), then you may need to manually override the following
@@ -530,7 +531,7 @@ compiler as was passed to the UPC++ `configure` script.
 UPC++ CUDA operation can be validated using the following programs in the source tree:
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `cuda_device`
-* `bench/cuda_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+* `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
 * `example/cuda_vecadd`: demonstration of using UPC++ `cuda_device` to orchestrate
   communication for a program invoking CUDA computational kernels on the GPU.
 
@@ -539,6 +540,7 @@ like the following:
 
 ```bash
 $ upcxx-run -i a.out | grep CUDA
+UPCXXKindCUDA: 202103L
 UPCXXCUDAGASNet: 1
 UPCXXCUDAEnabled: 1
 GASNetMKClassCUDAUVA: 1
@@ -568,6 +570,110 @@ in a future release.
 
 See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more details on 
 using the CUDA support.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
+### Configuration: AMD ROCm/HIP GPU support
+
+#### System Requirements:
+
+UPC++ includes support for RMA communication operations on memory buffers
+resident in a ROCm/HIP-compatible AMD GPU.  Specific requirements:
+
+* Modern AMD-branded HIP-compatible GPU hardware
+* AMD ROCm drivers version 4.5.0 or later (earlier versions of ROCm MIGHT also
+  work, but are not recommended)
+
+#### Additional System Requirements for ROCmRDMA-accelerated memory kinds:
+
+This version of UPC++ supports ROCmRDMA acceleration of memory kinds
+on selected platforms using modern AMD-branded GPUs and Mellanox-branded InfiniBand
+network hardware, when using the native ibv-conduit. Additional requirements:
+
+* Linux OS with x86\_64 or ppc64le CPU (not ARM)
+* Recent Mellanox-branded InfiniBand network hardware
+* ROCK AMD GPU kernel driver installed
+* ibv-conduit built from the current version of GASNet-EX (the default for this release)
+
+When using ROCmRDMA-accelerated memory kinds, calls to `upcxx::copy` will offload
+the data transfer to the network adapter, streaming data directly between the
+source and destination memory locations (in host or device memory on any node), 
+without staging through additional memory buffers.
+
+For all other platforms, the ROCm/HIP support in this UPC++ release utilizes a
+reference implementation which has not been tuned for performance. In
+particular, `upcxx::copy` will stage data transfers involving device
+memory through intermediate buffers in host memory, and is expected to
+underperform relative to solutions using RDMA, ROCmRDMA and similar
+zero-copy technologies. Future versions of UPC++ will introduce
+native memory kinds acceleration for additional GPU and network variants.
+
+#### `configure` Command for Enabling AMD ROCm/HIP GPU Support
+
+To activate the UPC++ support for AMD ROCm/HIP, pass `--enable-hip` to the `configure`
+script:
+
+```bash
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --enable-hip
+```
+
+This will detect whether the requirements for ROCmRDMA acceleration are met and
+automatically activate that feature. 
+For troubleshooting installation of GASNet's ROCmRDMA support, please see
+[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
+in the GASNet memory_kinds distribution.
+
+`configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
+in your `$PATH` and will attempt to infer the correct ROCm/HIP install location for
+your system. If this automatic detection fails, then you may need to manually
+override the following option to `configure`:
+
+* `--with-hip-home=...`: the install prefix for the ROCm/HIP developer tools 
+   Eg `--with-hip-home=/opt/rocm-4.5.0/hip`
+
+Note that you must build UPC++ with the same host compiler toolchain as is used
+by `hipcc` when compiling any UPC++ ROCm programs. That is, both UPC++ and your
+UPC++ application must be compiled using the same host compiler toolchain.
+You can ensure this is the case by either (1) configuring UPC++ with the same
+compiler as your system hipcc uses, or (2) using the `--gcc-toolchain=` command line
+argument to `hipcc` during application compilation to ensure it uses the same host
+compiler as was passed to the UPC++ `configure` script.
+
+#### Validation of ROCm/HIP memory kinds support
+   
+UPC++ ROCm/HIP operation can be validated using the following programs in the source tree:
+
+* `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `hip_device`
+* `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+
+One can validate use of ROCmRDMA acceleration in a given UPC++ executable with a command
+like the following:
+
+```bash
+$ upcxx-run -i a.out | grep HIP
+UPCXXKindHIP: 202203L
+UPCXXHIPEnabled: 1
+UPCXXHIPGASNet: 1
+GASNetMKClassHIP: 1
+```
+
+Where the `UPCXXHIPGASNet: 1` and `GASNetMKClassHIP: 1` lines together confirm the 
+use of ROCmRDMA acceleration. If either value is 0 or absent then ROCmRDMA acceleration is not in use.
+
+#### Known problems with ROCmRDMA-accelerated memory kinds
+
+The current implementation of 
+ROCmRDMA-accelerated memory kinds enforces a per-process limit of 32 active `hip_device`
+opens over the lifetime of the process. This static limit can be raised at configure time
+via `configure --with-maxeps=N`, and is expected to become a more dynamic limit
+in a future release.
+
+#### Use of UPC++ memory kinds
+
+See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more details on 
+using the UPC++ GPU support.
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
@@ -605,6 +711,8 @@ options:
   use of a full path to the Python interpreter in `upcxx-run`.
 * Options for control of (optional) CUDA support are documented in the section
   [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
+* Options for control of (optional) AMD ROCm/HIP GPU support are documented in the section
+  [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
 * Options not recognized by the UPC\+\+ `configure` script will be passed to
   the GASNet-EX `configure`.  For instance, `--with-mpirun-cmd=...` might be
   required to setup MPI-based launch of ibv-conduit applications.  Please read

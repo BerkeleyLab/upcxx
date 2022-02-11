@@ -80,9 +80,9 @@ namespace detail {
 
 // In debug mode this will abort. In non-debug this is a nop.
 #if UPCXXI_ASSERT_ENABLED
-  #define UPCXXI_INVOKE_UB() UPCXXI_FATAL_ERROR("Undefined behavior!")
+  #define UPCXXI_INVOKE_UB(...) UPCXXI_FATAL_ERROR(__VA_ARGS__)
 #else
-  #define UPCXXI_INVOKE_UB() UPCXXI_UNREACHABLE()
+  #define UPCXXI_INVOKE_UB(...) UPCXXI_UNREACHABLE()
 #endif
 
 // static assert that is permitted in expression context

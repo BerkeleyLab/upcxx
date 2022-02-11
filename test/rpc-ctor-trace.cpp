@@ -8,17 +8,6 @@
 // copy/move behavior for past or subsequent revisions of the implementation. 
 // Consult the UPC++ Specification for guaranteed copy/move behaviors.
 
-#ifndef USE_CUDA
-  #if UPCXX_KIND_CUDA 
-    #define USE_CUDA 1
-  #else
-    #define USE_CUDA 0
-  #endif
-#endif
-#if USE_CUDA && !UPCXX_KIND_CUDA
-  #error requested USE_CUDA but this UPC++ install does not have CUDA support
-#endif
-
 using std::uint64_t;
 
 struct T {
@@ -777,9 +766,9 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
 }
 void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
 
-  #if USE_CUDA
-    upcxx::cuda_device dev(0);
-    upcxx::device_allocator<upcxx::cuda_device> dev_alloc(dev, 1024*1024);
+  #ifdef DEVICE
+    Device dev(0);
+    upcxx::device_allocator<Device> dev_alloc(dev, 1024*1024);
     using gpdev_t = upcxx::global_ptr<int, upcxx::memory_kind::any>;
     gpdev_t gpdev_local = dev_alloc.allocate<int>(2);
     dist_object<gpdev_t> devdobj(gpdev_local+1);
@@ -905,7 +894,7 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
 
 
     dev.destroy();
-  #endif // USE_CUDA
+  #endif // DEVICE
 }
 
 int main() {

@@ -123,11 +123,17 @@ test_exclude_all += \
 	test/uts/uts_omp.cpp \
 	test/uts/uts_threads.cpp
 
-# Conditionally exclude tests that require a valid CUDA device at runtime:
-test_requires_cuda_device = \
-	bench/cuda_microbenchmark.cpp \
+# Conditionally exclude tests that require a valid GPU (any kind) at runtime:
+test_requires_gpu_device = \
+	bench/gpu_microbenchmark.cpp \
 	test/bad-segment-alloc.cpp \
-	test/regression/issue432.cpp \
+	test/regression/issue432.cpp 
+ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)),)
+test_exclude_all += $(test_requires_gpu_device)
+endif
+
+# Conditionally exclude tests that require a valid CUDA-kind device at runtime:
+test_requires_cuda_device = \
 	example/prog-guide/h-d.cpp \
 	example/prog-guide/h-d-remote.cpp
 ifneq ($(UPCXX_CUDA),1)
@@ -203,7 +209,7 @@ ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
 test_pgi_debug_symbols_broken = \
-	CUDA_MICROBENCHMARK \
+	GPU_MICROBENCHMARK \
 	RPC_CTOR_TRACE \
 	NODISCARD \
 	MEMBEROF \
@@ -234,7 +240,7 @@ $(foreach test,$(test_seq_threaded), \
 
 # Tweak benchmarks for efficient coverage, these parameters are too small for good measurements
 export TEST_ENV_PUT_FLOOD=fixed_iters=10
-export TEST_ARGS_CUDA_MICROBENCHMARK='-t 1 -w 1'
+export TEST_ARGS_GPU_MICROBENCHMARK='-t 1 -w 1'
 export TEST_ARGS_MISC_PERF='1000'
 export TEST_ARGS_RPC_PERF='100 10 1048576'
 

@@ -4,8 +4,8 @@
 
 using namespace upcxx;
 
-#if !UPCXX_KIND_CUDA
-#error "This example requires UPC++ to be built with CUDA support."
+#ifndef DEVICE
+#error "This example requires UPC++ to be built with GPU support."
 #endif
 
 // demonstrate std::bad_alloc exception behavior on device memory exhaustion
@@ -17,8 +17,8 @@ int main() {
   size_t billion = 1000000000ULL;
   size_t trillion = billion*1000ULL;
 
-  cuda_device dev(0);
-  device_allocator<cuda_device> *dap = nullptr;
+  Device dev(0);
+  device_allocator<Device> *dap = nullptr;
   assert(dev.is_active());
 
   try {
@@ -30,8 +30,8 @@ int main() {
     if (me % 2 == 0) mysz = 1<<20;
     else             mysz = me*trillion; 
     assert(mysz > 0);
-    dap = new device_allocator<cuda_device>(dev, mysz);
-    say() << "ERROR:  device_allocator<cuda_device> failed to throw exception!";
+    dap = new device_allocator<Device>(dev, mysz);
+    say() << "ERROR:  device_allocator construction failed to throw exception!";
   } catch (std::bad_alloc const &e) {
     say() << "Caught expected exception: \n" << e.what();
     #if RETHROW
@@ -47,7 +47,7 @@ int main() {
     barrier();
     size_t mysz = 1<<20; 
     assert(mysz > 0);
-    dap = new device_allocator<cuda_device>(dev, mysz);
+    dap = new device_allocator<Device>(dev, mysz);
     assert(dap);
   } catch (std::bad_alloc const &e) {
     say() << "ERROR: Caught unexpected exception: \n" << e.what();

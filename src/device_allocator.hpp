@@ -3,7 +3,6 @@
 
 #include <upcxx/backend_fwd.hpp>
 #include <upcxx/concurrency.hpp>
-#include <upcxx/cuda.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/segment_allocator.hpp>
 
@@ -41,10 +40,6 @@ namespace upcxx {
     // specialized per device type
     template<typename Device>
     struct device_allocator_core; /*: device_allocator_base {
-      static constexpr std::size_t min_alignment;
-      template<typename T>
-      static constexpr std::size_t default_alignment();
-      static id_type device_id(detail::internal_only, int heap_idx);
 
       device_allocator_core(); // non-collective default constructor
 
@@ -61,11 +56,12 @@ namespace upcxx {
   }
   
   template<typename Device>
-  class device_allocator: public detail::device_allocator_core<Device> {
+  class device_allocator: protected detail::device_allocator_core<Device> {
     detail::par_mutex lock_;
     
   public:
     using device_type = Device;
+    using detail::device_allocator_base::is_active;
 
     device_allocator():
       detail::device_allocator_core<Device>() { }
@@ -107,7 +103,7 @@ namespace upcxx {
       lock_.lock();
       void *ptr = this->seg_.allocate(
           n*sizeof(T),
-          std::max<std::size_t>(align, this->min_alignment)
+          std::max<std::size_t>(align, Device::min_alignment())
         );
       lock_.unlock();
       
