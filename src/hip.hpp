@@ -10,7 +10,7 @@
 #include <cstdint>
 
 #if UPCXXI_HIP_ENABLED
-  // hip feature macro
+  // feature macro: ONLY changes when a new spec is officially released that alters HIP feature
   #define UPCXX_KIND_HIP 202103L
 #else
   #undef UPCXX_KIND_HIP

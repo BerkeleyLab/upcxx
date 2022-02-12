@@ -10,7 +10,7 @@
 #include <cstdint>
 
 #if UPCXXI_CUDA_ENABLED
-  // cuda feature macro
+  // feature macro: ONLY changes when a new spec is officially released that alters CUDA feature
   #define UPCXX_KIND_CUDA 202103L
 #else
   #undef UPCXX_KIND_CUDA
