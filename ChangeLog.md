@@ -22,6 +22,7 @@ Notable issues resolved
 
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
+* issue #527: Raise PGI version floor to 19.3
 * spec issue 188: Add `cuda_device::device_n()`
 
 Embeds a GASNet-EX library that addresses the following notable issues
@@ -33,6 +34,7 @@ All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
+* The oldest-supported PGI compiler version is raised to 19.3 on all platforms.
 * `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
 
 * Prior to this release, the configure script would permit values of `CXX` and

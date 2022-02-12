@@ -24,7 +24,7 @@ The current release is known to work on the following configurations:
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
     - Intel C++ 17.0.2 or newer (with libstdc++ from g++ 6.4.0 or newer)    
     - Intel oneAPI compilers 2021.1.2 or newer (with libstdc++ from g++ 6.4.0 or newer)
-    - PGI C++ 19.1 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
+    - PGI C++ 19.3 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
     - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
@@ -33,7 +33,7 @@ The current release is known to work on the following configurations:
 * Linux/ppc64le (aka IBM POWER little-endian) with one of the following compilers:
     - g++ 6.4.0 or newer
     - clang++ 5.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
-    - PGI C++ 18.10 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
+    - PGI C++ 19.3 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
     - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),

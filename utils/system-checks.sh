@@ -595,14 +595,14 @@ platform_sanity_checks() {
                # We conservatively ban 20.[5-8] even though only 20.7 is known to exist.
                COMPILER_BAD=1
             elif [[ "$ARCH,$KERNEL" = 'x86_64,Linux' ]] &&
-                 egrep ' +(19|[2-9][0-9])\.[0-9]+-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
-               # Ex: "pgc++ 19.7-0 LLVM 64-bit target on x86-64 Linux -tp nehalem"
-               # 19.1 and newer "GOOD"
+                 egrep ' +(19\.[3-9]|19\.1[0-9]|[2-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # Ex: "pgcc 19.10-0 LLVM 64-bit target on x86-64 Linux -tp nehalem "
+               # 19.3 and newer "GOOD"
                COMPILER_GOOD=1
             elif [[ "$ARCH,$KERNEL" = 'ppc64le,Linux' ]] &&
-                 egrep ' +(18\.10|(19|[2-9][0-9])\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
-               # Ex: "pgc++ 18.10-0 linuxpower target on Linuxpower"
-               # 18.10 and newer "GOOD" (no 18.x was released for x > 10)
+                 egrep ' +(19\.[3-9]|19\.1[0-9]|[2-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # Ex: "pgcc (aka pgcc18) 20.1-0 linuxpower target on Linuxpower"
+               # 19.3 and newer "GOOD"
                COMPILER_GOOD=1
             elif [[ "$ARCH,$KERNEL" = 'aarch64,Linux' ]] ; then
                : # Not yet claiming support on aarch64, but also not BAD
@@ -722,9 +722,9 @@ platform_sanity_checks() {
         local RECOMMEND
         read -r -d '' RECOMMEND<<'EOF'
 We recommend one of the following C++ compilers (or any later versions where no end-of-range is given):
-           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1 through 20.4 (inclusive),
+           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.3 through 20.4 (inclusive),
                               NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2
-           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10 through 20.4 (inclusive),
+           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 19.3 through 20.4 (inclusive),
                               NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0
