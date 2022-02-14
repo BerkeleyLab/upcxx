@@ -31,6 +31,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   // correspond to null, but it would be very surprising if it did not.
   assert(dp_null0 == dp_null);
   constexpr id_type id_invalid = Device::invalid_device_id;
+  memory_kind k = Device::kind;
 
   // test inactive devices and allocators
   for (int i=0; i < 20+upcxx::rank_me(); i++) { 

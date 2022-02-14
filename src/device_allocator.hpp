@@ -103,7 +103,7 @@ namespace upcxx {
       lock_.lock();
       void *ptr = this->seg_.allocate(
           n*sizeof(T),
-          std::max<std::size_t>(align, Device::min_alignment())
+          std::max<std::size_t>(align, Device::min_alignment)
         );
       lock_.unlock();
       

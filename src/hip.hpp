@@ -39,7 +39,7 @@ namespace upcxx {
 
     template<typename T>
     static constexpr std::size_t default_alignment() {
-      return alignof(T) < 256 ? 256 : alignof(T);
+      return default_alignment_erased(sizeof(T), alignof(T), normal_alignment);
     }
 
     void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
@@ -53,7 +53,8 @@ namespace upcxx {
     }
 
   private:
-    static constexpr std::size_t min_alignment() { return 16; }
+    static constexpr int min_alignment = 16;
+    static constexpr int normal_alignment = 256;
   };
 
   namespace detail {

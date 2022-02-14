@@ -176,6 +176,13 @@ class gpu_device {
   template<typename Device>
   static typename Device::id_type heap_idx_to_device_id(int heap_idx);
 
+  // computes Device::default_alignment<T> without a static type T
+  static constexpr std::size_t 
+  default_alignment_erased(std::size_t sizeof_T, std::size_t alignof_T,
+                           std::size_t normal_align) {
+    return alignof_T < normal_align ? normal_align : alignof_T;
+  }
+
  public:
   memory_kind kind() const { return kind_; }
   /*virtual*/ bool is_active() const { return device_id_ != invalid_device_id; }
