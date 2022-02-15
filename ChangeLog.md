@@ -23,6 +23,7 @@ Notable issues resolved
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
 * issue #527: Raise PGI version floor to 19.3
+* issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
 * spec issue 188: Add `cuda_device::device_n()`
 
 Embeds a GASNet-EX library that addresses the following notable issues
