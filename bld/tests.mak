@@ -134,6 +134,7 @@ endif
 
 # Conditionally exclude tests that require a valid CUDA-kind device at runtime:
 test_requires_cuda_device = \
+        test/cuda-context.cpp \
 	example/prog-guide/h-d.cpp \
 	example/prog-guide/h-d-remote.cpp
 ifneq ($(UPCXX_CUDA),1)

@@ -245,7 +245,6 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
     #endif
     
     CU_CHECK_ALWAYS(cuStreamDestroy(st->stream));
-    CU_CHECK_ALWAYS(cuCtxSetCurrent(nullptr));
     CU_CHECK_ALWAYS(cuDevicePrimaryCtxRelease(st->device_id));
     
     backend::heap_state::get(heap_idx_) = nullptr;
