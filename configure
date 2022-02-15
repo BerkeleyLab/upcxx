@@ -917,6 +917,9 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
       done
     fi
   fi
+  if [[ -z $HIP_HOME ]] && [[ -d /opt/rocm ]] ; then
+    HIP_HOME=/opt/rocm # last resort, check default install dir
+  fi
   if [[ -z $HIP_HOME ]] || ! [[ -f $HIP_HOME/$HIP_HEADER ]] ; then
     echo_and_die 'Failed to find ROCm/HIP developer tools, please pass --with-hip-home=/hip/install/prefix'
   else
