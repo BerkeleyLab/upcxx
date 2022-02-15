@@ -9,9 +9,16 @@ size_t freemem() {
   return shared_segment_size() - shared_segment_used();
 }
 
+#if defined(__PGIC__) && __PGIC__ < 20
+// PGI 18.10/19.3 on PPC whines about large types that are never even instantiated..
+#define BROKEN_COMPILER 1
+#endif
+
+#if !BROKEN_COMPILER
 struct huge {
   char dummy[1LLU<<33];
 };
+#endif
 
 struct byte_bag { // serialization ubound is deliberately unbounded
   static constexpr size_t sz = 4096;
@@ -122,7 +129,9 @@ int main() {
 
   
     CHECK("upcxx::new_array<char>(toobig)", auto g = new_array<char>(toobig));
+  #if !BROKEN_COMPILER
     CHECK("upcxx::new_<huge>()", auto g = new_<huge>());
+  #endif
     CHECK_NULL("upcxx::allocate(toobig)", allocate(toobig));
     CHECK_NULL("upcxx::allocate<char>(toobig)", allocate<char>(toobig));
 
