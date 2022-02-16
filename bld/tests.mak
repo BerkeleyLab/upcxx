@@ -224,6 +224,11 @@ ifeq ($(strip $(UPCXX_PLATFORM_IBV_CUDA_HAS_BUG_4150)),1)
   export TEST_FLAGS_COPY_COVER:=$(TEST_FLAGS_COPY_COVER) -DSKIP_KILL
 endif
 
+ifeq ($(strip $(UPCXX_PLATFORM_CUDA_HAS_BUG_4396)),1)
+  # Compile-time measure(s) to avoid known failures attributable to GASNet bug 4150
+  export TEST_FLAGS_CUDA_CONTEXT:=$(TEST_FLAGS_CUDA_CONTEXT) -DSKIP_DEVICE_FREE
+endif
+
 # Some tests use std::thread in both SEQ and PAR
 test_seq_threaded = \
 	VIEW \

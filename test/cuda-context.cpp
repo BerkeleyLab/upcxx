@@ -135,6 +135,8 @@ int main(int argc, char **argv) {
       auto gp2 = alloc->allocate<int>(sz);
       dist_object<gp_t> dobj(gp2);
       auto gp3 = dobj.fetch((rank_me()+1)%rank_n()).wait();
+      say() << "i="<<i<<": " << gp;
+      barrier();
 
       copy(gp, gp2, sz).wait();
       checkdev();
@@ -163,22 +165,27 @@ int main(int argc, char **argv) {
       }
       copy(gp, gp2, sz).wait();
       checkdev();
+     // SKIP_DEVICE_FREE: workaround bug 4396 by leaking all the device segments
+     #if !SKIP_DEVICE_FREE
       if (last_dev) {
         last_dev->destroy();
         checkdev();
         delete last_dev;
         delete last_alloc;
       }
+     #endif
       last_dev = dev;
       last_alloc = alloc;
       last_gp = gp;
       checkdev();
       barrier();
     }
+   #if !SKIP_DEVICE_FREE
     last_dev->destroy();
     checkdev();
     delete last_dev;
     delete last_alloc;
+   #endif
     checkdev();
 
     barrier();
