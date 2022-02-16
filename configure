@@ -325,6 +325,7 @@ while [[ $# -gt 0 ]]; do
     -with-hip)                 UPCXX_HIP=1; export UPCXX_HIP;;
     -without-hip)              unset UPCXX_HIP;;
     -with-hip-home?(=*))       HIP_HOME="$(get_arg_val $arg)"; export HIP_HOME;;
+    -with-hip-libflags?(=*))   UPCXX_HIP_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_HIP_LIBFLAGS;;
 
     -h|-help|-usage)
       echo 'UPC++ configure script.'
@@ -944,7 +945,8 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
       echo_and_die 'unrecognized argument to --with-hip-platform={amd,nvidia}'
       ;;
   esac
-  export UPCXX_HIP_LIBFLAGS="-L${HIP_HOME}/lib -lamdhip64"
+  # -lamdhip64 is required by some versions of HIP-over-CUDA, default to adding it
+  export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lamdhip64}
 fi
 
 #
