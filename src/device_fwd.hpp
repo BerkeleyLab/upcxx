@@ -21,7 +21,10 @@
 #endif
 
 namespace upcxx {
-namespace detail { struct device_allocator_base; }
+namespace detail { 
+  class device;
+  struct device_allocator_base; 
+}
 namespace backend {
 
   // backend::heap_state: base class for managing state
@@ -39,6 +42,7 @@ namespace backend {
   #endif
 
   // object state:
+  public:   detail::device *device_base;
   public:   detail::device_allocator_base *alloc_base;
   private:  memory_kind const my_kind;
 
@@ -52,7 +56,8 @@ namespace backend {
     static int heap_count[2];
 
   public:
-    heap_state(memory_kind k) : alloc_base(nullptr), my_kind(k) {}
+    heap_state(memory_kind k) : 
+      device_base(nullptr), alloc_base(nullptr), my_kind(k) {}
     memory_kind kind() { return my_kind; }
 
     static void init();
@@ -145,12 +150,49 @@ namespace backend {
 
 } // namespace backend
 
-class gpu_device {
+namespace detail { // device is unspecified (for now)
+class device {
+ protected:
+  // internal state:
+  int heap_idx_; // -1 == inactive
+  const memory_kind kind_;
+
+  // methods:
+  device(detail::internal_only, memory_kind kind) : 
+    heap_idx_(-1), kind_(kind) {};
+  device(device const&) = delete;
+  device(device&& other) :
+    heap_idx_(other.heap_idx_), kind_(other.kind_) {
+    if (heap_idx_ >= 0) {
+      backend::heap_state *hs = backend::heap_state::get(heap_idx_);
+      UPCXX_ASSERT(hs->device_base == &other);
+      hs->device_base = this; // update registration
+      other.heap_idx_ = -1; // deactivate
+    }
+  }
+
+  template<typename Device>
+  static typename Device::id_type heap_idx_to_device_id(int heap_idx);
+
+ public:
+  memory_kind kind() const { return kind_; }
+  /*virtual*/ bool is_active() const { return heap_idx_ >= 0; }
+
+  virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
+
+  virtual ~device() { 
+    if(backend::init_count > 0) { // we don't assert on leaks after finalization
+      UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::" << detail::to_string(kind_)
+                           << " must have destroy() called before destructor.");
+    } 
+  }
+}; // device
+} // namespace detail
+
+class gpu_device : public detail::device {
  protected:
   // factored internal state:
   int device_id_;
-  int heap_idx_;
-  const memory_kind kind_;
 
   // factored static goop:
   template<typename T>
@@ -166,34 +208,18 @@ class gpu_device {
   id_type device_id() const { return device_id_; }
 
   gpu_device(detail::internal_only, id_type device_id, memory_kind kind) : 
-     device_id_(device_id), heap_idx_(-1), kind_(kind) {};
+     device(detail::internal_only(), kind), device_id_(device_id) {}
   gpu_device(gpu_device const&) = delete;
   gpu_device(gpu_device&& other) :
-    device_id_(other.device_id_), heap_idx_(other.heap_idx_), kind_(other.kind_) {
+    device(std::move(other)), device_id_(other.device_id_) {
     other.device_id_ = invalid_device_id;
-    other.heap_idx_ = -1;
   }
-  template<typename Device>
-  static typename Device::id_type heap_idx_to_device_id(int heap_idx);
 
   // computes Device::default_alignment<T> without a static type T
   static constexpr std::size_t 
   default_alignment_erased(std::size_t sizeof_T, std::size_t alignof_T,
                            std::size_t normal_align) {
     return alignof_T < normal_align ? normal_align : alignof_T;
-  }
-
- public:
-  memory_kind kind() const { return kind_; }
-  /*virtual*/ bool is_active() const { return device_id_ != invalid_device_id; }
-
-  virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
-
-  virtual ~gpu_device() { 
-    if(backend::init_count > 0) { // we don't assert on leaks after finalization
-      UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::" << detail::to_string(kind_)
-                           << " must have destroy() called before destructor.");
-    } 
   }
 
 };

@@ -12,8 +12,8 @@ namespace upcxx {
       int heap_idx_; // -1 = inactive
       detail::segment_allocator seg_;
 
-    public:
-      device_allocator_base(int heap_idx, detail::segment_allocator seg):
+      device_allocator_base(int heap_idx=-1, 
+                            segment_allocator seg=segment_allocator(nullptr, 0)):
         heap_idx_(heap_idx),
         seg_(std::move(seg)) {
         if (heap_idx_ >= 0) {

@@ -225,7 +225,7 @@ namespace upcxx { namespace backend {
 } // namespace backend
 
 
-// gpu_device::heap_idx_to_device_id(): this function exists to allow public
+// device::heap_idx_to_device_id(): this function exists to allow public
 // device_allocator.hpp to pluck state out of the device-specific heap_state
 // objects declared in internal headers
 
@@ -246,7 +246,7 @@ namespace detail {
 } // namespace detail
 
 template<typename Device>
-inline typename Device::id_type gpu_device::heap_idx_to_device_id(int heap_idx) {
+inline typename Device::id_type detail::device::heap_idx_to_device_id(int heap_idx) {
   return detail::heap_idx_to_device_id_helper<Device>(heap_idx);
 }
 

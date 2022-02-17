@@ -220,6 +220,7 @@ hip_device::hip_device(id_type device_id):
       auto with = hip::context<2>(device_id);
 
       hip_heap_state *st = new hip_heap_state{};
+      st->device_base = this;
       st->device_id = device_id;
 
       #if UPCXXI_GEX_MK_HIP
@@ -254,7 +255,7 @@ void hip_device::destroy(upcxx::entry_barrier eb) {
 
   #if UPCXXI_HIP_ENABLED
     hip_heap_state *st = hip_heap_state::get(heap_idx_);
-    UPCXX_ASSERT(st != nullptr);
+    UPCXX_ASSERT(st->device_base == this);
     UPCXX_ASSERT(st->device_id == device_id_);
 
     #if UPCXXI_GEX_MK_HIP
@@ -280,32 +281,16 @@ void hip_device::destroy(upcxx::entry_barrier eb) {
   heap_idx_ = -1;
 }
 
-// non-collective default constructor
-GASNETT_COLD
-detail::device_allocator_core<hip_device>::device_allocator_core():
-  detail::device_allocator_base(-1/*inactive*/, segment_allocator(nullptr, 0)) { }
-
 // collective constructor with a (possibly inactive) device
 GASNETT_COLD
 detail::device_allocator_core<hip_device>::device_allocator_core(
-    hip_device &dev, void *base, size_t size
-  ):
-  detail::device_allocator_base(
-    dev.heap_idx_,
-    #if UPCXXI_HIP_ENABLED
-      make_segment(dev.heap_idx_, base, size)
-    #else
-      segment_allocator(nullptr, 0)
-    #endif
-  ) {
-
-  #if UPCXXI_HIP_ENABLED
-    if (dev.is_active()) {
-      backend::heap_state *hs = backend::heap_state::get(dev.heap_idx_);
-      UPCXX_ASSERT(hs->alloc_base == this); // registration handled by device_allocator_base
-    }
-  #endif
-}
+    hip_device &dev, void *base, size_t size)
+#if UPCXXI_HIP_ENABLED
+    :detail::device_allocator_base(dev.heap_idx_,
+                                   make_segment(dev.heap_idx_, base, size)) { }
+#else  
+    { UPCXX_ASSERT(!dev.is_active()); }
+#endif
 
 GASNETT_COLD
 void detail::device_allocator_core<hip_device>::destroy() {
@@ -340,5 +325,5 @@ void detail::device_allocator_core<hip_device>::real_destructor() {
 }
 
 template
-hip_device::id_type gpu_device::heap_idx_to_device_id<hip_device>(int);
+hip_device::id_type detail::device::heap_idx_to_device_id<hip_device>(int);
 
