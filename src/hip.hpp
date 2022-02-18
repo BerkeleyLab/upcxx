@@ -64,11 +64,8 @@ namespace upcxx {
       device_allocator_core() {}
       device_allocator_core(hip_device &dev, void *base, std::size_t size);
       device_allocator_core(device_allocator_core&&) = default;
-      void destroy();
-
-      // Issue 490
-      void real_destructor();
-      ~device_allocator_core() { real_destructor(); }
+      ~device_allocator_core() { release(); }
+      void release();
     };
 
     #if UPCXXI_HIP_ENABLED

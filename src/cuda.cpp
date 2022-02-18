@@ -233,10 +233,8 @@ void cuda_device::destroy(upcxx::entry_barrier eb) {
     #endif
     
     if (st->alloc_base) {
-      detail::device_allocator_core<cuda_device>* alloc = 
-        static_cast<detail::device_allocator_core<cuda_device>*>(st->alloc_base);
-      UPCXX_ASSERT(alloc);
-      alloc->destroy();
+      auto alloc = static_cast<detail::device_allocator_core<cuda_device>*>(st->alloc_base);
+      alloc->release();
       UPCXX_ASSERT(st->alloc_base == &::tombstone);
     }
 
@@ -264,12 +262,11 @@ detail::device_allocator_core<cuda_device>::device_allocator_core(
 #endif
 
 GASNETT_COLD
-void detail::device_allocator_core<cuda_device>::destroy() {
+void detail::device_allocator_core<cuda_device>::release() {
   if (!is_active()) return;
 
   #if UPCXXI_CUDA_ENABLED  
       cuda_heap_state *st = cuda_heap_state::get(heap_idx_);
-      UPCXX_ASSERT(st);
      
       if(st->segment_to_free) {
         auto with = cuda::context<1>(st->context);
@@ -281,18 +278,6 @@ void detail::device_allocator_core<cuda_device>::destroy() {
   #endif
 
   heap_idx_ = -1; // deactivate
-}
-
-GASNETT_COLD
-void detail::device_allocator_core<cuda_device>::real_destructor() {
-  if(upcxx::initialized()) {
-    // The thread safety restriction of this call still applies when upcxx isn't
-    // initialized, we just have no good way of asserting it so we conditionalize
-    // on initialized().
-    UPCXXI_ASSERT_ALWAYS_MASTER();
-  }
-
-  destroy();
 }
 
 template

@@ -51,7 +51,7 @@ namespace upcxx {
       // move constructor must be provided (need not be default)
       device_allocator_core(device_allocator_core&&) = default;
 
-      void destroy();
+      void release();
     };*/
   }
   
