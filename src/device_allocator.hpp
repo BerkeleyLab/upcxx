@@ -96,7 +96,11 @@ namespace upcxx {
   class device_allocator final : 
     public heap_allocator, protected detail::device_allocator_core<Device> {
     detail::par_mutex lock_;
+    Device *implicit_device = nullptr;
     
+    device_allocator(Device *dev, typename Device::template pointer<void> base, std::size_t size):
+      device_allocator(*dev, base, size) { implicit_device = dev; }
+
   public:
     using device_type = Device;
 
@@ -114,14 +118,16 @@ namespace upcxx {
          dev), base, size) { }
 
     device_allocator(Device &dev, std::size_t size):
-      heap_allocator(detail::internal_only(), Device::kind),
-      detail::device_allocator_core<Device>(
-        (UPCXXI_ASSERT_INIT(),
-         UPCXXI_ASSERT_ALWAYS_MASTER(),
-         UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ(),
-         dev), Device::template null_pointer<void>(), size) { }
+      device_allocator(dev, Device::template null_pointer<void>(), size) {}
     
-    ~device_allocator() override = default;
+    device_allocator(detail::internal_only,
+                     typename Device::id_type device_id,
+                     typename Device::template pointer<void> base, std::size_t size):
+      device_allocator(new Device(device_id), base, size) {}
+
+    ~device_allocator() override {
+      delete implicit_device;
+    }
 
     device_allocator(device_allocator &&that):
       // base class move ctors
@@ -134,7 +140,8 @@ namespace upcxx {
             std::lock_guard<detail::par_mutex>(that.lock_), 
             that)
         )
-      ) {
+      ), implicit_device(that.implicit_device) {
+      that.implicit_device = nullptr;
     }
 
     void destroy(upcxx::entry_barrier eb = entry_barrier::user) override {
@@ -291,7 +298,8 @@ namespace upcxx {
     void deallocate_raw(global_ptr<char,memory_kind::any> p) override {
       deallocate(p);
     }
-  };
-}
+  }; // device_allocator
+
+} // namespace
 
 #endif

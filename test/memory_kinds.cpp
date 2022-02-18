@@ -15,7 +15,7 @@ volatile bool hip_enabled;
 std::vector<std::function<void()>> post_fini;
 
 template<typename Device>
-void run_test(typename Device::id_type id, std::size_t heap_size) {
+void run_test(typename Device::id_type id, std::size_t heap_size, const char *desc) {
 
   using Allocator = upcxx::device_allocator<Device>;
   assert_same<typename Allocator::device_type, Device>();
@@ -80,7 +80,15 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     }
   }
 
-  assert(Device::device_n() >= 1);
+  int n_dev = Device::device_n();
+  assert(n_dev >= 0);
+  say() << "Testing " << n_dev << " " << desc << " GPUs";
+  int low = reduce_all(Device::device_n(), op_fast_min).wait();
+  if (low == 0) {
+    if (!rank_me())
+      say("") << "WARNING: Some ranks lack a " << desc << " GPU. Active tests skipped.";
+    return;
+  }
 
   // deliberately create three heaps on the same device
   // managed via pointer for precision testing of destruction
@@ -150,7 +158,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     assert((uintptr_t)dp % align == 0);
     gp_type gp1 = a->to_global_ptr(dp);
     assert(gp == gp1);
-    assert(Allocator::device_id(gp) == id);
+    assert(Allocator::device_id(gp) == a->device_id());
     assert(gp.dynamic_kind() == gpa.dynamic_kind());
     assert(gp == dynamic_kind_cast<Device::kind>(gpa));
     if (Device::kind != memory_kind::host)
@@ -285,6 +293,25 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     }
 
     upcxx::barrier();
+
+    { // test make_gpu_allocator
+      Allocator inv = make_gpu_allocator<Device>(heap_size, id_invalid);
+      assert(!inv.is_active());
+
+      Allocator az = make_gpu_allocator<Device>(heap_size);
+      assert(az.is_active()); 
+      int azid = az.device_id();
+      assert(azid >= 0);
+      say() << "make_gpu_allocator<"<<desc<<">(): auto device_id=" << az.device_id();
+      { Allocator az2 = std::move(az); // test move
+        assert(!az.is_active()); 
+        assert(az2.is_active()); assert(az2.device_id() == azid);
+        az2.deallocate(alloc_check(&az2,az2.template allocate<int>(1)));
+        az2.destroy();
+      }
+    }
+
+    upcxx::barrier();
   }
 }
 
@@ -306,7 +333,7 @@ int main() {
     hip_enabled = true;
   #endif
   if (hip_enabled) { 
-    run_test<hip_device>(0, 2<<20);
+    run_test<hip_device>(0, 2<<20, "HIP");
   }
 
   // check that required device members exist with sane-looking values
@@ -322,7 +349,25 @@ int main() {
     cuda_enabled = true;
   #endif
   if (cuda_enabled) { 
-    run_test<cuda_device>(0, 2<<20);
+    run_test<cuda_device>(0, 2<<20, "CUDA");
+  }
+
+  {
+    assert(gpu_heap_allocator::kind == gpu_default_device::kind);
+    gpu_heap_allocator inv = make_gpu_allocator(0, gpu_default_device::invalid_device_id);
+    assert(!inv.is_active());
+
+    gpu_heap_allocator az = make_gpu_allocator(2<<20);
+    say() << "make_gpu_allocator<default>(): auto device_id=" << az.device_id();
+    if (gpu_default_device::device_n() > 0) {
+      assert(az.is_active());
+      assert(az.device_id() >= 0);
+      auto gp = az.allocate<int>(1);
+      assert(gp);
+      assert(decltype(gp)::kind == gpu_default_device::kind);
+      az.deallocate(gp);
+    }
+    az.destroy();
   }
 
   upcxx::finalize();

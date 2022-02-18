@@ -27,6 +27,7 @@ namespace upcxx {
     using gpu_device::pointer;
     using gpu_device::null_pointer;
     using gpu_device::invalid_device_id;
+    using gpu_device::auto_device_id;
     using gpu_device::device_id;
     
     static constexpr memory_kind kind = memory_kind::hip_device;

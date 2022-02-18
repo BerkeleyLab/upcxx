@@ -200,6 +200,7 @@ class gpu_device : public detail::device {
   using id_type = int;  
 
   static constexpr id_type invalid_device_id = -1;
+  static constexpr id_type auto_device_id = -2;
 
   template<typename T>
   static constexpr T* null_pointer() { return nullptr; }
