@@ -59,6 +59,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     assert(Allocator::local(gp_null) == dp_null);
     assert(gp_null.is_local());
     assert(gp_null.local() == nullptr);
+    assert(ai.device_id() == id_invalid);
     assert(Allocator::device_id(gp_null) == id_invalid);
     assert(ai.to_global_ptr(dp_null) == gp_null);
     ai.deallocate(gp_null);
@@ -90,6 +91,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   assert(d0->is_active()); assert(gd0->is_active()); 
   assert(a0->is_active()); assert(ga0->is_active()); 
   assert(d0->device_id() == id);
+  assert(a0->device_id() == id);
 
   bool have1 = rank_me()%2;
   Device *d1 = new Device(have1?id:id_invalid);
@@ -99,6 +101,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   assert(d1->is_active() == have1); assert(gd1->is_active() == have1); 
   assert(a1->is_active() == have1); assert(ga1->is_active() == have1);
   assert(d1->device_id() == (have1?id:id_invalid));
+  assert(a1->device_id() == (have1?id:id_invalid));
   if (have1 && rank_me()%3) { // test moving an active device
     Device *d1a = new Device(std::move(*d1));
     assert(!d1->is_active());
@@ -117,6 +120,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   assert(d2->is_active() == have2); assert(gd2->is_active() == have2); 
   assert(a2->is_active() == have2); assert(ga2->is_active() == have2);
   assert(d2->device_id() == (have2?id:id_invalid));
+  assert(a2->device_id() == (have2?id:id_invalid));
   if (have2 && rank_me()%3) { // test moving an active allocator
     Allocator *a2a = new Allocator(std::move(*a2));
     assert(!a2->is_active()); assert(!ga2->is_active());
@@ -234,6 +238,7 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     assert(dx->is_active() == have); assert(gdx->is_active() == have); 
     assert(ax->is_active() == have); assert(gax->is_active() == have);
     assert(dx->device_id() == (have?id:id_invalid));
+    assert(ax->device_id() == (have?id:id_invalid));
     if (i > 1 && have && rank_me()%3) {
       // move active allocator
       Allocator *axa = new Allocator(std::move(*ax));

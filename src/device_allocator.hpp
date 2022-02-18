@@ -255,6 +255,12 @@ namespace upcxx {
         return Device::template heap_idx_to_device_id<Device>(gp.UPCXXI_INTERNAL_ONLY(heap_idx_));
       }
     }
+
+    typename Device::id_type device_id() const {
+      UPCXXI_ASSERT_INIT();
+      if (!is_active()) return Device::invalid_device_id;
+      return Device::template heap_idx_to_device_id<Device>(this->heap_idx_);
+    }
     
     template<typename T>
     UPCXXI_ATTRIB_PURE
