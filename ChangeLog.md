@@ -7,12 +7,28 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 ### 2021.XX.YY: PENDING
 
-General features/enhancements: (see specification and programmer's guide for full details)
+Improvements to GPU memory kinds:
 
-* NEW: Memory Kinds support for AMD GPUs using ROCm/HIP, see [INSTALL.md](INSTALL.md).
+This release features a number of synergistic improvements to the UPC++ memory kinds
+feature that supports efficient PGAS communication involving GPU memory buffers.
+
+* NEW: Memory kinds support for AMD GPUs using ROCm/HIP, see [INSTALL.md](INSTALL.md).
     New `configure --enable-hip` flag activates new `upcxx::hip_device` class.
     This includes native offload support for `upcxx::copy()` using ROCmRDMA on 
     recent InfiniBand network hardware - see GASNet-EX documentation for details.
+* `cuda_device` and `hip_device` are derived from new abstract base class `gpu_device` and
+  `device_allocator<Device>` is now derived from new abstract base class `heap_allocator`.
+  These help enable vendor-agnostic polymorphism in use of memory kinds.
+* New optional interface to GPU memory kinds simplifies startup code, e.g.:    
+    `auto gpu_alloc = make_gpu_allocator(2UL<<20);`    
+  creates a 2MB device segment with a "smart" choice of GPU, and:    
+    `auto gpu_alloc = make_gpu_allocator<hip_device>(2UL<<20, 2);`    
+  creates a `device_allocator` for a segment on HIP GPU number 2.
+* Several new members have been added to `device_allocator` to provide convenience
+  and support the above improvements. See the specification for details.
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
 
 Infrastructure changes:
@@ -39,6 +55,7 @@ All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
+* Class `cuda_device` and class template `device_allocator` are now `final`.
 * The oldest-supported PGI compiler version is raised to 19.3 on all platforms.
 * `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
 * UPC++ headers no longer have the undocumented side-effect including `<cassert>`. 
