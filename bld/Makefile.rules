@@ -129,8 +129,8 @@ failure: force
 TEST_TARGETS = check tests tests-clean test_install run-tests run-tests-installed \
 	       dev-tests dev-tests-opt dev-tests-debug dev-tests-seq dev-tests-par dev-run-tests \
 	       dev-check dev-check-opt dev-check-debug dev-check-seq dev-check-par dev-tests-clean \
-	       dev-tests-opt-seq dev-tests-debug-seq dev-tests-opt-par dev-tests-debug-par \
-	       dev-check-opt-seq dev-check-debug-seq dev-check-opt-par dev-check-debug-par
+	       dev-tests-seq-opt dev-tests-seq-debug dev-tests-par-opt dev-tests-par-debug \
+	       dev-check-seq-opt dev-check-seq-debug dev-check-par-opt dev-check-par-debug
 $(TEST_TARGETS): force
 	@NETWORKS='$(shell tr ",.:;/" " " <<<"$(NETWORKS)")'; \
 	$(MAKE) -f $(upcxx_src)/bld/Makefile.tests $@ $${NETWORKS:+NETWORKS="$$NETWORKS"}

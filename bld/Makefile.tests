@@ -37,7 +37,7 @@ GASNET_BLDDIR = $(BLDDIR)/gasnet.$(UPCXX_CODEMODE)
 # using "target-specific variable values" for the defaults
 # Do NOT change the following two lines to ?= as that breaks make 3.81
 check dev-check dev-check-debug dev-check-opt dev-check-seq dev-check-par: NETWORKS = $(UPCXX_DEFAULT_NETWORK)
-dev-check-debug-seq dev-check-opt-seq dev-check-debug-par dev-check-opt-par: NETWORKS = $(UPCXX_DEFAULT_NETWORK)
+dev-check-seq-debug dev-check-seq-opt dev-check-par-debug dev-check-par-opt: NETWORKS = $(UPCXX_DEFAULT_NETWORK)
 NETWORKS ?= $(filter-out $(UNOFFICIAL_CONDUITS),$(CONDUITS))
 ifneq ($(strip $(NETWORKS)),)
 export NETWORKS
@@ -561,10 +561,10 @@ $(DEV_TMODE_TARGETS): force
 	 case $$tmode in seq) other=par;; par) other=seq;; esac; \
 	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target testprograms_dev_$$other=''
 
-DEV_CTMODE_TARGETS = dev-tests-debug-seq dev-tests-debug-par dev-tests-opt-seq dev-tests-opt-par \
-                     dev-check-debug-seq dev-check-debug-par dev-check-opt-seq dev-check-opt-par
+DEV_CTMODE_TARGETS = dev-tests-seq-debug dev-tests-par-debug dev-tests-seq-opt dev-tests-par-opt \
+                     dev-check-seq-debug dev-check-par-debug dev-check-seq-opt dev-check-par-opt
 $(DEV_CTMODE_TARGETS): force
-	@target=$$(cut -d- -f2 <<<$@) cmode=$$(cut -d- -f3 <<<$@) tmode=$$(cut -d- -f4 <<<$@); \
+	@target=$$(cut -d- -f2 <<<$@) tmode=$$(cut -d- -f3 <<<$@) cmode=$$(cut -d- -f4 <<<$@); \
 	 case $$tmode in seq) other=par;; par) other=seq;; esac; \
 	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode testprograms_dev_$$other=''
 
