@@ -35,8 +35,9 @@ GASNET_BLDDIR = $(BLDDIR)/gasnet.$(UPCXX_CODEMODE)
 
 # public-facing targets don't use GASNet "conduit" terminology
 # using "target-specific variable values" for the defaults
-# Do NOT change the following line to ?= as that breaks make 3.81
-check dev-check dev-check-debug dev-check-opt: NETWORKS = $(UPCXX_DEFAULT_NETWORK)
+# Do NOT change the following two lines to ?= as that breaks make 3.81
+check dev-check dev-check-debug dev-check-opt dev-check-seq dev-check-par: NETWORKS = $(UPCXX_DEFAULT_NETWORK)
+dev-check-debug-seq dev-check-opt-seq dev-check-debug-par dev-check-opt-par: NETWORKS = $(UPCXX_DEFAULT_NETWORK)
 NETWORKS ?= $(filter-out $(UNOFFICIAL_CONDUITS),$(CONDUITS))
 ifneq ($(strip $(NETWORKS)),)
 export NETWORKS
@@ -549,10 +550,23 @@ do-dev-target: force
 	    testprograms_seq='$(subst .cpp,-seq-$(UPCXX_CODEMODE),$(testprograms_dev_seq))' \
 	    testprograms_par='$(subst .cpp,-par-$(UPCXX_CODEMODE),$(testprograms_dev_par))'
 
-DEV_TARGETS = dev-tests-debug dev-tests-opt dev-check-debug dev-check-opt
-$(DEV_TARGETS): force
+DEV_CMODE_TARGETS = dev-tests-debug dev-tests-opt dev-check-debug dev-check-opt
+$(DEV_CMODE_TARGETS): force
 	@target=$$(cut -d- -f2 <<<$@) cmode=$$(cut -d- -f3 <<<$@); \
 	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode
+
+DEV_TMODE_TARGETS = dev-tests-seq dev-tests-par dev-check-seq dev-check-par
+$(DEV_TMODE_TARGETS): force
+	@target=$$(cut -d- -f2 <<<$@) tmode=$$(cut -d- -f3 <<<$@); \
+	 case $$tmode in seq) other=par;; par) other=seq;; esac; \
+	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target testprograms_dev_$$other=''
+
+DEV_CTMODE_TARGETS = dev-tests-debug-seq dev-tests-debug-par dev-tests-opt-seq dev-tests-opt-par \
+                     dev-check-debug-seq dev-check-debug-par dev-check-opt-seq dev-check-opt-par
+$(DEV_CTMODE_TARGETS): force
+	@target=$$(cut -d- -f2 <<<$@) cmode=$$(cut -d- -f3 <<<$@) tmode=$$(cut -d- -f4 <<<$@); \
+	 case $$tmode in seq) other=par;; par) other=seq;; esac; \
+	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode testprograms_dev_$$other=''
 
 DEV_MUX_TARGETS = dev-tests dev-check
 $(DEV_MUX_TARGETS): force
