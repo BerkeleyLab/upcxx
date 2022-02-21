@@ -10,7 +10,6 @@
 #include <upcxx/diagnostic.hpp>
 #include <upcxx/memory_kind.hpp>
 
-#include <cassert> // assert
 #include <cstddef> // ptrdiff_t
 #include <cstdint> // uintptr_t
 #include <cstring> // memcpy
