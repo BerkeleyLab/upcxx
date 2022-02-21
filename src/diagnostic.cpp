@@ -79,19 +79,20 @@ void upcxx::detail::assert_failed(const char *func, const char *file,
 GASNETT_COLD
 upcxx::experimental::say::say(std::ostream &output, const char *prefix) : target(output) {
   if (!prefix) return;
-  intrank_t myrank = -1;
+  static intrank_t myrank = -1;
   #ifdef UPCXXI_BACKEND
     if (upcxx::initialized()) myrank = upcxx::rank_me();
   #endif
   std::unique_ptr<char[]> buf;
   if (strchr(prefix,'%')) {
-    if (myrank < 0) prefix = "";
-    else {
+      intrank_t userank = myrank;
+      if (userank < 0) {
+        userank = (intrank_t)getpid();
+      }
       std::size_t sz = strlen(prefix)+10;
       buf = std::unique_ptr<char[]>( new char[sz] );
-      snprintf(buf.get(), sz, prefix, myrank);
+      snprintf(buf.get(), sz, prefix, userank);
       prefix = buf.get();
-    }
   }
   ss << prefix;
 }
