@@ -93,7 +93,7 @@ static double helper(long len, src_ptr_type src_ptr, dst_ptr_type dst_ptr) {
       upcxx::barrier();
       if (is_active_rank) { // inform target ranks of their sender
         rpc(owner(dst_ptr), [](int me) { 
-           assert(my_sender == -1); 
+           UPCXX_ASSERT(my_sender == -1); 
            my_sender = me;              // register sender
            data_arrival = promise<>();  // setup for first window
            data_arrival.require_anonymous(window_size);
@@ -642,7 +642,7 @@ int do_main(int argc, char **argv) {
        upcxx::dist_object<gp_gpu_t> gpu_dobj(local_gpu_array);
        remote_gpu_array = gpu_dobj.fetch(partner).wait();
 
-       assert(!(use_downcast_self && use_downcast_peer));
+       UPCXX_ASSERT(!(use_downcast_self && use_downcast_peer));
        uint8_t *private_array_free = nullptr;
        gp_host_t gp_downcast_area = nullptr;
        if (use_downcast_self) {
@@ -660,13 +660,13 @@ int do_main(int argc, char **argv) {
              lpeer = (local_team().rank_me() + 2) % local_team().rank_n();
            }
            gp_host_t peer_downcast_area = dd.fetch(lpeer).wait();
-           assert(peer_downcast_area.is_local());
+           UPCXX_ASSERT(peer_downcast_area.is_local());
            local_private_array = peer_downcast_area.local();
          }
          upcxx::barrier();
        } else {
          local_private_array = new uint8_t[max_msg_size];
-         assert(local_private_array);
+         UPCXX_ASSERT(local_private_array);
          private_array_free = local_private_array;
        }
 

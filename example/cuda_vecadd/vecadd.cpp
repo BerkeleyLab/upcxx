@@ -1,6 +1,5 @@
 #include <upcxx/upcxx.hpp>
 #include <iostream>
-#include <cassert>
 
 #include "kernels.hpp"
 
@@ -37,13 +36,13 @@ int main() {
 
        global_ptr<double,memory_kind::cuda_device> dA =
            gpu_alloc.allocate<double>(N);
-       assert(dA);
+       UPCXX_ASSERT(dA);
        global_ptr<double,memory_kind::cuda_device> dB =
            gpu_alloc.allocate<double>(N);
-       assert(dB);
+       UPCXX_ASSERT(dB);
        global_ptr<double,memory_kind::cuda_device> dC =
            gpu_alloc.allocate<double>(N);
-       assert(dC);
+       UPCXX_ASSERT(dC);
 
        if (rank_me() == 0) {
            initialize_device_arrays(gpu_alloc.local(dA),
@@ -70,11 +69,11 @@ int main() {
        }
 
        double *hA = (double *)malloc(N * sizeof(*hA));
-       assert(hA);
+       UPCXX_ASSERT(hA);
        double *hB = (double *)malloc(N * sizeof(*hB));
-       assert(hB);
+       UPCXX_ASSERT(hB);
        double *hC = (double *)malloc(N * sizeof(*hC));
-       assert(hC);
+       UPCXX_ASSERT(hC);
 
        // Validate that the incoming data transferred successfully
        upcxx::when_all(
@@ -83,8 +82,8 @@ int main() {
        ).wait();
 
        for (int i = 0; i < N; i++) {
-           assert(hA[i] == i);
-           assert(hB[i] == 2 * i);
+           UPCXX_ASSERT(hA[i] == i);
+           UPCXX_ASSERT(hB[i] == 2 * i);
        }
 
        int chunk_size = (N + rank_n() - 1) / rank_n();
@@ -103,9 +102,9 @@ int main() {
        ).wait();
 
        for (int i = my_chunk_start; i < my_chunk_end; i++) {
-           assert(hA[i] == i);
-           assert(hB[i] == 2 * i);
-           assert(hC[i] == hA[i] + hB[i]);
+           UPCXX_ASSERT(hA[i] == i);
+           UPCXX_ASSERT(hB[i] == 2 * i);
+           UPCXX_ASSERT(hC[i] == hA[i] + hB[i]);
        }
 
        // Push back to the root GPU

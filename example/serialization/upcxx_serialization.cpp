@@ -1,5 +1,4 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -178,13 +177,13 @@ std::map<int, vertex *> local_vertex_store;
  */
 vertex *get_vertex_from_store(int vertex_id) {
     if (local_vertex_store.find(vertex_id) == local_vertex_store.end()) {
-        assert(OWNER_RANK(vertex_id) != rank);
+        UPCXX_ASSERT(OWNER_RANK(vertex_id) != rank);
         vertex *new_vert = new vertex(vertex_id);
         local_vertex_store.insert(std::pair<int, vertex*>(vertex_id, new_vert));
     }
 
     auto iter = local_vertex_store.find(vertex_id);
-    assert(iter != local_vertex_store.end());
+    UPCXX_ASSERT(iter != local_vertex_store.end());
     return iter->second;
 }
 
@@ -273,7 +272,7 @@ int main(void) {
     int end_local_vertices = END_RANK_VERTICES(rank);
 
     int *edges_to_insert = new int[niters * edges_per_iter * 2];
-    assert(edges_to_insert);
+    UPCXX_ASSERT(edges_to_insert);
     for (int i = 0; i < niters * edges_per_iter; i++) {
         // Choose a random local vertex
         edges_to_insert[2 * i] = start_local_vertices + (rand() %
@@ -315,11 +314,11 @@ int main(void) {
         int a = edges_to_insert[2 * e];
         int b = edges_to_insert[2 * e + 1];
         vertex *v_a = get_vertex_from_store(a);
-        assert(v_a->has_edge(b));
+        UPCXX_ASSERT(v_a->has_edge(b));
 
         fut = upcxx::when_all(fut, upcxx::rpc(OWNER_RANK(b), [a, b] {
                     vertex *vb = get_vertex_from_store(b);
-                    assert(vb->has_edge(a));
+                    UPCXX_ASSERT(vb->has_edge(a));
                 }));
     }
     fut.wait();
@@ -340,7 +339,7 @@ int main(void) {
             fut = upcxx::when_all(fut, upcxx::rpc(OWNER_RANK(n_of_n->get_id()),
                         [v, n_of_n_id] {
                         vertex *n_of_n = get_vertex_from_store(n_of_n_id);
-                        assert(n_of_n->has_neighbor_of_neighbor(v));
+                        UPCXX_ASSERT(n_of_n->has_neighbor_of_neighbor(v));
                     }));
 
         }

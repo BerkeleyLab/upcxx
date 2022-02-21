@@ -21,7 +21,7 @@ int main() {
   
   sum = upcxx::reduce_all(sum, upcxx::op_fast_add).wait();
   
-  assert(sum == 1000*upcxx::rank_n());
+  UPCXX_ASSERT(sum == 1000*upcxx::rank_n());
   
   if(upcxx::rank_me() == 0)
     std::cout << "SUCCESS\n";

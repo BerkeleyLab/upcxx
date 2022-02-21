@@ -27,13 +27,13 @@ int main() {
 
   upcxx::intrank_t world_rank = new_team[(local_rank+1)%local_count];
   upcxx::intrank_t expected_world_rank = (upcxx::rank_me() + 2) % upcxx::rank_n();
-  assert(world_rank == expected_world_rank);
+  UPCXX_ASSERT(world_rank == expected_world_rank);
 
   upcxx::intrank_t other_local_rank = new_team.from_world(world_rank);
-  assert(other_local_rank == (local_rank+1)%local_count);
+  UPCXX_ASSERT(other_local_rank == (local_rank+1)%local_count);
   upcxx::intrank_t non_member_rank = 
     new_team.from_world((upcxx::rank_me()+1)%upcxx::rank_n(),-1);
-  assert(non_member_rank == -1);
+  UPCXX_ASSERT(non_member_rank == -1);
 
   new_team.destroy(); // collectively release the sub-team
 //SNIPPET
