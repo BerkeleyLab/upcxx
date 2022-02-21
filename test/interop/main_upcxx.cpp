@@ -1,5 +1,4 @@
 // Simple UPC++ program that calls UPC
-#include <cassert>
 #include <iostream>
 
 #include <upcxx/upcxx.hpp>
@@ -23,12 +22,12 @@ int main(int argc, char **argv) {
     upcxx::barrier();
 
     int v1 = test_upc(val); // call a UPC test routine
-    assert(v1 == val);
+    UPCXX_ASSERT_ALWAYS(v1 == val);
 
     upcxx::barrier();
 
     int v2 = test_upcxx(val); // call a UPC++ test routine
-    assert(v2 == val);
+    UPCXX_ASSERT_ALWAYS(v2 == val);
 
   }
 

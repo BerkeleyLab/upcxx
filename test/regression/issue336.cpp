@@ -1,7 +1,7 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 #include <iostream>
 #include <memory>
+#include "../util.hpp"
 
 /*
  * This example illustrates the use of UPCXX_SERIALIZED_FIELDS to serialize a 
@@ -49,6 +49,7 @@ class massive {
 
 int main(void) {
     upcxx::init();
+    print_test_header();
 
     int rank = upcxx::rank_me();
     int nranks = upcxx::rank_n();
@@ -98,11 +99,8 @@ int main(void) {
             }, upcxx::make_view(r,r+1)).wait();
   #endif
 
-    upcxx::barrier();
-
-    if (rank == 0) std::cout << "SUCCESS" << std::endl;
+    print_test_success();
     delete r;
-
     upcxx::finalize();
 
     return 0;

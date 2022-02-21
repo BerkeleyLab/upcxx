@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <type_traits>
 #include <iostream>
-#include <cassert>
 #include <upcxx/upcxx.hpp>
 
 #include "util.hpp"

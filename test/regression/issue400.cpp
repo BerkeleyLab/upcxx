@@ -1,4 +1,4 @@
-#include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 #include <iostream>
 
 struct A {
@@ -17,6 +17,7 @@ using namespace upcxx;
 
 int main() {
   upcxx::init();
+  print_test_header();
 
   rpc(0,[](A const &a) { 
         int val = a.x;
@@ -24,9 +25,7 @@ int main() {
         assert(val == 10); 
         }, A(10)).wait();
 
-  upcxx::barrier();
-  if (!upcxx::rank_me()) { std::cout << "SUCCESS" << std::endl; }
- 
+  print_test_success();
   upcxx::finalize();
   return 0;
 }

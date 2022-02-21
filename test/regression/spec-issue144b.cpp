@@ -1,4 +1,4 @@
-#include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 #include <iostream>
 #include <memory>
 
@@ -14,6 +14,7 @@ using namespace upcxx;
 
 int main() {
   upcxx::init();
+  print_test_header();
 
   // demonstrates that future can contain a non-copyable type (std::unique_ptr)
   future<std::unique_ptr<int>> boof;
@@ -112,9 +113,7 @@ int main() {
   assert(fz.wait_reference<2>().x == 6);
 #endif
 
-  upcxx::barrier();
-  if (!upcxx::rank_me()) { std::cout << "SUCCESS" << std::endl; }
- 
+  print_test_success();
   upcxx::finalize();
   return 0;
 }

@@ -1,11 +1,12 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 #include <iostream>
+#include "../util.hpp"
 
 using namespace upcxx;
 
 int main() {
   upcxx::init();
+  print_test_header();
 
   team t = world().split(1, rank_me());
   team_id id = t.id();
@@ -21,10 +22,7 @@ int main() {
 
   t.destroy();
 
-  upcxx::barrier();
-  
-  if (!upcxx::rank_me()) std::cout << "SUCCESS" << std::endl;
-
+  print_test_success();
   upcxx::finalize();
   return 0;
 }

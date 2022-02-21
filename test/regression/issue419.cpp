@@ -1,20 +1,20 @@
-#include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 #include <iostream>
 #include <iomanip>
 #include <sstream>
 #include <unistd.h>
 
-struct say {
+struct pidsay {
   std::stringstream ss;
-  say() {
+  pidsay() {
     *this << "pid:" << (int)getpid() << ": ";
   }
   template<typename T>
-  say& operator<<(T const &that) {
+  pidsay& operator<<(T const &that) {
     ss << that;
     return *this;
   }
-  ~say() {
+  ~pidsay() {
     *this << "\n";
     std::cout << ss.str() << std::flush;
   }
@@ -22,10 +22,10 @@ struct say {
 
 struct A { 
   A() {
-     say() << "constructor("<<std::setw(18)<<this<<"): init=" << upcxx::initialized();
+     pidsay() << "constructor("<<std::setw(18)<<this<<"): init=" << upcxx::initialized();
   }
   ~A(){ 
-     say() << "destructor ("<<std::setw(18)<<this<<"): init=" << upcxx::initialized();
+     pidsay() << "destructor ("<<std::setw(18)<<this<<"): init=" << upcxx::initialized();
      assert(!upcxx::initialized()); 
   }
 };
@@ -33,18 +33,18 @@ struct A {
 A a1; // static data
 
 int main() {
-  say() << "main()";
+  pidsay() << "main()";
   A a2; // stack
 
   upcxx::init();
+  print_test_header();
 
-  say() << "UPC++ process " << upcxx::rank_me() << "/" << upcxx::rank_n();
+  pidsay() << "UPC++ process " << upcxx::rank_me() << "/" << upcxx::rank_n();
 
-  upcxx::barrier();
-  if (!upcxx::rank_me()) say() << "SUCCESS";
+  print_test_success();
   upcxx::finalize();
   
-  say() << "post-finalize";
+  pidsay() << "post-finalize";
   return 0;
 }
 

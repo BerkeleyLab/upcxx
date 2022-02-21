@@ -1,8 +1,6 @@
 #include <upcxx/upcxx.hpp>
 #include <iostream>
 #include <cstdlib>
-#undef NDEBUG
-#include <cassert>
 
 #include "util.hpp"
 
