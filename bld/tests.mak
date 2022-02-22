@@ -105,6 +105,7 @@ test_exclude_compile_only = \
 	promise_multiple_results \
 	promise_reused \
 	quiescence_failure \
+	sys-header-exclude \
 	-threadmode
 
 #

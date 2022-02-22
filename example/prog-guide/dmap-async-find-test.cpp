@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     upcxx::future<> fut = dmap.find(key).then(
       // lambda to check the return value
       [key](const string &val) {
-        assert(val == key);
+        UPCXX_ASSERT(val == key);
       });
     // wait for future and its callback to complete
     fut.wait();

@@ -1,5 +1,4 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 #include "../util.hpp"
 
 using namespace upcxx;

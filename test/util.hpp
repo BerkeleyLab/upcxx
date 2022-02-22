@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+// this is a correctness suite, so assertions default to enabled regarless of codemode:
+#undef assert
+#define assert UPCXX_ASSERT_ALWAYS
+
 // backwards-compatibility hacks for convenience of defect archaeology:
 // ensure up-to-date versions of this header (and tests relying on it) still compile unchanged with older releases
 #if UPCXX_VERSION >= 20201111

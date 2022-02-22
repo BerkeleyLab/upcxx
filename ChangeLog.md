@@ -24,6 +24,7 @@ Notable issues resolved
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
 * issue #527: Raise PGI version floor to 19.3
 * issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
+* issue #534: Prune unnecessary system header includes from upcxx.hpp
 * spec issue 188: Add `cuda_device::device_n()`
 
 Embeds a GASNet-EX library that addresses the following notable issues
@@ -37,7 +38,12 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 Breaking changes:
 * The oldest-supported PGI compiler version is raised to 19.3 on all platforms.
 * `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
-
+* UPC++ headers no longer have the undocumented side-effect including `<cassert>`. 
+  Users are highly encouraged to use `UPCXX_ASSERT()` instead, which offers
+  more features and automatically tracks UPCXX_CODEMODE. 
+  See docs/implementation-defined.md for more details.
+* UPC++ headers no longer have the undocumented side-effect of including some
+  system headers. User programs should directly include system headers they need.
 * Prior to this release, the configure script would permit values of `CXX` and
   `CC` which had different families or versions (as long as they were
   link-compatible).  This was particularly easy to do on a Linux system if

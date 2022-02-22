@@ -47,7 +47,7 @@ int main(void) {
     upcxx::barrier();
 
     if (rank == 0) {
-        assert(*sum_reduction == nranks * N);
+        UPCXX_ASSERT(*sum_reduction == nranks * N);
         std::cout << "Rank 0 out of " << nranks << " got a sum of " <<
             *sum_reduction << std::endl;
         std::cout << "SUCCESS" << std::endl;

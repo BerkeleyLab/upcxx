@@ -9,7 +9,6 @@
 
 #include <gasnet_fwd.h>
 
-#include <climits>
 #include <cstdint>
 #include <vector>
 #include <string>

@@ -1,4 +1,4 @@
-#include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -33,6 +33,7 @@ double stack_writer(double v) {
 
 int main() {
   upcxx::init();
+  print_test_header();
   int cnt = 100;
   int *vals = new int[cnt]();
   global_ptr<int> gp;
@@ -54,7 +55,7 @@ int main() {
 
   barrier();
   delete [] vals;
-  if (!rank_me()) cout << "SUCCESS" << endl;
 
+  print_test_success();
   upcxx::finalize();
 }

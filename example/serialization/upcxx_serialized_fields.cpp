@@ -1,5 +1,4 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 #include <iostream>
 #include <memory>
 
@@ -73,8 +72,8 @@ int main(void) {
     // Compute a local sum reduction
     dist_reduction reduce(false);
     reduce.calculate_partial_sum_reduction();
-    assert(reduce.partial_sum_reduction == N);
-    assert(!reduce.was_deserialized());
+    UPCXX_ASSERT(reduce.partial_sum_reduction == N);
+    UPCXX_ASSERT(!reduce.was_deserialized());
 
     /*
      * Compute a global sum reduction by sending local results to rank 0. Note
@@ -87,14 +86,14 @@ int main(void) {
                  * Validate that this is a deserialized instance of
                  * dist_reduction, and that the entire object was not sent.
                  */
-                assert(reduce.was_deserialized());
+                UPCXX_ASSERT(reduce.was_deserialized());
                 *sum_reduction += reduce.partial_sum_reduction;
             }, sum_reduction, std::move(reduce)).wait();
 
     upcxx::barrier();
 
     if (rank == 0) {
-        assert(*sum_reduction == nranks * N);
+        UPCXX_ASSERT(*sum_reduction == nranks * N);
         std::cout << "Rank 0 out of " << nranks << " got a sum of " <<
             *sum_reduction << std::endl;
         std::cout << "SUCCESS" << std::endl;

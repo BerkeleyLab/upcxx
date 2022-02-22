@@ -1,6 +1,6 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 #include <iostream>
+#include "util.hpp"
 
 #define N (4 * 1024 * 1024)
 
@@ -67,6 +67,7 @@ class val_chunk {
 
 int main(void) {
     upcxx::init();
+    print_test_header();
 
     int rank = upcxx::rank_me();
     int nranks = upcxx::rank_n();
@@ -80,13 +81,7 @@ int main(void) {
                 }
             }, std::move(chunk)).wait();
 
-    upcxx::barrier();
-
-    if (rank == 0) {
-        std::cout << "SUCCESS" << std::endl;
-    }
-
+    print_test_success();
     upcxx::finalize();
-
     return 0;
 }

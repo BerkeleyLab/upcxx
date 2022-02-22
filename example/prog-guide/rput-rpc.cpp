@@ -17,6 +17,7 @@
 */
 
 #include<chrono>
+#include<cmath>
 #include<upcxx/upcxx.hpp>
 
 typedef struct _Expected {

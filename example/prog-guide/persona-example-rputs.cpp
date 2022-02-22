@@ -42,7 +42,7 @@ int main () {
       // create a completion object to execute a LPC on the progress_thread
       // which verifies that the value we got was the rank of our neighbor
       auto cx = upcxx::operation_cx::as_lpc( progress_persona, [&done, neigh_rank](int got) {
-              assert(got == neigh_rank);
+              UPCXX_ASSERT(got == neigh_rank);
               //signal that work is complete
               done = true;
             });

@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
           // attach callback, which itself runs a LPC on progress_persona on completion
           dmap.find(key, progress_persona, 
               [key,&lpc_count](const string &val) {
-                assert(val == key);
+                UPCXX_ASSERT(val == key);
                 lpc_count--;
               });
         }

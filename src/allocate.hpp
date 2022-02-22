@@ -11,7 +11,6 @@
 #include <upcxx/exceptions.hpp>
 
 #include <algorithm> // max
-#include <cmath> // ceil
 #include <cstdint>
 #include <sstream>
 #include <cstddef> // max_align_t

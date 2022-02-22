@@ -1,8 +1,8 @@
 #include <upcxx/upcxx.hpp>
 #include <iostream>
 #include <vector>
-#include <cassert>
 #include <cstdio>
+#include "../util.hpp"
 
 using namespace std;
 
@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
   incoming = iters;
 
   upcxx::init();
+  print_test_header();
   int me = upcxx::rank_me();
   int peer = (upcxx::rank_me() + 1) % upcxx::rank_n();
   if (!me) cout << upcxx::rank_n() << " ranks running " << iters << " iterations of " << sz << " bytes" << endl;
@@ -42,11 +43,7 @@ int main(int argc, char **argv) {
 
   do { upcxx::progress(); } while(incoming);
   
-
-  upcxx::barrier();
-
-  if (!me) cout << "SUCCESS" << endl;
-  
+  print_test_success(); 
   upcxx::finalize();
   return 0;
 }

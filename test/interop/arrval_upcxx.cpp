@@ -7,7 +7,6 @@
 // pointer (in this case (val_t *)), but can then be upcast to global_ptr<val_t>
 // passed to other ranks and used just like any other global_ptr<T>.
 
-#include <cassert>
 #include <iostream>
 
 #include <upcxx/upcxx.hpp>

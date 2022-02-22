@@ -1,10 +1,11 @@
 #include <upcxx/upcxx.hpp>
 #include <cstdio>
 #include <memory>
-#include <cassert>
+#include "../util.hpp"
 
 int main(int argc, char **argv) {
     upcxx::init();
+    print_test_header();
     upcxx::barrier();
 
     using AD = upcxx::atomic_domain<int>;
@@ -37,11 +38,7 @@ int main(int argc, char **argv) {
     upcxx::barrier();
     sh_ad.reset();
 
-
-    upcxx::barrier();
-    if (!upcxx::rank_me()) std::cout << "SUCCESS" << std::endl;
-    upcxx::barrier();
-
+    print_test_success();
     upcxx::finalize();
     return 0;
 }

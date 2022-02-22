@@ -2,7 +2,6 @@
 #include <thread>
 #include <sstream>
 #include <vector>
-#include <cassert>
 #include "util.hpp"
 
 // NOTE: This test is carefully written to be safe in either SEQ or PAR THREADMODE

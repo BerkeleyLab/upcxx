@@ -1,5 +1,4 @@
 #include <upcxx/upcxx.hpp>
-#include <cassert>
 
 //SNIPPET
 upcxx::future<> add_accumulate(upcxx::global_ptr<double> remote_dst, 
@@ -31,7 +30,7 @@ int main() {
 
   double *incr = new double[N];
   upcxx::global_ptr<double> recv_buff = upcxx::new_array<double>(N);
-  assert(incr && recv_buff);
+  UPCXX_ASSERT(incr && recv_buff);
   memset(recv_buff.local(), 0x00, N * sizeof(double));
   for (int i = 0; i < N; i++) {
     incr[i] = me;
@@ -45,7 +44,7 @@ int main() {
   upcxx::barrier();
 
   for (int i = 0; i < N; i++) {
-    assert(recv_buff.local()[i] == prev);
+    UPCXX_ASSERT_ALWAYS(recv_buff.local()[i] == prev);
   }
 
   upcxx::barrier();

@@ -1,6 +1,5 @@
 #include <iostream>
 #include <random>
-#include <cassert>
 #include <upcxx/upcxx.hpp>
 
 using namespace std;
@@ -19,7 +18,7 @@ int main(int argc, char **argv) {
   const double EXPECTED_VAL = MAX_VAL / 2;
   // get the bounds for the local panel, assuming num procs divides N into an even block size
   long block = N / upcxx::rank_n();
-  assert(block % 2 == 0); assert(N == block * upcxx::rank_n());
+  UPCXX_ASSERT(block % 2 == 0); UPCXX_ASSERT(N == block * upcxx::rank_n());
   long n_local = block + 2; // plus two for ghost cells
   // set up the distributed object
   upcxx::dist_object<upcxx::global_ptr<double>> u_g(upcxx::new_array<double>(n_local));
