@@ -77,8 +77,8 @@ PAR_EXAMPLES = \
 $(PAR_EXAMPLES): UPCXX_THREADMODE=par
 
 clean:
-	rm -f $(EXAMPLES)
-	rm -f $(CUDA_EXAMPLES)
+	rm -Rf $(EXAMPLES) $(EXAMPLES:=.dSYM)
+	rm -Rf $(CUDA_EXAMPLES) $(CUDA_EXAMPLES:=.dSYM)
 
 .PHONY: clean all run
 
