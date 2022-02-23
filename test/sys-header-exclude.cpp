@@ -20,12 +20,30 @@
 #error Detected <cassert>
 #endif
 
+#ifdef FE_DIVBYZERO
+#error Detected <cfenv>
+#endif
+
+#ifdef DBL_EPSILON
+#error Detected <cfloat>
+#endif
+
 #ifdef CHAR_BIT
 #error Detected <climits>
 #endif
 
 #ifdef FP_NAN
 #error Detected <cmath>
+#endif
+
+#ifdef SIG_DFL
+#error Detected <csignal>
+#endif
+
+#if !defined(__clang__) && !defined(__INTEL_COMPILER)
+#ifdef va_arg
+#error Detected <cstdarg>
+#endif
 #endif
 
 int test_passed = 0;
