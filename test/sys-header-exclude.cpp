@@ -14,7 +14,7 @@
 // Some compilers or platforms transitively suck in headers we don't ask for,
 // so skip testing on such platforms.
 // We only need this test to be functional for at least ONE common platform in CI testing
-#if !(defined(__clang__) && defined(__APPLE__))
+#if !defined(__APPLE__)
 
 #ifdef assert
 #error Detected <cassert>
