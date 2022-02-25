@@ -98,18 +98,22 @@ namespace upcxx {
     detail::par_mutex lock_;
     Device *implicit_device = nullptr;
     
-    device_allocator(Device *dev, typename Device::template pointer<void> base, std::size_t size):
-      device_allocator(*dev, base, size) { implicit_device = dev; }
+    device_allocator(Device *dev, std::size_t size, typename Device::template pointer<void> base):
+      device_allocator(*dev, size, base) { implicit_device = dev; }
 
   public:
     using device_type = Device;
 
     static constexpr memory_kind kind = Device::kind;
 
+    // non-collective default constructor for inactive objects
     device_allocator(): heap_allocator(detail::internal_only(), Device::kind),
       detail::device_allocator_core<Device>() { }
 
-    device_allocator(Device &dev, typename Device::template pointer<void> base, std::size_t size):
+    // public collective constructor
+    device_allocator(Device &dev, std::size_t size,
+                     typename Device::template pointer<void> base = 
+                         Device::template null_pointer<void>()):
       heap_allocator(detail::internal_only(), Device::kind),
       detail::device_allocator_core<Device>(
         (UPCXXI_ASSERT_INIT(),
@@ -117,13 +121,15 @@ namespace upcxx {
          UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ(),
          dev), base, size) { }
 
-    device_allocator(Device &dev, std::size_t size):
-      device_allocator(dev, Device::template null_pointer<void>(), size) {}
-    
+    // Legacy constructor argument ordering, DEPRECATED since 2022.3.0, will be removed soon!
+    device_allocator(Device &dev, typename Device::template pointer<void> base, std::size_t size):
+      device_allocator(dev, size, base) {}
+
+    // internal constructor used by allocator factory function
     device_allocator(detail::internal_only,
-                     typename Device::id_type device_id,
-                     typename Device::template pointer<void> base, std::size_t size):
-      device_allocator(new Device(device_id), base, size) {}
+                     typename Device::id_type device_id, std::size_t size,
+                     typename Device::template pointer<void> base):
+      device_allocator(new Device(device_id), size, base) {}
 
     ~device_allocator() override {
       delete implicit_device;

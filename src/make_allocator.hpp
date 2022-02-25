@@ -46,7 +46,7 @@ namespace upcxx {
       }
     }
 
-    return device_allocator<Device>(detail::internal_only(), device_id, base, size);
+    return device_allocator<Device>(detail::internal_only(), device_id, size, base);
   }
 
 } // namespace
