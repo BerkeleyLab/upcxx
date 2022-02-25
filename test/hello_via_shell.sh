@@ -23,6 +23,6 @@ $CXX $LDFLAGS $OBJ $LIBS -o $EXE
 
 cat > $EXE.runcmd <<_EOF
 #!$UPCXX_BASH
-builtin echo \$(basename \$0 .runcmd) "\$@"
+builtin echo \${0%.runcmd} "\$@"
 _EOF
 chmod +x $EXE.runcmd

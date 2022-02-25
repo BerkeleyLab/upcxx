@@ -362,11 +362,16 @@ env RANKS=... NETWORK=...  upcxx-run ... $(./[full-test-name].runcmd [app-args])
 ```
 
 This passes the application arguments to the `.runcmd`, allowing it to either
-consume them or forward them to the test by echoing them.  One can derive the
-full name of the test from `basename $0 .runcmd`.  The settings of `RANKS` and
+consume them or forward them to the test by echoing them.  If the `.runcmd` is a bash
+script, one can get the test name using `${0%.runcmd}`.  The settings of `RANKS` and
 `NETWORK` in the environment provide other pertinent information.  In addition,
 any settings given in `TEST_ENV_[short-test-name]` will also be in the
 environment of the `.runcmd`.
+
+The command line echoed by the `.runcmd` must not make assumptions about the
+value of `$PATH` when it is run.  In particular, use of `${0%.runcmd}` shown
+above is recommend to preserve any directory part in `$0` (which `basename`
+would remove, for instance).
 
 See [hello_via_shell.sh](../test/hello_via_shell.sh) for an example script
 demonstrating several of the best practices given above.
