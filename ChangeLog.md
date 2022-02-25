@@ -45,6 +45,7 @@ Notable issues resolved
 * issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
 * spec issue 188: Add `cuda_device::device_n()`
+* spec issue 190: `device_allocator` constructor has several problems
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
@@ -55,7 +56,6 @@ All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
-* Class `cuda_device` and class template `device_allocator` are now `final`.
 * The oldest-supported PGI compiler version is raised to 19.3 on all platforms.
 * `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
 * UPC++ headers no longer have the undocumented side-effect including `<cassert>`. 
@@ -64,6 +64,12 @@ Breaking changes:
   See docs/implementation-defined.md for more details.
 * UPC++ headers no longer have the undocumented side-effect of including some
   system headers. User programs should directly include system headers they need.
+* Class `cuda_device` and class template `device_allocator` are now `final`.
+* The three-argument `device_allocator` constructor has been deprecated in favor
+  of a new constructor that swaps argument order but provides equivalent functionality.
+  The deprecated overload will be removed in an upcoming release.
+* An active `device_allocator<Device>` object must now be deactivated prior to
+  destruction, via either `Device::destroy()` or `device_allocator::destroy()`.
 * Prior to this release, the configure script would permit values of `CXX` and
   `CC` which had different families or versions (as long as they were
   link-compatible).  This was particularly easy to do on a Linux system if
