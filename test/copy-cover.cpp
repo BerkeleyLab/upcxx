@@ -118,8 +118,8 @@ struct DeviceState {
         seg[dev]->deallocate(dev_ptrs[dev][i]);
         dev_ptrs[dev][i] = nullptr;
       }
-      delete seg[dev]; seg[dev] = nullptr;
       gpu[dev]->destroy();
+      delete seg[dev]; seg[dev] = nullptr;
       delete gpu[dev]; gpu[dev] = nullptr;
     }
   }

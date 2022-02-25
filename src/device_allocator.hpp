@@ -132,6 +132,11 @@ namespace upcxx {
       device_allocator(new Device(device_id), size, base) {}
 
     ~device_allocator() override {
+      if(backend::init_count > 0) { // we don't assert on leaks after finalization
+        UPCXX_ASSERT_ALWAYS(!is_active(), "An active upcxx::device_allocator<" 
+                           << detail::to_string(kind)
+                           << "> must have destroy() called before destructor.");
+      }
       delete implicit_device;
     }
 

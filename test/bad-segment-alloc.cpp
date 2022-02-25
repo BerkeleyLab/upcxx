@@ -54,10 +54,10 @@ int main() {
   }
 
   assert(dap);
-  assert(dap->is_active());
-  delete dap;
-  assert(dev.is_active());
+  assert(dap->is_active()); assert(dev.is_active());
   dev.destroy();
+  assert(!dap->is_active()); assert(!dev.is_active());
+  delete dap;
   
   print_test_success();
 
