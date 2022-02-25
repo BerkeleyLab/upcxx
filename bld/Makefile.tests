@@ -108,8 +108,12 @@ check: force
 
 .PHONY: check
 
-TEST_EXE_PATTERN ?= test-$$(basename $$src .cpp)-$$network
+TEST_EXE_PATTERN ?= test-$$(basename $$(shopt -s extglob; echo $${src%.@(sh|cpp)}))-$$network
 HASH:=\#
+
+# Make variables to export to script-based test compilation.
+# TODO: we don't have access to the full makefile fragments (network-codemode.mak).
+TEST_SCRIPT_VARS = GASNET_CC_FAMILY GASNET_CC_SUBFAMILY GASNET_CXX_FAMILY GASNET_CXX_SUBFAMILY EXTRAFLAGS
 
 export MAKE # $$MAKE in the rule below avoids a jobserver warning bug in make 4.3
             # MAKEFLAGS override squashes a similar jobserver warning bug in make 4.2.1
@@ -126,23 +130,41 @@ do-build-%: force
 	     (( $(UPCXX_VERBOSE) )) && echo Skipping filtered $$exe ; \
 	     exit 0 ; \
          fi ; \
-	 flags=TEST_FLAGS_$$(basename $$src .cpp | tr '[a-z]-' '[A-Z]_'); \
 	 output=$(TEST_OUTPUT)/$${exe}-compile.out ;     \
-	 upcxx_cmd="$(UPCXX_BINDIR)/upcxx" ;             \
-	 if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd=": $$upcxx_cmd"; fi; \
-	 ( set -x ; env                                  \
-	   UPCXX_CODEMODE=$(UPCXX_CODEMODE)              \
-	   UPCXX_THREADMODE=$$threadmode                 \
-	   UPCXX_NETWORK=$$network                       \
-	   $$upcxx_cmd $(upcxx_src)/$$src                \
-	                         $${!flags}              \
-	                         $(UPCXX_COLOR_CXXFLAGS) \
-				 $(EXTRAFLAGS)           \
-	                         -o $$exe$(EXESUFFIX)    \
-				 ) &> $$output ;         \
-	 result=$$?;                                     \
+	 suffix="$${src##*.}";                             \
+	 if [[ $$suffix = cpp ]]; then                     \
+	   verbose_cmd='head -n 1' ;                       \
+	   flags=TEST_FLAGS_$$(basename $$src .cpp | tr '[a-z]-' '[A-Z]_'); \
+	   upcxx_cmd="$(UPCXX_BINDIR)/upcxx" ;             \
+	   if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd=": $$upcxx_cmd"; fi; \
+	   ( set -x ; env                                  \
+	     UPCXX_CODEMODE=$(UPCXX_CODEMODE)              \
+	     UPCXX_THREADMODE=$$threadmode                 \
+	     UPCXX_NETWORK=$$network                       \
+	     $$upcxx_cmd $(upcxx_src)/$$src                \
+	                           $${!flags}              \
+	                           $(UPCXX_COLOR_CXXFLAGS) \
+				   $(EXTRAFLAGS)           \
+	                           -o $$exe$(EXESUFFIX)    \
+				   ) &> $$output ;         \
+	   result=$$?;                                     \
+	 else \
+	   verbose_cmd='cat' ;                             \
+	   : 'TODO? .py, .pl and .mak interpreters?';      \
+	   interpreter='$(UPCXX_BASH)' ;                   \
+	   if (( $(UPCXX_DRY_RUN) )); then interpreter=": $$interpreter"; fi; \
+	   ( export UPCXX_SKIP_REBUILD=1 $(foreach var, $(TEST_SCRIPT_VARS), $(var)='$($(var))'); \
+	     set -x ; env                                  \
+	     UPCXX_CODEMODE=$(UPCXX_CODEMODE)              \
+	     UPCXX_THREADMODE=$$threadmode                 \
+	     UPCXX_NETWORK=$$network                       \
+	     $$interpreter $(upcxx_src)/$$src              \
+	                           $$exe$(EXESUFFIX)       \
+				   ) &> $$output ;         \
+	   result=$$?;                                     \
+	 fi; \
 	 if (( $(UPCXX_VERBOSE) )) || (( $(UPCXX_DRY_RUN) )); then \
-	     head -n 1 $$output;                         \
+	     eval $$verbose_cmd $$output;                \
 	 fi;                                             \
 	 if (( $(UPCXX_DRY_RUN) )); then                 \
 	     printf 'Compiling %-60s SKIPPED\n' "$$exe"; \
@@ -201,7 +223,7 @@ do-build-%: force
 	 fi; 
 
 # UPCXX_TESTS defaults to all, but test_install (for instance) may override
-UPCXX_TESTS ?= $(addsuffix +seq,$(testprograms_seq)) $(addsuffix +par,$(testprograms_par))
+UPCXX_TESTS ?= $(addsuffix +seq,$(test_sources_seq)) $(addsuffix +par,$(test_sources_par))
 
 # Build UPCXX_TESTS (default all)
 # UPCXX_CODEMODE is 'debug' if supported
@@ -374,7 +396,7 @@ do-tests-success: force
 	 echo ' '; \
 	 echo 'And similarly for any other of the tests compiled above.'
 
-ALL_TESTS = $(foreach test, $(notdir $(testprograms_seq) $(testprograms_par)), \
+ALL_TESTS = $(foreach test, $(notdir $(test_progs_seq) $(test_progs_par)), \
             $(foreach network, $(1), test-$(basename $(test))-$(network)))
 
 # Split the tests-clean rule to avoid over-long command lines (issue #406)
@@ -421,20 +443,23 @@ do-run-tests: force
 	   fi;                                                          \
 	 fi;                                                            \
 	 total=0; failed=0; skipped=0;                                  \
+	 export UPCXX_SKIP_REBUILD=1;                                   \
 	 echo "Running tests with RANKS=$$ranks";                       \
 	 for test in $(call ALL_TESTS,$(NETWORKS)); do                  \
-	   [[ -x $$test ]] || continue;                                 \
+	   [[ -x $$test || -x $$test.runcmd ]] || continue;             \
 	   if ! [[ "$$test" =~ $(call TEST_PATTERN,$(TESTS)) ]] || \
 	        [[ "$$test" =~ $(call TEST_PATTERN,$(NO_TESTS) $(test_exclude_compile_only)) ]] ; then \
 	      (( $(UPCXX_VERBOSE) )) && echo Skipping filtered $$test ; \
 	      : $$((++skipped)); continue;                              \
            fi ; \
 	   echo "Running $$test"; : $$((++total));                      \
+	   conduit=$${test##*-};                                        \
+	   stem=$$(echo $$test | $(PERL) -pe 's/^test-//; s/-'$$conduit'$$//; s/-(opt|debug)$$//; s/-(seq|par)$$//'); \
 	   if [[ -n '$(UPCXX_BINDIR)' ]]; then                          \
 	     runcmd='$(UPCXX_BINDIR)/upcxx-run';                        \
 	   else                                                         \
 	     : Amortize cost of upcxx-run lookups;                      \
-	     conduit=$${test##*-}; runvar=runcmd_$$conduit;             \
+	     runvar=runcmd_$$conduit;                                   \
 	     if [[ -z $${!runvar} ]]; then                              \
 	       case $(UPCXX_CODEMODE) in                                \
 	        opt) vars='DBGSYM=0 ASSERT=0 OPTLEV=3 GASNET_CODEMODE=opt';;   \
@@ -447,7 +472,7 @@ do-run-tests: force
 	   fi;                                                          \
 	   if (( $(UPCXX_DRY_RUN) )); then runcmd=": $$runcmd"; fi;  \
 	   output=$(TEST_OUTPUT)/$$test-run.out ;                       \
-	   ( stem=$$(echo $$test | $(PERL) -pe 's/^test-//; s/-'$$conduit'$$//; s/-(opt|debug)$$//; s/-(seq|par)$$//'); \
+	   (                                                            \
 	     test_args=TEST_ARGS_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');\
 	     test_env=TEST_ENV_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');  \
 	     if [[ -n "$${!test_env}" ]] ; then                         \
@@ -455,9 +480,15 @@ do-run-tests: force
 	     else                                                       \
 	       unset test_env;                                          \
 	     fi;                                                        \
+	     export RANKS=$$ranks NETWORK=$$conduit ;                   \
 	     date ;                                                     \
+	     if [[ -x $$test.runcmd ]]; then                            \
+	       command=$$($$test_env ./$$test.runcmd $$(eval echo $${!test_args}));\
+	     else                                                       \
+	       command="./$$test $$(eval echo $${!test_args})";         \
+	     fi;                                                        \
 	     set -x ;                                                   \
-	     $$runcmd -np $$ranks -- $$test_env $$run_wrapper ./$$test $$(eval echo $${!test_args}) \
+	     $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper $$command; \
 	   ) &> $$output;                                               \
 	   exitcode=$$?;                                                \
 	   header=4; firstout=$$(($$header+1));                         \
@@ -545,10 +576,10 @@ do-dev-target: force
 	 echo "   NETWORKS: $(NETWORKS)";                 \
 	 echo "========"; sleep 2
 	@$(MAKE) $(MAKE_HERE) $(TARGET) \
-	    TEST_EXE_PATTERN='test-$$$$(basename $$$$src .cpp)-$$$$threadmode-$(UPCXX_CODEMODE)-$$$$network' \
-	    UPCXX_TESTS='$(addsuffix +seq,$(testprograms_dev_seq)) $(addsuffix +par,$(testprograms_dev_par))' \
-	    testprograms_seq='$(subst .cpp,-seq-$(UPCXX_CODEMODE),$(testprograms_dev_seq))' \
-	    testprograms_par='$(subst .cpp,-par-$(UPCXX_CODEMODE),$(testprograms_dev_par))'
+	    TEST_EXE_PATTERN='test-$$$$(basename $$$$(shopt -s extglob; echo $$$${src%.@(sh|cpp)}))-$$$$threadmode-$(UPCXX_CODEMODE)-$$$$network' \
+	    UPCXX_TESTS='$(addsuffix +seq,$(test_sources_dev_seq)) $(addsuffix +par,$(test_sources_dev_par))' \
+	    test_progs_seq='$(addsuffix -seq-$(UPCXX_CODEMODE),$(test_progs_dev_seq))' \
+	    test_progs_par='$(addsuffix -par-$(UPCXX_CODEMODE),$(test_progs_dev_par))'
 
 DEV_CMODE_TARGETS = dev-tests-debug dev-tests-opt dev-check-debug dev-check-opt
 $(DEV_CMODE_TARGETS): force
@@ -587,7 +618,7 @@ $(DEV_MUX_TARGETS): force
 DEV_AUX_TARGETS = dev-run-tests dev-tests-clean
 $(DEV_AUX_TARGETS): force
 	@$(MAKE) $(MAKE_HERE) $$(cut -d- -f2- <<<$@) \
-	 testprograms_seq='$(foreach cmode,$(UPCXX_DBGOPT),$(subst .cpp,-seq-$(cmode),$(testprograms_dev_seq)))' \
-	 testprograms_par='$(foreach cmode,$(UPCXX_DBGOPT),$(subst .cpp,-par-$(cmode),$(testprograms_dev_par)))'
+	 test_progs_seq='$(foreach cmode,$(UPCXX_DBGOPT),$(addsuffix -seq-$(cmode),$(test_progs_dev_seq)))' \
+	 test_progs_par='$(foreach cmode,$(UPCXX_DBGOPT),$(addsuffix -par-$(cmode),$(test_progs_dev_par)))'
 
 .PHONY: $(DEV_TARGETS) $(DEV_MUX_TARGETS) $(DEV_AUX_TARGETS)
