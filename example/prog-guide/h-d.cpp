@@ -36,8 +36,8 @@ int main() {
       nerrs++;
     }
   }
-  if (nerrs) cout << "Failure/ERROR: " << nerrs << " errors detected" << endl;
-  else cout << "Success/SUCCESS" << endl;
+  if (nerrs) cout << "ERROR: " << nerrs << " errors detected" << endl;
+  else if (!upcxx::rank_me()) cout << "SUCCESS" << endl;
 
   delete_array(host_array2);
   delete_array(host_array1);

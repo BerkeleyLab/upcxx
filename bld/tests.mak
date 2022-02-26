@@ -148,11 +148,13 @@ endif
 # Conditionally exclude tests that require OpenMP:
 ifeq ($(strip $(UPCXX_HAVE_OPENMP)),)
 test_exclude_all += \
-	test/rput_omp.cpp \
+	example/prog-guide/rput-omp.cpp \
+	example/prog-guide/rpc-omp.cpp \
 	test/uts/uts_omp_ranks.cpp
 else
 # Note use of export to ensure shell can use these
-export TEST_FLAGS_RPUT_OMP = $(UPCXX_OPENMP_FLAGS)
+export TEST_FLAGS_RPUT_OMP =      $(UPCXX_OPENMP_FLAGS)
+export TEST_FLAGS_RPC_OMP =       $(UPCXX_OPENMP_FLAGS)
 export TEST_FLAGS_UTS_OMP_RANKS = $(UPCXX_OPENMP_FLAGS)
 export OMP_NUM_THREADS ?= 4
 endif
@@ -177,11 +179,12 @@ test_exclude_par += \
 test_exclude_seq += \
 	test/hello_threads.cpp \
 	test/rput_thread.cpp \
-	test/rput_omp.cpp \
 	test/regression/issue142.cpp \
 	test/regression/issue168.cpp \
 	test/uts/uts_hybrid.cpp \
 	test/uts/uts_omp_ranks.cpp \
+	example/prog-guide/rput-omp.cpp \
+	example/prog-guide/rpc-omp.cpp \
 	example/prog-guide/persona-example.cpp \
 	example/prog-guide/persona-example-rputs.cpp \
 	example/prog-guide/view-matrix-tasks.cpp
