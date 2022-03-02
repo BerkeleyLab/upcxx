@@ -820,7 +820,8 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
     done = false;
     SHOW("copy-loop-d2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
-
+    // the non-determinism in the move counts below arises from device copy
+    // asynchrony in reference kinds and is described in issue 494
     {
       Fn fn;
       upcxx::copy(lp, gpdev, 1, remote_cx::as_rpc(fn));
@@ -879,12 +880,12 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-h2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-get-h2d: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gp, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
+    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       Fn fn;
@@ -892,12 +893,12 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-get-d2d: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gpdev, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
+    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
 
     dev.destroy();
