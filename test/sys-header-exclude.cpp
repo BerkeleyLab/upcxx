@@ -28,8 +28,10 @@
 #error Detected <cfloat>
 #endif
 
+#if __cplusplus <= 201703
 #ifdef CHAR_BIT
 #error Detected <climits>
+#endif
 #endif
 
 #ifdef FP_NAN
