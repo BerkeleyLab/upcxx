@@ -171,6 +171,7 @@ void UTIL_ATTRIB_NOINLINE test_rpc1() {
   // containing a reference to T and serialize from that place, it no
   // longer involves an extra copy in the future<T> returning cases.
 
+#if !SKIP_RPC1 && !SKIP_RPC
   upcxx::rpc(target,
     [](T &&x) {
     },
@@ -230,12 +231,12 @@ void UTIL_ATTRIB_NOINLINE test_rpc1() {
     static_cast<T const&>(global)
   ).wait_reference();
   SHOW("T const& -> future<T>", 2, 1, 3);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_rpc2() {
   // now with dist_object
   dist_object<int> const &dob = *ddob;
-
+#if !SKIP_RPC2 && !SKIP_RPC
   {
     dist_object<T> dobT(upcxx::world());
     dobT.fetch(target).wait_reference();
@@ -274,11 +275,11 @@ void UTIL_ATTRIB_NOINLINE test_rpc2() {
     dob, static_cast<T const&>(global)
   ).wait_reference();
   SHOW("dist_object + T const& -> future<T>", 2, 1, 3);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_rpc3() {
   // returning references
-
+#if !SKIP_RPC3 && !SKIP_RPC
   upcxx::rpc(target,
     [](T &&x) -> T&& {
       return std::move(x);
@@ -337,11 +338,11 @@ void UTIL_ATTRIB_NOINLINE test_rpc3() {
     }
   ).wait_reference();
   SHOW("-> T const&", 1, 0, 1);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_rpc4() {
   // function object
-
+#if !SKIP_RPC4 && !SKIP_RPC
   {
     NmNcFn fn;
     upcxx::rpc(target, fn).wait_reference();
@@ -362,11 +363,11 @@ void UTIL_ATTRIB_NOINLINE test_rpc4() {
       }, fn).wait_reference();
   }
   SHOW("(arg) NmNcFn& -> NmNcFn&", 3, 0, 3);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_rpc5() {
   // rpc_ff
-
+#if !SKIP_RPC5 && !SKIP_RPC
   upcxx::barrier();
   done = false;
   upcxx::barrier();
@@ -429,7 +430,7 @@ void UTIL_ATTRIB_NOINLINE test_rpc5() {
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("(rpc_ff arg) NmNcFn& ->", 2, 0, 1);
-
+#endif
 }
 upcxx::global_ptr<int> gp;
 upcxx::global_ptr<int> gp_local;
@@ -443,7 +444,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc1() {
     gp_local = *dobj;
     upcxx::barrier();
   }
-
+#if !SKIP_RPUT1 && !SKIP_RPUT
     // rput: as_rpc
     {
       Fn fn;
@@ -506,10 +507,10 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc1() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc(lambda, NmNcFn&)&& ->", 2, 0, 1);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
-
+#if !SKIP_RPUT2 && !SKIP_RPUT
     {
       T t;
       upcxx::rput(42, gp, remote_cx::as_rpc([](const T&){ set_done(); }, t));
@@ -546,9 +547,10 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("as_rpc()|... T&& -> const T&", 2, 0, 3);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
+#if !SKIP_RPUT3 && !SKIP_RPUT
     {
       T t;
       auto cx = remote_cx::as_rpc([](const T&){ set_done(); }, t) | operation_cx::as_future();
@@ -615,10 +617,11 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc3() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("...&|as_rpc()& T&& -> const T&", 2, 0, 3);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     // VIS rput: as_rpc
+#if !SKIP_VIS
     std::size_t sz = 1;
     std::pair<int *,size_t> lpp(lp,sz);
     std::pair<upcxx::global_ptr<int>,size_t> gpp(gp,sz);
@@ -669,11 +672,11 @@ void UTIL_ATTRIB_NOINLINE test_vis_rpc() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("rput_strided: as_rpc() T&& -> const T&", 2, 0, 3);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
     // copy: as_rpc
- 
+#if !SKIP_COPY_HOST && !SKIP_COPY
     {
       Fn fn;
       upcxx::copy(lp, gp, 1, remote_cx::as_rpc(fn));
@@ -762,12 +765,16 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc() {
     while (!done) { upcxx::progress(); }
     done = false;
     SHOW("copy-loopback: as_rpc() T&& -> const T&", 2, 0, 4);
-
+#endif
 }
 void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
 
-  #ifdef DEVICE
+  #if defined(DEVICE) && !SKIP_COPY_DEVICE && !SKIP_COPY
+   #if SPREAD_DEVICE
+    Device dev(upcxx::local_team().rank_me()%Device::device_n());
+   #else
     Device dev(0);
+   #endif
     upcxx::device_allocator<Device> dev_alloc(dev, 1024*1024);
     using gpdev_t = upcxx::global_ptr<int, upcxx::memory_kind::any>;
     gpdev_t gpdev_local = dev_alloc.allocate<int>(2);
@@ -813,7 +820,8 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
     done = false;
     SHOW("copy-loop-d2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
 
-
+    // the non-determinism in the move counts below arises from device copy
+    // asynchrony in reference kinds and is described in issue 494
     {
       Fn fn;
       upcxx::copy(lp, gpdev, 1, remote_cx::as_rpc(fn));
@@ -872,12 +880,12 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-h2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-get-h2d: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gp, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
+    SHOW("copy-get-h2d: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
     {
       Fn fn;
@@ -885,12 +893,12 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2d: as_rpc(Fn&)&& ->", 3, 0, 1);
+    SHOW("copy-get-d2d: as_rpc(Fn&)&& ->", 3, 0, -2);
 
     upcxx::copy(gpdev, gpdev_local, 1, remote_cx::as_rpc(Fn()));
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, 3);
+    SHOW("copy-get-d2d: as_rpc(Fn&&)&& ->", 3, 0, -4);
 
 
     dev.destroy();

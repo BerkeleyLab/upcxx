@@ -20,6 +20,7 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #494: Intermittent rpc-ctor-trace failure on `copy-get-d2d(as_rpc)`
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
 * issue #527: Raise PGI version floor to 19.3
