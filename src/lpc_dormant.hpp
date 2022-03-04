@@ -270,8 +270,17 @@ namespace upcxx {
         std::uintptr_t vtbl_u = reinterpret_cast<std::uintptr_t>(p->vtbl);
         if(vtbl_u & 0x1) {
           auto *pro = reinterpret_cast<future_header_promise<T...>*>(vtbl_u ^ 0x1);
-          // balance injection increment and dropref:
-          backend::fulfill_now(/*move ref*/pro, 1);
+          std::intptr_t depcount = pro->pro_meta.countdown;
+          if (depcount > 1) { // this is a user-provided promise
+            // balance injection increment and dropref:
+            backend::fulfill_now(/*move ref*/pro, 1);
+          } else {
+            UPCXX_ASSERT(depcount == 1);
+            // This can only be an implicitly created promise
+            // However if it's non-empty then we cannot safely fulfill it without a value (issue #522)
+            // So just drop the reference and allow it to be deleted unfulfilled.
+            pro->dropref();
+          }
           delete static_cast<lpc_dormant_qpromise<T...>*>(p);
         } else {
           auto *p1 = static_cast<lpc_dormant_fn_base<T...>*>(p);
