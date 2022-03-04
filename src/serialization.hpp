@@ -643,7 +643,9 @@ namespace upcxx {
         UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("[Reader]::read()", "[Reader]::read_into()", T1);
 
         detail::raw_storage<T1> raw;
-        upcxx::template serialization_traits<T>::deserialize(*this, &raw);
+        T1 *res = upcxx::template serialization_traits<T>::deserialize(*this, &raw);
+        UPCXX_ASSERT((void *)res == (void *)&raw, "Unrecognized pointer returned by deserialize: "
+                                                  "must use placement-new onto the provided storage");
         return raw.value_and_destruct();
       }
 
@@ -654,7 +656,10 @@ namespace upcxx {
         static_assert(!AssertSerializable || detail::is_serializable_type_or_array<T>::value,
                      "Template argument of read_into must either be Serializable or an array of Serializable elements.");
 
-        return upcxx::template serialization_traits<T>::deserialize(*this, raw);
+        T1* res = upcxx::template serialization_traits<T>::deserialize(*this, raw);
+        UPCXX_ASSERT((void *)res == raw, "Unrecognized pointer returned by deserialize: "
+                                         "must use placement-new onto the provided storage");
+        return res;
       }
 
       void* unplace(std::size_t obj_size, std::size_t obj_align) {
@@ -1388,7 +1393,9 @@ namespace upcxx {
         
         detail::serialization_reader r(storage);
         detail::raw_storage<T1> x1_raw;
-        (void)the_traits::deserialize(r, &x1_raw);
+        T1 *res = the_traits::deserialize(r, &x1_raw);
+        UPCXX_ASSERT((void *)res == (void *)&x1_raw, "Unrecognized pointer returned by deserialize: "
+                                                     "must use placement-new onto the provided storage");
         
         if(storage != static_storage[0].storage())
           std::free(storage);
