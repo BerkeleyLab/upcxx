@@ -23,6 +23,7 @@ Notable issues resolved
 * issue #494: Intermittent rpc-ctor-trace failure on `copy-get-d2d(as_rpc)`
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
+* issue #522: Runtime crash along exception path for `rpc()` returning non-empty `operation_cx::as_future`
 * issue #527: Raise PGI version floor to 19.3
 * issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
