@@ -591,7 +591,8 @@ $(DEV_TMODE_TARGETS): force
 	@target=$$(cut -d- -f2 <<<$@) tmode=$$(cut -d- -f3 <<<$@); \
 	 case $$tmode in seq) other=par;; par) other=seq;; esac; \
 	 for cmode in $(UPCXX_DBGOPT); do \
-	   $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode testprograms_dev_$$other=''; \
+	   $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode \
+	           test_sources_dev_$$other='' test_progs_dev_$$other=''; \
 	 done
 
 DEV_CTMODE_TARGETS = dev-tests-seq-debug dev-tests-par-debug dev-tests-seq-opt dev-tests-par-opt \
@@ -599,7 +600,8 @@ DEV_CTMODE_TARGETS = dev-tests-seq-debug dev-tests-par-debug dev-tests-seq-opt d
 $(DEV_CTMODE_TARGETS): force
 	@target=$$(cut -d- -f2 <<<$@) tmode=$$(cut -d- -f3 <<<$@) cmode=$$(cut -d- -f4 <<<$@); \
 	 case $$tmode in seq) other=par;; par) other=seq;; esac; \
-	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode testprograms_dev_$$other=''
+	 $(MAKE) $(MAKE_HERE) do-dev-target TARGET=$$target UPCXX_CODEMODE=$$cmode \
+	           test_sources_dev_$$other='' test_progs_dev_$$other=''
 
 DEV_MUX_TARGETS = dev-tests dev-check
 $(DEV_MUX_TARGETS): force
