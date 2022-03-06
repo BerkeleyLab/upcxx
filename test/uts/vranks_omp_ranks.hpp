@@ -39,7 +39,8 @@ namespace vranks {
   void spawn(Fn fn) {
     upcxx::init();
     
-    thread_per_rank = os_env<int>("THREADS", 4);
+    thread_per_rank = os_env<int>("THREADS", os_env<int>("OMP_NUM_THREADS", 4));
+    if (upcxx::rank_me() == 0) say("") << "Threads per process: " << thread_per_rank;
     thread_agents.resize(thread_per_rank);
     
     std::atomic<int> bar1{0};

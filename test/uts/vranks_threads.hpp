@@ -45,6 +45,7 @@ namespace vranks {
   template<typename Fn>
   void spawn(Fn fn) {
     int vrank_n = os_env<int>("THREADS", 10);
+    std::cout<<"Threads: "<<vrank_n<<std::endl;
     vranks.resize(vrank_n);
     
     std::vector<std::thread*> threads{(unsigned)vrank_n};

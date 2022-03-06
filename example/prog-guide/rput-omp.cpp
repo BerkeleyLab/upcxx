@@ -29,16 +29,13 @@ vector<upcxx::global_ptr<int>> setup_pointers(const int n) {
 int main () {
   upcxx::init(); 
 
-  int thread_count = os_env<int>("THREADS", 0);
-  if(thread_count <= 0) thread_count = os_env<int>("OMP_NUM_THREADS", 10);
-
-  if(upcxx::rank_me() == 0)
-    std::cout<<"Threads: "<<thread_count<<'\n';
+  int thread_count = os_env<int>("THREADS", os_env<int>("OMP_NUM_THREADS", 10));
+  if(upcxx::rank_me() == 0) std::cout<<"Threads: "<<thread_count<<std::endl;
 
 //SNIPPET
   const int n = upcxx::rank_n();
   const int me = upcxx::rank_me();
-  const int tn = thread_count; 
+  const int tn = thread_count;  // threads per process
 
   vector<upcxx::global_ptr<int>> ptrs = setup_pointers(n);
   std::vector<upcxx::persona*> workers(tn);

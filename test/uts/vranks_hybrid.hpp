@@ -40,6 +40,7 @@ namespace vranks {
     upcxx::init();
     
     thread_per_rank = os_env<int>("THREADS", 4);
+    if (upcxx::rank_me() == 0) say("") << "Threads per process: " << thread_per_rank;
     thread_agents.resize(thread_per_rank);
     
     std::vector<std::thread*> threads{(unsigned)thread_per_rank};
