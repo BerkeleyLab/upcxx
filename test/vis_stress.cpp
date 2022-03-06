@@ -148,7 +148,11 @@ void sweep_given_type() {
   sweep_given_len<Uint,0>();
   sweep_given_len<Uint,1>();
   sweep_given_len<Uint,2>();
-  sweep_given_len<Uint,123456>();
+  if (os_env<bool>("UPCXX_OVERSUBSCRIBED",false)) {
+    sweep_given_len<Uint,100>();
+  } else { 
+    sweep_given_len<Uint,123456>();
+  }
 }
 
 int main() {
