@@ -85,6 +85,9 @@ int backend::init_count = 0;
 intrank_t backend::rank_n = -1;
 intrank_t backend::rank_me; // leave undefined so valgrind can catch it.
 
+intrank_t backend::nbrhd_set_size = -1;
+intrank_t backend::nbrhd_set_rank = -1;
+
 bool backend::verbose_noise = false;
 
 backend::heap_state *backend::heap_state::heaps[backend::heap_state::max_heaps] = {/*nullptr...*/};
@@ -684,10 +687,21 @@ void upcxx::init() {
   
   //////////////////////////////////////////////////////////////////////////////
   // Setup the local-memory neighborhood tables.
+
+  { // setup local_team_position()
+    gex_Rank_t set_size = 0, set_rank = (gex_Rank_t)-1;
+    gex_System_QueryMyPosition(&set_size, &set_rank, nullptr, nullptr);
+    backend::nbrhd_set_size = set_size;  
+    backend::nbrhd_set_rank = set_rank;  
+    UPCXX_ASSERT_ALWAYS(backend::nbrhd_set_size > 0);
+    UPCXX_ASSERT_ALWAYS(backend::nbrhd_set_rank >= 0 && backend::nbrhd_set_rank < backend::nbrhd_set_size); 
+  }
   
   gex_RankInfo_t *nbhd;
   gex_Rank_t peer_n, peer_me;
   gex_System_QueryNbrhdInfo(&nbhd, &peer_n, &peer_me);
+  UPCXX_ASSERT_ALWAYS(peer_n > 0);
+  UPCXX_ASSERT_ALWAYS(peer_me < peer_n);
   void *peer_EP_loc = nullptr;
 
   // compute local_team membership
