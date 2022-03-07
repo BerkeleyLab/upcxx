@@ -142,12 +142,15 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   d0->destroy(); // normal destruction
   assert(!d0->is_active());
   assert(!a0->is_active());
+  delete d0; delete a0;
 
   delete a1;     // allocator destructor,
   assert(d1->is_active() == have1);
   d1->destroy(); // ... then device destroy
+  delete d1;
 
   d3->destroy(); // destroy with no allocator
+  delete d3;
 
   // defer 2 to post-finalize
   post_fini.push_back(std::function<void()>([=]() {
