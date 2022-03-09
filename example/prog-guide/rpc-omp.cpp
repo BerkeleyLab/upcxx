@@ -7,24 +7,28 @@
   #error This test may only be compiled in PAR threadmode
 #endif
 
+using upcxx::experimental::os_env;
+
 int main() {
   upcxx::init();
+  int thread_count = os_env<int>("THREADS", os_env<int>("OMP_NUM_THREADS", 4));
+  if(upcxx::rank_me() == 0) std::cout<<"Threads: "<<thread_count<<std::endl;
 //SNIPPET
-  upcxx::intrank_t me = upcxx::rank_me();
-  upcxx::intrank_t n = upcxx::rank_n();
-  upcxx::intrank_t buddy = (me^1)%n;
+  const int me = upcxx::rank_me();
+  const int n = upcxx::rank_n();
+  const int buddy = (me^1)%n;
+  const int tn = thread_count; // threads per process
   std::atomic<int> done(1); // master thread doesn't do worker loop
 
-#pragma omp parallel num_threads(4)
+#pragma omp parallel num_threads(tn)
   {
-    int threads = omp_get_num_threads();
-    UPCXX_ASSERT(threads>1);
+    UPCXX_ASSERT(tn == omp_get_num_threads());
     // OpenMP guarantees master thread has rank 0
     if (omp_get_thread_num() == 0) {
       UPCXX_ASSERT(upcxx::master_persona().active_with_caller());
       do {
         upcxx::progress();
-      } while(done.load(std::memory_order_relaxed) != threads);
+      } while(done.load(std::memory_order_relaxed) != tn);
     } else { // worker threads send RPCs
       upcxx::future<> fut_all = upcxx::make_future();
       for (int i=0; i<10; i++) { // RPC with buddy rank

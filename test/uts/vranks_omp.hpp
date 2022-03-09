@@ -44,7 +44,8 @@ namespace vranks {
   
   template<typename Fn>
   void spawn(Fn fn) {
-    int vrank_n = os_env<int>("THREADS", 10);
+    int vrank_n = os_env<int>("THREADS", os_env<int>("OMP_NUM_THREADS", 10));
+    std::cout<<"Threads: "<<vrank_n<<std::endl;
     vranks.resize(vrank_n);
 
     omp_set_num_threads(vrank_n);

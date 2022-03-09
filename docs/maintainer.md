@@ -222,6 +222,10 @@ composition of GitLab CI pipeline launch requests.
   runs in a valgrind leak check. This greatly slows execution time, and
   also disables the normal test timeout mechanism. 
   Requires a working valgrind tool.
+  Additional settings recommended for running valgrind on our dev-tests suite:
+  ```text
+  env UPCXX_VERBOSE=1 UPCXX_OVERSUBSCRIBED=1 OMP_NUM_THREADS=1 TEST_ARGS_PERSONA_EXAMPLE=100 
+  ```
 
 ## Internal-Only Configuration Options
 

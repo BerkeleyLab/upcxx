@@ -73,7 +73,7 @@ nothing to do with UPC++:
 4. Finally, Valgrind has no understanding of object boundaries in the global
    address space. As such, it's **incapable of detecting memory errors (buffer
    overruns, use-after-free, memory leaks, etc) for any object in the shared
-   heap**.
+   heap**. Similarly, valgrind has no visibility into GPU memory at all.
 
 With all those caveats Valgrind still has some limited utility for UPC++
 programs, primarily for detecting programming errors involving the **private**
@@ -83,14 +83,31 @@ at some performance cost.
 
 Once you've done that, you'll need to invoke the `valgrind` wrapper command
 *inside* the `upcxx-run` command (otherwise you're running valgrind on the
-spawner). It's also recommended to initially try reproducing your problem with
-a single process, since that's where Valgrind works best. So the general format is:
-`upcxx-run [upcxx-run args...] valgrind [valgrind args...] your-program [program args...]`
+spawner).  So the general format is:
+
+```bash
+upcxx-run [upcxx-run args...] valgrind [valgrind args...] your-program [program args...]`
+```
+
+It's recommended to initially try reproducing your problem with
+a single process, since that's where Valgrind works best. 
+
+UPC++ and GASNet both supply optional Valgrind suppression files that suppress
+some known-benign valgrind messages. These files are installed in the following locations:
+
+* `$prefix/lib/valgrind/upcxx.supp`
+* `$prefix/gasnet.debug/lib/valgrind/gasnet.supp`
+
+Finally, valgrind doesn't handle process/thread contention very efficiently,
+so regardless of system core count it's recommended to enable UPC++'s 
+[oversubscription support](oversubscription.md) to help reduce running time.
 
 Here's a complete example:
 
-```
-upcxx-run -vv -np 1 valgrind --leak-check=full ./a.out -myarg
+```bash
+env UPCXX_OVERSUBSCRIBED=1 upcxx-run -vv -np 1 \
+    valgrind --leak-check=full --suppressions=<path>/gasnet.supp --suppressions=<path>/upcxx.supp \
+    ./a.out -myarg
 ```
 
 

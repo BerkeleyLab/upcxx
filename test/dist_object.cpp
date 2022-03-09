@@ -17,7 +17,7 @@ struct asym_type {
     }
     template<typename R>
     static int* deserialize(R &r, void *spot) {
-      return ::new int(r.template read<int>());
+      return ::new (spot) int(r.template read<int>());
     }
   };
 };
