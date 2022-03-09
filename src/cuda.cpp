@@ -232,6 +232,10 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
     UPCXX_ASSERT(st != nullptr);
     UPCXX_ASSERT(st->device_id == device_);
 
+    #if UPCXXI_GEX_MK_CUDA
+      st->destroy_endpoint("cuda_device");
+    #endif
+    
     if (st->alloc_base) {
       detail::device_allocator_core<upcxx::cuda_device>* alloc = 
         static_cast<detail::device_allocator_core<upcxx::cuda_device>*>(st->alloc_base);
@@ -240,10 +244,6 @@ void upcxx::cuda_device::destroy(upcxx::entry_barrier eb) {
       UPCXX_ASSERT(st->alloc_base == &::tombstone);
     }
 
-    #if UPCXXI_GEX_MK_CUDA
-      st->destroy_endpoint("cuda_device");
-    #endif
-    
     CU_CHECK_ALWAYS(cuStreamDestroy(st->stream));
     CU_CHECK_ALWAYS(cuDevicePrimaryCtxRelease(st->device_id));
     

@@ -262,6 +262,10 @@ void upcxx::hip_device::destroy(upcxx::entry_barrier eb) {
     UPCXX_ASSERT(st != nullptr);
     UPCXX_ASSERT(st->device_id == device_);
 
+    #if UPCXXI_GEX_MK_HIP
+      st->destroy_endpoint("hip_device");
+    #endif
+    
     if (st->alloc_base) {
       detail::device_allocator_core<upcxx::hip_device>* alloc = 
         static_cast<detail::device_allocator_core<upcxx::hip_device>*>(st->alloc_base);
@@ -270,10 +274,6 @@ void upcxx::hip_device::destroy(upcxx::entry_barrier eb) {
       UPCXX_ASSERT(st->alloc_base == &::tombstone);
     }
 
-    #if UPCXXI_GEX_MK_HIP
-      st->destroy_endpoint("hip_device");
-    #endif
-    
     UPCXXI_HIP_CHECK_ALWAYS(hipStreamDestroy(st->stream));
     
     backend::heap_state::get(heap_idx_) = nullptr;

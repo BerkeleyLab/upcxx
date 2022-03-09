@@ -64,10 +64,12 @@ namespace upcxx { namespace backend {
         gex_Client_t client = gex_TM_QueryClient(TM0);
 
         int ok = gex_MK_Create(&this->kind, client, &args, 0);
-        UPCXX_ASSERT_ALWAYS(ok == GASNET_OK, "gex_MK_Create failed for " << where);
+        UPCXX_ASSERT_ALWAYS(ok == GASNET_OK && this->kind != GEX_MK_INVALID,
+                            "gex_MK_Create failed for " << where);
 
         ok = gex_EP_Create(&this->ep, client, GEX_EP_CAPABILITY_RMA, 0);
-        UPCXX_ASSERT_ALWAYS(ok == GASNET_OK, "gex_EP_Create failed for heap_idx " << heap_idx << ", " << where);
+        UPCXX_ASSERT_ALWAYS(ok == GASNET_OK && this->ep != GEX_EP_INVALID,
+                            "gex_EP_Create failed for heap_idx " << heap_idx << ", " << where);
 
         gex_EP_Index_t epidx  = gex_EP_QueryIndex(this->ep);
         UPCXX_ASSERT_ALWAYS(epidx == heap_idx, "gex_EP_Create generated unexpected EP_Index "
@@ -76,11 +78,21 @@ namespace upcxx { namespace backend {
 
       void destroy_endpoint(const char *where) {
         UPCXX_ASSERT_ALWAYS(use_gex_mk);
-        // TODO: once they are provided, eventually will do:
-        //   gex_Segment_Destroy()
-        //   gex_MK_Destroy()
-        //   gex_EP_Destroy()  
+
+        UPCXX_ASSERT_ALWAYS(this->ep      != GEX_EP_INVALID);
+        UPCXX_ASSERT_ALWAYS(this->kind    != GEX_MK_INVALID);
+
+        // TODO: once provided, eventually will do:
+        //   gex_EP_Unbind() / gex_EP_Unpublish() / gex_EP_Destroy()  
         // and modify heap_state to allow recycling of heap_idx
+
+        #if UPCXXI_GEX_SPEC_VERSION >= 15
+          if (this->segment != GEX_SEGMENT_INVALID) { // iff we created an allocator
+            gex_Segment_Destroy(this->segment, 0);
+          }
+          gex_MK_Destroy(this->kind, 0);
+        #endif
+
         this->segment = GEX_SEGMENT_INVALID;
         this->ep =      GEX_EP_INVALID;
         this->kind =    GEX_MK_INVALID;
