@@ -24,6 +24,7 @@ Notable issues resolved
 * issue #512: ADL fails with `when_all`
 * issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
 * issue #522: Runtime crash along exception path for `rpc()` returning non-empty `operation_cx::as_future`
+* issue #523: Round-trip RPC lacking operation_cx should generate an error
 * issue #527: Raise PGI version floor to 19.3
 * issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
