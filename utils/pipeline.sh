@@ -95,7 +95,6 @@ fi
 if (( "$CI_RUN_TESTS" )) ; then
   # variables controlling (potentially simulated) distributed behavior
   export GASNET_SPAWNFN=${GASNET_SPAWNFN:-L}
-  export TIMEOUT=${TIMEOUT:-$(type -p timeout)} # TEMPORARY workaround for bug 4079
   export GASNET_SUPERNODE_MAXSIZE=${GASNET_SUPERNODE_MAXSIZE:-2}
 
   # Run for each network as a separate test session, in the user-provided order
