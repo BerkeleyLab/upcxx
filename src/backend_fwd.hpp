@@ -187,6 +187,8 @@ namespace backend {
   extern int init_count;
   extern intrank_t rank_n;
   extern intrank_t rank_me;
+  extern intrank_t nbrhd_set_size;
+  extern intrank_t nbrhd_set_rank;
   extern bool verbose_noise;
   
   extern persona master;

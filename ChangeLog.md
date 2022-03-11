@@ -30,6 +30,7 @@ feature that supports efficient PGAS communication involving GPU memory buffers.
 General features/enhancements: (see specification and programmer's guide for full details)
 
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
+* New query `upcxx::local_team_position()` provides job topology information
 
 Infrastructure changes:
 
@@ -44,6 +45,7 @@ Notable issues resolved
 * issue #527: Raise PGI version floor to 19.3
 * issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
+* spec issue 173: Add `upcxx::local_team_position()`
 * spec issue 188: Add `cuda_device::device_n()`
 * spec issue 190: `device_allocator` constructor has several problems
 

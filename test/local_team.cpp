@@ -13,9 +13,23 @@ int main() {
   {
     print_test_header();
 
+    std::ostringstream position;
+    intrank_t set_rank = -1, set_size = -1;
+    #if UPCXX_VERSION >= 20210905
+    {
+      std::pair<intrank_t, intrank_t> pos = upcxx::local_team_position();
+      std::tie(set_rank,set_size) = pos;
+
+      UPCXX_ASSERT_ALWAYS(set_size > 0);
+      UPCXX_ASSERT_ALWAYS(set_rank >= 0 && set_rank < set_size);
+      position << " (position: " << set_rank << "/" << set_size << ")";
+    }
+    #endif
+
     upcxx::team const &locals = upcxx::local_team();
 
-    say()<<"local_team: "<<locals.rank_me()<<"/"<<locals.rank_n()<< ": "<<hostname();
+    say()<<"local_team: "<<locals.rank_me()<<"/"<<locals.rank_n()
+         << position.str() << ": " << hostname();
     upcxx::barrier();
 
     UPCXX_ASSERT_ALWAYS(upcxx::world().rank_n() == upcxx::rank_n());
@@ -30,6 +44,20 @@ int main() {
       UPCXX_ASSERT_ALWAYS(locals.from_world(locals[i]) == i);
       UPCXX_ASSERT_ALWAYS(locals.from_world(locals[i], -0xbeef) == i);
       UPCXX_ASSERT_ALWAYS(upcxx::local_team_contains(locals[i]));
+    }
+
+    if (set_size > 0) { // have local_team_position()
+      intrank_t set_size_max = upcxx::reduce_all(set_size, upcxx::op_fast_max).wait();
+      UPCXX_ASSERT_ALWAYS(set_size_max == set_size); // all ranks in world agree
+      intrank_t set_rank_max = upcxx::reduce_all(set_rank, upcxx::op_fast_max, locals).wait();
+      UPCXX_ASSERT_ALWAYS(set_rank_max == set_rank); // all local ranks agree
+
+      // validate each local team has a distinct set_rank in [0,set_size)
+      intrank_t check = (peer_me == 0 ? set_rank + 1 : 0);
+      intrank_t expect = 0; 
+      for (int i = 1; i <= set_size; i++) expect += i;
+      intrank_t result = upcxx::reduce_all(check, upcxx::op_fast_add).wait();
+      UPCXX_ASSERT_ALWAYS(result == expect,"result="<<result<<" expect="<<expect);
     }
     
     { // Try and generate some non-local ranks, not entirely foolproof.
