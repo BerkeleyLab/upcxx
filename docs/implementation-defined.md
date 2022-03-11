@@ -78,6 +78,54 @@ function object at the target, nor will it deliver any event notifications
 (for example, a promise passed using an `as_promise()` completion will
 remain unchanged by the exceptional call).
 
+## Simplified Device Allocator Management
+
+UPC++ specifies the type `upcxx::gpu_default_device` which is an implementation-defined
+alias for a GPU device type. The binding of that alias is determined as follows:
+
+1. For the common case where UPC++ is configured for exactly one GPU
+   variety (e.g. `configure --enable-cuda` OR `configure --enable-hip`) then
+   `upcxx::gpu_default_device` defaults to an alias for that corresponding device
+   type (i.e. `upcxx::cuda_device` or `upcxx::hip_device`).
+
+2. When no device support is configured, then `upcxx::gpu_default_device`
+   defaults to an alias for `upcxx::cuda_device`.
+
+3. User programs may override this default choice by defining one of the following 
+   preprocessor macros to 1 before including upcxx.hpp (these may be set
+   independently per translation unit):
+    * `UPCXX_GPU_DEFAULT_DEVICE_CUDA=1` makes `gpu_default_device` an alias for `cuda_device`
+    * `UPCXX_GPU_DEFAULT_DEVICE_HIP=1` makes `gpu_default_device` an alias for `hip_device`
+
+4. For rare cases where UPC++ is configured to support two or more GPU varieties, then 
+   `upcxx::gpu_default_device` will default to aliasing an unspecified device type.
+   Users of such configurations are advised to define one of the two macros
+   described above.
+
+The resulting memory kind can be queried via the `gpu_default_device::kind` constant.
+`upcxx::make_gpu_allocator()` defaults to returning a `device_allocator<gpu_default_device>`,
+but this can also be overriden on a callsite basis via template argument.
+
+The `upcxx::make_gpu_allocator<Device>(sz,device_id)` factory function defaults
+to `device_id = auto_device_id` which activates an implementation-defined
+"smart" choice of valid GPU device when a device ID was not explicitly provided
+by the caller. That "smart" choice is determined as follows:
+
+1. If `Device::device_n()` is zero, there are no valid GPUs at the calling
+   process and the call to `upcxx::make_gpu_allocator(sz, auto_device_id)` will
+   return an inactive `device_allocator` (one with no corresponding segment).
+
+2. If `Device::device_n()` is one, there is a single valid GPU at the calling
+   process and the call will attempt to construct a `device_allocator` segment
+   for that GPU.
+
+3. Otherwise, there are multiple valid GPUs at the calling process. In this
+   case the "smart" choice will cycle through valid IDs with subsequent calls,
+   with a starting point determined from the process rank in `local_team()`.
+   The resulting device ID can be queried via `device_allocator::device_id()`.
+   Programs wanting finer-grained control over device selection in multi-GPU
+   environments may override this choice by explicitly passing the `device_id`
+   argument to `upcxx::make_gpu_allocator(sz,device_id)`.
 
 ## Assertion Macros ##
 

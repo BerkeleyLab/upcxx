@@ -121,16 +121,11 @@ struct match_const<T, false> {
   using tricksy_type = tricksy;
 };
 
-#ifndef DEVICE
-  // this test always compiles statically with a device to detect compile-time bugs, 
-  // even in builds where no device is runtime-enabled
-  #define DEVICE cuda_device
-  using Device = upcxx::DEVICE;
-#endif
-
-volatile bool gpu_enabled;
-Device *gpu_device;
-upcxx::device_allocator<Device> *gpu_alloc;
+// this test always compiles statically with a device to detect compile-time bugs, 
+// even in builds where no device is runtime-enabled (tracked by gpu_enabled)
+bool gpu_enabled;
+using Device = upcxx::gpu_default_device;
+upcxx::gpu_heap_allocator *gpu_alloc;
 
 namespace perverse {
   namespace std { // check for insufficiently qualified macro use of ::std
@@ -415,16 +410,8 @@ int main() {
   upcxx::init();
   print_test_header();
 
-  #if UPCXX_KIND_HIP
-    if (std::is_same<Device, upcxx::hip_device>::value) gpu_enabled = true;
-  #endif
-  #if UPCXX_KIND_CUDA
-    if (std::is_same<Device, upcxx::cuda_device>::value) gpu_enabled = true;
-  #endif
-  if (gpu_enabled) {
-    gpu_device = new Device( 0 ); // Open device 0
-    gpu_alloc = new upcxx::device_allocator<Device>(*gpu_device, 16*1024);
-  }
+  gpu_alloc = new upcxx::gpu_heap_allocator( upcxx::make_gpu_allocator(2UL<<20) );
+  gpu_enabled = gpu_alloc->is_active(); // check if we found a GPU
 
   T(A); 
   check<A>();
@@ -439,11 +426,8 @@ int main() {
   check_general<V>(true);
   check_general<const V>(true);
 
-  if (gpu_enabled) {
-    gpu_device->destroy();
-    delete gpu_device;
-    delete gpu_alloc;
-  }
+  gpu_alloc->destroy();
+  delete gpu_alloc;
 
   print_test_success();
   upcxx::finalize();

@@ -42,9 +42,11 @@ namespace upcxx { namespace backend {
     static constexpr DevPtr nullp = Device::template null_pointer<void>();
     static constexpr bool use_gex_mk = Device::use_gex_mk(detail::internal_only());
     DevPtr segment_to_free;
+    typename Device::id_type device_id;
 
     device_heap_state_base() : device_heap_state_generic(Device::kind) {
       segment_to_free = nullp;
+      device_id = Device::invalid_device_id;
     }
 
     static inline device_heap_state<Device> *get(std::int32_t heap_idx, bool allow_null = false) {
@@ -220,7 +222,34 @@ namespace upcxx { namespace backend {
 
   }; // device_heap_state_base
 
-}} // namespace
+} // namespace backend
 
+
+// device::heap_idx_to_device_id(): this function exists to allow public
+// device_allocator.hpp to pluck state out of the device-specific heap_state
+// objects declared in internal headers
+
+namespace detail {
+  template<typename Device>
+  typename Device::id_type heap_idx_to_device_id_helper(...) {
+    UPCXXI_INVOKE_UB("internal error: heap_idx_to_device_id for a disabled kind");
+    return Device::invalid_device_id;
+  }
+  template<typename Device, typename _ = decltype(backend::device_heap_state<Device>::get)>
+  inline // this overload sfinae's out for disabled kinds
+  typename Device::id_type heap_idx_to_device_id_helper(int heap_idx) {
+    auto st = backend::device_heap_state<Device>::get(heap_idx);
+    typename Device::id_type id = st->device_id;
+    UPCXX_ASSERT(id != Device::invalid_device_id);
+    return id;
+  }
+} // namespace detail
+
+template<typename Device>
+inline typename Device::id_type detail::device::heap_idx_to_device_id(int heap_idx) {
+  return detail::heap_idx_to_device_id_helper<Device>(heap_idx);
+}
+
+} // namespace upcxx
 
 #endif

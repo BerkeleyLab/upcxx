@@ -15,12 +15,13 @@ volatile bool hip_enabled;
 std::vector<std::function<void()>> post_fini;
 
 template<typename Device>
-void run_test(typename Device::id_type id, std::size_t heap_size) {
+void run_test(typename Device::id_type id, std::size_t heap_size, const char *desc) {
 
   using Allocator = upcxx::device_allocator<Device>;
   assert_same<typename Allocator::device_type, Device>();
   using id_type = typename Device::id_type;
   using gp_type = global_ptr<int, Device::kind>;
+  using gp_any = global_ptr<int, memory_kind::any>;
   using dp_type = typename Device::template pointer<int>;
 
   const gp_type gp_null;
@@ -35,92 +36,131 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   // test inactive devices and allocators
   for (int i=0; i < 20+upcxx::rank_me(); i++) { 
     Device di = Device();
-    assert(!di.is_active());
+    gpu_device *gdi = &di;
+    assert(!di.is_active()); assert(!gdi->is_active());
     assert(di.device_id() == id_invalid);
+    assert(gdi->kind() == Device::kind);
     Device di2(std::move(di));
-    assert(!di.is_active());
+    gpu_device *gdi2 = &di2;
+    assert(!di.is_active()); assert(!gdi->is_active());
     assert(di.device_id() == id_invalid);
-    assert(!di2.is_active());
+    assert(!di2.is_active()); assert(!gdi2->is_active());
     assert(di2.device_id() == id_invalid);
 
     Allocator ai = Allocator();
-    assert(!ai.is_active());
+    heap_allocator *gai = &ai;
+    assert(!ai.is_active()); assert(!gai->is_active());
+    assert(ai.kind == Device::kind);
     Allocator ai2(std::move(ai));
+    heap_allocator *gai2 = &ai2;
+    assert(gai2->kind() == Device::kind);
     assert(!ai.is_active());
-    assert(!ai2.is_active());
+    assert(!ai2.is_active()); assert(!gai2->is_active());
     assert(Allocator::local(gp_null) == dp_null);
     assert(gp_null.is_local());
     assert(gp_null.local() == nullptr);
+    assert(ai.device_id() == id_invalid);
     assert(Allocator::device_id(gp_null) == id_invalid);
     assert(ai.to_global_ptr(dp_null) == gp_null);
     ai.deallocate(gp_null);
 
-    if (i < 6) { // sometimes explicit destroy
+    if (i < 18) { // sometimes explicit destroy
       entry_barrier lev;
       switch (i % 3) { // with varying eb
         case 0: lev = entry_barrier::user; break;
         case 1: lev = entry_barrier::internal; break;
         case 2: lev = entry_barrier::none; break;
       }
-      if (i < 3) di.destroy(lev);
-      else      di2.destroy(lev);
+      if (i < 3)       di.destroy(lev);
+      else if (i < 6)  di2.destroy(lev);
+      else if (i < 9)  gdi->destroy(lev);
+      else if (i < 12) gdi2->destroy(lev);
+      else if (i < 15)  gai->destroy(lev);
+      else if (i < 18) gai2->destroy(lev);
     }
   }
 
-  assert(Device::device_n() >= 1);
+  int n_dev = Device::device_n();
+  assert(n_dev >= 0);
+  say() << "Testing " << n_dev << " " << desc << " GPUs";
+  int low = reduce_all(Device::device_n(), op_fast_min).wait();
+  if (low == 0) {
+    if (!rank_me())
+      say("") << "WARNING: Some ranks lack a " << desc << " GPU. Active tests skipped.";
+    return;
+  }
 
   // deliberately create three heaps on the same device
   // managed via pointer for precision testing of destruction
   Device *d0 = new Device(id);
+  gpu_device *gd0 = d0;
   Allocator *a0 = new Allocator(*d0, heap_size);
-  assert(d0->is_active()); assert(a0->is_active());
+  heap_allocator *ga0 = a0;
+  assert(d0->is_active()); assert(gd0->is_active()); 
+  assert(a0->is_active()); assert(ga0->is_active()); 
   assert(d0->device_id() == id);
+  assert(a0->device_id() == id);
 
   bool have1 = rank_me()%2;
   Device *d1 = new Device(have1?id:id_invalid);
+  gpu_device *gd1 = d1;
   Allocator *a1 = new Allocator(*d1, heap_size);
-  assert(d1->is_active() == have1); assert(a1->is_active() == have1);
+  heap_allocator *ga1 = a1;
+  assert(d1->is_active() == have1); assert(gd1->is_active() == have1); 
+  assert(a1->is_active() == have1); assert(ga1->is_active() == have1);
   assert(d1->device_id() == (have1?id:id_invalid));
+  assert(a1->device_id() == (have1?id:id_invalid));
   if (have1 && rank_me()%3) { // test moving an active device
     Device *d1a = new Device(std::move(*d1));
     assert(!d1->is_active());
     delete d1;
     d1 = d1a;
-    assert(d1->is_active()); assert(a1->is_active());
+    gd1 = d1a;
+    assert(d1->is_active()); assert(gd1->is_active()); 
+    assert(a1->is_active()); assert(ga1->is_active());
   }
 
   bool have2 = !(rank_me()%2);
   Device *d2 = new Device(have2?id:id_invalid);
+  gpu_device *gd2 = d2;
   Allocator *a2 = new Allocator(*d2, heap_size);
-  assert(d2->is_active() == have2); assert(a2->is_active() == have2);
+  heap_allocator *ga2 = a2;
+  assert(d2->is_active() == have2); assert(gd2->is_active() == have2); 
+  assert(a2->is_active() == have2); assert(ga2->is_active() == have2);
   assert(d2->device_id() == (have2?id:id_invalid));
+  assert(a2->device_id() == (have2?id:id_invalid));
   if (have2 && rank_me()%3) { // test moving an active allocator
     Allocator *a2a = new Allocator(std::move(*a2));
-    assert(!a2->is_active());
+    assert(!a2->is_active()); assert(!ga2->is_active());
     delete a2;
     a2 = a2a;
-    assert(d2->is_active()); assert(a2->is_active());
+    ga2 = a2a;
+    assert(d2->is_active()); assert(gd2->is_active()); 
+    assert(a2->is_active()); assert(ga2->is_active());
   }
 
   // and a device with no heap
   Device *d3 = new Device(id);
-  assert(d3->is_active());
+  gpu_device *gd3 = d3;
+  assert(d3->is_active()); assert(gd3->is_active());
   assert(d3->device_id() == id);
 
   // allocate some objects
-  auto alloc_check = [=](Allocator *a, size_t num) {
-    assert(a->is_active());
-    gp_type gp = a->template allocate<int>(num); 
+  auto alloc_check = [=](Allocator *a, gp_any gpa) {
+    assert(gpa);
+    assert(gpa.dynamic_kind() == Device::kind);
+    gp_type gp = static_kind_cast<Device::kind>(gpa);
     assert(gp);
+    assert(a->is_active());
     dp_type dp = Allocator::local(gp);
     assert(dp != dp_null);
+    size_t align = Device::template default_alignment<int>();
+    assert((uintptr_t)dp % align == 0);
     gp_type gp1 = a->to_global_ptr(dp);
     assert(gp == gp1);
-    assert(Allocator::device_id(gp) == id);
-    global_ptr<int, memory_kind::any> gp_any = gp;
-    assert(gp_any.dynamic_kind() == Device::kind);
-    assert(gp.dynamic_kind() == gp_any.dynamic_kind());
-    assert(gp == dynamic_kind_cast<Device::kind>(gp_any));
+    assert(Allocator::device_id(gp) == a->device_id());
+    assert(gp.dynamic_kind() == gpa.dynamic_kind());
+    assert(gp == dynamic_kind_cast<Device::kind>(gpa));
     if (Device::kind != memory_kind::host)
       assert(!gp.is_local()); // unspecified, but true for all current devices
     #if TEST_ISSUE464
@@ -128,26 +168,46 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
     #endif
     return gp;
   };
-  gp_type gp0 = alloc_check(a0,1); 
+  gp_type gp0 = alloc_check(a0,a0->template allocate<int>(1)); 
   gp_type gp1 = nullptr;
-  if (have1) gp1 = alloc_check(a1,10); 
+  if (have1) gp1 = alloc_check(a1,a1->template allocate<int>(10)); 
   gp_type gp2 = nullptr;
-  if (have2) gp2 = alloc_check(a2,20); 
+  if (have2) gp2 = alloc_check(a2,a2->template allocate<int>(20)); 
   assert(gp0 != gp1); assert(gp0 != gp2);
 
   a0->deallocate(gp0);
   a1->deallocate(gp1);
   //a2->deallocate(gp2); // deliberate leak
 
+  { // exercise heap_allocator memory management
+    { 
+      gp_any gpa = alloc_check(a0,a0->template allocate<int>(1));
+      a0->deallocate(gpa);
+    }
+    { 
+      gp_any gpa = alloc_check(a0,a0->template allocate<int>(1));
+      ga0->deallocate(gpa);
+    }
+    { 
+      gp_any gpa = alloc_check(a0,ga0->template allocate<int>(1));
+      a0->deallocate(gpa);
+    }
+    { 
+      gp_any gpa = alloc_check(a0,ga0->template allocate<int>(1));
+      ga0->deallocate(gpa);
+    }
+  }
+
   d0->destroy(); // normal destruction
-  assert(!d0->is_active());
+  assert(!d0->is_active()); assert(!gd0->is_active());
   assert(!a0->is_active());
-  delete d0; delete a0;
+  delete d0;
+  delete ga0;
 
   delete a1;     // allocator destructor,
-  assert(d1->is_active() == have1);
-  d1->destroy(); // ... then device destroy
-  delete d1;
+  assert(d1->is_active() == have1); assert(gd1->is_active() == have1);
+  gd1->destroy(); // ... then device destroy
+  delete gd1;
 
   d3->destroy(); // destroy with no allocator
   delete d3;
@@ -173,6 +233,86 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   post_fini.push_back(std::function<void()>([=]() {
     delete d4;
   }));
+
+  upcxx::barrier();
+ 
+  // more exhaustive test of various paths to destroy
+  for (int i=0; i < 4; i++) {
+    bool have = (i ? !(rank_me()%2) : true);
+    Device *dx = new Device(have?id:id_invalid);
+    gpu_device *gdx = dx;
+    Allocator *ax = new Allocator(*dx, heap_size);
+    heap_allocator *gax = ax;
+    assert(dx->is_active() == have); assert(gdx->is_active() == have); 
+    assert(ax->is_active() == have); assert(gax->is_active() == have);
+    assert(dx->device_id() == (have?id:id_invalid));
+    assert(ax->device_id() == (have?id:id_invalid));
+    if (i > 1 && have && rank_me()%3) {
+      // move active allocator
+      Allocator *axa = new Allocator(std::move(*ax));
+      assert(!ax->is_active()); assert(!gax->is_active());
+      delete ax;
+      ax = axa;
+      gax = axa;
+      assert(dx->is_active()); assert(gdx->is_active()); 
+      assert(ax->is_active()); assert(gax->is_active());
+      if (i > 2) {
+        // move active device
+        Device *dxa = new Device(std::move(*dx));
+        assert(!dx->is_active()); assert(!gdx->is_active()); 
+        delete dx;
+        dx = dxa;
+        gdx = dxa;
+      }
+      assert(dx->is_active()); assert(gdx->is_active()); 
+      assert(ax->is_active()); assert(gax->is_active());
+    }
+    if (have) { // exercise heap_allocator memory management
+      ax->deallocate(alloc_check(ax,ax->template allocate<int>(1)));
+      gax->deallocate(alloc_check(ax,ax->template allocate<int>(1)));
+      ax->deallocate(alloc_check(ax,gax->template allocate<int>(1)));
+      gax->deallocate(alloc_check(ax,gax->template allocate<int>(1)));
+      alloc_check(ax,ax->template allocate<int>(1));  // deliberate leak
+      alloc_check(ax,gax->template allocate<int>(1)); // deliberate leak
+    }
+    switch (i) {
+      case 0: dx->destroy(); break;
+      case 1: gdx->destroy(); break;
+      case 2: ax->destroy(); break;
+      case 3: gax->destroy(); break;
+      default: assert(0);
+    }
+    assert(!dx->is_active()); assert(!gdx->is_active()); 
+    assert(!ax->is_active()); assert(!gax->is_active());
+    if (i%2) {
+      delete dx;
+      delete gax;
+    } else {
+      delete gdx;
+      delete ax;
+    }
+
+    upcxx::barrier();
+
+    { // test make_gpu_allocator
+      Allocator inv = make_gpu_allocator<Device>(heap_size, id_invalid);
+      assert(!inv.is_active());
+
+      Allocator az = make_gpu_allocator<Device>(heap_size);
+      assert(az.is_active()); 
+      int azid = az.device_id();
+      assert(azid >= 0);
+      say() << "make_gpu_allocator<"<<desc<<">(): auto device_id=" << az.device_id();
+      { Allocator az2 = std::move(az); // test move
+        assert(!az.is_active()); 
+        assert(az2.is_active()); assert(az2.device_id() == azid);
+        az2.deallocate(alloc_check(&az2,az2.template allocate<int>(1)));
+        az2.destroy();
+      }
+    }
+
+    upcxx::barrier();
+  }
 }
 
 int main() {
@@ -193,7 +333,7 @@ int main() {
     hip_enabled = true;
   #endif
   if (hip_enabled) { 
-    run_test<hip_device>(0, 2<<20);
+    run_test<hip_device>(0, 2<<20, "HIP");
   }
 
   // check that required device members exist with sane-looking values
@@ -209,7 +349,25 @@ int main() {
     cuda_enabled = true;
   #endif
   if (cuda_enabled) { 
-    run_test<cuda_device>(0, 2<<20);
+    run_test<cuda_device>(0, 2<<20, "CUDA");
+  }
+
+  {
+    assert(gpu_heap_allocator::kind == gpu_default_device::kind);
+    gpu_heap_allocator inv = make_gpu_allocator(0, gpu_default_device::invalid_device_id);
+    assert(!inv.is_active());
+
+    gpu_heap_allocator az = make_gpu_allocator(2<<20);
+    say() << "make_gpu_allocator<default>(): auto device_id=" << az.device_id();
+    if (gpu_default_device::device_n() > 0) {
+      assert(az.is_active());
+      assert(az.device_id() >= 0);
+      auto gp = az.allocate<int>(1);
+      assert(gp);
+      assert(decltype(gp)::kind == gpu_default_device::kind);
+      az.deallocate(gp);
+    }
+    az.destroy();
   }
 
   upcxx::finalize();
