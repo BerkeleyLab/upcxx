@@ -17,7 +17,7 @@ endif
 endif
 
 NVCC ?= nvcc
-
+HIPCC ?= hipcc
 # Honor user's NVCCARCH_FLAGS (if any) warning if NVCCARCH is also set.
 # Otherwise convert NVCCARCH (if any) to an -arch=... option.
 ifneq ($(strip $(NVCCARCH)),)
@@ -29,14 +29,24 @@ ifneq ($(strip $(NVCCARCH)),)
 endif
 
 CXXFLAGS ?= -g # optional command-line override
+CUDAFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_CUDA=1
+HIPFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_HIP=1
 
-TARGETS = cuda_vecadd
-OBJS = kernels.o
+TARGETS = cuda_vecadd hip_vecadd
+OBJS = cuda_kernels.o hip_kernels.o
 all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) $(OBJS)
 .PHONY: all clean
 
-cuda_vecadd: vecadd.cpp kernels.cu kernels.hpp
-	$(NVCC) $(NVCCFLAGS) $(NVCCARCH_FLAGS) $(CXXFLAGS) -c kernels.cu -o kernels.o
-	$(UPCXX) $(CXXFLAGS) kernels.o vecadd.cpp -o $@
+%.o: %.cu kernels.hpp
+	$(NVCC) $(NVCCFLAGS) $(NVCCARCH_FLAGS) $(CUDAFLAGS) -c $<
+
+cuda_vecadd: vecadd.cxx cuda_kernels.o
+	$(UPCXX) $(CUDAFLAGS) $^ -o $@
+
+%.o : %.cxx kernels.hpp
+	$(HIPCC) $(HIPCCFLAGS) $(HIPFLAGS) -c $<
+
+hip_vecadd: vecadd.cxx hip_kernels.o
+	$(UPCXX) $(HIPFLAGS) $^ -o $@
