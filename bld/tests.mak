@@ -66,6 +66,7 @@ test_dirs = \
 	bench \
 	example \
 	example/compute-pi \
+	example/gpu_vecadd \
 	example/prog-guide \
 	example/serialization
 
@@ -139,10 +140,18 @@ endif
 # Conditionally exclude tests that require a valid CUDA-kind device at runtime:
 test_requires_cuda_device = \
         test/cuda-context.cpp \
+	example/gpu_vecadd/.cuda_vecadd.sh \
 	example/prog-guide/h-d.cpp \
 	example/prog-guide/h-d-remote.cpp
 ifneq ($(UPCXX_CUDA),1)
 test_exclude_all += $(test_requires_cuda_device)
+endif
+
+# Conditionally exclude tests that require a valid HIP-kind device at runtime:
+test_requires_hip_device = \
+	example/gpu_vecadd/.hip_vecadd.sh 
+ifneq ($(UPCXX_HIP),1)
+test_exclude_all += $(test_requires_hip_device)
 endif
 
 # Conditionally exclude tests that require OpenMP:
