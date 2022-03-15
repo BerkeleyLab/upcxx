@@ -154,10 +154,9 @@ int main() {
         ans0,
         when_all(ans1),
         ans1.then([](int x) { return x*x; }),
-        ans1.then_lazy([](int x) {
+        ans1.then([](int x) {
           return x*x;
-        },
-        detail::internal_only{}),
+        }),
         make_future<const int&>(arg)
       ),
       make_future<vector<int>>({0*0, 1*1, 2*2, 3*3, 4*4})
