@@ -115,8 +115,8 @@ int main() {
   detail::make_fast_future(1).then([=](int &&x) {});
   detail::make_fast_future(std::vector<int>{1,2,3}).then([=](std::vector<int> &&x) {});
 
-  // ensure when_all preserves this ability
-  when_all(1, when_all(.01f, .02f))
+  // ensure when_all_fast preserves this ability
+  detail::when_all_fast(1, detail::when_all_fast(.01f, .02f))
     .then([](int &&a, float &&b, float &&) {}); 
 
   // use debugger to step through and ensure lazy1 and lazy2 happen in
