@@ -126,7 +126,7 @@ As an example, here is a nested future expression with its full return type
 spelled out:
 
 ```
-expr: when_all(make_future(1), when_all(make_future(2), make_future(3)))
+expr: when_all_fast(make_future(1), when_all(make_future(2), make_future(3)))
 type: future1<
     /*Kind=*/future_kind_when_all<
       future1</*Kind=*/future_kind_result, /*T...=*/int>,
@@ -147,8 +147,7 @@ cast to `future<T...>` with the default kind so as not to surprise users with
 rare but inscrutable type deduction errors. But the runtime has internal
 analogs for each user primitive that does return the spooky typed object, and
 the runtime makes eager use of these operators to reap as much optimization
-as possible. (Note: currently `when_all` actually does return a future with
-non-default kind, it is the sole exception). These analogs are:
+as possible. These analogs are:
 
 ```
 upcxx::detail::make_fast_future; // semantic match for upcxx::make_future
