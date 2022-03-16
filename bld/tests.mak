@@ -66,6 +66,7 @@ test_dirs = \
 	bench \
 	example \
 	example/compute-pi \
+	example/gpu_vecadd \
 	example/prog-guide \
 	example/serialization
 
@@ -139,10 +140,18 @@ endif
 # Conditionally exclude tests that require a valid CUDA-kind device at runtime:
 test_requires_cuda_device = \
         test/cuda-context.cpp \
+	example/gpu_vecadd/.cuda_vecadd.sh \
 	example/prog-guide/h-d.cpp \
 	example/prog-guide/h-d-remote.cpp
 ifneq ($(UPCXX_CUDA),1)
 test_exclude_all += $(test_requires_cuda_device)
+endif
+
+# Conditionally exclude tests that require a valid HIP-kind device at runtime:
+test_requires_hip_device = \
+	example/gpu_vecadd/.hip_vecadd.sh 
+ifneq ($(UPCXX_HIP),1)
+test_exclude_all += $(test_requires_hip_device)
 endif
 
 # Conditionally exclude tests that require OpenMP:
@@ -269,10 +278,11 @@ endif
 
 # compose the pieces above
 tests_raw = $(subst $(upcxx_src)/,,$(foreach dir,$(test_dirs), \
-                                             $(wildcard $(upcxx_src)/$(dir)/*.cpp $(upcxx_src)/$(dir)/*.sh)))
+                                             $(wildcard $(upcxx_src)/$(dir)/*.cpp $(upcxx_src)/$(dir)/*.sh $(upcxx_src)/$(dir)/.*.sh)))
 tests_filter_out_seq = $(test_exclude_all) $(test_exclude_seq) $(test_exclude_fail_all) $(test_exclude_fail_seq)
 tests_filter_out_par = $(test_exclude_all) $(test_exclude_par) $(test_exclude_fail_all) $(test_exclude_fail_par)
 test_sources_dev_seq = $(filter-out $(tests_filter_out_seq),$(tests_raw))
 test_sources_dev_par = $(filter-out $(tests_filter_out_par),$(tests_raw))
-test_progs_dev_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(tests_raw))))
-test_progs_dev_par = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_par),$(tests_raw))))
+test_progs_dev_seq = $(shell echo $(filter-out $(tests_filter_out_seq),$(tests_raw)) | $(PERL) -pe 's@/\.?([^/\s]+)\.(sh|cpp)(\s|$$)@/\1 @g')
+test_progs_dev_par = $(shell echo $(filter-out $(tests_filter_out_par),$(tests_raw)) | $(PERL) -pe 's@/\.?([^/\s]+)\.(sh|cpp)(\s|$$)@/\1 @g')
+

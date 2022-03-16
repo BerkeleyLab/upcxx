@@ -303,10 +303,13 @@ provide test-specific compiler flags, such as for OpenMP.
 
 Additionally, all `.sh` scripts found by the same search and exclusion steps
 are run to generate tests.  The name of the test to generate is derived from
-the basename of the script and passed as the only argument.  The script file
-is run using the `$(UPCXX_BASH)` interpreter selected by `configure`.  The
-environment provided to the script contains all of the variables exported in
-the generated `Makefile` in the top-level build directory, plus the following:
+the basename of the script and passed as the only argument.  The script name
+may optionally have a leading `.` prefix (hiding it from normal directory
+listings) which is stripped off by the testing infrastructure during test
+generation.  The script file is run using the `$(UPCXX_BASH)` interpreter
+selected by `configure`.  The environment provided to the script contains all
+of the variables exported in the generated `Makefile` in the top-level build
+directory, plus the following:
 
 * `UPCXX_{CODEMODE,THREADMODE,NETWORK}`  
   These setting influence the behavior of `upcxx` and `upcxx-meta`, which are

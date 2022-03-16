@@ -108,7 +108,7 @@ check: force
 
 .PHONY: check
 
-TEST_EXE_PATTERN ?= test-$$(basename $$(shopt -s extglob; echo $${src%.@(sh|cpp)}))-$$network
+TEST_EXE_PATTERN ?= test-$$(echo $$src | $(PERL) -pe 's@^.*?\.?([^/]+)\.(sh|cpp)$$@\1@')-$$network
 HASH:=\#
 
 # Make variables to export to script-based test compilation.
@@ -576,7 +576,7 @@ do-dev-target: force
 	 echo "   NETWORKS: $(NETWORKS)";                 \
 	 echo "========"; sleep 2
 	@$(MAKE) $(MAKE_HERE) $(TARGET) \
-	    TEST_EXE_PATTERN='test-$$$$(basename $$$$(shopt -s extglob; echo $$$${src%.@(sh|cpp)}))-$$$$threadmode-$(UPCXX_CODEMODE)-$$$$network' \
+	    TEST_EXE_PATTERN='test-$$$$(echo $$$$src | $(PERL) -pe '"'"'s@^.*?\.?([^/]+)\.(sh|cpp)$$$$@\1@'"'"')-$$$$threadmode-$(UPCXX_CODEMODE)-$$$$network' \
 	    UPCXX_TESTS='$(addsuffix +seq,$(test_sources_dev_seq)) $(addsuffix +par,$(test_sources_dev_par))' \
 	    test_progs_seq='$(addsuffix -seq-$(UPCXX_CODEMODE),$(test_progs_dev_seq))' \
 	    test_progs_par='$(addsuffix -par-$(UPCXX_CODEMODE),$(test_progs_dev_par))'
