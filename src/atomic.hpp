@@ -354,10 +354,7 @@ namespace upcxx {
 
     public:
       // default constructor 
-      // issue #316: this is NOT guaranteed by spec
-      #if 0
       atomic_domain() {}
-      #endif
 
       atomic_domain(atomic_domain &&that) {
         UPCXXI_ASSERT_MASTER();
@@ -371,11 +368,11 @@ namespace upcxx {
         that.parent_tm_ = nullptr;
       }
 
-      #if 0 // disabling move-assignment, for now
       atomic_domain &operator=(atomic_domain &&that) {
+        UPCXXI_ASSERT_MASTER();
         // only allow assignment moves onto "dead" object
-        UPCXX_ASSERT(atomic_gex_ops == 0,
-                     "Move assignment is only allowed on a default-constructed atomic_domain");
+        UPCXX_ASSERT(this->atomic_gex_ops == 0,
+                     "Move assignment is only allowed on an inactive atomic_domain");
         this->ad_gex_handle = that.ad_gex_handle;
         this->atomic_gex_ops = that.atomic_gex_ops;
         this->parent_tm_ = that.parent_tm_;
@@ -385,7 +382,6 @@ namespace upcxx {
         that.parent_tm_ = nullptr;
         return *this;
       }
-      #endif
       
       // The constructor takes a vector of operations. Currently, flags is currently unsupported.
       atomic_domain(std::vector<atomic_op> const &ops, const team &tm = upcxx::world()) :
@@ -400,6 +396,11 @@ namespace upcxx {
 
       ~atomic_domain() {}
       
+      UPCXXI_ATTRIB_PURE
+      bool is_active() const {
+        return this->atomic_gex_ops != 0;
+      }
+
       template<typename Cxs = FUTURE_CX>
       UPCXXI_NODISCARD
       NOVALUE_RTYPE<Cxs> store(global_ptr<T> gptr, T val, std::memory_order order,

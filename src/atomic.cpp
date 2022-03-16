@@ -210,6 +210,7 @@ void upcxx::detail::atomic_domain_untyped<size,bit_flavor>::destroy(entry_barrie
     atomic_gex_ops = 0;
   }
   ad_gex_handle = 0;
+  parent_tm_ = nullptr;
 }
 
 template<std::size_t size, int bit_flavor>
