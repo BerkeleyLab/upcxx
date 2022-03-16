@@ -35,6 +35,7 @@ namespace upcxx {
     cuda_device(id_type device_id = invalid_device_id);
     cuda_device(cuda_device const&) = delete;
     cuda_device(cuda_device&& other) : gpu_device(std::move(other)) {}
+    cuda_device& operator=(cuda_device&& other) = default;
 
     static id_type device_n();
 
@@ -65,6 +66,7 @@ namespace upcxx {
       device_allocator_core() {}
       device_allocator_core(cuda_device &dev, void *base, std::size_t size);
       device_allocator_core(device_allocator_core&&) = default;
+      device_allocator_core& operator=(device_allocator_core&&) = default;
       ~device_allocator_core() { release(); }
       void release();
     };

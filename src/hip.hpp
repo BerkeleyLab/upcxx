@@ -35,6 +35,7 @@ namespace upcxx {
     hip_device(id_type device_id = invalid_device_id);
     hip_device(hip_device const&) = delete;
     hip_device(hip_device&& other) : gpu_device(std::move(other)) {}
+    hip_device& operator=(hip_device&& other) = default;
 
     static id_type device_n();
 
@@ -65,6 +66,7 @@ namespace upcxx {
       device_allocator_core() {}
       device_allocator_core(hip_device &dev, void *base, std::size_t size);
       device_allocator_core(device_allocator_core&&) = default;
+      device_allocator_core& operator=(device_allocator_core&&) = default;
       ~device_allocator_core() { release(); }
       void release();
     };

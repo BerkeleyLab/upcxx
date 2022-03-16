@@ -47,6 +47,7 @@ namespace detail {
     segment_allocator(void *segment_base, std::size_t segment_size);
     segment_allocator(segment_allocator const&) = delete;
     segment_allocator(segment_allocator &&that);
+    segment_allocator& operator=(segment_allocator &&that);
     ~segment_allocator();
 
     std::pair<void*,std::size_t> segment_range() const {

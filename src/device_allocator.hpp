@@ -33,6 +33,21 @@ namespace upcxx {
           other.heap_idx_ = -1; // deactivate
         }
       }
+      device_allocator_base& operator=(device_allocator_base&& other) {
+        UPCXX_ASSERT(
+          !is_active(),
+          "Move assignment is only allowed an an inactive device allocator"
+        );
+        heap_idx_ = other.heap_idx_;
+        seg_ = std::move(other.seg_);
+        if (heap_idx_ >= 0) {
+          backend::heap_state *hs = backend::heap_state::get(heap_idx_);
+          UPCXX_ASSERT(hs->alloc_base == &other);
+          hs->alloc_base = this; // update registration
+          other.heap_idx_ = -1; // deactivate
+        }
+        return *this;
+      }
 
       inline bool is_active() const { return heap_idx_ >= 0; }
     };
@@ -153,6 +168,23 @@ namespace upcxx {
         )
       ), implicit_device(that.implicit_device) {
       that.implicit_device = nullptr;
+    }
+
+    device_allocator& operator=(device_allocator &&that) {
+      // base class move assign
+      heap_allocator::operator=(std::move(that));
+      detail::device_allocator_core<Device>::operator=(
+        static_cast<detail::device_allocator_core<Device>&&>(
+          ( UPCXXI_ASSERT_MASTER_HELD_IFSEQ(), // required to ensure thread-safety wrt allocate
+            // use comma operator to create a temporary lock_guard surrounding
+            // the invocation of our base class's move ctor
+            std::lock_guard<detail::par_mutex>(that.lock_),
+            that)
+        )
+      );
+      implicit_device = that.implicit_device;
+      that.implicit_device = nullptr;
+      return *this;
     }
 
     void destroy(upcxx::entry_barrier eb = entry_barrier::user) override {
