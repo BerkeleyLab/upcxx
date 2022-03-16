@@ -48,6 +48,7 @@ Notable issues resolved
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
 * spec issue 173: Add `upcxx::local_team_position()`
 * spec issue 188: Add `cuda_device::device_n()`
+* spec issue 189: Add MoveAssignable to resource object types
 * spec issue 190: `device_allocator` constructor has several problems
 
 Embeds a GASNet-EX library that addresses the following notable issues
