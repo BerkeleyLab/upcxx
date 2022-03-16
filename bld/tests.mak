@@ -231,6 +231,7 @@ test_pgi_debug_symbols_broken = \
 	NODISCARD \
 	MEMBEROF \
 	MISC_PERF \
+	COPY_COVER \
 	ISSUE138
 endif
 $(foreach test,$(test_pgi_debug_symbols_broken),$(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) -purge-option=-g))
