@@ -18,6 +18,11 @@ raw_storage<team> detail::the_local_team;
 std::unordered_map<upcxx::detail::digest, void*> upcxx::detail::registry;
 
 GASNETT_COLD
+team::team():
+  team(detail::internal_only{}, backend::team_base{}, tombstone, 0, -1) {
+}
+
+GASNETT_COLD
 team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
            intrank_t n, intrank_t me):
   backend::team_base(std::move(base)),
@@ -44,11 +49,35 @@ team::team(team &&that):
 
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();
-  UPCXXI_ASSERT_NOT_TOMB(that.id_);
 
-  that.id_ = tombstone;
-  
-  detail::registry[id_] = this;
+  that.invalidate(detail::internal_only{});
+
+  if (id_ != tombstone) {
+    detail::registry[id_] = this;
+  }
+}
+
+GASNETT_COLD
+team& team::operator=(team &&that) {
+  UPCXXI_ASSERT_INIT();
+  UPCXXI_ASSERT_MASTER();
+  UPCXX_ASSERT(
+    id_ == detail::tombstone,
+    "team move assignment operator requires receiver to be inactive"
+  );
+
+  backend::team_base::operator=(std::move(that));
+  id_ = that.id_;
+  coll_counter_ = that.coll_counter_;
+  n_ = that.n_;
+  me_ = that.me_;
+
+  that.invalidate(detail::internal_only{});
+
+  if (id_ != tombstone) {
+    detail::registry[id_] = this;
+  }
+  return *this;
 }
 
 GASNETT_COLD
@@ -231,4 +260,14 @@ void team::destroy(detail::internal_only, entry_barrier eb) {
   
   UPCXX_ASSERT(id_ != tombstone);
   detail::registry.erase(id_);
+
+  invalidate(detail::internal_only{});
+}
+
+GASNETT_COLD
+void team::invalidate(detail::internal_only) {
+  id_ = tombstone;
+  handle == reinterpret_cast<uintptr_t>(GEX_TM_INVALID);
+  n_ = 0;
+  me_ = -1;
 }

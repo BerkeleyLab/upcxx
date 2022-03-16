@@ -94,14 +94,21 @@ namespace upcxx {
       backend::team_base /* defined by <backend>/runtime_fwd.hpp */ {
     detail::digest id_;
     std::uint64_t coll_counter_;
-    intrank_t const n_, me_;
+    intrank_t n_, me_;
     
   public:
+    team();
     team(detail::internal_only, backend::team_base &&base, detail::digest id,
          intrank_t n, intrank_t me);
     team(team const&) = delete;
     team(team &&that);
+    team& operator=(team &&that);
     ~team();
+
+    UPCXXI_ATTRIB_PURE
+    bool is_active() const {
+      return id_ != detail::tombstone;
+    }
    
     UPCXXI_ATTRIB_PURE
     intrank_t rank_n() const { 
@@ -203,6 +210,8 @@ namespace upcxx {
     }
 
     void destroy(detail::internal_only, entry_barrier eb = entry_barrier::user);
+
+    void invalidate(detail::internal_only);
   };
   
   team& world();
