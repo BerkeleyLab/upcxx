@@ -126,7 +126,7 @@ As an example, here is a nested future expression with its full return type
 spelled out:
 
 ```
-expr: when_all_fast(make_future(1), when_all(make_future(2), make_future(3)))
+expr: when_all_fast(make_future(1), when_all_fast(make_future(2), make_future(3)))
 type: future1<
     /*Kind=*/future_kind_when_all<
       future1</*Kind=*/future_kind_result, /*T...=*/int>,
