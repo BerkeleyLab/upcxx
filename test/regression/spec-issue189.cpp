@@ -2,9 +2,23 @@
 
 using namespace upcxx;
 
+team t0;
+atomic_domain<int> ad0;
+cuda_device cd0;
+hip_device hd0;
+device_allocator<cuda_device> dacd0;
+device_allocator<hip_device> dahd0;
+
 int main() {
   init();
   print_test_header();
+
+  UPCXX_ASSERT_ALWAYS(!t0.is_active());
+  UPCXX_ASSERT_ALWAYS(!ad0.is_active());
+  UPCXX_ASSERT_ALWAYS(!cd0.is_active());
+  UPCXX_ASSERT_ALWAYS(!hd0.is_active());
+  UPCXX_ASSERT_ALWAYS(!dacd0.is_active());
+  UPCXX_ASSERT_ALWAYS(!dahd0.is_active());
 
   {
     team t1;

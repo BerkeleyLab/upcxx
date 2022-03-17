@@ -32,7 +32,9 @@ namespace upcxx {
     
     static constexpr memory_kind kind = memory_kind::cuda_device;
 
-    cuda_device(id_type device_id = invalid_device_id);
+    cuda_device() : gpu_device(detail::internal_only(), invalid_device_id,
+                               memory_kind::cuda_device) {}
+    cuda_device(id_type device_id);
     cuda_device(cuda_device const&) = delete;
     cuda_device(cuda_device&& other) : gpu_device(std::move(other)) {}
     cuda_device& operator=(cuda_device&& other) = default;
