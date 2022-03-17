@@ -32,6 +32,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(!t3.is_active());
     t1.destroy();
     UPCXX_ASSERT_ALWAYS(!t1.is_active());
+    t2.destroy(); // allowed on inactive team
   }
 
   {
@@ -46,6 +47,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(!ad3.is_active());
     ad1.destroy();
     UPCXX_ASSERT_ALWAYS(!ad1.is_active());
+    // ad2.destroy(); // NOT allowed on inactive atomic_domain
   }
 
   {
@@ -56,6 +58,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(!cd2.is_active());
     cd1.destroy();
     UPCXX_ASSERT_ALWAYS(!cd1.is_active());
+    cd2.destroy(); // allowed on inactive cuda_device
   }
 
   {
@@ -66,6 +69,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(!hd2.is_active());
     hd1.destroy();
     UPCXX_ASSERT_ALWAYS(!hd1.is_active());
+    hd2.destroy(); // allowed on inactive hip_device
   }
 
   {
@@ -82,6 +86,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(!da3.is_active());
     da1.destroy();
     UPCXX_ASSERT_ALWAYS(!da1.is_active());
+    da2.destroy(); // allowed on inactive device_allocator
   }
 
   {
@@ -98,6 +103,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(!da3.is_active());
     da1.destroy();
     UPCXX_ASSERT_ALWAYS(!da1.is_active());
+    da2.destroy(); // allowed on inactive device_allocator
   }
 
   print_test_success();

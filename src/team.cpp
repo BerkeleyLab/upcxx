@@ -62,7 +62,7 @@ team& team::operator=(team &&that) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();
   UPCXX_ASSERT(
-    id_ == detail::tombstone,
+    !this->is_active(),
     "team move assignment operator requires receiver to be inactive"
   );
 
@@ -99,7 +99,7 @@ team team::split(intrank_t color, intrank_t key) const {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT(color >= 0 || color == color_none);
-  UPCXXI_ASSERT_NOT_TOMB(id_);
+  UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
   
   gex_TM_t sub_tm = GEX_TM_INVALID;
   gex_TM_t *p_sub_tm = color == color_none ? nullptr : &sub_tm;
@@ -150,7 +150,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
-  UPCXXI_ASSERT_NOT_TOMB(id_);
+  UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
 
   #if UPCXXI_ASSERT_ENABLED
     std::stringstream ss;
@@ -227,7 +227,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
 GASNETT_COLD
 void team::destroy(entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
-  if (id_ == tombstone) return; // issue 500: ignore destroy of invalid teams
+  if (!is_active()) return; // issue 500: ignore destroy of invalid teams
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
@@ -267,7 +267,7 @@ void team::destroy(detail::internal_only, entry_barrier eb) {
 GASNETT_COLD
 void team::invalidate(detail::internal_only) {
   id_ = tombstone;
-  handle == reinterpret_cast<uintptr_t>(GEX_TM_INVALID);
+  handle = reinterpret_cast<uintptr_t>(GEX_TM_INVALID);
   n_ = 0;
   me_ = -1;
 }
