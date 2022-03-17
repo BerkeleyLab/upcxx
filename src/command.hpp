@@ -12,9 +12,9 @@ namespace upcxx {
 namespace detail {
   // command<Arg...>: Collection of static functions for managing commands which
   // accept argument list of type Arg... when executed.
-  template<typename ...Arg>
+  template<typename FunctionToken, typename ...Arg>
   class command {
-    using executor_wire_t = global_fnptr<void(Arg...)>;
+    using executor_wire_t = global_fnptr<void(Arg...), FunctionToken>;
     
     template<typename Fn, bool fn_on_heap, void(*cleanup)(Arg...)>
     struct after_execute {
@@ -38,7 +38,7 @@ namespace detail {
     static void the_executor(Arg ...a) {
       detail::serialization_reader r = reader(a...);
       
-      r.template read_trivial<executor_wire_t>();
+      r.template read<executor_wire_t>();
 
       using FnDez = typename serialization_traits<Fn>::deserialized_type;
 
@@ -87,9 +87,8 @@ namespace detail {
     // Given a reader in the same state as the one passed into `command::serialize`,
     // this will retrieve the executor function.
     static executor_t get_executor(detail::serialization_reader r) {
-      executor_wire_t exec = r.template read_trivial<executor_wire_t>();
-      UPCXX_ASSERT(exec.u_ != 0);
-      return exec.fnptr_non_null();
+      executor_wire_t exec = r.template read<executor_wire_t>();
+      return exec.detokenize();
     }
 
     // Update an upper-bound on the size needed to accomadate adding the
@@ -112,7 +111,7 @@ namespace detail {
     static void serialize(Writer &w, std::size_t size_ub, Fn1 &&fn) {
       executor_wire_t exec = executor_wire_t(&the_executor<Fn,reader,cleanup>);
       
-      w.template write_trivial<executor_wire_t>(exec);
+      w.template write<executor_wire_t>(exec);
       
       serialization_traits<Fn>::serialize(w, fn);
       

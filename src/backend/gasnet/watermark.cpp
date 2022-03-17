@@ -81,6 +81,12 @@ GASNETT_IDENT(UPCXXI_IdentString_GASNetVersion, "$UPCXXGASNetVersion: "
   GASNETT_IDENT(UPCXXI_IdentString_HIPGASNet, "$UPCXXHIPGASNet: 0 $");
 #endif
 
+#if UPCXXI_FORCE_LEGACY_RELOCATIONS
+  GASNETT_IDENT(UPCXXI_IdentString_CCSEnabled, "$UPCXXCCSEnabled: 0 $");
+#else
+  GASNETT_IDENT(UPCXXI_IdentString_CCSEnabled, "$UPCXXCCSEnabled: 1 $");
+#endif
+
 GASNETT_IDENT(UPCXXI_IdentString_AssertEnabled, "$UPCXXAssertEnabled: " _STRINGIFY(UPCXXI_ASSERT_ENABLED) " $");
 
 #if UPCXXI_MPSC_QUEUE_ATOMIC

@@ -1,6 +1,7 @@
 #ifndef _9545d222_f897_445b_8627_3e4b934b0c18
 #define _9545d222_f897_445b_8627_3e4b934b0c18
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -39,6 +40,85 @@ namespace detail {
   constexpr digest tombstone = digest::zero();
   #define UPCXXI_ASSERT_NOT_TOMB(d) \
     UPCXX_ASSERT((d) != ::upcxx::detail::tombstone, "Function called on an invalid object")
+
+  // based on https://datatracker.ietf.org/doc/html/draft-eastlake-fnv-17
+  struct fnv128
+  {
+    static constexpr uint64_t primex = 0x13B;
+    static constexpr uint64_t shift = 24;
+    static constexpr size_t size = 16;
+
+    fnv128() noexcept;
+
+    template<typename P>
+    void algorithm(const char *in, P pred);
+    void round(uint64_t (&temp)[4], uint64_t (&temp2)[2], char in) noexcept;
+
+    inline void block_in(const char *in, size_t length)
+    {
+      block_in(in,in+length);
+    }
+    inline void block_in(const char *in, const char* end)
+    {
+      algorithm(in,[=](const char *it) { return it < end; });
+    }
+    inline void string_in(const char* in)
+    {
+      algorithm(in,[=](const char *it) { return *it != '\0'; });
+    }
+    std::array<uint8_t,size> result() const noexcept;
+    std::array<uint32_t,4> hash;
+  };
+
+  inline fnv128::fnv128() noexcept
+    : hash{{0x6C62272E,0x07BB0142,0x62B82175,0x6295C58D}}
+  {}
+
+  inline void fnv128::round(uint64_t (&temp)[4], uint64_t (&temp2)[2], char in) noexcept
+  {
+    temp2[0] = temp[2] << shift;
+    temp2[1] = temp[3] << shift;
+    temp[3] ^= in;
+    temp[3] *= primex;
+    temp[2] *= primex;
+    temp[1] *= primex;
+    temp[0] *= primex;
+    temp[1] += temp2[1];
+    temp[0] += temp2[0];
+    temp[2] += temp[3] >> 32;
+    temp[3] &= 0xffffffff;
+    temp[1] += temp[2] >> 32;
+    temp[2] &= 0xffffffff;
+    temp[0] += temp[1] >> 32;
+    temp[1] &= 0xffffffff;
+  }
+
+  inline std::array<uint8_t,16> fnv128::result() const noexcept
+  {
+    std::array<uint8_t,16> ret;
+    for (size_t i = 0; i < 4; ++i)
+    {
+      ret[4*i  ] = hash[i];
+      ret[4*i+1] = hash[i] >> 8;
+      ret[4*i+2] = hash[i] >> 16;
+      ret[4*i+3] = hash[i] >> 24;
+    }
+    return ret;
+  }
+
+  template<typename P>
+  void fnv128::algorithm(const char *in, P pred)
+  {
+    uint64_t temp[4];
+    uint64_t temp2[2];
+    for (size_t i = 0; i < 4; ++i)
+      temp[i] = hash[i];
+    for (const char* it = in; pred(it); ++it)
+      round(temp,temp2,*it);
+    for (size_t i = 0; i < 4; ++i)
+      hash[i] = temp[i];
+  }
+
 }
 }
 

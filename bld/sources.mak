@@ -11,11 +11,11 @@ libupcxx_sources = \
 	atomic.cpp                   \
 	barrier.cpp                  \
 	broadcast.cpp                \
+	ccs.cpp                      \
 	copy.cpp                     \
 	cuda.cpp                     \
 	diagnostic.cpp               \
 	digest.cpp                   \
-	global_fnptr.cpp             \
 	hip.cpp                      \
 	os_env.cpp                   \
 	persona.cpp                  \

@@ -2,50 +2,27 @@
 #define _9c3b2cb6_d978_4c8d_9b3e_a077c8926dfa
 
 #include <upcxx/diagnostic.hpp>
+#include <upcxx/ccs.hpp>
 
 #include <cstdint>
 #include <cstring>
 #include <functional>
 
 namespace upcxx {
+  template<typename T>
+  struct serialization;
+
 namespace detail {
   //////////////////////////////////////////////////////////////////////////////
   // global_fnptr<Ret(Arg...)>: shippable pointer-to-function
-
-  template<typename FnSig>
+  template<typename FnSig, typename FunctionToken = detail::FunctionTokenType>
   class global_fnptr;
-  
-    void global_fnptr_basis();
 
-    static constexpr std::uintptr_t global_fnptr_null = 0;//reinterpret_cast<std::uintptr_t>(global_fnptr_basis);//std::uintptr_t(-1)>>1;
-    
-    template<typename Fp>
-    static std::uintptr_t fnptr_to_uintptr(Fp fp) {
-      if(fp == nullptr)
-        return global_fnptr_null;
-      else {
-        std::uintptr_t ans;
-        std::memcpy(&ans, &fp, sizeof(Fp));
-        return ans;
-      }
-    }
-    
-    template<typename Fp>
-    static Fp fnptr_from_uintptr(std::uintptr_t u) {
-      if(u == global_fnptr_null)
-        return nullptr;
-      else {
-        Fp ans;
-        std::memcpy(&ans, &u, sizeof(Fp));
-        return ans;
-      }
-    }
-
-  template<typename ...Arg>
+  template<typename FunctionToken, typename ...Arg>
   class command; // defined in command.hpp
 
-  template<typename Ret, typename ...Arg>
-  class global_fnptr<Ret(Arg...)> {
+  template<typename Ret, typename ...Arg, typename FunctionToken>
+  class global_fnptr<Ret(Arg...), FunctionToken> {
     static_assert(
       sizeof(Ret(*)(Arg...)) == sizeof(std::uintptr_t),
       "Function pointers must be the same size as regular pointers."
@@ -54,68 +31,51 @@ namespace detail {
   public:
     using function_type = Ret(Arg...);
 
-    friend struct std::hash<upcxx::detail::global_fnptr<Ret(Arg...)>>;
-    friend class detail::command<Arg...>;
+    friend struct std::hash<upcxx::detail::global_fnptr<Ret(Arg...),FunctionToken>>;
+    friend class detail::command<FunctionToken, Arg...>;
+    friend struct serialization<global_fnptr>;
 
   private:
-    std::uintptr_t u_;
+    constexpr global_fnptr(const FunctionToken& ft) : u_(ft) {}
+    constexpr global_fnptr(FunctionToken&& ft) : u_(std::move(ft)) {}
+    FunctionToken u_;
 
-    static std::uintptr_t encode(Ret(*fp)(Arg...)) {
-      return fp == nullptr
-        ? detail::global_fnptr_null
-        : detail::fnptr_to_uintptr(fp) - detail::fnptr_to_uintptr(&detail::global_fnptr_basis);
-    }
-    
-    static function_type* decode(std::uintptr_t u) {
-      return u == detail::global_fnptr_null
-        ? nullptr
-        : detail::fnptr_from_uintptr<Ret(*)(Arg...)>(u + detail::fnptr_to_uintptr(&detail::global_fnptr_basis));
-    }
-    
-    static function_type* decode_non_null(std::uintptr_t u) {
-      UPCXX_ASSERT(u != detail::global_fnptr_null);
-      return detail::fnptr_from_uintptr<Ret(*)(Arg...)>(u + detail::fnptr_to_uintptr(&detail::global_fnptr_basis));
-    }
-    
   public:
-    constexpr global_fnptr(std::nullptr_t null = nullptr): u_{detail::global_fnptr_null} {}
-    
+    constexpr global_fnptr(std::nullptr_t null = nullptr): u_{} {}
+
     //global_fnptr(Ret(&fn)(Arg...)): u_{encode(&fn)} {}
-    global_fnptr(Ret(*fp)(Arg...)): u_{encode(fp)} {}
-    
-    Ret operator()(Arg ...a) const {
-      return decode_non_null(u_)(std::forward<Arg>(a)...);
+    global_fnptr(Ret(*fp)(Arg...)): u_(decltype(u_)::tokenize(fp)) {}
+
+    template<typename... Args2>
+    Ret operator()(Args2&& ...a) const {
+      return u_.template detokenize<typename std::add_pointer<function_type>::type>()(std::forward<Args2>(a)...);
     }
 
-    constexpr operator bool() const { return u_ != detail::global_fnptr_null; }
-    constexpr bool operator!() const { return u_ == detail::global_fnptr_null; }
+    //constexpr operator bool() const { return u_ != detail::global_fnptr_null; }
+    //constexpr bool operator!() const { return u_ == detail::global_fnptr_null; }
 
-    operator function_type*() const {
-      return decode(u_);
+    inline typename std::add_pointer<function_type>::type detokenize() const {
+      return u_.template detokenize<typename std::add_pointer<function_type>::type>();
     }
 
-    function_type* fnptr_non_null() const {
-      return decode_non_null(u_);
-    }
+    friend struct std::hash<global_fnptr<Ret(Arg...),FunctionToken>>;
 
-    friend struct std::hash<global_fnptr<Ret(Arg...)>>;
-    
-    friend constexpr bool operator==(global_fnptr<Ret(Arg...)> a, global_fnptr<Ret(Arg...)> b) {
+    friend constexpr bool operator==(global_fnptr<Ret(Arg...),FunctionToken> a, global_fnptr<Ret(Arg...),FunctionToken> b) {
       return a.u_ == b.u_;
     }
-    friend constexpr bool operator!=(global_fnptr<Ret(Arg...)> a, global_fnptr<Ret(Arg...)> b) {
+    friend constexpr bool operator!=(global_fnptr<Ret(Arg...),FunctionToken> a, global_fnptr<Ret(Arg...),FunctionToken> b) {
       return a.u_ != b.u_;
     }
-    friend constexpr bool operator<(global_fnptr<Ret(Arg...)> a, global_fnptr<Ret(Arg...)> b) {
+    friend constexpr bool operator<(global_fnptr<Ret(Arg...),FunctionToken> a, global_fnptr<Ret(Arg...),FunctionToken> b) {
       return a.u_ < b.u_;
     }
-    friend constexpr bool operator<=(global_fnptr<Ret(Arg...)> a, global_fnptr<Ret(Arg...)> b) {
+    friend constexpr bool operator<=(global_fnptr<Ret(Arg...),FunctionToken> a, global_fnptr<Ret(Arg...),FunctionToken> b) {
       return a.u_ <= b.u_;
     }
-    friend constexpr bool operator>(global_fnptr<Ret(Arg...)> a, global_fnptr<Ret(Arg...)> b) {
+    friend constexpr bool operator>(global_fnptr<Ret(Arg...),FunctionToken> a, global_fnptr<Ret(Arg...),FunctionToken> b) {
       return a.u_ > b.u_;
     }
-    friend constexpr bool operator>=(global_fnptr<Ret(Arg...)> a, global_fnptr<Ret(Arg...)> b) {
+    friend constexpr bool operator>=(global_fnptr<Ret(Arg...),FunctionToken> a, global_fnptr<Ret(Arg...),FunctionToken> b) {
       return a.u_ >= b.u_;
     }
   };
@@ -124,7 +84,7 @@ namespace detail {
     // detail::globalize_fnptr: Given a callable, return a global_fnptr if that
     // callable is a function pointer/reference, otherwise return the given
     // callable unaltered.
-    
+
     template<typename Fn>
     Fn&& globalize_fnptr(Fn &&fn) {
       return std::forward<Fn>(fn);
@@ -147,42 +107,40 @@ namespace detail {
       using type = global_fnptr<Ret(Arg...)>;
     };
   }
+
+  // Would the compiler be smart enough to optimize this if the serialization/deserialization were to occur
+  // in function_token, or would it encur an additional move?
+  template<typename Fn>
+  struct serialization<detail::global_fnptr<Fn,detail::function_token>> {
+
+    template<typename Writer>
+    static void serialize(Writer& w, const detail::global_fnptr<Fn,detail::function_token>& gfnptr)
+    {
+      auto token_ident = gfnptr.u_.token_ident();
+      w.write(token_ident);
+      if (token_ident == detail::function_token::identifier::single)
+        w.write(gfnptr.u_.template get<detail::function_token_ss>());
+      else
+        w.write(gfnptr.u_.template get<detail::function_token_ms>());
+    }
+
+    template<typename Reader>
+    static detail::global_fnptr<Fn,detail::function_token>* deserialize(Reader& r, void* storage)
+    {
+      auto active = r.template read<detail::function_token::identifier>();
+      if (active == detail::function_token::identifier::single)
+        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{r.template read<detail::function_token_ss>()};
+      else
+        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{r.template read<detail::function_token_ms>()};
+    }
+  };
 }
 
 namespace std {
-  template<typename Ret, typename ...Arg>
-  struct less<upcxx::detail::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
-      return lhs < rhs;
-    }
-  };
-  template<typename Ret, typename ...Arg>
-  struct less_equal<upcxx::detail::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
-      return lhs <= rhs;
-    }
-  };
-  template<typename Ret, typename ...Arg>
-  struct greater<upcxx::detail::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
-      return lhs > rhs;
-    }
-  };
-  template<typename Ret, typename ...Arg>
-  struct greater_equal<upcxx::detail::global_fnptr<Ret(Arg...)>> {
-    constexpr bool operator()(upcxx::detail::global_fnptr<Ret(Arg...)> lhs,
-                              upcxx::detail::global_fnptr<Ret(Arg...)> rhs) const {
-      return lhs >= rhs;
-    }
-  };
-  
-  template<typename Ret, typename ...Arg>
-  struct hash<upcxx::detail::global_fnptr<Ret(Arg...)>> {
-    constexpr std::size_t operator()(upcxx::detail::global_fnptr<Ret(Arg...)> x) const {
-      return std::size_t(x.u_);
+  template<typename FunctionToken, typename Ret, typename ...Arg>
+  struct hash<upcxx::detail::global_fnptr<Ret(Arg...), FunctionToken>> {
+    constexpr std::size_t operator()(upcxx::detail::global_fnptr<Ret(Arg...), FunctionToken> x) const {
+      return std::hash<decltype(x.u_)>{}(x.u_);
     }
   };
 }

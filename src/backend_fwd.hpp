@@ -25,6 +25,7 @@
 #include <upcxx/diagnostic.hpp>
 #include <upcxx/upcxx_config.hpp>
 #include <upcxx/memory_kind.hpp>
+#include <upcxx/ccs_fwd.hpp>
 #include <gasnet_fwd.h>
 
 #include <cstddef>
@@ -152,6 +153,7 @@ namespace upcxx {
   std::int64_t shared_segment_size();
   std::int64_t shared_segment_used();
   
+  bool in_progress();
   inline void progress(progress_level level = progress_level::user);
   
   persona& master_persona();
@@ -239,16 +241,16 @@ namespace backend {
       persona &active_per = current_persona()
     );
   
-  template<progress_level level, typename Fn>
+  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
   void send_am_master(intrank_t recipient, Fn &&fn);
   
-  template<progress_level level, typename Fn>
+  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
   void send_am_persona(intrank_t recipient_rank, persona *recipient_persona, Fn &&fn);
 
-  template<typename ...T, typename ...U>
+  template<typename FunctionToken = detail::FunctionTokenType, typename ...T, typename ...U>
   void send_awaken_lpc(intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals);
 
-  template<progress_level level, typename Fn>
+  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
   void bcast_am_master(const team &tm, Fn &&fn);
   
   UPCXXI_ATTRIB_PURE

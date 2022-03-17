@@ -10,6 +10,7 @@ UPCXX_CONFIG_SCRIPTS = \
 	upcxx_defines.sh \
 	builtin_assume_aligned.sh \
 	builtin_launder.sh \
+	cxa_demangle.sh \
 	gasnet_macros.sh \
 	issue400_workaround.sh
 # Scripts (in $(upcxx_src)/utils/config/gasnet) to be run IN ORDER

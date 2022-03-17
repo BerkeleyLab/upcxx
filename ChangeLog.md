@@ -87,6 +87,9 @@ Breaking changes:
   unsupported.
 * `team` and `atomic_domain<T>` are now final.
 * `atomic_domain<T>` construction with an empty ops set is now prohibited.
+* RPC calls across code segments must now use multi-segment CCS mode. Cases where
+  this "magically" worked are now prohibited. See [docs/ccs-rpc.md](docs/ccs-rpc.md)
+  for more details.
 
 ### 2021.09.30: Release 2021.9.0
 
