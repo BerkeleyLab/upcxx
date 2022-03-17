@@ -31,6 +31,10 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
 * New query `upcxx::local_team_position()` provides job topology information
+* `team` and `atomic_domain<T>` are now DefaultConstructible and have a new
+  `is_active()` query
+* `team`, `atomic_domain<T>`, `cuda_device`, `hip_device`, and
+  `device_allocator<Device>` are now MoveAssignable
 
 Infrastructure changes:
 
@@ -48,6 +52,7 @@ Notable issues resolved
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
 * spec issue 173: Add `upcxx::local_team_position()`
 * spec issue 188: Add `cuda_device::device_n()`
+* spec issue 189: Add MoveAssignable to resource object types
 * spec issue 190: `device_allocator` constructor has several problems
 
 Embeds a GASNet-EX library that addresses the following notable issues
@@ -80,6 +85,8 @@ Breaking changes:
   mixed configurations are now prohibited.  While there is a configure option
   to convert the enforcement to a warning, such configurations are officially
   unsupported.
+* `team` and `atomic_domain<T>` are now final.
+* `atomic_domain<T>` construction with an empty ops set is now prohibited.
 
 ### 2021.09.30: Release 2021.9.0
 

@@ -97,10 +97,9 @@ namespace upcxx {
 
       // Our encoding:
       // atomic_gex_ops == ad_gex_handle == 0: 
-      //   an invalid (destroyed) object. 
+      //   an inactive (default-constructed, moved-from, or destroyed) object.
       // atomic_gex_ops == 0, ad_gex_handle != 0 : 
-      //   a constructed but empty domain which was not registered with gasnet 
-      //  (hence ad_gex_handle was not produced by gasnet). 
+      //   prohibited.
       // atomic_gex_ops != 0, ad_gex_handle != 0 : 
       //   a live domain constructed by gasnet.
 
@@ -109,7 +108,7 @@ namespace upcxx {
       // The opaque gasnet atomic domain handle.
       std::uintptr_t ad_gex_handle = 0;
 
-      const team *parent_tm_;
+      const team *parent_tm_ = nullptr;
       
       // default constructor doesn't do anything besides initializing both:
       //   atomic_gex_ops = 0, ad_gex_handle = 0
@@ -146,7 +145,7 @@ namespace upcxx {
   
   // Atomic domain for any supported type.
   template<typename T>
-  class atomic_domain : 
+  class atomic_domain final :
     private detail::atomic_domain_untyped<sizeof(T), detail::bit_flavor<T>()> {
  
     private:
@@ -219,7 +218,7 @@ namespace upcxx {
                            T val1 = 0, T val2 = 0, Cxs &&cxs = Cxs{{}}) const {
         using CxsDecayed = typename std::decay<Cxs>::type;
         UPCXXI_ASSERT_INIT();
-        UPCXX_ASSERT(this->atomic_gex_ops || this->ad_gex_handle, "Atomic domain is not constructed");
+        UPCXX_ASSERT(this->is_active(), "Atomic domain is not constructed");
         UPCXX_ASSERT((detail::completions_has_event<CxsDecayed, operation_cx_event>::value));
         UPCXXI_GPTR_CHK(gptr);
         UPCXX_ASSERT(gptr != nullptr, "Global pointer for atomic operation is null");
@@ -293,7 +292,7 @@ namespace upcxx {
                             Cxs &&cxs = Cxs{{}}) const {
         using CxsDecayed = typename std::decay<Cxs>::type;
         UPCXXI_ASSERT_INIT();
-        UPCXX_ASSERT(this->atomic_gex_ops || this->ad_gex_handle, "Atomic domain is not constructed");
+        UPCXX_ASSERT(this->is_active(), "Atomic domain is not constructed");
         UPCXX_ASSERT((detail::completions_has_event<CxsDecayed, operation_cx_event>::value));
         UPCXXI_GPTR_CHK(gptr);
         UPCXX_ASSERT(gptr != nullptr, "Global pointer for atomic operation is null");
@@ -354,28 +353,17 @@ namespace upcxx {
 
     public:
       // default constructor 
-      // issue #316: this is NOT guaranteed by spec
-      #if 0
       atomic_domain() {}
-      #endif
 
-      atomic_domain(atomic_domain &&that) {
-        UPCXXI_ASSERT_MASTER();
-
-        this->ad_gex_handle = that.ad_gex_handle;
-        this->atomic_gex_ops = that.atomic_gex_ops;
-        this->parent_tm_ = that.parent_tm_;
-        // revert `that` to non-constructed state
-        that.atomic_gex_ops = 0;
-        that.ad_gex_handle = 0;
-        that.parent_tm_ = nullptr;
+      atomic_domain(atomic_domain &&that) : atomic_domain() {
+        *this = std::move(that);
       }
 
-      #if 0 // disabling move-assignment, for now
       atomic_domain &operator=(atomic_domain &&that) {
+        UPCXXI_ASSERT_MASTER();
         // only allow assignment moves onto "dead" object
-        UPCXX_ASSERT(atomic_gex_ops == 0,
-                     "Move assignment is only allowed on a default-constructed atomic_domain");
+        UPCXX_ASSERT(!this->is_active(),
+                     "Move assignment is only allowed on an inactive atomic_domain");
         this->ad_gex_handle = that.ad_gex_handle;
         this->atomic_gex_ops = that.atomic_gex_ops;
         this->parent_tm_ = that.parent_tm_;
@@ -385,7 +373,6 @@ namespace upcxx {
         that.parent_tm_ = nullptr;
         return *this;
       }
-      #endif
       
       // The constructor takes a vector of operations. Currently, flags is currently unsupported.
       atomic_domain(std::vector<atomic_op> const &ops, const team &tm = upcxx::world()) :
@@ -395,11 +382,18 @@ namespace upcxx {
       void destroy(entry_barrier eb = entry_barrier::user) {
         UPCXXI_ASSERT_INIT();
         UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
+        UPCXX_ASSERT(is_active());
         detail::atomic_domain_untyped<sizeof(T), detail::bit_flavor<T>()>::destroy(eb);
       }
 
       ~atomic_domain() {}
       
+      UPCXXI_ATTRIB_PURE
+      bool is_active() const {
+        UPCXX_ASSERT(!!this->atomic_gex_ops == !!this->ad_gex_handle);
+        return this->atomic_gex_ops != 0;
+      }
+
       template<typename Cxs = FUTURE_CX>
       UPCXXI_NODISCARD
       NOVALUE_RTYPE<Cxs> store(global_ptr<T> gptr, T val, std::memory_order order,

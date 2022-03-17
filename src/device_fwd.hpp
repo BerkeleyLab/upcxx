@@ -162,13 +162,21 @@ class device {
     heap_idx_(-1), kind_(kind) {};
   device(device const&) = delete;
   device(device&& other) :
-    heap_idx_(other.heap_idx_), kind_(other.kind_) {
+    device(detail::internal_only{}, other.kind_) {
+    *this = std::move(other);
+  }
+  device& operator=(device&& other) {
+    UPCXX_ASSERT(heap_idx_ == -1,
+                 "Move assignment is only allowed an an inactive device");
+    UPCXX_ASSERT(kind_ == other.kind_);
+    heap_idx_ = other.heap_idx_;
     if (heap_idx_ >= 0) {
       backend::heap_state *hs = backend::heap_state::get(heap_idx_);
       UPCXX_ASSERT(hs->device_base == &other);
       hs->device_base = this; // update registration
       other.heap_idx_ = -1; // deactivate
     }
+    return *this;
   }
 
   template<typename Device>
@@ -214,6 +222,12 @@ class gpu_device : public detail::device {
   gpu_device(gpu_device&& other) :
     device(std::move(other)), device_id_(other.device_id_) {
     other.device_id_ = invalid_device_id;
+  }
+  gpu_device& operator=(gpu_device&& other) {
+    device::operator=(std::move(other));
+    device_id_ = other.device_id_;
+    other.device_id_ = invalid_device_id;
+    return *this;
   }
 
   // computes Device::default_alignment<T> without a static type T
