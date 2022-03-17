@@ -316,7 +316,7 @@ namespace detail {
     static void debug_write_ptr(R(*)(Args...), std::ostream&, int color = 2);
     static void debug_write_ptr(uintptr_t, std::ostream&, int color = 2);
     static void debug_write_token(const function_token_ms& token, std::ostream&, int color = 2);
-    static void debug_write_table(std::ostream&, int color = 2, size_t max_namelen = 0, bool print_top = true, size_t found_index = -1, bool buffer = true);
+    static void debug_write_table(std::ostream&, int color = 2, size_t max_namelen = 0, bool print_top = true, size_t found_index = (size_t)-1, bool buffer = true);
     template<typename R, typename... Args>
     static void debug_write_ptr(R(*)(Args...), int fd = 2, int color = 2);
     static void debug_write_ptr(uintptr_t, int fd = 2, int color = 2);
