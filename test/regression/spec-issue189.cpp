@@ -56,6 +56,12 @@ int main() {
     cd1 = std::move(cd2);
     UPCXX_ASSERT_ALWAYS(!cd1.is_active());
     UPCXX_ASSERT_ALWAYS(!cd2.is_active());
+    if (cuda_device::device_n() > 0) {
+      cuda_device cd3{0};
+      cd1 = std::move(cd3);
+      UPCXX_ASSERT_ALWAYS(cd1.is_active());
+      UPCXX_ASSERT_ALWAYS(!cd3.is_active());
+    }
     cd1.destroy();
     UPCXX_ASSERT_ALWAYS(!cd1.is_active());
     cd2.destroy(); // allowed on inactive cuda_device
@@ -67,6 +73,12 @@ int main() {
     hd1 = std::move(hd2);
     UPCXX_ASSERT_ALWAYS(!hd1.is_active());
     UPCXX_ASSERT_ALWAYS(!hd2.is_active());
+    if (hip_device::device_n() > 0) {
+      hip_device hd3{0};
+      hd1 = std::move(hd3);
+      UPCXX_ASSERT_ALWAYS(hd1.is_active());
+      UPCXX_ASSERT_ALWAYS(!hd3.is_active());
+    }
     hd1.destroy();
     UPCXX_ASSERT_ALWAYS(!hd1.is_active());
     hd2.destroy(); // allowed on inactive hip_device
