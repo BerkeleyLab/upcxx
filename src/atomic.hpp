@@ -99,8 +99,7 @@ namespace upcxx {
       // atomic_gex_ops == ad_gex_handle == 0: 
       //   an inactive (default-constructed, moved-from, or destroyed) object.
       // atomic_gex_ops == 0, ad_gex_handle != 0 : 
-      //   a constructed but empty domain which was not registered with gasnet 
-      //  (hence ad_gex_handle was not produced by gasnet). 
+      //   prohibited.
       // atomic_gex_ops != 0, ad_gex_handle != 0 : 
       //   a live domain constructed by gasnet.
 
@@ -391,6 +390,7 @@ namespace upcxx {
       
       UPCXXI_ATTRIB_PURE
       bool is_active() const {
+        UPCXX_ASSERT(!!this->atomic_gex_ops == !!this->ad_gex_handle);
         return this->atomic_gex_ops != 0;
       }
 

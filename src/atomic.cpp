@@ -166,6 +166,8 @@ upcxx::detail::atomic_domain_untyped<size,bit_flavor>::atomic_domain_untyped(
   std::vector<atomic_op> const &ops, const team &tm) {
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+  UPCXX_ASSERT(!ops.empty(),
+               "atomic_domain cannot have an empty set of operations");
 
   gex_OP_t opmask = 0;
   for (auto next_op : ops) opmask |= static_cast<gex_OP_t>(next_op);
@@ -180,20 +182,16 @@ upcxx::detail::atomic_domain_untyped<size,bit_flavor>::atomic_domain_untyped(
 
   parent_tm_ = &tm;
   
-  if(opmask) {
-    #if GASNET_DEBUG
-      // spec issue #160: gex_AD_Create currently performs some synchronization in DEBUG mode (only)
-      // so perform a user barrier here to ensure no team members are blocked awaiting an RPC response
-      backend::quiesce(tm, entry_barrier::user);
-    #endif
-    // Create the gasnet atomic domain for the world team.
-    gex_AD_Create(reinterpret_cast<gex_AD_t*>(&ad_gex_handle),
-                  gasnet::handle_of(tm), 
-                  dt, opmask, /*flags=*/0);
-    UPCXX_ASSERT(ad_gex_handle, "Error in gex_AD_Create");
-  } else { // this is a "null" domain
-    ad_gex_handle = 1;
-  }
+  #if GASNET_DEBUG
+    // spec issue #160: gex_AD_Create currently performs some synchronization in DEBUG mode (only)
+    // so perform a user barrier here to ensure no team members are blocked awaiting an RPC response
+    backend::quiesce(tm, entry_barrier::user);
+  #endif
+  // Create the gasnet atomic domain for the world team.
+  gex_AD_Create(reinterpret_cast<gex_AD_t*>(&ad_gex_handle),
+                gasnet::handle_of(tm), 
+                dt, opmask, /*flags=*/0);
+  UPCXX_ASSERT(ad_gex_handle, "Error in gex_AD_Create");
 }
 
 template<std::size_t size, int bit_flavor>
@@ -205,10 +203,8 @@ void upcxx::detail::atomic_domain_untyped<size,bit_flavor>::destroy(entry_barrie
 
   UPCXX_ASSERT(ad_gex_handle, "attempted to destroy() and atomic_domain which was not constructed");
   
-  if(atomic_gex_ops) {
-    gex_AD_Destroy(reinterpret_cast<gex_AD_t>(ad_gex_handle));
-    atomic_gex_ops = 0;
-  }
+  gex_AD_Destroy(reinterpret_cast<gex_AD_t>(ad_gex_handle));
+  atomic_gex_ops = 0;
   ad_gex_handle = 0;
   parent_tm_ = nullptr;
 }

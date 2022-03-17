@@ -31,6 +31,10 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
 * New query `upcxx::local_team_position()` provides job topology information
+* `team` and `atomic_domain<T>` are now DefaultConstructible and have a new
+  `is_active()` query
+* `team`, `atomic_domain<T>`, `cuda_device`, `hip_device`, and
+  `device_allocator<Device>` are now MoveAssignable
 
 Infrastructure changes:
 
@@ -81,6 +85,8 @@ Breaking changes:
   mixed configurations are now prohibited.  While there is a configure option
   to convert the enforcement to a warning, such configurations are officially
   unsupported.
+* `team` and `atomic_domain<T>` are now final.
+* `atomic_domain<T>` construction with an empty ops set is now prohibited.
 
 ### 2021.09.30: Release 2021.9.0
 
