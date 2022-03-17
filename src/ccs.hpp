@@ -103,8 +103,10 @@ namespace detail {
 
   inline function_token_ss function_token_ss::tokenize(uintptr_t uptr, const segmap_cache& cache)
   {
+#if !UPCXXI_FORCE_LEGACY_RELOCATIONS
     UPCXX_ASSERT(uptr >= cache.primary().start && uptr < cache.primary().end, "Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer.");
     segmap_cache::check_verification(cache.primary().start, cache.primary().end, uptr);
+#endif
     return {uptr - cache.primary().start};
   }
 
