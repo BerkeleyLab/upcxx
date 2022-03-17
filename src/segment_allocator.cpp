@@ -39,18 +39,8 @@ segment_allocator::segment_allocator(void *segment_base, size_t segment_size) {
 
 GASNETT_COLD
 segment_allocator::segment_allocator(segment_allocator &&that):
-  seg_base_(that.seg_base_),
-  holes_by_size_(std::move(that.holes_by_size_)),
-  hunks_by_begin_(std::move(that.hunks_by_begin_)) {
-
-  that.seg_base_ = 0;
-
-  this->endpost_ = that.endpost_;
-  that.endpost_.begin = 0;
-  that.endpost_.prev = nullptr;
-  
-  if(this->endpost_.prev != nullptr)
-    this->endpost_.prev->next = &this->endpost_;
+  segment_allocator(nullptr, 0) {
+  *this = std::move(that);
 }
 
 GASNETT_COLD

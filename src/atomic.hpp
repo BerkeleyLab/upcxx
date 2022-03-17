@@ -356,16 +356,8 @@ namespace upcxx {
       // default constructor 
       atomic_domain() {}
 
-      atomic_domain(atomic_domain &&that) {
-        UPCXXI_ASSERT_MASTER();
-
-        this->ad_gex_handle = that.ad_gex_handle;
-        this->atomic_gex_ops = that.atomic_gex_ops;
-        this->parent_tm_ = that.parent_tm_;
-        // revert `that` to non-constructed state
-        that.atomic_gex_ops = 0;
-        that.ad_gex_handle = 0;
-        that.parent_tm_ = nullptr;
+      atomic_domain(atomic_domain &&that) : atomic_domain() {
+        *this = std::move(that);
       }
 
       atomic_domain &operator=(atomic_domain &&that) {

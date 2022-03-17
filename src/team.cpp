@@ -40,21 +40,8 @@ team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
 }
 
 GASNETT_COLD
-team::team(team &&that):
-  backend::team_base(std::move(that)),
-  id_(that.id_),
-  coll_counter_(that.coll_counter_),
-  n_(that.n_),
-  me_(that.me_) {
-
-  UPCXXI_ASSERT_INIT();
-  UPCXXI_ASSERT_MASTER();
-
-  that.invalidate(detail::internal_only{});
-
-  if (id_ != tombstone) {
-    detail::registry[id_] = this;
-  }
+team::team(team &&that): team() {
+  *this = std::move(that);
 }
 
 GASNETT_COLD

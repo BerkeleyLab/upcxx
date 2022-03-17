@@ -30,6 +30,11 @@ int main() {
     t1 = std::move(t3);
     UPCXX_ASSERT_ALWAYS(t1.is_active());
     UPCXX_ASSERT_ALWAYS(!t3.is_active());
+    team t4 = std::move(t1);
+    UPCXX_ASSERT_ALWAYS(t4.is_active());
+    UPCXX_ASSERT_ALWAYS(!t1.is_active());
+    t1 = std::move(t4);
+    UPCXX_ASSERT_ALWAYS(t1.is_active());
     t1.destroy();
     UPCXX_ASSERT_ALWAYS(!t1.is_active());
     t2.destroy(); // allowed on inactive team
@@ -45,6 +50,11 @@ int main() {
     ad1 = std::move(ad3);
     UPCXX_ASSERT_ALWAYS(ad1.is_active());
     UPCXX_ASSERT_ALWAYS(!ad3.is_active());
+    atomic_domain<int> ad4 = std::move(ad1);
+    UPCXX_ASSERT_ALWAYS(ad4.is_active());
+    UPCXX_ASSERT_ALWAYS(!ad1.is_active());
+    ad1 = std::move(ad4);
+    UPCXX_ASSERT_ALWAYS(ad1.is_active());
     ad1.destroy();
     UPCXX_ASSERT_ALWAYS(!ad1.is_active());
     // ad2.destroy(); // NOT allowed on inactive atomic_domain
@@ -61,6 +71,11 @@ int main() {
       cd1 = std::move(cd3);
       UPCXX_ASSERT_ALWAYS(cd1.is_active());
       UPCXX_ASSERT_ALWAYS(!cd3.is_active());
+      cuda_device cd4 = std::move(cd1);
+      UPCXX_ASSERT_ALWAYS(cd4.is_active());
+      UPCXX_ASSERT_ALWAYS(!cd1.is_active());
+      cd1 = std::move(cd4);
+      UPCXX_ASSERT_ALWAYS(cd1.is_active());
     }
     cd1.destroy();
     UPCXX_ASSERT_ALWAYS(!cd1.is_active());
@@ -78,6 +93,11 @@ int main() {
       hd1 = std::move(hd3);
       UPCXX_ASSERT_ALWAYS(hd1.is_active());
       UPCXX_ASSERT_ALWAYS(!hd3.is_active());
+      hip_device hd4 = std::move(hd1);
+      UPCXX_ASSERT_ALWAYS(hd4.is_active());
+      UPCXX_ASSERT_ALWAYS(!hd1.is_active());
+      hd1 = std::move(hd4);
+      UPCXX_ASSERT_ALWAYS(hd1.is_active());
     }
     hd1.destroy();
     UPCXX_ASSERT_ALWAYS(!hd1.is_active());
@@ -96,6 +116,11 @@ int main() {
     da1 = std::move(da3);
     UPCXX_ASSERT_ALWAYS(da1.is_active() == active);
     UPCXX_ASSERT_ALWAYS(!da3.is_active());
+    device_allocator<cuda_device> da4 = std::move(da1);
+    UPCXX_ASSERT_ALWAYS(da4.is_active() == active);
+    UPCXX_ASSERT_ALWAYS(!da1.is_active());
+    da1 = std::move(da4);
+    UPCXX_ASSERT_ALWAYS(da1.is_active() == active);
     da1.destroy();
     UPCXX_ASSERT_ALWAYS(!da1.is_active());
     da2.destroy(); // allowed on inactive device_allocator
@@ -113,6 +138,11 @@ int main() {
     da1 = std::move(da3);
     UPCXX_ASSERT_ALWAYS(da1.is_active() == active);
     UPCXX_ASSERT_ALWAYS(!da3.is_active());
+    device_allocator<hip_device> da4 = std::move(da1);
+    UPCXX_ASSERT_ALWAYS(da4.is_active() == active);
+    UPCXX_ASSERT_ALWAYS(!da1.is_active());
+    da1 = std::move(da4);
+    UPCXX_ASSERT_ALWAYS(da1.is_active() == active);
     da1.destroy();
     UPCXX_ASSERT_ALWAYS(!da1.is_active());
     da2.destroy(); // allowed on inactive device_allocator
