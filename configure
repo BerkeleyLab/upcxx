@@ -793,7 +793,7 @@ rm -f conftest.cpp conftest.c conftest.o
 #
 UPCXX_PYTHON_MIN=2.7.5
 function check_py {
-  $1 -c "import sys; sys.exit(sys.version_info < (${UPCXX_PYTHON_MIN//./,}));" &> /dev/null;
+  "$@" -c "import sys; sys.exit(sys.version_info < (${UPCXX_PYTHON_MIN//./,}));" &> /dev/null;
 }
 unset py fpy # given/guessed value and its full path
 if [[ -n $UPCXX_PYTHON ]]; then
