@@ -33,10 +33,6 @@
 #error "CCS not supported for current operating system. The CCS feature can be disabled by configuring UPC++ with --disable-ccs-rpc."
 #endif
 
-#ifdef UPCXXI_EXEFORMAT_ELF
-#include <link.h>
-#endif
-
 namespace upcxx {
   enum class entry_barrier;
   class team;
@@ -225,9 +221,10 @@ namespace detail {
     uint16_t flags;
     const char* dlpi_name;
 #if UPCXXI_EXEFORMAT_ELF
-    ElfW(Addr) basis;
-    const ElfW(Sym)* symtbl;
-    const ElfW(Sym)* symtblend;
+    std::uintptr_t basis;
+    // ElfW(Sym)*
+    const void* symtbl;
+    const void* symtblend;
     const char* strtbl;
 #endif
     inline friend bool operator==(const segment_info& lhs, const segment_info& rhs)

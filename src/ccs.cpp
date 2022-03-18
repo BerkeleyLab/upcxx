@@ -5,7 +5,6 @@
 #include <ostream>
 #include <limits>
 #include <cstring>
-#include <dlfcn.h>
 #include <cstddef>
 #include <tuple>
 #include <iomanip>
@@ -20,7 +19,9 @@
 #include <upcxx/os_env.hpp>
 
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
+  #include <dlfcn.h>
   #if UPCXXI_EXEFORMAT_ELF
+    #include <link.h>
     #if UPCXXI_PLATFORM_OS_LINUX || UPCXXI_PLATFORM_OS_CNL || UPCXXI_PLATFORM_OS_WSL
       #include <sys/auxv.h>
     #endif
@@ -118,7 +119,7 @@ namespace detail {
       if (uptr >= seg.start && uptr < seg.end)
       {
         const uintptr_t uptr2 = uptr - seg.basis;
-        for (auto sym = seg.symtbl; sym < seg.symtblend; ++sym)
+        for (auto sym = static_cast<const ElfW(Sym)*>(seg.symtbl); sym < static_cast<const ElfW(Sym)*>(seg.symtblend); ++sym)
         {
           if (uptr2 >= sym->st_value && uptr2 < (sym->st_value + sym->st_size) &&
              ((ELF64_ST_BIND (sym->st_info) == STB_GLOBAL) || (ELF64_ST_BIND (sym->st_info) == STB_WEAK)))
@@ -332,7 +333,8 @@ namespace detail {
         seg.symtbl = symtbl;
         seg.symtblend = symtblend;
         seg.strtbl = strtbl;
-        seg.basis = dptr_basis;
+        static_assert(sizeof(seg.basis) == sizeof(dptr_basis), "ElfW(Addr) incompatible with uintptr_t");
+        seg.basis = static_cast<uintptr_t>(dptr_basis);
         if (has_build_id)
         {
           seg.ident = seg.lib_hash;
