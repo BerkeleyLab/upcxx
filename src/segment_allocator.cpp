@@ -22,16 +22,17 @@ namespace {
 }
 
 GASNETT_COLD
-segment_allocator::segment_allocator(void *segment_base, size_t segment_size) {
-  this->seg_base_ = reinterpret_cast<uintptr_t>(segment_base);
-  
+segment_allocator::segment_allocator(void *segment_base, size_t segment_size) :
+  seg_base_(reinterpret_cast<uintptr_t>(segment_base)),
+  endpost_{0,segment_size,nullptr,nullptr} {
+
+  if (!segment_size) return; // empty segment
+
   block *big_hole = new block{
     /*is_hole*/1,
     /*begin*/0,
     /*next, prev*/nullptr, &endpost_
   };
-  this->endpost_.begin = segment_size;
-  this->endpost_.is_hole = 0;
   this->endpost_.prev = big_hole;
   
   insert_hole_by_size(holes_by_size_, big_hole, segment_size);
@@ -45,6 +46,8 @@ segment_allocator::segment_allocator(segment_allocator &&that):
 
 GASNETT_COLD
 segment_allocator& segment_allocator::operator=(segment_allocator &&that) {
+  UPCXX_ASSERT(!this->seg_base_ && !this->endpost_.begin,
+               "Move assignment is only allowed an an inactive segment_allocator");
   seg_base_ = that.seg_base_;
   holes_by_size_ = std::move(that.holes_by_size_);
   hunks_by_begin_ = std::move(that.hunks_by_begin_);
