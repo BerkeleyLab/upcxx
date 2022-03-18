@@ -1087,7 +1087,7 @@ fi
 # Default conduit
 #
 ALL_CONDUITS='smp udp mpi ibv aries ucx ofi'
-UNOFFICIAL_CONDUITS='mpi ucx ofi'
+UNOFFICIAL_CONDUITS='mpi'
 ##
 unset OFFICIAL_CONDUITS
 # Set difference:
