@@ -42,7 +42,6 @@ namespace {
                                              where.c_str(), dev_alloc, dev_free);
   } // make_segment
 
-  detail::device_allocator_core<hip_device> tombstone;
 } // anon namespace
 
 GASNETT_COLD
@@ -265,7 +264,7 @@ void hip_device::destroy(upcxx::entry_barrier eb) {
     if (st->alloc_base) {
       auto alloc = static_cast<detail::device_allocator_core<hip_device>*>(st->alloc_base);
       alloc->release();
-      UPCXX_ASSERT(st->alloc_base == &::tombstone);
+      UPCXX_ASSERT(!st->alloc_base);
     }
 
     UPCXXI_HIP_CHECK_ALWAYS(hipStreamDestroy(st->stream));
@@ -303,7 +302,7 @@ void detail::device_allocator_core<hip_device>::release() {
         st->segment_to_free = nullptr;
       }
       
-      st->alloc_base = &::tombstone; // deregister
+      st->alloc_base = nullptr; // deregister
   #endif
 
   heap_idx_ = -1; // deactivate
