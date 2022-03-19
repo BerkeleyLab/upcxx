@@ -274,6 +274,14 @@ export TEST_ARGS_GPU_MICROBENCHMARK='-t 1 -w 1'
 export TEST_ARGS_MISC_PERF='1000'
 export TEST_ARGS_RPC_PERF='100 10 1048576'
 
+# Suppress zero-length RMA warning from tests making such calls intentionally
+test_zero_length_rma = \
+        VIS \
+        VIS_STRESS \
+        RPUT_RPC_CX
+$(foreach test,$(test_zero_length_rma), \
+  $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) UPCXX_WARN_EMPTY_RMA=0))
+
 #
 # End of configuration
 #
