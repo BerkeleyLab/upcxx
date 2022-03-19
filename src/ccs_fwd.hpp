@@ -278,7 +278,7 @@ namespace detail {
     static constexpr const char badseg[] = "\033[91m";
     static constexpr const char bold[] = "\033[1m";
     static constexpr const char ccolor_end[] = "\033[0m";
-    static constexpr const char lookup_success[] = "SUCCESS";
+    static constexpr const char lookup_success[] = "FOUND";
     static constexpr const char lookup_failure[] = "FAILURE";
     static constexpr size_t padding = 2;
     static constexpr size_t cwidth_indicator = 2;
