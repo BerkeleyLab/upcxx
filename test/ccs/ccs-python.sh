@@ -9,7 +9,7 @@ testname=$"test-${name}-${triple}"
 require_fpic=1
 read -r -d '' runscript <<EOF || true
 #!${UPCXX_BASH}
-echo ${UPCXX_PYTHON:-python} ./${testname}/python-${triple}/ccs-test.py
+echo ${UPCXX_PYTHON:-python} ./${testname}/ccs-test.py
 EOF
 
 source ${source_dir}/ccs.shinc

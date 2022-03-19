@@ -7,7 +7,7 @@ source_dir=$(dirname $0)
 testname=$"test-${name}-${triple}"
 read -r -d '' runscript <<EOF || true
 #!${UPCXX_BASH}
-echo "env LD_LIBRARY_PATH=${testname} DYLD_LIBRARY_PATH=${testname} ${testname}/test-${name}-${triple}"
+echo "env LD_LIBRARY_PATH=${testname} DYLD_LIBRARY_PATH=${testname} ${testname}/test-${name}"
 EOF
 
 source ${source_dir}/ccs.shinc

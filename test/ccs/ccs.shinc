@@ -11,13 +11,13 @@ compile2() (
   fi
   read -r -d '' runscript_default <<EOF || true
 #!${UPCXX_BASH}
-echo "${testname}/test-${name}-${triple}"
+echo "${testname}/test-${name}"
 EOF
 
   mkdir -p ${testname}
   cd ${testname}
 
-  make -f ${source_dir}/Makefile ${testname} libccs-dlopen-test-funcs-${triple}.so 2> >(grep -v 'in statically linked applications' >&2) || return 1
+  ${GMAKE:-make} -f ${source_dir}/Makefile test-${name} libccs-dlopen-test-funcs.so 2> >(grep -v 'in statically linked applications' >&2) || return 1
 
   cd ..
 
