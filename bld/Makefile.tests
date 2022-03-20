@@ -137,10 +137,12 @@ do-build-%: force
 	   flags=TEST_FLAGS_$$(basename $$src .cpp | tr '[a-z]-' '[A-Z]_'); \
 	   upcxx_cmd="$(UPCXX_BINDIR)/upcxx" ;             \
 	   if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd=": $$upcxx_cmd"; fi; \
-	   ( set -x ; env                                  \
-	     UPCXX_CODEMODE=$(UPCXX_CODEMODE)              \
-	     UPCXX_THREADMODE=$$threadmode                 \
-	     UPCXX_NETWORK=$$network                       \
+	   ( set -x ;                                      \
+	     $(TIME_WRAPPER)                               \
+	     env                                           \
+	       UPCXX_CODEMODE=$(UPCXX_CODEMODE)            \
+	       UPCXX_THREADMODE=$$threadmode               \
+	       UPCXX_NETWORK=$$network                     \
 	     $$upcxx_cmd $(upcxx_src)/$$src                \
 	                           $${!flags}              \
 	                           $(UPCXX_COLOR_CXXFLAGS) \
@@ -154,10 +156,12 @@ do-build-%: force
 	   interpreter='$(UPCXX_BASH)' ;                   \
 	   if (( $(UPCXX_DRY_RUN) )); then interpreter=": $$interpreter"; fi; \
 	   ( export UPCXX_SKIP_REBUILD=1 $(foreach var, $(TEST_SCRIPT_VARS), $(var)='$($(var))'); \
-	     set -x ; env                                  \
-	     UPCXX_CODEMODE=$(UPCXX_CODEMODE)              \
-	     UPCXX_THREADMODE=$$threadmode                 \
-	     UPCXX_NETWORK=$$network                       \
+	     set -x ;                                      \
+	     $(TIME_WRAPPER)                               \
+	     env                                           \
+	       UPCXX_CODEMODE=$(UPCXX_CODEMODE)            \
+	       UPCXX_THREADMODE=$$threadmode               \
+	       UPCXX_NETWORK=$$network                     \
 	     $$interpreter $(upcxx_src)/$$src              \
 	                           $$exe$(EXESUFFIX)       \
 				   ) &> $$output ;         \
@@ -431,6 +435,9 @@ HARD_TIME_LIMIT_PAD = 120
 HARD_TIME_LIMIT := $(shell echo $$(($(UPCXX_RUN_TIME_LIMIT) + $(HARD_TIME_LIMIT_PAD) )) )
 TIMEOUT_WRAPPER=$(TIMEOUT) --foreground -k $(HARD_TIME_LIMIT)s $(UPCXX_RUN_TIME_LIMIT)s
 RUN_WRAPPER=# default is to use $(TIMEOUT_WRAPPER), when available
+# Default to the bash shell time builtin
+# The time command in POSIX output mode should also work (/usr/bin/time -p)
+TIME_WRAPPER = time -p 
 
 do-run-tests: force
 	@mkdir -p "$(TEST_OUTPUT)" ;                                    \
@@ -488,7 +495,7 @@ do-run-tests: force
 	       command="./$$test $$(eval echo $${!test_args})";         \
 	     fi;                                                        \
 	     set -x ;                                                   \
-	     $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper $$command; \
+	     $(TIME_WRAPPER) $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper $$command; \
 	   ) &> $$output;                                               \
 	   exitcode=$$?;                                                \
 	   header=4; firstout=$$(($$header+1));                         \
@@ -556,9 +563,10 @@ do-test-xml: force
 	   compile-pass) outtype=system-out ;; \
 	   run-pass)     outtype=system-out ;; \
 	 esac; \
+	 elapsed=$$($(PERL) -ne 'if (m/^real\s+(\d+(\.\d+)?)\s*$$/) { print " time=\"$$1\""; }' < $(OUTPUT) | tail -n 1); \
 	 echo -e '<?xml version="1.0" encoding="UTF-8"?>\n' \
 	         '<testsuite errors="'$$errors'" failures="'$$failures'" name="'$$suitename'" test-cases="1" tests="1">\n'\
-	         ' <testcase name="'"$$testname"'" skip="'$$skips'" tests="1">' >$$target ; \
+	         ' <testcase name="'"$$testname-$$suitename"'" skip="'$$skips'" tests="1"'"$$elapsed"'>' >$$target ; \
 	 if [[ -n "$$outtype" ]] ; then \
 	   echo "    <$$outtype>" >>$$target ; \
 	   cat $$output | $(XML_ENCODE) >>$$target ; \
