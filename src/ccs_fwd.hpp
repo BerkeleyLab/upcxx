@@ -27,10 +27,16 @@
   #elif UPCXXI_PLATFORM_OS_DARWIN
     #define UPCXXI_EXEFORMAT_MACHO 1
   #endif
-#endif
 
-#if !UPCXXI_EXEFORMAT_ELF && !UPCXXI_EXEFORMAT_MACHO && !UPCXXI_FORCE_LEGACY_RELOCATIONS
-#error "CCS not supported for current operating system. The CCS feature can be disabled by configuring UPC++ with --disable-ccs-rpc."
+  #if !UPCXXI_EXEFORMAT_ELF && !UPCXXI_EXEFORMAT_MACHO
+    #define UPCXXI_CCS_INCOMPATIBLE 1
+  #elif UPCXXI_PLATFORM_ARCH_BIG_ENDIAN && UPCXXI_PLATFORM_ARCH_POWERPC
+    #define UPCXXI_CCS_INCOMPATIBLE 1
+  #endif
+
+  #if UPCXXI_CCS_INCOMPATIBLE
+    #error "CCS not supported for current operating system. The CCS feature can be disabled by configuring UPC++ with --disable-ccs-rpc."
+  #endif
 #endif
 
 namespace upcxx {
