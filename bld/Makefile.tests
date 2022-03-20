@@ -549,10 +549,12 @@ do-test-xml: force
 	 suitename=$$(cut -d- -f1 <<<$(RESULT)); \
 	 skips=0; errors=0 ; failures=0 ; outtype= ; \
 	 case "$(RESULT)" in \
-	   compile-skip) skips=1;    outtype=failure ;; \
+	   compile-skip) skips=1;    outtype=skipped ;; \
 	   compile-fail) failures=1; outtype=failure ;; \
-	   run-skip)     skips=1;    outtype=error   ;; \
+	   run-skip)     skips=1;    outtype=skipped ;; \
 	   run-fail)     errors=1;   outtype=error   ;; \
+	   compile-pass) outtype=system-out ;; \
+	   run-pass)     outtype=system-out ;; \
 	 esac; \
 	 echo -e '<?xml version="1.0" encoding="UTF-8"?>\n' \
 	         '<testsuite errors="'$$errors'" failures="'$$failures'" name="'$$suitename'" test-cases="1" tests="1">\n'\
