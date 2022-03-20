@@ -31,10 +31,10 @@ CCS_DLOPEN_LIB="libccs-dlopen-test-funcs.so"
 endif
 
 %.o: $(SOURCE_DIR)/%.cxx
-	$(UPCXX) -DUPCXX_CCS_RPC=1 -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $< -c -o $@
+	$(UPCXX) -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $< -c -o $@
 
 %-fpic.o: $(SOURCE_DIR)/%.cxx
-	$(UPCXX) -DUPCXX_CCS_RPC=1 -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $(FPIC_FLAG) $< -c -o $@
+	$(UPCXX) -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $(FPIC_FLAG) $< -c -o $@
 
 libccs-%.so: %-fpic.o
 ifeq ($(UNAME_S),Darwin)
@@ -97,7 +97,7 @@ run-ccs-%: test-ccs-% libccs-dlopen-test-funcs.so
 # Not supported, yet
 # Requires fPIC
 python-fpic.o: $(SOURCE_DIR)/python.cxx
-	$(UPCXX) -DUPCXX_CCS_RPC=1 -DCCS_DLOPEN_LIB="libccs-dlopen-test-funcs.so" $(FPIC_FLAG) $(PYTHON_INCLUDES) $^ -c -o $@
+	$(UPCXX) -DCCS_DLOPEN_LIB="libccs-dlopen-test-funcs.so" $(FPIC_FLAG) $(PYTHON_INCLUDES) $^ -c -o $@
 
 upcxxpytest.so: python-fpic.o test-fpic.o libccs-dynamic-test-funcs.so libupcxx.so
 ifeq ($(UNAME_S),Darwin)

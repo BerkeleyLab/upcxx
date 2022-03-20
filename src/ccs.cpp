@@ -1137,7 +1137,7 @@ namespace detail {
   constexpr size_t segmap_cache::cwidth_pointer;
   constexpr size_t segmap_cache::cols;
 
-  void function_token_ss::debug_write(int fd, const segmap_cache& cache, int color) const
+  void function_token_ss::debug_write(int fd, int color) const
   {
     uintptr_t uptr = segmap_cache::primary().start + offset;
     const char* dli_sname = segmap_cache::get_symbol(uptr);
@@ -1167,7 +1167,7 @@ namespace detail {
   void function_token::debug_write(int fd, segmap_cache& cache, int color) const
   {
     if (active == function_token::identifier::single)
-      s.debug_write(fd,cache,color);
+      s.debug_write(fd,color);
     else
       m.debug_write(fd,cache,color);
   }

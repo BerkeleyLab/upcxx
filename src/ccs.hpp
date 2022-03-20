@@ -17,16 +17,16 @@ namespace detail {
   struct function_token_ss
   {
     template<typename Fp>
-    Fp detokenize(const segmap_cache& = upcxx::detail::the_persona_tls.segcache) const noexcept;
+    Fp detokenize() const noexcept;
 
     template<typename R, typename... Args>
-    static function_token_ss tokenize(R(*ptr)(Args...), const segmap_cache& cache = upcxx::detail::the_persona_tls.segcache)
+    static function_token_ss tokenize(R(*ptr)(Args...))
     {
       return tokenize(fnptr_to_uintptr(ptr));
     }
-    static function_token_ss tokenize(uintptr_t ptr, const segmap_cache& = upcxx::detail::the_persona_tls.segcache);
+    static function_token_ss tokenize(uintptr_t ptr);
 
-    void debug_write(int fd = 2, const segmap_cache& = upcxx::detail::the_persona_tls.segcache, int color = 2) const;
+    void debug_write(int fd = 2, int color = 2) const;
 
     uintptr_t offset;
   };
@@ -103,12 +103,12 @@ namespace detail {
   //////////////////////////////////////////////////////////////////////
   // implementation
 
-  inline function_token_ss function_token_ss::tokenize(uintptr_t uptr, const segmap_cache& cache)
+  inline function_token_ss function_token_ss::tokenize(uintptr_t uptr)
   {
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    UPCXX_ASSERT(uptr >= segmap_cache::primary().start && uptr < segmap_cache::primary().end, "Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer. See: docs/ccs-rpc.md.");
+    UPCXX_ASSERT(uptr >= segmap_cache::primary().start && uptr < segmap_cache::primary().end, "Function pointer not in primary segment.");
 #if UPCXXI_ASSERT_ENABLED
-    segmap_cache::check_verification(cache.primary().start, cache.primary().end, uptr);
+    segmap_cache::check_verification(segmap_cache::primary().start, segmap_cache::primary().end, uptr);
 #endif
 #endif
     return {uptr - segmap_cache::primary().start};
@@ -232,7 +232,7 @@ namespace detail {
   }
 
   template<typename Fp>
-  Fp function_token_ss::detokenize(const segmap_cache& cache) const noexcept
+  Fp function_token_ss::detokenize() const noexcept
   {
     return fnptr_from_uintptr<Fp>(segmap_cache::primary().start + offset);
   }
@@ -313,7 +313,7 @@ namespace detail {
   Fp function_token::detokenize(segmap_cache& cache) const
   {
     if (active == identifier::single)
-      return s.detokenize<Fp>(cache);
+      return s.detokenize<Fp>();
     else //if (active == identifier::multi)
       return m.detokenize<Fp>(cache);
   }

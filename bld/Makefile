@@ -327,11 +327,11 @@ endif
 
 LIBUPCXX_C_COMPILE   := $(GASNET_CC)  $(LIBUPCXX_CFLAGS) \
                         $(GASNET_CPPFLAGS)    $(GASNET_CFLAGS) \
-                        $(UPCXX_DEFINES) -DUPCXXI_BUILDING_LIBUPCXX \
+                        $(UPCXX_DEFINES) \
                         -I$(UPCXX_DIR)/include -I$(UPCXX_DIR)/gen_include
 LIBUPCXX_CXX_COMPILE := $(GASNET_CXX) $(LIBUPCXX_CXXFLAGS) \
                         $(GASNET_CXXCPPFLAGS) $(GASNET_CXXFLAGS) \
-                        $(UPCXX_STDCXX) $(UPCXX_DEFINES) -DUPCXXI_BUILDING_LIBUPCXX \
+                        $(UPCXX_STDCXX) $(UPCXX_DEFINES) \
                         -I$(UPCXX_DIR)/include -I$(UPCXX_DIR)/gen_include
 
 %.o: %.c   %.dep; $(LIBUPCXX_C_COMPILE)   $($*_EXTRA_FLAGS) $(UPCXX_COLOR_CFLAGS)   -c $< -o $@

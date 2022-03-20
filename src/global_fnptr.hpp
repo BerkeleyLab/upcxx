@@ -18,7 +18,7 @@ namespace detail {
   template<typename FnSig, typename FunctionToken = detail::FunctionTokenType>
   class global_fnptr;
 
-  template<typename FunctionToken, typename ...Arg>
+  template<typename ...Arg>
   class command; // defined in command.hpp
 
   template<typename Ret, typename ...Arg, typename FunctionToken>
@@ -32,7 +32,7 @@ namespace detail {
     using function_type = Ret(Arg...);
 
     friend struct std::hash<upcxx::detail::global_fnptr<Ret(Arg...),FunctionToken>>;
-    friend class detail::command<FunctionToken, Arg...>;
+    friend class detail::command<FunctionTokenType, Arg...>;
     friend struct serialization<global_fnptr>;
 
   private:

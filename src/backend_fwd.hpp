@@ -240,16 +240,16 @@ namespace backend {
       persona &active_per = current_persona()
     );
   
-  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
+  template<progress_level level, typename Fn>
   void send_am_master(intrank_t recipient, Fn &&fn);
   
-  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
+  template<progress_level level, typename Fn>
   void send_am_persona(intrank_t recipient_rank, persona *recipient_persona, Fn &&fn);
 
-  template<typename FunctionToken = detail::FunctionTokenType, typename ...T, typename ...U>
+  template<typename ...T, typename ...U>
   void send_awaken_lpc(intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals);
 
-  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
+  template<progress_level level, typename Fn>
   void bcast_am_master(const team &tm, Fn &&fn);
   
   UPCXXI_ATTRIB_PURE

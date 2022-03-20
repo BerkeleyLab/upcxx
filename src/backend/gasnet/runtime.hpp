@@ -68,7 +68,6 @@ namespace gasnet {
   void register_cb(handle_cb *cb);
   
   // Send AM (packed command), receiver executes in handler.
-  template<typename FunctionToken = detail::FunctionTokenType>
   void send_am_eager_restricted(
     intrank_t recipient,
     void *command_buf,
@@ -78,11 +77,10 @@ namespace gasnet {
   );
   
   // Send fully bound callable, receiver executes in handler.
-  template<typename FunctionToken = detail::FunctionTokenType, typename Fn>
+  template<typename Fn>
   void send_am_restricted(intrank_t recipient, Fn &&fn);
   
   // Send AM (packed command), receiver executes in `level` progress.
-  template<typename FunctionToken = detail::FunctionTokenType>
   void send_am_eager_master(
     progress_level level,
     intrank_t recipient,
@@ -91,8 +89,6 @@ namespace gasnet {
     std::size_t buf_align,
     std::uintptr_t npam_nonce
   );
-
-  template<typename FunctionToken = detail::FunctionTokenType>
   void send_am_eager_persona(
     progress_level level,
     intrank_t recipient_rank,
@@ -104,7 +100,6 @@ namespace gasnet {
   );
   
   // Send AM (packed command) via rendezvous, receiver executes druing `level`.
-  template<typename FunctionToken = detail::FunctionTokenType>
   void send_am_rdzv(
     progress_level level,
     intrank_t recipient_jobrank,
@@ -118,7 +113,6 @@ namespace gasnet {
 
   struct bcast_payload_header;
   
-  template<typename FunctionToken = detail::FunctionTokenType>
   void bcast_am_master_eager(
     progress_level level,
     const team &tm,
@@ -127,8 +121,6 @@ namespace gasnet {
     size_t cmd_size,
     size_t cmd_align
   );
-
-  template<typename FunctionToken = detail::FunctionTokenType>
   void bcast_am_master_rdzv(
     progress_level level,
     const team &tm,
@@ -150,7 +142,7 @@ namespace gasnet {
     op_now=3
   };
 
-  template<rma_put_then_am_sync sync_lb/*src_X*/, typename FunctionToken = detail::FunctionTokenType, typename AmFn>
+  template<rma_put_then_am_sync sync_lb/*src_X*/, typename AmFn>
   rma_put_then_am_sync rma_put_then_am_master(
     intrank_t rank_d,
     void *buf_d, void const *buf_s, std::size_t buf_size,
@@ -175,25 +167,12 @@ namespace gasnet {
     static detail::serialization_reader reader_of(detail::lpc_base *me) {
       return detail::serialization_reader(static_cast<rpc_as_lpc*>(me)->payload);
     }
-
-    template<bool restricted>
-    static void cleanup_never_rdzv(detail::lpc_base*);
-
-    template<typename FunctionToken, bool restricted>
-    static void cleanup_maybe_rdzv(detail::lpc_base*);
     
-    template<bool definitely_not_rdzv, typename FunctionToken = detail::FunctionTokenType, bool restricted=false>
-    static inline typename std::enable_if<definitely_not_rdzv>::type cleanup(detail::lpc_base *me) {
-      cleanup_never_rdzv<restricted>(me);
-    }
-
-    template<bool definitely_not_rdzv, typename FunctionToken = detail::FunctionTokenType, bool restricted=false>
-    static inline typename std::enable_if<!definitely_not_rdzv>::type cleanup(detail::lpc_base *me) {
-      cleanup_maybe_rdzv<FunctionToken, restricted>(me);
-    }
+    template<bool definitely_not_rdzv, bool restricted=false>
+    static void cleanup(detail::lpc_base *me);
 
     // Build copy of a packed command buffer (upcxx/command.hpp) as a rpc_as_lpc.
-    template<typename FunctionToken, typename RpcAsLpc = rpc_as_lpc>
+    template<typename RpcAsLpc = rpc_as_lpc>
     static RpcAsLpc* build_eager(
       void *cmd_buf, // if null then nothing copied over
       std::size_t cmd_size,
@@ -234,22 +213,10 @@ namespace gasnet {
       return r;
     }
     
-    template<typename FunctionToken>
-    static void cleanup_maybe_rdzv(detail::lpc_base*);
-
-    static void cleanup_never_rdzv(detail::lpc_base*);
-
-    template<bool definitely_not_rdzv, typename FunctionToken = detail::FunctionTokenType>
-    static inline typename std::enable_if<definitely_not_rdzv>::type cleanup(detail::lpc_base *me) {
-      cleanup_never_rdzv(me);
-    }
-
-    template<bool definitely_not_rdzv, typename FunctionToken = detail::FunctionTokenType>
-    static inline typename std::enable_if<!definitely_not_rdzv>::type cleanup(detail::lpc_base *me) {
-      cleanup_maybe_rdzv<FunctionToken>(me);
-    }
+    template<bool definitely_not_rdzv>
+    static void cleanup(detail::lpc_base *me);
   };
-
+  
   template<typename Ub,
            int static_npam_args = -1/*disabled*/,
            bool is_static_and_eager = (Ub::static_size <= gasnet::am_size_rdzv_cutover_min),
@@ -522,8 +489,6 @@ namespace backend {
   //
   // Template Args:
   // * eagerNPAMArgs: the number of AMMedium arguments in eager protocol, or -1 to disable use of NPAM
-  // * FunctionToken: the type of function pointer relocation token for communicating function pointers
-  //                  between nodes.
   // * knownLocality: 1 if recipient statically known to be local, 0 for known non-local, -1 unknown
   // * forceEager: force use of eager protocol
   //
@@ -535,18 +500,18 @@ namespace backend {
   // Returns:
   // gasnet::am_send_buffer that references the populated buffer (possibly an embedded field! AVOID MOVES),
   // with fields/parameters that indicate the selected protocol, based partially on the ubound of fn
-  template<int eagerNPAMArgs, typename FunctionToken = detail::FunctionTokenType, int knownLocality=-1, bool forceEager=false, typename Fn, bool restricted=false>
+  template<int eagerNPAMArgs, int knownLocality=-1, bool forceEager=false, typename Fn, bool restricted=false>
   auto prepare_am(
       Fn &&fn,
       intrank_t recipient,
       std::integral_constant<bool, restricted> restricted1={}
-    ) -> gasnet::am_send_buffer<decltype(detail::command<FunctionToken, detail::lpc_base*>::ubound(detail::empty_storage_size, fn)),
+    ) -> gasnet::am_send_buffer<decltype(detail::command<detail::lpc_base*>::ubound(detail::empty_storage_size, fn)),
                                 (UPCXXI_USE_NPAM_STATIC ? eagerNPAMArgs : -1)> {
     
     using gasnet::am_send_buffer;
     using gasnet::rpc_as_lpc;
     
-    auto ub = detail::command<FunctionToken, detail::lpc_base*>::ubound(detail::empty_storage_size, fn);
+    auto ub = detail::command<detail::lpc_base*>::ubound(detail::empty_storage_size, fn);
     
     constexpr bool definitely_not_rdzv = ub.static_size <= gasnet::am_size_rdzv_cutover_min;
 
@@ -567,9 +532,9 @@ namespace backend {
 
     UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
     
-    detail::command<FunctionToken, detail::lpc_base*>::template serialize<
+    detail::command<detail::lpc_base*>::template serialize<
         &rpc_as_lpc::reader_of,
-        &rpc_as_lpc::template cleanup<definitely_not_rdzv, FunctionToken, restricted>
+        &rpc_as_lpc::template cleanup<definitely_not_rdzv, restricted>
       >(w, ub.size, fn);
 
     UPCXXI_ASSERT_NOEXCEPTIONS_END
@@ -579,33 +544,33 @@ namespace backend {
     return am_buf;
   }
 
-  template<typename FunctionToken = detail::FunctionTokenType, typename AmBuf>
+  template<typename AmBuf>
   void send_prepared_am_master(progress_level level, intrank_t recipient, AmBuf &&am) {
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
     if(am.is_eager)
-      gasnet::send_am_eager_master<FunctionToken>(level, recipient, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
+      gasnet::send_am_eager_master(level, recipient, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
     else
-      gasnet::send_am_rdzv<FunctionToken>(level, recipient, /*master*/nullptr, am.buffer, am.cmd_size, am.cmd_align);
+      gasnet::send_am_rdzv(level, recipient, /*master*/nullptr, am.buffer, am.cmd_size, am.cmd_align);
   }
   
-  template<upcxx::progress_level level, typename FunctionToken/* = detail::FunctionTokenType (from backend_fwd.hpp)*/, typename Fn>
+  template<upcxx::progress_level level, typename Fn>
   void send_am_master(intrank_t recipient, Fn &&fn) {
-      backend::send_prepared_am_master<FunctionToken>(
-        level, recipient, prepare_am<1, FunctionToken>(std::forward<Fn>(fn), recipient)
+      backend::send_prepared_am_master(
+        level, recipient, prepare_am<1>(std::forward<Fn>(fn), recipient)
       );
   }
 
   // prepare_deferred_am_master: serialize fn into an outgoing AM buffer, but don't send it yet.
   // the returned buffer must eventually be passed (exactly once) to backend::send_prepared_am_master
   // may be slightly less efficient than send_am_master because NPAM cannot be used
-  template<typename FunctionToken = detail::FunctionTokenType, typename Fn>
+  template<typename Fn>
   auto prepare_deferred_am_master(intrank_t recipient, Fn &&fn) ->
-       decltype(prepare_am<-1/*disableNPAM*/, FunctionToken>(std::forward<Fn>(fn), recipient)) {
-         return prepare_am<-1/*disableNPAM*/, FunctionToken>(std::forward<Fn>(fn), recipient);
+       decltype(prepare_am<-1/*disableNPAM*/>(std::forward<Fn>(fn), recipient)) {
+         return prepare_am<-1/*disableNPAM*/>(std::forward<Fn>(fn), recipient);
   }
 
-  template<typename FunctionToken = detail::FunctionTokenType, typename AmBuf>
+  template<typename AmBuf>
   void send_prepared_am_persona(
       upcxx::progress_level level,
       intrank_t recipient_rank, persona *recipient_persona,
@@ -614,27 +579,27 @@ namespace backend {
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     
     if(am.is_eager)
-      gasnet::send_am_eager_persona<FunctionToken>(level, recipient_rank, recipient_persona, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
+      gasnet::send_am_eager_persona(level, recipient_rank, recipient_persona, am.buffer, am.cmd_size, am.cmd_align, am.npam_nonce);
     else
-      gasnet::send_am_rdzv<FunctionToken>(level, recipient_rank,
+      gasnet::send_am_rdzv(level, recipient_rank, 
                            recipient_persona, am.buffer, am.cmd_size, am.cmd_align);
   }
   
-  template<upcxx::progress_level level, typename FunctionToken/* = detail::FunctionTokenType (from backend_fwd.hpp)*/, typename Fn>
+  template<upcxx::progress_level level, typename Fn>
   void send_am_persona(
       intrank_t recipient_rank,
       persona *recipient_persona,
       Fn &&fn
     ) {
-      backend::send_prepared_am_persona<FunctionToken>(
+      backend::send_prepared_am_persona(
         level, recipient_rank, recipient_persona,
-        prepare_am<3, FunctionToken>(std::forward<Fn>(fn), recipient_rank)
+        prepare_am<3>(std::forward<Fn>(fn), recipient_rank)
       );
   }
 
-  template<typename FunctionToken/* = detail::FunctionTokenType (from backend_fwd.hpp)*/, typename ...T, typename ...U>
+  template<typename ...T, typename ...U>
   void send_awaken_lpc(intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals) {
-    auto am_buf(prepare_am<1, FunctionToken>(
+    auto am_buf(prepare_am<1>(
         upcxx::detail::bind([=](detail::deserialized_raw_tuple<U...> &&vals) {
           lpc->awaken(std::move(vals));
         },
@@ -645,9 +610,9 @@ namespace backend {
     ));
 
     if(am_buf.is_eager)
-      gasnet::send_am_eager_restricted<FunctionToken>(recipient, am_buf.buffer, am_buf.cmd_size, am_buf.cmd_align, am_buf.npam_nonce);
+      gasnet::send_am_eager_restricted(recipient, am_buf.buffer, am_buf.cmd_size, am_buf.cmd_align, am_buf.npam_nonce);
     else
-      gasnet::send_am_rdzv<FunctionToken>(
+      gasnet::send_am_rdzv(
         progress_level::internal, recipient,
         // mark low-bit so callee knows its a remote persona**, not a persona*
         reinterpret_cast<persona*>(0x1 | reinterpret_cast<std::uintptr_t>(&lpc->target)),
@@ -655,7 +620,7 @@ namespace backend {
       );
   }
   
-  template<progress_level level, typename FunctionToken/* = detail::FunctionTokenType (from backend_fwd.hpp)*/, typename Fn1>
+  template<progress_level level, typename Fn1>
   void bcast_am_master(const team &tm, Fn1 &&fn) {
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
     
@@ -663,7 +628,7 @@ namespace backend {
     using gasnet::bcast_as_lpc;
     using gasnet::bcast_payload_header;
     
-    auto ub = detail::command<FunctionToken, detail::lpc_base*>::ubound(
+    auto ub = detail::command<detail::lpc_base*>::ubound(
       detail::empty_storage_size.cat_size_of<bcast_payload_header>(),
       fn
     );
@@ -676,9 +641,9 @@ namespace backend {
     auto w = am_buf.prepare_writer(ub, rdzv_cutover_size, -1/*npam disabled*/, 0);
     w.place(detail::storage_size_of<bcast_payload_header>());
     
-    detail::command<FunctionToken, detail::lpc_base*>::template serialize<
+    detail::command<detail::lpc_base*>::template serialize<
         bcast_as_lpc::reader_of,
-        bcast_as_lpc::template cleanup</*definitely_not_rdzv=*/definitely_not_rdzv, FunctionToken>
+        bcast_as_lpc::template cleanup</*definitely_not_rdzv=*/definitely_not_rdzv>
       >(w, ub.size, fn);
     
     am_buf.finalize_buffer(std::move(w), rdzv_cutover_size, -1/*npam disabled*/, 0);
@@ -732,34 +697,34 @@ namespace gasnet {
   //////////////////////////////////////////////////////////////////////
   // send_am_restricted
   
-  template<typename FunctionToken/* = detail::FunctionTokenType*/, typename Fn>
+  template<typename Fn>
   void send_am_restricted(intrank_t recipient, Fn &&fn) {
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
 
-    auto am_buf(prepare_am<1, FunctionToken>(
+    auto am_buf(prepare_am<1>(
       std::forward<Fn>(fn), recipient, /*restricted=*/std::true_type()
     ));
     
     UPCXX_ASSERT(am_buf.is_eager);
-    gasnet::send_am_eager_restricted<FunctionToken>(recipient, am_buf.buffer, am_buf.cmd_size, am_buf.cmd_align, am_buf.npam_nonce);
+    gasnet::send_am_eager_restricted(recipient, am_buf.buffer, am_buf.cmd_size, am_buf.cmd_align, am_buf.npam_nonce);
   }
   
   //////////////////////////////////////////////////////////////////////////////
   // rpc_as_lpc
   
   template<>
-  inline void rpc_as_lpc::cleanup_never_rdzv</*restricted=*/false>(detail::lpc_base *me1) {
+  inline void rpc_as_lpc::cleanup</*definitely_not_rdzv=*/true, /*restricted=*/false>(detail::lpc_base *me1) {
     rpc_as_lpc *me = static_cast<rpc_as_lpc*>(me1);
     std::free(me->payload);
   }
   
   template<>
-  inline void rpc_as_lpc::cleanup_never_rdzv</*restricted=*/true>(detail::lpc_base *me1) {
+  inline void rpc_as_lpc::cleanup</*definitely_not_rdzv=*/true, /*restricted=*/true>(detail::lpc_base *me1) {
     // nop
   }
 
-  inline void bcast_as_lpc::cleanup_never_rdzv(detail::lpc_base *me1)
-  {
+  template<>
+  inline void bcast_as_lpc::cleanup</*definitely_not_rdzv=*/true>(detail::lpc_base *me1) {
     bcast_as_lpc *me = static_cast<bcast_as_lpc*>(me1);
     if(0 == --me->eager_refs)
       std::free(me->payload);
@@ -768,7 +733,7 @@ namespace gasnet {
   //////////////////////////////////////////////////////////////////////////////
   // rma_put_then_am_master
   
-  template<rma_put_then_am_sync sync_lb, bool packed_protocol, typename FunctionToken>
+  template<rma_put_then_am_sync sync_lb, bool packed_protocol>
   rma_put_then_am_sync rma_put_then_am_master_protocol(
     intrank_t rank_d,
     void *buf_d, void const *buf_s, std::size_t buf_size,
@@ -776,7 +741,7 @@ namespace gasnet {
     handle_cb *src_cb, reply_cb *rem_cb
   );
   
-  template<rma_put_then_am_sync sync_lb, typename FunctionToken/* = detail::FunctionTokenType*/, typename AmFn>
+  template<rma_put_then_am_sync sync_lb, typename AmFn>
   rma_put_then_am_sync rma_put_then_am_master(
       intrank_t rank_d,
       void *buf_d, void const *buf_s, std::size_t buf_size,
@@ -789,18 +754,18 @@ namespace gasnet {
 
     UPCXX_ASSERT(!backend::rank_is_local(rank_d)); // rput now does this case directly
 
-      auto am(backend::prepare_am<-1/*disableNPAM*/,FunctionToken,/*knownLocality=*/0,/*forceEager=*/true>
+      auto am(backend::prepare_am<-1/*disableNPAM*/,/*knownLocality=*/0,/*forceEager=*/true>
                                  (std::forward<AmFn>(am_fn), rank_d));
 
       if(am.cmd_size_static_ub <= 13*arg_size || am.cmd_size <= 13*arg_size) {
-        return gasnet::template rma_put_then_am_master_protocol<sync_lb, /*packed=*/true, FunctionToken>(
+        return gasnet::template rma_put_then_am_master_protocol<sync_lb, /*packed=*/true>(
           rank_d, buf_d, buf_s, buf_size,
           am_level, am.buffer, am.cmd_size, am.cmd_align,
           src_cb, rem_cb
         );
       }
       else {
-        return gasnet::template rma_put_then_am_master_protocol<sync_lb, /*packed=*/false, FunctionToken>(
+        return gasnet::template rma_put_then_am_master_protocol<sync_lb, /*packed=*/false>(
           rank_d, buf_d, buf_s, buf_size,
           am_level, am.buffer, am.cmd_size, am.cmd_align,
           src_cb, rem_cb

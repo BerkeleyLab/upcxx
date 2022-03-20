@@ -51,28 +51,10 @@ namespace detail {
   struct function_token_ms;
   struct function_token_invalid;
 
-/* The FunctionTokenType alias is used to select the FunctionToken type selected
- * by the user. Therefore, it is important for defaulted template parameters such as
- * `typename FunctionToken = FunctionTokenType` not to resolve into a concrete type
- * when building libupcxx, as this prevents selection by the user. Within compiled
- * libupcxx, specializations for both `function_token` and `function_token_ss` must
- * be available and selectable with this alias. To prevent erroneous usage of such
- * defaulted parameters within libupcxx, the FunctionTokenType is set to a
- * `function_token_invalid` class which has no definition to force compile errors so
- * corrections can be made to ensure the parameter is user-selectable.
- */
-#if !UPCXXI_BUILDING_LIBUPCXX
-  #if UPCXX_CCS_RPC
-    #if UPCXXI_FORCE_LEGACY_RELOCATIONS
-      #error Attempted to enable multi-segment relocations with libupcxx built with forced legacy relocations
-    #else
-      using FunctionTokenType = function_token;
-    #endif
-  #else
-    using FunctionTokenType = function_token_ss;
-  #endif
+#if UPCXXI_FORCE_LEGACY_RELOCATIONS
+  using FunctionTokenType = function_token_ss;
 #else
-  using FunctionTokenType = function_token_invalid;
+  using FunctionTokenType = function_token;
 #endif
 }
 namespace experimental {
