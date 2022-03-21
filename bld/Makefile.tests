@@ -132,11 +132,11 @@ do-build-%: force
          fi ; \
 	 output=$(TEST_OUTPUT)/$${exe}-compile.out ;     \
 	 suffix="$${src##*.}";                             \
+	 verbose_cmd='head -n 1' ;                         \
 	 if [[ $$suffix = cpp ]]; then                     \
-	   verbose_cmd='head -n 1' ;                       \
 	   flags=TEST_FLAGS_$$(basename $$src .cpp | tr '[a-z]-' '[A-Z]_'); \
 	   upcxx_cmd="$(UPCXX_BINDIR)/upcxx" ;             \
-	   if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd=": $$upcxx_cmd"; fi; \
+	   if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd="echo $$upcxx_cmd"; fi; \
 	   ( set -x ;                                      \
 	     $(TIME_WRAPPER)                               \
 	     env                                           \
@@ -151,10 +151,12 @@ do-build-%: force
 				   ) &> $$output ;         \
 	   result=$$?;                                     \
 	 else \
-	   verbose_cmd='cat' ;                             \
+	   if (( $(UPCXX_VERBOSE) )) ; then                \
+	     verbose_cmd='cat' ;                           \
+	   fi;                                             \
 	   : 'TODO? .py, .pl and .mak interpreters?';      \
 	   interpreter='$(UPCXX_BASH)' ;                   \
-	   if (( $(UPCXX_DRY_RUN) )); then interpreter=": $$interpreter"; fi; \
+	   if (( $(UPCXX_DRY_RUN) )); then interpreter="echo $$interpreter"; fi; \
 	   ( export UPCXX_SKIP_REBUILD=1 $(foreach var, $(TEST_SCRIPT_VARS), $(var)='$($(var))'); \
 	     set -x ;                                      \
 	     $(TIME_WRAPPER)                               \
@@ -477,7 +479,7 @@ do-run-tests: force
 	     fi;                                                        \
 	     runcmd=$${!runvar};                                        \
 	   fi;                                                          \
-	   if (( $(UPCXX_DRY_RUN) )); then runcmd=": $$runcmd"; fi;  \
+	   if (( $(UPCXX_DRY_RUN) )); then runcmd="echo $$runcmd"; fi;  \
 	   output=$(TEST_OUTPUT)/$$test-run.out ;                       \
 	   (                                                            \
 	     test_args=TEST_ARGS_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');\
@@ -498,7 +500,7 @@ do-run-tests: force
 	     $(TIME_WRAPPER) $$runcmd -np $$ranks -network $$conduit -- $$test_env $$run_wrapper $$command; \
 	   ) &> $$output;                                               \
 	   exitcode=$$?;                                                \
-	   header=4; firstout=$$(($$header+1));                         \
+	   header=2; firstout=$$(($$header+1));                         \
 	   if (( $(UPCXX_VERBOSE) )) || (( $(UPCXX_DRY_RUN) )); then    \
 	     tail -n +$$header $$output | head -n 1 ;                   \
 	   fi;                                                          \
