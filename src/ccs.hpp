@@ -198,7 +198,7 @@ namespace detail {
 
   inline function_token function_token::tokenize(uintptr_t uptr, segmap_cache& cache)
   {
-    if (uptr > cache.primary().start && uptr < cache.primary().end)
+    if (uptr >= cache.primary().start && uptr < cache.primary().end)
     {
       return {function_token_ss::tokenize(uptr)};
     } else {
