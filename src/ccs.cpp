@@ -22,9 +22,6 @@
   #include <dlfcn.h>
   #if UPCXXI_EXEFORMAT_ELF
     #include <link.h>
-    #if UPCXXI_PLATFORM_OS_LINUX || UPCXXI_PLATFORM_OS_CNL || UPCXXI_PLATFORM_OS_WSL
-      #include <sys/auxv.h>
-    #endif
   #elif UPCXXI_EXEFORMAT_MACHO
     #include <mach/mach.h>
     #include <mach/task_info.h>
@@ -294,11 +291,11 @@ namespace detail {
             segment_info seg{};
             seg.start = info->dlpi_addr + phdr.p_vaddr;
             seg.end = seg.start + phdr.p_memsz;
-#if UPCXXI_PLATFORM_OS_LINUX || UPCXXI_PLATFORM_OS_CNL || UPCXXI_PLATFORM_OS_WSL
+#if GASNETT_SPEC_VERSION_MAJOR > 1 || GASNETT_SPEC_VERSION_MINOR >= 19
             if (phdr_num > 0)
               seg.dlpi_name = info->dlpi_name;
             else
-              seg.dlpi_name = (char*)getauxval(AT_EXECFN);
+              seg.dlpi_name = gasnett_exe_name();
 #else
             seg.dlpi_name = info->dlpi_name;
 #endif
