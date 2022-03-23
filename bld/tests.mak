@@ -138,7 +138,8 @@ test_exclude_all += \
 test_requires_gpu_device = \
 	bench/gpu_microbenchmark.cpp \
 	test/bad-segment-alloc.cpp \
-	test/regression/issue432.cpp 
+	test/regression/issue432.cpp \
+	example/prog-guide/h-d-remote.cpp
 ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)),)
 test_exclude_all += $(test_requires_gpu_device)
 endif
@@ -147,8 +148,7 @@ endif
 test_requires_cuda_device = \
         test/cuda-context.cpp \
 	example/gpu_vecadd/.cuda_vecadd.sh \
-	example/prog-guide/h-d.cpp \
-	example/prog-guide/h-d-remote.cpp
+	example/prog-guide/h-d.cpp
 ifneq ($(UPCXX_CUDA),1)
 test_exclude_all += $(test_requires_cuda_device)
 endif
