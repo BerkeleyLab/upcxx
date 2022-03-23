@@ -48,6 +48,10 @@ GASNETT_COLD
 team& team::operator=(team &&that) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();
+  UPCXX_ASSERT(&that != &world(),
+               "team world() cannot be passed to move constructor or assignment");
+  UPCXX_ASSERT(&that != &local_team(),
+               "team local_team() cannot be passed to move constructor or assignment");
   UPCXX_ASSERT(
     !this->is_active(),
     "team move assignment operator requires receiver to be inactive"
