@@ -1,7 +1,10 @@
 #include <upcxx/upcxx.hpp>
 #include <iostream>
-#if !UPCXX_KIND_CUDA
-#error "This example requires UPC++ to be built with CUDA support."
+#if UPCXX_VERSION < 20210905
+#error This test requires UPC++ 2021.9.5 or newer
+#endif
+#if !(UPCXX_KIND_CUDA || UPCXX_KIND_HIP)
+#error "This example requires UPC++ to be built with either CUDA or HIP support."
 #endif
 using namespace std;
 using namespace upcxx; 
@@ -10,12 +13,11 @@ int main() {
   upcxx::init();
 
   std::size_t segsize = 4*1024*1024; // 4 MiB
-  auto gpu_device = upcxx::cuda_device( 0 ); // open device 0
-  auto gpu_alloc = // alloc GPU segment
-       upcxx::device_allocator<upcxx::cuda_device>(gpu_device, segsize); 
+  auto gpu_alloc = upcxx::make_gpu_allocator(segsize); // alloc GPU segment 
+  UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active());
 
   // alloc some arrays of 1024 doubles on GPU and host
-  global_ptr<double,memory_kind::cuda_device> gpu_array = gpu_alloc.allocate<double>(1024);
+  global_ptr<double,gpu_default_device::kind> gpu_array = gpu_alloc.allocate<double>(1024);
   global_ptr<double> host_array1 = upcxx::new_array<double>(1024);
   global_ptr<double> host_array2 = upcxx::new_array<double>(1024);
 
@@ -25,9 +27,9 @@ int main() {
   for (int i=0; i< 1024; i++) h1[i] = i; //initialize h1
 
   //SNIPPET
-  dist_object<global_ptr<double,memory_kind::cuda_device>> dobj(gpu_array);
+  dist_object<global_ptr<double,gpu_default_device::kind>> dobj(gpu_array);
   int neighbor = (rank_me() + 1) % rank_n();
-  global_ptr<double,memory_kind::cuda_device> other_gpu_array = dobj.fetch(neighbor).wait();
+  global_ptr<double,gpu_default_device::kind> other_gpu_array = dobj.fetch(neighbor).wait();
 
   // copy data from local host memory to remote GPU
   upcxx::copy(host_array1, other_gpu_array, 1024).wait();
@@ -51,6 +53,6 @@ int main() {
   upcxx::delete_array(host_array1);
   upcxx::delete_array(host_array2);
 
-  gpu_device.destroy();
+  gpu_alloc.destroy();
   upcxx::finalize();
 }
