@@ -11,6 +11,8 @@ namespace upcxx {
 
 namespace detail {
   std::string verification_failed_message(uintptr_t start, uintptr_t end, uintptr_t uptr);
+  std::string tokenization_failed_message(uintptr_t uptr);
+  std::string detokenization_failed_message(const function_token_ms& token);
 
   struct function_token_ss
   {
@@ -104,7 +106,7 @@ namespace detail {
   inline function_token_ss function_token_ss::tokenize(uintptr_t uptr, const segmap_cache& cache)
   {
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    UPCXX_ASSERT(uptr >= cache.primary().start && uptr < cache.primary().end, "Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer.");
+    UPCXX_ASSERT(uptr >= cache.primary().start && uptr < cache.primary().end, "Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer. See: docs/ccs-rpc.md.");
     segmap_cache::check_verification(cache.primary().start, cache.primary().end, uptr);
 #endif
     return {uptr - cache.primary().start};
@@ -149,8 +151,6 @@ namespace detail {
     it = try_inactive(uptr);
     if (it != segmap.end())
       return {true, it};
-    debug_write_ptr(uptr);
-    UPCXXI_FATAL_ERROR("Attempted tokenization of function pointer not found in any executable segment.");
     return {false, segmap.end()};
   }
 
@@ -191,8 +191,7 @@ namespace detail {
         return {uptr-(it3->start), it3->ident};
       }
     }
-    segmap_cache::debug_write_ptr(uptr);
-    UPCXXI_FATAL_ERROR("Function pointer not found in any code segment.");
+    UPCXXI_FATAL_ERROR(tokenization_failed_message(uptr));
     return {0,{}};
   }
 
@@ -225,7 +224,6 @@ namespace detail {
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
     if (segmap_cache::enforce_verification_ && !(flag_map_[start] & (uint16_t) segment_flags::verified))
     {
-      debug_write_ptr(uptr);
       throw segment_verification_error(verification_failed_message(start, end, uptr));
     }
 #endif
@@ -305,8 +303,7 @@ namespace detail {
         return fnptr_from_uintptr<Fp>(it2->start + offset);
     }
 
-    segmap_cache::debug_write_token(*this);
-    UPCXXI_FATAL_ERROR("Attempted detokenization in unknown executable segment.");
+    UPCXXI_FATAL_ERROR(detokenization_failed_message(*this));
     return nullptr;
   }
 

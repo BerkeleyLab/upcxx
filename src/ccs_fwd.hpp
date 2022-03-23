@@ -331,6 +331,7 @@ namespace detail {
     static void verify_all(entry_barrier eb);
     static inline bool enforce_verification(bool v) noexcept { bool prev = enforce_verification_; enforce_verification_ = v; return prev; }
     static inline bool verification_enforced() noexcept { return enforce_verification_; }
+    static bool should_debug_color(int,int);
   private:
     static std::recursive_mutex mutex_;
     static segment_info primary_;
@@ -341,7 +342,6 @@ namespace detail {
     typename std::vector<segment_info>::iterator try_inactive(uintptr_t);
     void activate(segment_info&);
     static segment_info find_primary_upcxx_segment();
-    static bool should_debug_color(int,int);
 
     static inline std::vector<segment_info>& segment_map() // in order of program headers
     {
