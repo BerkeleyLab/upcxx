@@ -12,7 +12,9 @@ void upcxx_test2()
 {
   upcxx::experimental::relocation::enforce_verification(true);
   upcxx::experimental::relocation::verify_all();
-  upcxx::experimental::relocation::debug_write_segment_table();
+  bool printrank = (upcxx::rank_me() == 0) || (upcxx::rank_me() == upcxx::rank_n() - 1);
+  if (printrank)
+    upcxx::experimental::relocation::debug_write_segment_table();
   print_test_header();
   void* handle = dlopen(XSTR(CCS_DLOPEN_LIB), RTLD_NOW);
   if (!handle) {
@@ -22,7 +24,8 @@ void upcxx_test2()
   int (*dlopen_function)() = reinterpret_cast<int(*)()>(dlsym(handle, "dlopen_function"));
   int (*dlopen_cpp_function)() = reinterpret_cast<int(*)()>(dlsym(handle, "_Z19dlopen_cpp_functionv"));
   upcxx::experimental::relocation::verify_segment(dlopen_function);
-  upcxx::experimental::relocation::debug_write_ptr(dlopen_function);
+  if (printrank)
+    upcxx::experimental::relocation::debug_write_ptr(dlopen_function);
   auto fut1 = upcxx::rpc(0,test_segment_function);
   auto fut2 = upcxx::rpc(0,dynamic_linked_function);
   auto fut3 = upcxx::rpc(0,dlopen_function);
@@ -32,7 +35,6 @@ void upcxx_test2()
   UPCXX_ASSERT_ALWAYS(fut2.result() == 2);
   UPCXX_ASSERT_ALWAYS(fut3.result() == 3);
   UPCXX_ASSERT_ALWAYS(fut4.result() == 4);
-  upcxx::experimental::relo::debug_write_segment_table();
   print_test_success();
 }
 
