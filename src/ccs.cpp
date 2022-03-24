@@ -654,7 +654,8 @@ namespace detail {
       if (bcolor) {
         color_start = "";
         style_start = "";
-        if (segmap[i].flags & (uint16_t) segment_flags::bad_verification)
+        if ((segmap[i].flags & (uint16_t) segment_flags::bad_verification)
+            || (enforce_verification_ && !(seg.flags & (uint16_t) segment_flags::verified)))
           color_start = "\033[93m";
         else if (segmap[i].flags & (uint16_t) segment_flags::bad_segment)
           color_start = "\033[91m";
@@ -671,13 +672,6 @@ namespace detail {
       char mark = ' ';
       if (i == found_index)
         mark = '*';
-      if (seg == primary_)
-      {
-        if (i == found_index)
-          mark = '>';
-        else
-          mark = 'p';
-      }
       size_t len = max_namelen - strlen(seg.dlpi_name) + 1;
       ss << "[" << rank_me() << "] | " << style_start << color_start << mark << ' ' << seg.dlpi_name << std::setw(len) << ' ' << color_end << "| " << style_start << color_start;
       ss << std::setfill('0') << std::hex;
@@ -728,7 +722,8 @@ namespace detail {
         found_index = i;
         if (seg.flags & (uint16_t) segment_flags::bad_segment) {
           bad_segment = true;
-        } else if (seg.flags & (uint16_t) segment_flags::bad_verification) {
+        } else if ((seg.flags & (uint16_t) segment_flags::bad_verification) ||
+            (enforce_verification_ && !(seg.flags & (uint16_t) segment_flags::verified))) {
           lookup_res = "BAD VERIFICATION";
           bad_verification = true;
         } else {
@@ -775,6 +770,7 @@ namespace detail {
     if (color == 2)
       bcolor = is_stream_tty(ss);
     const char* color_start = "";
+    const char* style_start = "";
     const char* color_end = "";
     const char* lookup_res = lookup_failure;
     size_t found_index = (size_t)-1;
@@ -796,6 +792,7 @@ namespace detail {
 
     if (bcolor) {
       color_end = ccolor_end;
+      style_start = bold;
       if (found_index != (size_t)-1)
         color_start = success_start;
       else
@@ -805,19 +802,19 @@ namespace detail {
     size_t max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
     size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
-    ss << std::setw(table_width+1) << std::setfill('-') << '\n';
+    ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char token_desc[] = "Lookup for token: ";
-    ss << "[" << rank_me() << "] | " << token_desc << color_start << '{';
-    ss << std::setfill('0') << std::hex;
+    ss << "[" << rank_me() << "] | " << token_desc << color_start << style_start;
+    std::stringstream ss2;
+    ss2 << '{' << std::setfill('0') << std::hex;
     for (size_t j = 0; j < segment_hash::size; ++j)
-      ss << std::setw(2) << static_cast<int>(token.ident.hash[j]);
-    ss << ", " << token.offset << "} (" << lookup_res << ')' << color_end;
+      ss2 << std::setw(2) << static_cast<int>(token.ident.hash[j]);
+    ss2 << ", " << token.offset << "} (" << lookup_res << ')';
     ss << std::dec << std::setfill(' ');
-    size_t spaces = table_width - strlen(lookup_res) - 6 - strlen(token_desc) - 2 - 1;
-    ss << std::setw(spaces+2) << "|\n";
+    ss << std::left << std::setw(table_width-2-sizeof(token_desc)) << ss2.str() << std::right << color_end << "|\n";
     debug_symbol_header(uptr, ss, table_width);
     debug_ptr_header(uptr, ss, table_width, bcolor);
-    ss << "[" << rank_me() << "] |" << std::setfill('-') << std::setw(table_width-2) << "|\n";
+    ss << "[" << rank_me() << "] |" << std::setfill('-') << std::setw(table_width) << "|\n";
     debug_write_table(ss, bcolor, max_namelen, false, found_index);
   }
 
@@ -834,8 +831,10 @@ namespace detail {
       {
         if (it->flags & (uint16_t) segment_flags::bad_segment)
         {
-          debug_write_ptr(uptr);
-          UPCXXI_FATAL_ERROR("Attempted to activate a duplicate, RWX, or TEXTREL segment from library with unknown file path.");
+          std::stringstream ss;
+          ss << "Attempted to activate a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
+          debug_write_ptr(uptr, ss);
+          UPCXXI_FATAL_ERROR(ss.str());
         }
         // Found in inactive cache. Activate.
         activate(*it);
@@ -866,12 +865,14 @@ namespace detail {
         return lhs.ident < rhs.ident;
       });
     } else {
+#if UPCXXI_ASSERT_ENABLED
       static bool emitted_warning = false;
       if (!emitted_warning)
       {
         experimental::say() << "WARNING: Level 1 dynamic linking relocation cache exceeded capacity.\n";
         emitted_warning = true;
       }
+#endif
       /*
        * L2 cache is rebuilt with rebuild_cache(), as L2 cache is process-wide
        */
@@ -987,8 +988,10 @@ namespace detail {
       {
         if (it->flags & (uint16_t) segment_flags::bad_segment)
         {
-          debug_write_ptr(uptr);
-          UPCXXI_FATAL_ERROR("Attempted to use a duplicate, RWX, or TEXTREL segment from library with unknown file path.");
+          std::stringstream ss;
+          ss << "Attempted to use a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
+          debug_write_ptr(uptr, ss);
+          UPCXXI_FATAL_ERROR(ss.str());
         }
         break;
       }
@@ -1073,15 +1076,35 @@ namespace detail {
 
   std::string verification_failed_message(uintptr_t start, uintptr_t end, uintptr_t uptr)
   {
-    char buffer[400];
-    snprintf(buffer, sizeof(buffer), "Attempted to use unverified segment [%" PRIxPTR "-%" PRIxPTR "] to relocate function pointer %" PRIxPTR, start, end, uptr);
-    return std::string(buffer);
+    char buffer[400]{};
+    snprintf(buffer, sizeof(buffer), "Attempted to use unverified segment [%" PRIxPTR "-%" PRIxPTR "] to relocate function pointer %" PRIxPTR ".\n\n", start, end, uptr);
+    std::stringstream ss;
+    ss << buffer;
+    segmap_cache::debug_write_ptr(uptr, ss);
+    return ss.str();
+  }
+
+  std::string tokenization_failed_message(uintptr_t uptr)
+  {
+    std::stringstream ss;
+    ss << "Attempted tokenization of function pointer not found in any executable segment. See: docs/ccs-rpc.md.\n\n";
+    segmap_cache::debug_write_ptr(uptr, ss, segmap_cache::should_debug_color(2,2));
+    return ss.str();
+  }
+
+  std::string detokenization_failed_message(const function_token_ms& token)
+  {
+    std::stringstream ss;
+    ss << "Attempted detokenization in unknown executable segment. See: docs/ccs-rpc.md.\n\n";
+    segmap_cache::debug_write_token(token, ss, segmap_cache::should_debug_color(2,2));
+    return ss.str();
   }
 
   bool segmap_cache::should_debug_color(int fd, int color)
   {
     UPCXX_ASSERT(color >= 0 && color <= 2, "Color choice out of range");
-    return upcxx::experimental::os_env<bool>("UPCXX_COLORIZE_DEBUG", isatty(fd));
+    if (color < 2) return !!color;
+    else return upcxx::experimental::os_env<bool>("UPCXX_COLORIZE_DEBUG", isatty(fd));
   }
 
   void segmap_cache::fallback_primary_segment_sentinel() {}
