@@ -29,6 +29,9 @@ feature that supports efficient PGAS communication involving GPU memory buffers.
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* Experimental support for making RPC calls to functions in executable code segments
+  other than the core UPC++ application, such as those in dynamic libraries. For
+  more information, see [docs/ccs-rpc.md](docs/ccs-rpc.md).
 * Performance improvements to `atomic_domain` operations using shared-memory bypass.
 * New query `upcxx::local_team_position()` provides job topology information
 * `team` and `atomic_domain<T>` are now DefaultConstructible and have a new

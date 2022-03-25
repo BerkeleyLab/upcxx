@@ -4,19 +4,19 @@ There are four main components to the CCS tests:
 
 * `test.cxx`: Contains the function `upcxx_test()` containing RPC calls testing
   CCS functionality.
-  * RPC targets: `test_segment_function()`. Tests RPC within the same segment
-    as the UPC++ program
+    * RPC targets: `test_segment_function()`. Tests RPC within the same segment
+      as the UPC++ program
 * `dynamic.cxx`:  Contains `main()`. All it does is call `upcxx_test()`
 * `dynamic-test-funcs.cxx`:  Gets compiled into a `.so` Contains the C++
   functions that need to be RPCed with CCS.
-  * RPC targets: `dynamic_test_function()`. Tests an RPC into a dynamic
-    library.
+    * RPC targets: `dynamic_test_function()`. Tests an RPC into a dynamic
+      library.
 * `dlopen-test-funcs.cxx`: Like `dynamic-test-funcs`, but this library is
   intended to be `dlopen`ed 
-  * RPC targets:
-    * `"dlopen_function"`: Function with C linkage to be used with `dlopen`.
-    * `"_Z19dlopen_cpp_functionv"`: Function with C++ linkage to be used with
-      `dlopen`
+    * RPC targets:
+        * `"dlopen_function"`: Function with C linkage to be used with `dlopen`.
+        * `"_Z19dlopen_cpp_functionv"`: Function with C++ linkage to be used with
+          `dlopen`
 
 ## ccs-dynamic
 
