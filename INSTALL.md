@@ -73,6 +73,18 @@ The current release is known to work on the following configurations:
     verbose linker output in this configuration.  Mixing with OpenMP in this
     configuration is not currently supported.  (smp and aries conduits).
 
+* HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
+  modules, plus its dependencies (smp, ofi and ucx conduits):
+    - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
+    - PrgEnv-cray with cce/12.0.0 (or later) loaded.
+
+    PrgEnv-nvidia, PrgEnv-amd and PrgEnv-intel are not yet officially
+    supported.  In the first two cases (nvidia and amd) this is due to
+    insufficient duration of testing.  However, there are currently no known
+    issues with either.  The UPC++ team has had no access to PrgEnv-intel on
+    this platform.  If you choose to use any of these compiler families, we
+    welcome your reports of success or failure.
+
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
       Initial testing on this platform with both Xcode and Free Software
