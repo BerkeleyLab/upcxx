@@ -54,11 +54,11 @@ be enabled independently for individual translation units.
 ## Function Pointer Relocation Modes
 
 There are some cases where load-time shared libraries can share randomized
-addresses due to randomization happening before duplicating processes. Such
-spawners include smp-conduit, udp-conduit(SPAWNFN=L), or if the system lacked
-ASLR entirely. Previously, this resulted in cross-segment calls "magically"
-working, but was unspecified behavior.  This is now prohibited.  Conforming
-UPC++ programs must make all cross-segment calls using CCS Multi-Segment mode.
+addresses due to randomization happening before duplicating processes, such as
+smp-conduit or if the system lacked ASLR entirely. Previously, this resulted in
+cross-segment calls "magically" working, but was unspecified behavior.  This is
+now prohibited.  Conforming UPC++ programs must make all cross-segment calls
+using CCS Multi-Segment mode.
 
 ### Legacy
 
@@ -136,9 +136,9 @@ CCS verification is automatically enabled in debug mode and can be controlled
 by the `upcxx::experimental::relocation::enforce_verification(bool)` function.
 This verification can help a user to deterimine when multi-segment mode must be
 enabled.  If a segment verification error indicates an RPC was made to a
-segment outside the primary segment in single-segment mode, multi-segment mode
-can either by enabled with `UPCXX_CCS_RPC=1` either globally defined for each
-translation unit for which it is required. If enabling for individual
+segment outside the primary segment in single-segment mode, multi-segment
+mode can either by enabled with `UPCXX_CCS_RPC=1` either globally defined for
+each translation unit for which it is required. If enabling for individual
 translation units, this process can be repeated until all necessary usages are
 found and enabled.  Verification is enabled by default in debug mode.
 
@@ -163,6 +163,20 @@ MacOS automatically builds all libraries with the equivalent of
 
 Disabling CCS verification may be necessary for advanced use cases such as
 intentional asymmetry and heterogeneity.
+
+See [ccs-rpc-debugging.md](ccs-rpc-debugging.md) for practical examples of 
+debugging CCS RPCs.
+
+## Supported Configurations
+
+As of UPC++ 2022.3.0, CCS support only extends to the relocation of function
+pointers in other executable segments. The ability to compile and link UPC++
+and its dependencies as dynamic libraries is not yet supported by the build
+infrastructure. This means `libupcxx.a` must still be linked into the main
+executable for a supported configuration. Configurations involving building
+UPC++ as position independent code (`-fPIC`) for use in creating a dynamic
+library (`libupcxx.so`), such as for use in Python libraries and UPC++ within
+dynamic libraries, are not yet supported. 
 
 ## CCS API
 
