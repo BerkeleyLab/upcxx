@@ -41,6 +41,14 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 Infrastructure changes:
 
+* NEW initial support for the HPE Cray EX platform
+    - Complete and correct, but still untuned
+    - Supports Slingshot 10 and Slingshot 11 NICs via GASNet-EX's
+      experimental support for the OFI network API (aka "libfabric").
+    - Supports PrgEnv-gnu and PrgEnv-cray.
+    - See [INSTALL.md](INSTALL.md) for instructions to enable the
+      appropriate support for this platform.
+
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
