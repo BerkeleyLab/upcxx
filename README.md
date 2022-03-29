@@ -135,11 +135,14 @@ script will assume sensible defaults for these parameters based on the
 installation configuration. The following environment variables can be set to
 influence which backend `upcxx-meta` selects:
 
-* `UPCXX_NETWORK=[aries|ibv|smp|udp|mpi]`: The GASNet network backend to use
-  for communication (the default and available values are system-dependent):
+* `UPCXX_NETWORK=<see below>`: The GASNet network backend to use
+  for communication (the default and available values are system-dependent).
+  Supported values include:
     * `aries` is the high-performance Cray XC network.
     * `ibv` is the high-performance InfiniBand network.
     * `smp` is the high-performance choice for single-node multi-core runs.
+    * `ofi` the experimental libfabric backend, recommended on HPE Cray EX and Intel Omni-Path systems.
+    * `ucx` the experimental UCX backend for certain InfiniBand systems.
     * `udp` is a portable low-performance alternative for testing and debugging.
     * `mpi` is a portable low-performance alternative for testing and debugging. 
 
