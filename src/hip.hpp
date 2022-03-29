@@ -11,7 +11,7 @@
 
 #if UPCXXI_HIP_ENABLED
   // feature macro: ONLY changes when a new spec is officially released that alters HIP feature
-  #define UPCXX_KIND_HIP 202103L
+  #define UPCXX_KIND_HIP 202203L
 #else
   #undef UPCXX_KIND_HIP
 #endif
