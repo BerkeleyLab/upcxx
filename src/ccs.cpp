@@ -748,8 +748,8 @@ namespace detail {
 
     ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char pointer_desc[] = "Lookup for pointer: ";
-    ss << std::hex << std::setfill(' ');
-    ss << "[" << rank_me() << "] | " << pointer_desc << color_start << style_start << std::setw(cwidth_pointer-padding+2) << reinterpret_cast<void*>(uptr) << " (" << lookup_res << ")" << color_end;
+    ss << std::setfill(' ');
+    ss << "[" << rank_me() << "] | " << pointer_desc << color_start << style_start << std::setw(cwidth_pointer-padding+2) << std::hex << reinterpret_cast<void*>(uptr) << std::dec << " (" << lookup_res << ")" << color_end;
     size_t sz = table_width - sizeof(pointer_desc) - cwidth_pointer - 4 /*" () "*/ - strlen(lookup_res) + 1;
     ss << std::setw(sz) << std::setfill(' ') << std::right << "|\n";
     debug_symbol_header(uptr, ss, table_width);
@@ -809,7 +809,7 @@ namespace detail {
     ss2 << '{' << std::setfill('0') << std::hex;
     for (size_t j = 0; j < segment_hash::size; ++j)
       ss2 << std::setw(2) << static_cast<int>(token.ident.hash[j]);
-    ss2 << ", " << token.offset << "} (" << lookup_res << ')';
+    ss2 << ", " << token.offset << "} (" << lookup_res << ')' << std::dec;
     ss << std::dec << std::setfill(' ');
     ss << std::left << std::setw(table_width-2-sizeof(token_desc)) << ss2.str() << std::right << color_end << "|\n";
     debug_symbol_header(uptr, ss, table_width);
