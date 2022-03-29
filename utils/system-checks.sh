@@ -732,6 +732,8 @@ We recommend one of the following C++ compilers (or any later versions where no 
                               PrgEnv-intel with Intel C 18.0.1 and gcc/7.1.0 environment modules loaded
                               PrgEnv-cray with cce/9.0.0 environment module loaded
                               ALCF's PrgEnv-llvm/4.0
+           HPE Cray EX:       PrgEnv-gnu with gcc/10.3.0 environment module loaded
+                              PrgEnv-cray with cce/12.0.0 environment module loaded
 EOF
         if test -n "$ARCH_BAD" ; then
             echo "ERROR: This version of UPC++ does not support the '$ARCH' architecture."

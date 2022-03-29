@@ -73,6 +73,18 @@ The current release is known to work on the following configurations:
     verbose linker output in this configuration.  Mixing with OpenMP in this
     configuration is not currently supported.  (smp and aries conduits).
 
+* HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
+  modules, plus its dependencies (smp, ofi and ucx conduits):
+    - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
+    - PrgEnv-cray with cce/12.0.0 (or later) loaded.
+
+    PrgEnv-nvidia, PrgEnv-amd and PrgEnv-intel are not yet officially
+    supported.  In the first two cases (nvidia and amd) this is due to
+    insufficient duration of testing.  However, there are currently no known
+    issues with either.  The UPC++ team has had no access to PrgEnv-intel on
+    this platform.  If you choose to use any of these compiler families, we
+    welcome your reports of success or failure.
+
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
       Initial testing on this platform with both Xcode and Free Software
@@ -159,6 +171,7 @@ when invoking `configure`. For guidance, see the platform-specific instructions
 in the following sections, below:
 
 * [Configuration: Cray XC](#markdown-header-configuration-cray-xc)
+* [Configuration: HPE Cray EX](#markdown-header-configuration-hpe-cray-ex)
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
@@ -380,6 +393,73 @@ explicitly using `--with-cc` or `--with-cxx`.
 Currently only Intel-based Cray XC systems have been tested, including Xeon
 and Xeon Phi (aka "KNL").  Note that UPC++ has not yet been tested on an
 ARM-based Cray XC.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
+### Configuration: HPE Cray EX
+
+This release of UPC++ includes initial support for the HPE Cray EX platform,
+including both the "Slingshot 10" and "Slingshot 11" network interface cards
+(NICs) and GPUs from both Nvidia and AMD.  When built in a supported
+configuration, this release passes all of the UPC++ test suite.  However, the
+performance has not yet been tuned on this platform.
+
+Unlike the Cray XC, the HPE Cray EX is *not* treated as a cross-compilation
+target when building UPC++.  However, we strongly advise use of the vendor's
+wrapper compilers, `cc` and `CC`.  Additionally, we recommend use of the Slurm
+Workload Manager for job launch and the two NICs require distinct non-default
+settings.  The following shows our recommended configure command with some
+"<placeholders>" which are explained below.
+
+```bash
+module load libfabric cray-pmi
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> \
+    --with-cc=cc --with-cxx=CC --with-mpi-cc=cc \
+    --with-default-network=ofi --disable-ibv \
+    --with-ofi-provider=<PROVIDER> \
+    --with-ofi-spawner=pmi \
+      --with-pmi-version=cray \
+      --with-pmi-runcmd='srun -n %N -- %C' \
+    <GPU_OPTIONS>    
+```
+
+The `libfabric` and `cray-pmi` environment modules may or may not be loaded by
+default at any given site.  Please ensure they are loaded (as shown above) or
+the configure or build steps may fail.
+
+There are two NICs options in an HPE Cray EX system, known as "Slingshot 10" and
+"Slingshot 11".  They require different libfabric "providers", as indicated by
+the `<PROVIDER>` placeholder above:  
+
+  + `--with-ofi-provider='verbs;ofi_rxm'` for Slingshot 10.  
+    This is a Mellanox ConnectX-5 100Gbps NIC.  
+    Due to the presence of `;` in the value, please do not omit the quotes.
+  + `--with-ofi-provider=cxi` for Slingshot 11.  
+    This is an HPE 200Gbps NIC  
+
+If you are uncertain of which NIC is used on a given system, please consult the
+site-specific documentation or ask the support staff for assistance.
+
+On _some_ systems with multiple Slingshot NICs, one will need to add
+`--with-host-detect=hostname`.  This option is recommended only when actually
+required.  If your system _does_ require this setting, then you will see a
+message at application runtime directing you to use this option, or an
+environment-based alternative.
+
+If appropriate at your site, you may also wish to customize the command
+passed to `--with-pmi-runcmd=...`.
+
+Currently only AMD-based HPE Cray EX systems have been tested.
+
+As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
+UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
+EX systems.  Please _also_ see the respective sections of this document for
+UPC++ configure options needed to enable this support:
+
+* [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
