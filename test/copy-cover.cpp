@@ -1,5 +1,5 @@
 #include <string>
-
+#include <iomanip>
 #include <upcxx/upcxx.hpp>
 #include "util.hpp"
 
@@ -10,31 +10,140 @@
 #ifndef USE_CUDA
   #if UPCXX_KIND_CUDA 
     #define USE_CUDA 1
-  #else
-    #define USE_CUDA 0
   #endif
 #endif
 #if USE_CUDA && !UPCXX_KIND_CUDA
   #error requested USE_CUDA but this UPC++ install does not have CUDA support
 #endif
 
-
-#if USE_CUDA
-  #include <cuda_runtime_api.h>
-  #include <cuda.h>
-  int dev_n;
-  constexpr int max_dev_n = 2;
-#else
-  constexpr int dev_n = 0;
+#ifndef USE_HIP
+  #if UPCXX_KIND_HIP 
+    #define USE_HIP 1
+  #endif
 #endif
+#if USE_HIP && !UPCXX_KIND_HIP
+  #error requested USE_HIP but this UPC++ install does not have HIP support
+#endif
+
+#ifndef HEAPS_PER_KIND
+#define HEAPS_PER_KIND 2
+#endif
+#ifndef ALLOCS_PER_HEAP
+#define ALLOCS_PER_HEAP 3
+#endif
+constexpr unsigned heaps_per_kind = HEAPS_PER_KIND;
+constexpr unsigned allocs_per_heap = ALLOCS_PER_HEAP;
+
+int dev_n_cuda = 0;
+int dev_n_hip = 0;
 
 using namespace upcxx;
 
 using val_t = std::uint32_t;
-#define VAL(rank, step, idx) ((val_t)(((rank)&0xFFFF << 16) | ((step)&0xFF << 8) | ((idx)&0xFF) ))
+#define VAL(rank, step, idx) ((val_t)((((rank)&0xFFFF) << 16) | (((step)&0xFF) << 8) | ((idx)&0xFF) ))
+#define DEAD(step) ((val_t)(0xFFFF0000 | ((step)&0xFFFF)))
 
 using any_ptr = global_ptr<val_t, memory_kind::any>;
 long errs = 0;
+
+// Factored kind-independent device buffer state
+template<typename Device>
+struct DeviceState {
+  static int device_n() {
+    #if UPCXX_VERSION >= 20210903
+      return Device::device_n();
+    #else
+      static bool firstcall = true;
+      if (!rank_me() && firstcall)
+        say("") << "WARNING: Device::device_n() support missing. Blindly assuming 1 GPU per process..";
+      firstcall = false;
+      return 1;
+    #endif
+  }
+  static int device_n_min() {
+    int dev_n = device_n();
+    int lo = upcxx::reduce_all(dev_n, upcxx::op_fast_min).wait();
+    int hi = upcxx::reduce_all(dev_n, upcxx::op_fast_max).wait();
+
+    if(!rank_me()) { // output
+      if (lo != hi)
+        say("")<<"Notice: not all ranks report the same number of GPUs: min="<<lo<<" max="<<hi;
+      if (!lo)
+        say("")<<"WARNING: UPC++ GPU support is compiled-in, but could not find sufficient GPU support at runtime.";
+    }
+    return lo; // ensure single-valued device count
+  }
+
+  Device* gpu[heaps_per_kind] = {};
+  device_allocator<Device>* seg[heaps_per_kind] = {};
+  global_ptr<val_t, Device::kind> dev_ptrs[heaps_per_kind][allocs_per_heap] = {};
+
+  // Collectively create heaps_per_kind device heaps for this Device kind, spread across all GPUs
+  // Allocate allocs_per_heap objects of maxelems*2 val_t's
+  // and insert corresponding buffers into ptrs_out, spread across neighbors
+  void create(size_t maxelems, std::vector<any_ptr> &ptrs_out) {
+    int me = upcxx::rank_me();
+    int ranks = upcxx::rank_n();
+    int dev_n = device_n();
+    assert(dev_n > 0);
+    for (unsigned dev = 0; dev < heaps_per_kind; dev++) {
+      size_t align = Device::template default_alignment<val_t>();
+      size_t allocsz = maxelems*2*sizeof(val_t);
+      allocsz = align*((allocsz+align-1)/align);
+      align = 4096;
+      if (allocsz > align) { // more than one page gets a full page
+        allocsz = align*((allocsz+align-1)/align);
+      }
+      UPCXX_ASSERT(!gpu[dev] && !seg[dev]);
+      int dev_id = ( dev + local_team().rank_me() ) % dev_n;
+      gpu[dev] = new Device(dev_id);
+      seg[dev] = new device_allocator<Device>(*gpu[dev], allocsz*allocs_per_heap);
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        dev_ptrs[dev][i] = seg[dev]->template allocate<val_t>(maxelems*2);
+        assert(dev_ptrs[dev][i]);
+        int rank = (me+i)%ranks;
+        dist_object<any_ptr> dobj(dev_ptrs[dev][i]);
+        any_ptr gp = dobj.fetch(rank).wait();
+        ptrs_out.push_back(gp);
+        barrier();
+      }
+    }
+  }
+
+  // clean up all the resources allocated by create()
+  void destroy() {
+    for (unsigned dev = 0; dev < heaps_per_kind; dev++) {
+      UPCXX_ASSERT(gpu[dev] && seg[dev]);
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        seg[dev]->deallocate(dev_ptrs[dev][i]);
+        dev_ptrs[dev][i] = nullptr;
+      }
+      gpu[dev]->destroy();
+      delete seg[dev]; seg[dev] = nullptr;
+      delete gpu[dev]; gpu[dev] = nullptr;
+    }
+  }
+};
+
+std::string bufdesc(any_ptr ptr) {
+  int me = upcxx::rank_me();
+  int ranks = upcxx::rank_n();
+  int rank = ptr.where();
+  memory_kind kind = ptr.dynamic_kind();
+  std::string res("other ");
+  if (rank == me) res = "my "; 
+  if (rank == (me+1)%ranks) res = "his ";
+  if (rank == (me+2)%ranks) res = "her ";
+  if (kind == memory_kind::host) res += "host";
+  #if USE_CUDA
+  else if (kind == memory_kind::cuda_device) res += "cuda";
+  #endif
+  #if USE_HIP
+  else if (kind == memory_kind::hip_device) res += "hip";
+  #endif
+  else res += "UNKNOWN";
+  return res;
+}
 
 int main(int argc, char *argv[]) {
   upcxx::init();
@@ -51,83 +160,97 @@ int main(int argc, char *argv[]) {
     if (bufsz <= 0) bufsz = 1024*1024;
     if (bufsz < sizeof(val_t)) bufsz = sizeof(val_t);
     maxelems = bufsz / sizeof(val_t);
-    if (!me) say("") << "Running with iters=" << iters << " bufsz=" << maxelems*sizeof(val_t) << " bytes"; 
+    if (!me) say("") << "Running with iters=" << iters << " bufsz=" << maxelems*sizeof(val_t) << " bytes\n"
+                     << "  using " << heaps_per_kind << " heaps per device kind and "
+                     << allocs_per_heap << " buffer allocations per heap.";
   }
 
   {
     if(me == 0 && ranks < 3)
       say("") << "Advice: consider using 3 (or more) ranks to cover three-party cases for upcxx::copy.";
 
-    #if USE_CUDA
-    {
-      cuInit(0);
-      cuDeviceGetCount(&dev_n);
-
-      int lo = upcxx::reduce_all(dev_n, upcxx::op_fast_min).wait();
-      int hi = upcxx::reduce_all(dev_n, upcxx::op_fast_max).wait();
-
-      if(me == 0 && lo != hi)
-        say("")<<"Notice: not all ranks report the same number of GPUs: min="<<lo<<" max="<<hi;
-
-      if (!lo) {
-        if (!me) say("")<<"WARNING: UPC++ CUDA support is compiled-in, but could not find sufficient GPU support at runtime.";
-        dev_n = lo;
-      }
-    }
-    #endif
-
-    say()<<"Running with devices="<<dev_n;
-   
     std::vector<any_ptr> ptrs;
-    constexpr int allocs_per_heap = 3;
     // fill ptrs with global ptrs to buffers, with allocs_per_heap
 
-    global_ptr<val_t> host_ptrs[allocs_per_heap];
-    for (int i=0; i < allocs_per_heap; i++) {
+    global_ptr<val_t> host_ptrs[allocs_per_heap] = {};
     #if USE_HOST
-      host_ptrs[i] = upcxx::new_array<val_t>(maxelems*2);
-      int rank = (me+i)%ranks;
-      dist_object<any_ptr> dobj(host_ptrs[i]);
-      any_ptr gp = dobj.fetch(rank).wait();
-      ptrs.push_back(gp);
-      barrier();
-    #else
-      host_ptrs[i] = nullptr;
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        host_ptrs[i] = upcxx::new_array<val_t>(maxelems*2);
+        int rank = (me+i)%ranks;
+        dist_object<any_ptr> dobj(host_ptrs[i]);
+        any_ptr gp = dobj.fetch(rank).wait();
+        ptrs.push_back(gp);
+        barrier();
+      }
     #endif
-    }
 
     #if USE_CUDA
-      cuda_device* gpu[max_dev_n] = {};
-      device_allocator<cuda_device>* seg[max_dev_n] = {};
-      global_ptr<val_t, memory_kind::cuda_device> cuda_ptrs[max_dev_n][allocs_per_heap] = {};
+      // open the devices, allocate and distribute device buffers, appending to ptrs:
+      DeviceState<cuda_device> devstate_cuda;
+      dev_n_cuda = devstate_cuda.device_n_min();
+      if (dev_n_cuda) devstate_cuda.create(maxelems, ptrs);
+    #endif
 
-    if (dev_n) {
-      for (int dev = 0; dev < max_dev_n; dev++) {
-        size_t align = cuda_device::default_alignment<val_t>();
-        size_t allocsz = maxelems*2*sizeof(val_t);
-        allocsz = align*((allocsz+align-1)/align);
-        align = 4096;
-        if (allocsz > align) { // more than one page gets a full page
-          allocsz = align*((allocsz+align-1)/align);
+    #if USE_HIP
+      // open the devices, allocate and distribute device buffers, appending to ptrs:
+      DeviceState<hip_device> devstate_hip;
+      dev_n_hip = devstate_hip.device_n_min();
+      if (dev_n_hip) devstate_hip.create(maxelems, ptrs);
+    #endif
+
+    say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs, "
+                          <<dev_n_hip<<" HIP GPUs";
+
+    const int bufcnt = ptrs.size();
+
+    #if !SKIP_SANITY
+    { // optional basic sanity checks for buffer layout and simple copy
+      size_t bufelems = 2*maxelems;
+      auto gp_tmp = upcxx::new_array<val_t>(bufelems);
+      auto lp_tmp = gp_tmp.local();
+
+      upcxx::barrier();
+      for (int A=0; A < bufcnt; A++) {
+        for(size_t i=0; i < bufelems; i++) {
+          if (A > 0) UPCXX_ASSERT_ALWAYS(lp_tmp[i] == VAL(me, A-1, i));
+          lp_tmp[i] = VAL(me, A, i);
         }
-        gpu[dev] = new cuda_device(dev%dev_n);
-        seg[dev] = new device_allocator<cuda_device>(*gpu[dev], allocsz*allocs_per_heap);
-        for (int i=0; i < allocs_per_heap; i++) {
-          cuda_ptrs[dev][i] = seg[dev]->allocate<val_t>(maxelems*2);
-          assert(cuda_ptrs[dev][i]);
-          int rank = (me+i)%ranks;
-          dist_object<any_ptr> dobj(cuda_ptrs[dev][i]);
-          any_ptr gp = dobj.fetch(rank).wait();
-          ptrs.push_back(gp);
-          barrier();
+        any_ptr buf = ptrs[A];
+        upcxx::copy(gp_tmp, buf, bufelems).wait();
+      }
+      upcxx::barrier();
+      for (int A=0; A < bufcnt; A++) {
+        for(size_t i=0; i < bufelems; i++) {
+          lp_tmp[i] = 0;
+        }
+        any_ptr buf = ptrs[A];
+        upcxx::copy(buf, gp_tmp, bufelems).wait();
+        for(size_t i=0; i < bufelems; i++) {
+          val_t got = lp_tmp[i];
+          val_t expect = VAL(me, A, i);
+          if (got != expect) {
+            say() << "ERROR: Failed sanity check at " 
+                  <<" A="<<A<<"("<<bufdesc(buf)<<")"
+                  << std::setbase(16)
+                  << std::setfill('0')
+                  << " i=0x" << i
+                  << " expect=0x" <<std::setw(5) << expect
+                  << " got=0x" <<std::setw(5) << got;
+            errs++;
+            break;
+          }
         }
       }
+      
+      upcxx::delete_array(gp_tmp);
+      upcxx::barrier();
+      if(!me) say("") << "Sanity check complete.";
+      upcxx::barrier();
     }
     #endif
 
     val_t *priv_src = new val_t[maxelems];
     val_t *priv_dst = new val_t[maxelems];
-    const int bufcnt = ptrs.size();
 
     uint64_t step = 0;
     static uint64_t rc_count = 0;
@@ -154,7 +277,7 @@ int main(int argc, char *argv[]) {
         #else
           int killfreq = 7;
         #endif
-        const val_t dead = (val_t)step;
+        const val_t dead = DEAD(step);
         #if SKIP_RC_ONLY
           const bool rconly = false;
         #else
@@ -248,29 +371,34 @@ int main(int argc, char *argv[]) {
         for(size_t i=0; i < bufelems; i++) {
           val_t got = priv_dst[i];
           val_t expect = VAL(me, step, i);
-          if (got != expect && !mismatch.size()) {
+          if (got != expect) {
             std::ostringstream oss;
-            oss << " i=" << i << " expect=" << expect << " got=" << got;
+            oss << std::setbase(16)
+                << " i=0x" << i;
+            oss.fill('0');
+            oss << " expect=0x" <<std::setw(5) << expect 
+                << " got=0x" <<std::setw(5) << got;
+            if (i == 0) { // heuristic detection of kill values
+              std::int64_t deadchk = (std::int64_t)dead - (std::int64_t)got;
+              if (deadchk == 0) 
+                oss << ", DEAD"; // matches kill write from this step
+              else if (deadchk > 0 && deadchk <= 2*bufcnt*bufcnt) 
+                oss << ", dead"; // matches kill write from a recent step
+            }
             mismatch = oss.str();
+            break;
           }
         }
         if (mismatch.size()) { // diagnose failure
-          auto who = [=](int rank) { 
-            if (rank == me) return "my "; 
-            if (rank == (me+1)%ranks) return "his ";
-            if (rank == (me+2)%ranks) return "her ";
-            return "other ";
-          };
-          const char * Awhere = who(bufA.where());
-          const char * Aheap  = (bufA.dynamic_kind() == memory_kind::host ? "host" : "device");
-          const char * Bwhere = who(bufB.where());
-          const char * Bheap  = (bufB.dynamic_kind() == memory_kind::host ? "host" : "device");
-          say() << "ERROR: Mismatch at round="<<round<<" bufsz="<<(bufelems*sizeof(val_t))
-                <<" step="<<step
-                <<" A="<<A<<"("<<Awhere<<Aheap<<")"
-                <<" B="<<B<<"("<<Bwhere<<Bheap<<")"
+          say() << "ERROR: Mismatch at round="<<round
+                <<" bufsz="<<std::setw(5)<<(bufelems*sizeof(val_t))
+                <<" A="<<A<<"("<<bufdesc(bufA)<<")"
+                <<" B="<<B<<"("<<bufdesc(bufB)<<")"
+                <<std::setfill('0')
+                <<" step=0x"<<std::setw(4)<<std::hex<<step
                 <<mismatch
-                <<(kill1?", kill1":"")<<(kill2?", kill2":"")<<(kill3?", kill3":"");
+                <<(kill1?", kill1":"")<<(kill2?", kill2":"")<<(kill3?", kill3":"")
+                <<(rconly?", rconly":"");
           errs++;
         }
 
@@ -293,21 +421,17 @@ int main(int argc, char *argv[]) {
     delete [] priv_src;
     delete [] priv_dst;
 
-    for (int i=0; i < allocs_per_heap; i++) {
-      upcxx::delete_array(host_ptrs[i]);
-    }
+    #if USE_HOST
+      for (unsigned i=0; i < allocs_per_heap; i++) {
+        upcxx::delete_array(host_ptrs[i]);
+      }
+    #endif
     
     #if USE_CUDA
-    if (dev_n) {
-      for (int dev = 0; dev < max_dev_n; dev++) {
-        for (int i=0; i < allocs_per_heap; i++) {
-          seg[dev]->deallocate(cuda_ptrs[dev][i]);
-        }
-        delete seg[dev];
-        gpu[dev]->destroy();
-        delete gpu[dev];
-      }
-    }
+      if (dev_n_cuda) devstate_cuda.destroy();
+    #endif
+    #if USE_HIP
+      if (dev_n_hip)  devstate_hip.destroy();
     #endif
   }
     

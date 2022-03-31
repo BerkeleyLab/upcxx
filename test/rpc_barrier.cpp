@@ -12,6 +12,8 @@ using namespace std;
 // Barrier state bitmasks.
 uint64_t state_bits[2] = {0, 0};
 
+size_t payload_limit = size_t(-1); // unlimited
+
 struct barrier_action {
   int epoch;
   intrank_t round;
@@ -24,8 +26,10 @@ struct barrier_action {
     epoch{epoch},
     round{round},
     extra(
-      backend::gasnet::am_size_rdzv_cutover - 128 +
-        (0x9e3779b9u*uint32_t(100*epoch + round) >> (32-8)),
+      std::min(payload_limit,
+       backend::gasnet::am_size_rdzv_cutover - 128 +
+        (0x9e3779b9u*uint32_t(100*epoch + round) >> (32-8))
+      ),
       std::deque<char>(1,'x')
     ) {
   }
@@ -87,6 +91,8 @@ int main() {
   
   intrank_t rank_me = upcxx::rank_me();
   intrank_t rank_n = upcxx::rank_n();
+
+  if (os_env<bool>("UPCXX_OVERSUBSCRIBED",false)) payload_limit = 256;
   
   for(int i=0; i < 10; i++) {
     rpc_barrier();

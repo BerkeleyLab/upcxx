@@ -1,4 +1,3 @@
-#include <cassert>
 #include <utility>
 #include "../util.hpp"
 

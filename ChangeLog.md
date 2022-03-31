@@ -5,13 +5,123 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
+### 2022.03.31: Release 2022.3.0
+
+Improvements to GPU memory kinds:
+
+This release features a number of synergistic improvements to the UPC++ memory kinds
+feature that supports efficient PGAS communication involving GPU memory buffers.
+
+* NEW: Memory kinds support for AMD GPUs using ROCm/HIP, see [INSTALL.md](INSTALL.md).
+    New `configure --enable-hip` flag activates new `upcxx::hip_device` class.
+    This includes native offload support for `upcxx::copy()` using ROCmRDMA on 
+    recent InfiniBand network hardware - see GASNet-EX documentation for details.
+* `cuda_device` and `hip_device` are derived from new abstract base class `gpu_device` and
+  `device_allocator<Device>` is now derived from new abstract base class `heap_allocator`.
+  These help enable vendor-agnostic polymorphism in use of memory kinds.
+* New optional interface to GPU memory kinds simplifies startup code, e.g.:    
+    `auto gpu_alloc = make_gpu_allocator(2UL<<20);`    
+  creates a 2MB device segment with a "smart" choice of GPU, and:    
+    `auto gpu_alloc = make_gpu_allocator<hip_device>(2UL<<20, 2);`    
+  creates a `device_allocator` for a segment on HIP GPU number 2.
+* Several new members have been added to `device_allocator` to provide convenience
+  and support the above improvements. See the specification for details.
+* These improvements are demonstrated in `example/gpu_vecadd` a renamed version of
+  the `cuda_vecadd` kernel example which now supports either GPU vendor.
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
+* Experimental support for making RPC calls to functions in executable code segments
+  other than the core UPC++ application, such as those in dynamic libraries. For
+  more information, see [docs/ccs-rpc.md](docs/ccs-rpc.md).
+* Performance improvements to `atomic_domain` operations using shared-memory bypass.
+* New query `upcxx::local_team_position()` provides job topology information
+* `team` and `atomic_domain<T>` are now DefaultConstructible and have a new `is_active()` query
+* `team`, `atomic_domain<T>`, `cuda_device` and `device_allocator<Device>` are now MoveAssignable
+
+Infrastructure changes:
+
+* NEW initial support for the HPE Cray EX platform
+    - Complete and correct, but still untuned
+    - Supports Slingshot-10 and Slingshot-11 NICs via GASNet-EX's
+      experimental support for the OFI network API (aka "libfabric").
+    - Supports PrgEnv-gnu and PrgEnv-cray.
+    - See [INSTALL.md](INSTALL.md) for instructions to enable the
+      appropriate support for this platform.
+* Memory kinds implementation internals have been factored and restructured, simplifying
+  the addition of new memory kinds in future releases.
+
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
+
+* issue #288: implementation details of future lead to type errors using `when_all` with inference
+* issue #494: Intermittent rpc-ctor-trace failure on `copy-get-d2d(as_rpc)`
+* issue #512: ADL fails with `when_all`
+* issue #518: configure should warn or prohibit mixed-family/mixed-version compilers
+* issue #522: Runtime crash along exception path for `rpc()` returning non-empty `operation_cx::as_future`
+* issue #523: Round-trip RPC lacking `operation_cx` should generate an error
+* issue #527: Raise PGI version floor to 19.3
+* issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
+* issue #534: Prune unnecessary system header includes from upcxx.hpp
+* issue #537: Numerical error in kokkos-based 3d heat conduction examples
+* spec issue 173: Add `upcxx::local_team_position()`
+* spec issue 188: Add `cuda_device::device_n()`
+* spec issue 189: Add MoveAssignable to resource object types
+* spec issue 190: `device_allocator` constructor has several problems
+
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
+
+* bug4211: intermittent udp-conduit exit-time hangs on macOS
+* bug4227: Bogus maybe-uninit warning building libgasnet with GCC-11.1+
+* bug4297: incorrect nbrhd construction for some multi-homed hosts
+* bug4321: Intermittent "EBADENDPOINT" failures in single-node udp-conduit
+* bug4345: Multiply defined symbols in aries-conduit w/ recent compilers
+* bug4360: Insufficient fixed exit timeouts (ucx, ibv, ofi)
+* bug4361: (partial fix) reductions on DT_USER of unbounded length
+* bug4366: intermittent exit-time assertion failures from debug memcheck
+
+This library release conforms to the
+[UPC++ v1.0 Specification, Revision 2022.3.0](docs/spec.pdf).
+All currently specified features are fully implemented.
+See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
+
+Breaking changes:
+
+* UPC++ headers no longer have the undocumented side-effect of including `<cassert>`. 
+  Users are highly encouraged to use `UPCXX_ASSERT()` instead, which offers
+  more features and automatically tracks `UPCXX_CODEMODE`. 
+  See [docs/implementation-defined.md](docs/implementation-defined.md) for more details.
+* UPC++ headers no longer have the undocumented side-effect of including some
+  system headers. User programs should directly include system headers they need.
+* Library classes `team`, `cuda_device`, `atomic_domain<T>` and `device_allocator<D>`
+  are now all `final` and may not be sub-classed.
+* `atomic_domain<T>` construction with an empty ops set is now prohibited.
+* The three-argument `device_allocator` constructor has been deprecated in favor
+  of a new constructor that swaps argument order but provides equivalent functionality.
+  The deprecated overload will be removed in an upcoming release.
+* An active `device_allocator<Device>` object must now be deactivated prior to
+  destruction, via either `Device::destroy()` or `device_allocator::destroy()`.
+* RPC calls across code segments must now use multi-segment CCS mode. Cases where
+  this "magically" worked are now prohibited. See [docs/ccs-rpc.md](docs/ccs-rpc.md)
+  for more details.
+* The oldest-supported PGI compiler version is raised to 19.3 on all platforms.
+* `bench/cuda_microbenchmark` performance test renamed to `bench/gpu_microbenchmark`
+* Prior to this release, the configure script would permit values of `CXX` and
+  `CC` which had different families or versions (as long as they were
+  link-compatible).  This was particularly easy to do on a Linux system if
+  specifying a non-default `CXX` while retaining the default `CC=gcc`.   Such
+  mixed configurations are now prohibited.  While there is a configure option
+  to convert the enforcement to a warning, such configurations are officially
+  unsupported.
+
 ### 2021.09.30: Release 2021.9.0
 
 Improvements to on-node communication:
 
 This release features a number of synergistic optimizations that streamline
 interprocess communication operations that are satisfied on-node using
-shared memory bypass. For details, see: https://doi.org/10.25344/S42C71
+shared memory bypass. For details, see: [doi:10.25344/S42C71](https://doi.org/10.25344/S42C71)
 
 * New `as_eager_future()`, `as_defer_future()`, `as_eager_promise()`, and
   `as_defer_promise()` calls for requesting eager or deferred notification of
@@ -64,7 +174,7 @@ Infrastructure changes:
   link time.
 * The "NVIDIA HPC SDK" (or "nvhpc") compiler family is now supported on
   x86\_64 and ppc64le hosts for version 20.9 and newer.
-* Intel OneAPI compilers v2021.1.2+ are now supported on x86\_64 hosts.
+* Intel oneAPI compilers v2021.1.2+ are now supported on x86\_64 hosts.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
@@ -103,7 +213,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
 * bug4330: ibv conduit incorrectly implements `HIDDEN_AM_CONCURRENCY_LEVEL`
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2021.9.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2021.9.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2021.9.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 

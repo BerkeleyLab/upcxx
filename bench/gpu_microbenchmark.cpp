@@ -8,6 +8,22 @@
 using namespace std;
 using namespace upcxx;
 
+#ifndef DEVICE
+  #if UPCXX_KIND_HIP
+    #define DEVICE hip_device
+  #elif UPCXX_KIND_CUDA
+    #define DEVICE cuda_device
+  #else
+    #error This test requires UPC++ built with device support.
+  #endif
+#endif
+using Device = upcxx::DEVICE;
+#ifndef STRINGIFY
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
+#endif
+std::string DeviceStr(STRINGIFY(DEVICE));
+
 bool run_gg = false;
 bool run_sg = false;
 bool run_gs = false;
@@ -77,7 +93,7 @@ static double helper(long len, src_ptr_type src_ptr, dst_ptr_type dst_ptr) {
       upcxx::barrier();
       if (is_active_rank) { // inform target ranks of their sender
         rpc(owner(dst_ptr), [](int me) { 
-           assert(my_sender == -1); 
+           UPCXX_ASSERT(my_sender == -1); 
            my_sender = me;              // register sender
            data_arrival = promise<>();  // setup for first window
            data_arrival.require_anonymous(window_size);
@@ -171,10 +187,10 @@ static double row_time() {
               local_private_to_remote_gpu + remote_gpu_to_local_private;
 }
 
-using gp_cuda_t = global_ptr<uint8_t, memory_kind::cuda_device>;
+using gp_gpu_t = global_ptr<uint8_t, Device::kind>;
 using gp_host_t = global_ptr<uint8_t, memory_kind::host>;
-gp_cuda_t local_gpu_array;
-gp_cuda_t remote_gpu_array;
+gp_gpu_t local_gpu_array;
+gp_gpu_t remote_gpu_array;
 gp_host_t local_shared_array;
 gp_host_t remote_shared_array;
 uint8_t *local_private_array;
@@ -603,7 +619,7 @@ int do_main(int argc, char **argv) {
        }
 
        if (rank_me() == 0) {
-           std::cout << "cuda_microbenchmark: " ;
+           std::cout << "gpu_microbenchmark(" << DeviceStr << "): " ;
            if (use_firstlast) std::cout << " first/last ranks,";
            if (max_volume) std::cout << " trials=" << trials_for_size(1) << ".." << trials_for_size(max_msg_size) 
                                      << " max_volume=" << max_volume;
@@ -617,16 +633,16 @@ int do_main(int argc, char **argv) {
          return 1;
        }
 
-       auto gpu_device = upcxx::cuda_device( 0 ); // open device 0
+       auto gpu_device = Device( 0 ); // open device 0
        // alloc GPU segment
-       auto gpu_alloc = device_allocator<cuda_device>(gpu_device,max_msg_size);
+       auto gpu_alloc = device_allocator<Device>(gpu_device,max_msg_size);
 
        local_gpu_array = gpu_alloc.allocate<uint8_t>(max_msg_size);
 
-       upcxx::dist_object<gp_cuda_t> gpu_dobj(local_gpu_array);
+       upcxx::dist_object<gp_gpu_t> gpu_dobj(local_gpu_array);
        remote_gpu_array = gpu_dobj.fetch(partner).wait();
 
-       assert(!(use_downcast_self && use_downcast_peer));
+       UPCXX_ASSERT(!(use_downcast_self && use_downcast_peer));
        uint8_t *private_array_free = nullptr;
        gp_host_t gp_downcast_area = nullptr;
        if (use_downcast_self) {
@@ -644,13 +660,13 @@ int do_main(int argc, char **argv) {
              lpeer = (local_team().rank_me() + 2) % local_team().rank_n();
            }
            gp_host_t peer_downcast_area = dd.fetch(lpeer).wait();
-           assert(peer_downcast_area.is_local());
+           UPCXX_ASSERT(peer_downcast_area.is_local());
            local_private_array = peer_downcast_area.local();
          }
          upcxx::barrier();
        } else {
          local_private_array = new uint8_t[max_msg_size];
-         assert(local_private_array);
+         UPCXX_ASSERT(local_private_array);
          private_array_free = local_private_array;
        }
 

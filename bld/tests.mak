@@ -7,7 +7,8 @@
 # Built by 'make tests` and `make check`
 ###
 
-testprograms_seq = \
+
+test_sources_seq = \
 	test/hello_upcxx.cpp \
 	test/atomics.cpp \
 	test/collectives.cpp \
@@ -22,10 +23,13 @@ testprograms_seq = \
 	test/vis_stress.cpp \
 	test/uts/uts_ranks.cpp
 
-testprograms_par = \
+test_sources_par = \
 	test/rput_thread.cpp \
 	test/uts/uts_hybrid.cpp \
 	test/view.cpp
+
+test_progs_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(test_sources_par))))
+test_progs_par = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_par),$(test_sources_seq))))
 
 ###
 # Section 2: Maintainer/development tests
@@ -63,8 +67,13 @@ test_dirs = \
 	bench \
 	example \
 	example/compute-pi \
+	example/gpu_vecadd \
 	example/prog-guide \
 	example/serialization
+
+ifneq ($(UPCXX_FORCE_LEGACY_RELOCATIONS),1)
+test_dirs += test/ccs
+endif
 
 #
 # Section 2. Step 2.
@@ -78,6 +87,7 @@ test_exclude_all = \
 	test/o3-codemode.cpp \
 	test/multifile.cpp \
 	test/multifile-buddy.cpp \
+	test/ccs/ccs-static-dlopen.sh \
 	test/uts/uts.cpp \
 	example/prog-guide/rb1d-check.cpp
 
@@ -105,6 +115,7 @@ test_exclude_compile_only = \
 	promise_multiple_results \
 	promise_reused \
 	quiescence_failure \
+	sys-header-exclude \
 	-threadmode
 
 #
@@ -123,25 +134,42 @@ test_exclude_all += \
 	test/uts/uts_omp.cpp \
 	test/uts/uts_threads.cpp
 
-# Conditionally exclude tests that require a valid CUDA device at runtime:
-test_requires_cuda_device = \
-	bench/cuda_microbenchmark.cpp \
+# Conditionally exclude tests that require a valid GPU (any kind) at runtime:
+test_requires_gpu_device = \
+	bench/gpu_microbenchmark.cpp \
 	test/bad-segment-alloc.cpp \
 	test/regression/issue432.cpp \
-	example/prog-guide/h-d.cpp \
 	example/prog-guide/h-d-remote.cpp
+ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)),)
+test_exclude_all += $(test_requires_gpu_device)
+endif
+
+# Conditionally exclude tests that require a valid CUDA-kind device at runtime:
+test_requires_cuda_device = \
+        test/cuda-context.cpp \
+	example/gpu_vecadd/.cuda_vecadd.sh \
+	example/prog-guide/h-d.cpp
 ifneq ($(UPCXX_CUDA),1)
 test_exclude_all += $(test_requires_cuda_device)
+endif
+
+# Conditionally exclude tests that require a valid HIP-kind device at runtime:
+test_requires_hip_device = \
+	example/gpu_vecadd/.hip_vecadd.sh 
+ifneq ($(UPCXX_HIP),1)
+test_exclude_all += $(test_requires_hip_device)
 endif
 
 # Conditionally exclude tests that require OpenMP:
 ifeq ($(strip $(UPCXX_HAVE_OPENMP)),)
 test_exclude_all += \
-	test/rput_omp.cpp \
+	example/prog-guide/rput-omp.cpp \
+	example/prog-guide/rpc-omp.cpp \
 	test/uts/uts_omp_ranks.cpp
 else
 # Note use of export to ensure shell can use these
-export TEST_FLAGS_RPUT_OMP = $(UPCXX_OPENMP_FLAGS)
+export TEST_FLAGS_RPUT_OMP =      $(UPCXX_OPENMP_FLAGS)
+export TEST_FLAGS_RPC_OMP =       $(UPCXX_OPENMP_FLAGS)
 export TEST_FLAGS_UTS_OMP_RANKS = $(UPCXX_OPENMP_FLAGS)
 export OMP_NUM_THREADS ?= 4
 endif
@@ -166,11 +194,12 @@ test_exclude_par += \
 test_exclude_seq += \
 	test/hello_threads.cpp \
 	test/rput_thread.cpp \
-	test/rput_omp.cpp \
 	test/regression/issue142.cpp \
 	test/regression/issue168.cpp \
 	test/uts/uts_hybrid.cpp \
 	test/uts/uts_omp_ranks.cpp \
+	example/prog-guide/rput-omp.cpp \
+	example/prog-guide/rpc-omp.cpp \
 	example/prog-guide/persona-example.cpp \
 	example/prog-guide/persona-example-rputs.cpp \
 	example/prog-guide/view-matrix-tasks.cpp
@@ -203,11 +232,12 @@ ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
 test_pgi_debug_symbols_broken = \
-	CUDA_MICROBENCHMARK \
+	GPU_MICROBENCHMARK \
 	RPC_CTOR_TRACE \
 	NODISCARD \
 	MEMBEROF \
 	MISC_PERF \
+	COPY_COVER \
 	ISSUE138
 endif
 $(foreach test,$(test_pgi_debug_symbols_broken),$(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) -purge-option=-g))
@@ -215,6 +245,12 @@ $(foreach test,$(test_pgi_debug_symbols_broken),$(eval export TEST_FLAGS_$(test)
 ifeq ($(strip $(UPCXX_PLATFORM_IBV_CUDA_HAS_BUG_4150)),1)
   # Compile-time measure(s) to avoid known failures attributable to GASNet bug 4150
   export TEST_FLAGS_COPY_COVER:=$(TEST_FLAGS_COPY_COVER) -DSKIP_KILL
+endif
+
+ifeq ($(strip $(UPCXX_PLATFORM_CUDA_HAS_BUG_4396)),1)
+  # Compile-time measure(s) to avoid known failures attributable to GASNet bug 4396
+  # This should be removed when GEX_SPEC_VERSION requirement advances to 0.15
+  export TEST_FLAGS_CUDA_CONTEXT:=$(TEST_FLAGS_CUDA_CONTEXT) -DSKIP_DEVICE_FREE
 endif
 
 # Some tests use std::thread in both SEQ and PAR
@@ -234,21 +270,17 @@ $(foreach test,$(test_seq_threaded), \
 
 # Tweak benchmarks for efficient coverage, these parameters are too small for good measurements
 export TEST_ENV_PUT_FLOOD=fixed_iters=10
-export TEST_ARGS_CUDA_MICROBENCHMARK='-t 1 -w 1'
+export TEST_ARGS_GPU_MICROBENCHMARK='-t 1 -w 1'
 export TEST_ARGS_MISC_PERF='1000'
 export TEST_ARGS_RPC_PERF='100 10 1048576'
 
-ifeq ($(strip $(UPCXX_PLATFORM_IBV_CUDA_HAS_BUG_4148)),1)
-  # Run-time measures to eliminate multiple communications paths, and
-  # thus avoid known failures attributable to GASNet bug 4148
-  test_ibv_cuda_bug_4148 = \
-	COPY_COVER
-  ifneq ($(strip $(GASNET_IBV_PORTS)),) # non-empty
-    # Reduce GASNET_IBV_PORTS, if any, to its first '+'-delimited element
-    TEST_IBV_SINGLE_PORT_SETTING = GASNET_IBV_PORTS=$(shell cut -d+ -f1 <<<$(GASNET_IBV_PORTS))
-  endif
-endif
-$(foreach test,$(test_ibv_cuda_bug_4148), $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) GASNET_SUPERNODE_MAXSIZE=1 $(TEST_IBV_SINGLE_PORT_SETTING)))
+# Suppress zero-length RMA warning from tests making such calls intentionally
+test_zero_length_rma = \
+        VIS \
+        VIS_STRESS \
+        RPUT_RPC_CX
+$(foreach test,$(test_zero_length_rma), \
+  $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) UPCXX_WARN_EMPTY_RMA=0))
 
 #
 # End of configuration
@@ -256,12 +288,16 @@ $(foreach test,$(test_ibv_cuda_bug_4148), $(eval export TEST_ENV_$(test):=$(TEST
 
 # exclude untracked files, if any
 ifneq ($(wildcard $(upcxx_src)/.git),)
-test_exclude_all += $(shell cd $(upcxx_src) && git ls-files --others -- $(test_dirs) | grep '\.cpp$$')
+test_exclude_all += $(shell cd $(upcxx_src) && git ls-files --others -- $(test_dirs) | grep -e '\.cpp$$' -e '\.sh$$')
 endif
 
 # compose the pieces above
-tests_raw = $(subst $(upcxx_src)/,,$(foreach dir,$(test_dirs),$(wildcard $(upcxx_src)/$(dir)/*.cpp)))
+tests_raw = $(subst $(upcxx_src)/,,$(foreach dir,$(test_dirs), \
+                                             $(wildcard $(upcxx_src)/$(dir)/*.cpp $(upcxx_src)/$(dir)/*.sh $(upcxx_src)/$(dir)/.*.sh)))
 tests_filter_out_seq = $(test_exclude_all) $(test_exclude_seq) $(test_exclude_fail_all) $(test_exclude_fail_seq)
 tests_filter_out_par = $(test_exclude_all) $(test_exclude_par) $(test_exclude_fail_all) $(test_exclude_fail_par)
-testprograms_dev_seq = $(filter-out $(tests_filter_out_seq),$(tests_raw))
-testprograms_dev_par = $(filter-out $(tests_filter_out_par),$(tests_raw))
+test_sources_dev_seq = $(filter-out $(tests_filter_out_seq),$(tests_raw))
+test_sources_dev_par = $(filter-out $(tests_filter_out_par),$(tests_raw))
+test_progs_dev_seq = $(shell echo $(filter-out $(tests_filter_out_seq),$(tests_raw)) | $(PERL) -pe 's@/\.?([^/\s]+)\.(sh|cpp)(\s|$$)@/\1 @g')
+test_progs_dev_par = $(shell echo $(filter-out $(tests_filter_out_par),$(tests_raw)) | $(PERL) -pe 's@/\.?([^/\s]+)\.(sh|cpp)(\s|$$)@/\1 @g')
+

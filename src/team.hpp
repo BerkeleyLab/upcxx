@@ -55,6 +55,12 @@ namespace upcxx {
       "local_team_contains(rank) requires rank in [0, world().rank_n()-1] == [0, " << upcxx::rank_n()-1 << "], but given: " << rank);
     return backend::rank_is_local(rank);
   }
+
+  UPCXXI_ATTRIB_CONST
+  inline std::pair<intrank_t, intrank_t> local_team_position() {
+    UPCXXI_ASSERT_INIT();
+    return std::make_pair(backend::nbrhd_set_rank,backend::nbrhd_set_size);
+  }
   
   inline team& world() {
     // do NOT assert_init here - world() is the implicit default argument for too many calls,

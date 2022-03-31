@@ -24,6 +24,8 @@
 #include <upcxx/future/fwd.hpp>
 #include <upcxx/diagnostic.hpp>
 #include <upcxx/upcxx_config.hpp>
+#include <upcxx/memory_kind.hpp>
+#include <upcxx/ccs_fwd.hpp>
 #include <gasnet_fwd.h>
 
 #include <cstddef>
@@ -151,6 +153,7 @@ namespace upcxx {
   std::int64_t shared_segment_size();
   std::int64_t shared_segment_used();
   
+  bool in_progress();
   inline void progress(progress_level level = progress_level::user);
   
   persona& master_persona();
@@ -182,11 +185,12 @@ namespace upcxx {
 #endif
 
 namespace upcxx {
-namespace detail { struct device_allocator_base; }
 namespace backend {
   extern int init_count;
   extern intrank_t rank_n;
   extern intrank_t rank_me;
+  extern intrank_t nbrhd_set_size;
+  extern intrank_t nbrhd_set_rank;
   extern bool verbose_noise;
   
   extern persona master;
@@ -204,66 +208,6 @@ namespace backend {
     #else
       // personas carry no extra state
     #endif
-  };
-
-  struct heap_state {
-    detail::device_allocator_base *alloc_base;
-
-  #if UPCXXI_CUDA_ENABLED && UPCXXI_MAXEPS > 1
-    static constexpr int max_heaps = UPCXXI_MAXEPS;
-  #else
-    static constexpr int max_heaps = 33;
-  #endif
-    static_assert(max_heaps > 1, "bad value of UPCXXI_MAXEPS");
-
-    enum class memory_kind : std::uint32_t { 
-      host = 0x40514051, 
-      cuda = 0xC0DAC0DA,
-    };
-    heap_state(memory_kind k) : my_kind(k) {}
-    memory_kind kind() { return my_kind; }
-
-  protected:
-    memory_kind const my_kind; // serves as both tag and magic
-    static heap_state *heaps[max_heaps];
-    static int heap_count;
-    static bool recycle;
-    static bool use_mk_;
-    static bool bug4148_workaround_;
-
-  public:
-    static void init();
-    UPCXXI_ATTRIB_CONST
-    static bool use_mk() { return use_mk_; }
-    UPCXXI_ATTRIB_CONST
-    static bool bug4148_workaround() { return bug4148_workaround_; }
-    static int alloc_index() {
-      UPCXX_ASSERT_ALWAYS(heap_count < max_heaps, "exceeded max device opens: " << max_heaps - 1);
-      int idx;
-      if (recycle) {
-        for (idx=1; idx < max_heaps; idx++) {
-          if (!heaps[idx]) break;
-        }
-      } else {
-        idx = heap_count;
-      }
-      UPCXX_ASSERT_ALWAYS(idx < max_heaps && heaps[idx] == nullptr, "internal error on heap creation");
-      heap_count++;
-      return idx;
-    }
-    static void free_index(int heap_idx) {
-      UPCXX_ASSERT_ALWAYS(heaps[heap_idx] == nullptr && heap_count > 1, "internal error on heap destruction");
-      if (recycle) heap_count--;
-    }
-
-    // retrieve reference to heap_state pointer at heap_idx, with bounds-checking
-    static inline heap_state *&get(std::int32_t heap_idx, bool allow_null = false) {
-      UPCXX_ASSERT(heap_count <= max_heaps, "internal error in backend::heap_state::get");
-      UPCXX_ASSERT(heap_idx > 0 && heap_idx < max_heaps, "invalid heap_idx (corrupted global_ptr?)");
-      heap_state *&hs = heaps[heap_idx];
-      UPCXX_ASSERT(hs || allow_null, "heap_idx referenced a null heap");
-      return hs;
-    }
   };
 
   void quiesce(const team &tm, entry_barrier eb);
@@ -297,16 +241,16 @@ namespace backend {
       persona &active_per = current_persona()
     );
   
-  template<progress_level level, typename Fn>
+  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
   void send_am_master(intrank_t recipient, Fn &&fn);
   
-  template<progress_level level, typename Fn>
+  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
   void send_am_persona(intrank_t recipient_rank, persona *recipient_persona, Fn &&fn);
 
-  template<typename ...T, typename ...U>
+  template<typename FunctionToken = detail::FunctionTokenType, typename ...T, typename ...U>
   void send_awaken_lpc(intrank_t recipient, detail::lpc_dormant<T...> *lpc, std::tuple<U...> &&vals);
 
-  template<progress_level level, typename Fn>
+  template<progress_level level, typename FunctionToken = detail::FunctionTokenType, typename Fn>
   void bcast_am_master(const team &tm, Fn &&fn);
   
   UPCXXI_ATTRIB_PURE
@@ -352,8 +296,9 @@ namespace backend {
 #if UPCXXI_BACKEND
   #define UPCXXI_ASSERT_INIT_NAMED(fnname) \
     UPCXX_ASSERT(::upcxx::backend::init_count != 0, \
-     "Attempted to invoke " << fnname << " while the UPC++ library was not initialized. " \
-     "Please call upcxx::init() to initialize the library before calling this function.")
+     "Attempted to invoke " << fnname << " while the UPC++ library was not initialized " \
+     "(before the first call to upcxx::init() or after the last call to upcxx::finalize()). " \
+     "This function may only be called while the UPC++ library is in the initialized state.")
 #else
   #define UPCXXI_ASSERT_INIT_NAMED(fnname) ((void)0)
 #endif

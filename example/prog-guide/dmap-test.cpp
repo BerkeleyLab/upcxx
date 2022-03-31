@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     string key = to_string((upcxx::rank_me() + 1) % upcxx::rank_n()) + ":" + to_string(i);
     string val = dmap.find(key).wait();
     // check that value is correct
-    assert(val == key);
+    UPCXX_ASSERT(val == key);
   }
   upcxx::barrier(); // wait for finds to complete globally
   if (!upcxx::rank_me()) cout << "SUCCESS" << endl;

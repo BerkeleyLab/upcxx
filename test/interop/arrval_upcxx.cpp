@@ -7,7 +7,6 @@
 // pointer (in this case (val_t *)), but can then be upcast to global_ptr<val_t>
 // passed to other ranks and used just like any other global_ptr<T>.
 
-#include <cassert>
 #include <iostream>
 
 #include <upcxx/upcxx.hpp>
@@ -62,7 +61,7 @@ int main(int argc, char **argv) {
     for (int i=0; i < iters; i++) {
       // create an object from the opposite model heap and initialize it
       val_t *lp = construct_arr_upc(sz);
-      assert(lp);
+      UPCXX_ASSERT_ALWAYS(lp);
       bufs[i] = lp;
       val_t base = BASEVAL(rank_me, i);
       arrval_set(lp, base, sz);
@@ -104,7 +103,7 @@ int main(int argc, char **argv) {
           tmpfree = destruct_arr_upcxx;
         break;
       }
-      assert(tmp && tmpfree);
+      UPCXX_ASSERT_ALWAYS(tmp && tmpfree);
 
       // test local RMA
       arrval_set(tmp, (val_t)-1, sz);
@@ -150,7 +149,7 @@ int main(int argc, char **argv) {
     // cleanup
     for (int i=0; i < iters; i++) {
       val_t *lp = bufs[i];
-      assert(lp);
+      UPCXX_ASSERT_ALWAYS(lp);
       val_t base = BASEVAL(rank_me, i);
       CHECK(lp, base, sz);
       destruct_arr_upc(lp);

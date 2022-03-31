@@ -647,6 +647,10 @@ namespace detail {
    public:
     inline raii_cleanup(Fn &&f) : fn(std::forward<Fn>(f)), armed(true) {}
     inline void reset() { armed = false; }
+    inline raii_cleanup(raii_cleanup &&other) : fn(std::move(other.fn)) {
+      other.armed = false;
+    }
+    raii_cleanup(raii_cleanup const &) = delete;
     inline ~raii_cleanup() {
       UPCXXI_IF_PF(armed) fn();
     }

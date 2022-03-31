@@ -26,6 +26,118 @@ sys_info() {
     ) fi
 }
 
+# Run C or C++ preprocessor to extract an expression matching a bash regex
+#
+# Arguments:
+#   compiler: literal 'CC' or 'CXX'
+#       expr: string to be expanded between a pair of delimiters
+#      regex: bash regular expression used to extract the actual result
+#      flags: (optional) extra compiler flags (such as -I and -D)
+#   includes: (optional) string to be expanded first in the source file
+#
+# The return value is normally the result of the bash regex operation:
+#   0 == success (results of match in ${UPCXX_REMATCH[@]})
+#   1 == failure
+#   2 == bash rejected the regex as invalid
+#   3 == other error detected
+#
+# Notes:
+#  + The `expr` should be a valid C expression in a context like
+#       identifier1 + expr + identifier2
+#    Anything else risks triggering undefined behavior in the preprocessor.
+#  + Leading and trailing whitespace in the expansion of `expr` will be lost.
+#  + Whitespace internal to the expansion of `expr` might change.
+#  + The `regex` should not be so greedy that it matches the delimiters.
+#    For instance `.*` would be unsafe, but `(.*)` would be safe (assuming
+#    that the parentheses are included in the `expr`).
+#  + _CONCAT{,3,4,5,6}() and _STRINGIFY are available
+#
+cpp_extract_expr() {
+    case $1 in
+         CC) local suffix=c   cmd="$CC  $CFLAGS   $4 -E";;
+        CXX) local suffix=cpp cmd="$CXX $CXXFLAGS $4 -E";;
+          *) echo Internal error; exit 3;;
+    esac
+    local expr="$2"
+    local regex="$3"
+    local headers="$5"
+
+    local conftest="conftest.$suffix"
+    trap "rm -f $conftest" RETURN
+
+    local token1='_6VTuuw1pJg0eJR4d_'
+    local token2='_5tf48oGssuj89WUi_'
+    rm -f $conftest
+    cat >$conftest <<_EOF
+      $headers
+      #ifndef _CONCAT
+        #define _CONCAT_HELPER(a,b) a ## b
+        #define _CONCAT(a,b) _CONCAT_HELPER(a,b)
+      #endif
+      #ifndef _CONCAT3
+        #define _CONCAT3(a,b,c) _CONCAT(a,_CONCAT(b,c))
+      #endif
+      #ifndef _CONCAT4
+        #define _CONCAT4(a,b,c,d) _CONCAT(a,_CONCAT3(b,c,d))
+      #endif
+      #ifndef _CONCAT5
+        #define _CONCAT5(a,b,c,d,e) _CONCAT(a,_CONCAT4(b,c,d,e))
+      #endif
+      #ifndef _CONCAT6
+        #define _CONCAT6(a,b,c,d,e,f) _CONCAT(a,_CONCAT5(b,c,d,e,f))
+      #endif
+      #ifndef _STRINGIFY
+        #define _STRINGIFY_HELPER(x) #x
+        #define _STRINGIFY(x) _STRINGIFY_HELPER(x)
+      #endif
+      ${token1}+${expr}+${token2}
+_EOF
+
+    # Run preprocessor, capturing output and checking exit code
+    local output; # merging `local` and assignment would lose exit code
+    local DETAIL_LOG=config-detail.log
+    rm -f $DETAIL_LOG
+    if ! output=$(eval $cmd $conftest 2> $DETAIL_LOG); then
+      echo "ERROR: preprocessor test failed."
+      if [[ -s $DETAIL_LOG ]]; then
+        echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
+        tail -4 $DETAIL_LOG
+      else
+        rm -f $DETAIL_LOG
+      fi
+      return 3;
+    fi
+    rm -f $DETAIL_LOG
+
+    # Strip our delimiters and any whitespace introduced by the preprocessor
+    local space=$' \t\n\v\f\r' # [:space:] == space, tab, newline, vertical tab, form feed, carriage return
+    local delim="[$space]*\+[$space]*"
+    [[ "$output" =~ ${token1}${delim}(${regex})${delim}${token2} ]] || return $?
+
+    UPCXX_REMATCH=("${BASH_REMATCH[@]:1}")  # "shifted" to remove full match with our delimeters
+    return 0
+}
+
+# Wrapper for cpp_extract_expr() operating on gasnet_portable_platform.h
+#
+# Arguments:
+#   compiler: literal 'CC' or 'CXX'
+#       expr: string to be expanded between a pair of delimiters
+#      regex: bash regular expression used to extract the actual result
+#
+cpp_extract_pp_expr() {
+    local gasnet_src='none'
+    if [[ "$GASNET_TYPE" == 'source' ]]; then
+        # $GASNET is the source directory
+        gasnet_src="$GASNET"
+    elif [[ $(grep ^TOP_SRCDIR $GASNET/Makefile) =~ TOP_SRCDIR( *)=( *)(.*) ]]; then
+        # Must find the source directory in $GASNET/Makefile
+        gasnet_src="${BASH_REMATCH[3]}"
+    fi
+    local gasnet_includes="-I${gasnet_src}/other"
+    cpp_extract_expr "$1" "$2" "$3" "$gasnet_includes" '#include "gasnet_portable_platform.h"'
+}
+
 # For probing for lowest acceptable (for its libstdc++) g++ version.
 # These are defaults, which may be overridden per-platform (such as Cray XC).
 MIN_GNU_MAJOR=6
@@ -42,28 +154,15 @@ MIN_GNU_STRING='6.4'
 #   1 - identified too-low version
 #   other - failed to identify version
 check_gnu_version() {
-    case $1 in
-         CC) local suffix=c   compiler="${2:-$CC $CFLAGS}" ;;
-        CXX) local suffix=cpp compiler="${2:-$CXX $CXXFLAGS}";;
-          *) echo Internal error; exit 1;;
-    esac
-    trap "rm -f conftest.$suffix" RETURN
-    local TOKEN1='_MKkiiTv4jDk8Tmw6_'
-    local TOKEN2='_SDPECv3TjARP7xiZ_'
-    cat >conftest.$suffix <<_EOF
-      #undef  _REPORT
-      #undef  _REPORT_HELPER
-      #define _REPORT(a,b,c) _REPORT_HELPER(a,b,c)
-      #define _REPORT_HELPER(a,b,c) $TOKEN1 ## a ## _ ## b ## _ ## c ## $TOKEN2
-      _REPORT(__GNUC__,__GNUC_MINOR__,__GNUC_PATCHLEVEL__)
-_EOF
-    if ! [[ $(eval $compiler -E conftest.$suffix) =~ ${TOKEN1}([0-9]+)_([0-9]+)_([0-9]+)${TOKEN2} ]]; then
+    local cpp_expr='_CONCAT6(v,__GNUC__,_,__GNUC_MINOR__,_,__GNUC_PATCHLEVEL__)'
+    local bash_re='v([0-9]+)_([0-9]+)_([0-9]+)'
+    if ! cpp_extract_expr $1 "$cpp_expr" "$bash_re"; then
         echo "ERROR: regex match failed probing \$$1 for GNUC version"
         return 2
     fi
-    gnu_major=${BASH_REMATCH[1]}
-    gnu_minor=${BASH_REMATCH[2]}
-    gnu_patch=${BASH_REMATCH[3]}
+    gnu_major=${UPCXX_REMATCH[1]}
+    gnu_minor=${UPCXX_REMATCH[2]}
+    gnu_patch=${UPCXX_REMATCH[3]}
     gnu_version="$gnu_major.$gnu_minor.$gnu_patch"
     return $(( (    gnu_major*1000000 +     gnu_minor*1000 +     gnu_patch) <
                (MIN_GNU_MAJOR*1000000 + MIN_GNU_MINOR*1000 + MIN_GNU_PATCH) ))
@@ -225,6 +324,46 @@ check_intel_compiler() {
    esac
 }
 
+# Determine if compiler families match
+check_family_match() {
+    if ! cpp_extract_pp_expr CXX PLATFORM_COMPILER_FAMILYNAME '[A-Z]+'; then
+        echo "ERROR: regex match failed probing '$CXX' for C++ compiler family"
+        return 4
+    fi
+    local cxx_family="${UPCXX_REMATCH[0]}"
+
+    if ! cpp_extract_pp_expr CC PLATFORM_COMPILER_FAMILYNAME '[A-Z]+'; then
+        echo "ERROR: regex match failed probing '$CC' for C compiler family"
+        return 4
+    fi
+    local cc_family="${UPCXX_REMATCH[0]}"
+
+    [[ $cxx_family = $cc_family ]] && return 0 || return 1
+}
+
+# Determine if compiler versions match
+# Meaningless if family does not match
+check_version_match() {
+    if ! cpp_extract_pp_expr CXX '(PLATFORM_COMPILER_VERSION)' '\(.*\)'; then
+        echo "ERROR: regex match failed probing '$CXX' for C++ compiler version"
+        return 4
+    fi
+
+    # strips any possible suffixes from integer constants:
+    local cxx_version="${UPCXX_REMATCH[0]//[uUlL]}"
+
+    if ! cpp_extract_pp_expr CC '(PLATFORM_COMPILER_VERSION)' '\(.*\)'; then
+        echo "ERROR: regex match failed probing '$CC' for C compiler version"
+        return 4
+    fi
+
+    # strips any possible suffixes from integer constants:
+    local cc_version="${UPCXX_REMATCH[0]//[uUlL]}"
+
+    # Use arithmetic evaluation to allow for minor differences in the actual expressions
+    return $(( $cxx_version != $cc_version ))  # equality returns 0 (success)
+}
+
 # check whether $CXX might be a C compiler
 check_maybe_c_compiler() {
     local c_compiler=
@@ -243,27 +382,12 @@ compile_check() {
     local DETAIL_LOG=config-detail.log
     rm -f $DETAIL_LOG
     # check if we need to inject -std=c++11 flag
-    trap "rm -f conftest-std.cpp" RETURN
-    local TOKEN1='_reYBrfDyyWZ76wwb_'
-    local TOKEN2='_unnBZgmdLe3ADU4F_'
-    cat >conftest-std.cpp <<_EOF
-      #undef  _REPORT
-      #undef  _REPORT_HELPER
-      #define _REPORT(a) _REPORT_HELPER(a)
-      #define _REPORT_HELPER(a) $TOKEN1 ## a ## $TOKEN2
-      #if __cplusplus < 201103L
-      _REPORT(1)
-      #else
-      _REPORT(0)
-      #endif
-_EOF
-    if ! [[ $(eval $CXX $CXXFLAGS -E conftest-std.cpp) =~ ${TOKEN1}([0-9]+)${TOKEN2} ]]; then
-        echo "ERROR: regex match failed probing \$$1 for C++ standard version"
+    if ! cpp_extract_expr CXX '__cplusplus' '([1-9][0-9]+)[lL]?'; then
+        echo "ERROR: regex match failed probing \$CXX for C++ standard version"
         return 4
     fi
-    local cxx_pre11=${BASH_REMATCH[1]}
     local CXXSTDFLAG=
-    if [[ $cxx_pre11 -ne 0 ]]; then
+    if (( ${UPCXX_REMATCH[1]} < 201103 )); then
         CXXSTDFLAG="-std=c++11"
     fi
     # check C compilation
@@ -471,14 +595,14 @@ platform_sanity_checks() {
                # We conservatively ban 20.[5-8] even though only 20.7 is known to exist.
                COMPILER_BAD=1
             elif [[ "$ARCH,$KERNEL" = 'x86_64,Linux' ]] &&
-                 egrep ' +(19|[2-9][0-9])\.[0-9]+-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
-               # Ex: "pgc++ 19.7-0 LLVM 64-bit target on x86-64 Linux -tp nehalem"
-               # 19.1 and newer "GOOD"
+                 egrep ' +(19\.[3-9]|19\.1[0-9]|[2-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # Ex: "pgcc 19.10-0 LLVM 64-bit target on x86-64 Linux -tp nehalem "
+               # 19.3 and newer "GOOD"
                COMPILER_GOOD=1
             elif [[ "$ARCH,$KERNEL" = 'ppc64le,Linux' ]] &&
-                 egrep ' +(18\.10|(19|[2-9][0-9])\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
-               # Ex: "pgc++ 18.10-0 linuxpower target on Linuxpower"
-               # 18.10 and newer "GOOD" (no 18.x was released for x > 10)
+                 egrep ' +(19\.[3-9]|19\.1[0-9]|[2-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # Ex: "pgcc (aka pgcc18) 20.1-0 linuxpower target on Linuxpower"
+               # 19.3 and newer "GOOD"
                COMPILER_GOOD=1
             elif [[ "$ARCH,$KERNEL" = 'aarch64,Linux' ]] ; then
                : # Not yet claiming support on aarch64, but also not BAD
@@ -550,6 +674,46 @@ platform_sanity_checks() {
             fi
         fi
 
+        check_family_match
+        local COMPILER_MISMATCH_RC=$?
+        local COMPILER_MISMATCH=
+        if (( COMPILER_MISMATCH_RC )); then
+            COMPILER_MISMATCH='families'
+        else
+            check_version_match
+            COMPILER_MISMATCH_RC=$?
+            if (( COMPILER_MISMATCH_RC )); then
+              COMPILER_MISMATCH='versions'
+            fi
+        fi
+        if (( COMPILER_MISMATCH_RC )); then
+            if (( $UPCXX_ALLOW_COMPILER_MISMATCH )); then
+                if (( COMPILER_MISMATCH_RC > 1 )); then
+                    warnings+="\nWARNING: The probe for compiler $COMPILER_MISMATCH failed (see above).\n"
+                else
+                    warnings+="\nWARNING: CXX and CC report different $COMPILER_MISMATCH (see above).\n"
+                fi
+                warnings+="WARNING: Therefore, this configuration is officially unsupported.\n"
+            else
+                echo
+                if (( COMPILER_MISMATCH_RC > 1 )); then
+                    echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the probe for'
+                    echo "ERROR: compiler $COMPILER_MISMATCH failed (see above)."
+                    echo 'ERROR: Please that ensure you are configuring with valid (and matched)'
+                    echo 'ERROR: values for `--with-cxx=...` and `--with-cc=...`.'
+                else
+                    echo 'ERROR: UPC++ requires that the C++ and C compilers match, but the compilers'
+                    echo "ERROR: detected by configure (see above) report different $COMPILER_MISMATCH."
+                    echo 'ERROR: In most cases, configuring UPC++ using matched values for both'
+                    echo 'ERROR: `--with-cxx=...` and `--with-cc=...` will resolve this problem.'
+                fi
+                echo 'ERROR: See INSTALL.md for the full list of supported compilers.'
+                echo 'ERROR: Alternatively, configuring with `--enable-allow-compiler-mismatch`'
+                echo 'ERROR: will disable this sanity check, but result in an unsupported build.'
+                exit 1
+            fi
+        fi
+
         local COMPILER_FAIL=
         if ! compile_check ; then
             COMPILER_FAIL=1
@@ -558,9 +722,9 @@ platform_sanity_checks() {
         local RECOMMEND
         read -r -d '' RECOMMEND<<'EOF'
 We recommend one of the following C++ compilers (or any later versions where no end-of-range is given):
-           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.1 through 20.4 (inclusive),
+           Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.3 through 20.4 (inclusive),
                               NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2
-           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 18.10 through 20.4 (inclusive),
+           Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 19.3 through 20.4 (inclusive),
                               NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0
@@ -568,6 +732,8 @@ We recommend one of the following C++ compilers (or any later versions where no 
                               PrgEnv-intel with Intel C 18.0.1 and gcc/7.1.0 environment modules loaded
                               PrgEnv-cray with cce/9.0.0 environment module loaded
                               ALCF's PrgEnv-llvm/4.0
+           HPE Cray EX:       PrgEnv-gnu with gcc/10.3.0 environment module loaded
+                              PrgEnv-cray with cce/12.0.0 environment module loaded
 EOF
         if test -n "$ARCH_BAD" ; then
             echo "ERROR: This version of UPC++ does not support the '$ARCH' architecture."

@@ -1,5 +1,4 @@
 #include <iostream>
-#include <upcxx/upcxx.hpp>
 
 #include "../util.hpp"
 
@@ -22,6 +21,7 @@ struct A {
 };
 
 int main() {
+  say() << "Hello before init!";
   upcxx::init();
   print_test_header();
 
@@ -77,4 +77,5 @@ int main() {
 
   print_test_success();
   upcxx::finalize();
+  say() << "Goodbye after finalize";
 }

@@ -61,8 +61,13 @@ CUDA_EXAMPLES = \
   h-d \
   h-d-remote
 
-all: $(EXAMPLES)
-cuda: $(CUDA_EXAMPLES)
+OPENMP_EXAMPLES = \
+  rpc-omp \
+  rput-omp
+
+all:    $(EXAMPLES)
+cuda:   $(CUDA_EXAMPLES)
+openmp: $(OPENMP_EXAMPLES)
 
 # The rule for building any example.
 %: %.cpp $(wildcard *.h) $(wildcard *.hpp)
@@ -76,9 +81,13 @@ PAR_EXAMPLES = \
   view-matrix-tasks
 $(PAR_EXAMPLES): UPCXX_THREADMODE=par
 
+$(OPENMP_EXAMPLES): UPCXX_THREADMODE=par
+$(OPENMP_EXAMPLES): CXXFLAGS+=-fopenmp
+
 clean:
-	rm -f $(EXAMPLES)
-	rm -f $(CUDA_EXAMPLES)
+	rm -Rf $(EXAMPLES) $(EXAMPLES:=.dSYM)
+	rm -Rf $(CUDA_EXAMPLES) $(CUDA_EXAMPLES:=.dSYM)
+	rm -Rf $(OPENMP_EXAMPLES) $(OPENMP_EXAMPLES:=.dSYM)
 
 .PHONY: clean all run
 

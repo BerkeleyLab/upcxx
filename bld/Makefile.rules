@@ -127,8 +127,10 @@ failure: force
 ## Check/tests targets pass-through to their own Makefile
 ## Note that we rewrite NETWORKS to permit various punctuation as delimiters
 TEST_TARGETS = check tests tests-clean test_install run-tests run-tests-installed \
-	       dev-tests dev-tests-opt dev-tests-debug dev-run-tests \
-	       dev-check dev-check-opt dev-check-debug dev-tests-clean
+	       dev-tests dev-tests-opt dev-tests-debug dev-tests-seq dev-tests-par dev-run-tests \
+	       dev-check dev-check-opt dev-check-debug dev-check-seq dev-check-par dev-tests-clean \
+	       dev-tests-seq-opt dev-tests-seq-debug dev-tests-par-opt dev-tests-par-debug \
+	       dev-check-seq-opt dev-check-seq-debug dev-check-par-opt dev-check-par-debug
 $(TEST_TARGETS): force
 	@NETWORKS='$(shell tr ",.:;/" " " <<<"$(NETWORKS)")'; \
 	$(MAKE) -f $(upcxx_src)/bld/Makefile.tests $@ $${NETWORKS:+NETWORKS="$$NETWORKS"}

@@ -6,7 +6,7 @@
 ALL_CONDUITS = smp udp mpi ibv aries ucx ofi
 
 # Conduits for which testing should be skipped by default
-UNOFFICIAL_CONDUITS = mpi ucx ofi
+UNOFFICIAL_CONDUITS = mpi
 
 # Map UPCXX configuration variables to GASNET_CODEMODE
 # PARAMS: OPTLEV, DBGSYM

@@ -432,6 +432,12 @@ namespace upcxx {
         (!detail::completions_has_event<CxsDecayed, remote_cx_event>::value),
         "rpc does not support remote completion."
       );
+      UPCXX_ASSERT_ALWAYS(
+        (detail::completions_has_event<CxsDecayed, operation_cx_event>::value),
+        "Round-trip RPC (upcxx::rpc()) requires operation completion. "
+        "If you don't need initiator-side completion notification, "
+        "then use upcxx::rpc_ff() instead to avoid the cost of the acknowledgment message."
+      );
 
       using cxs_state_t = detail::completions_state<
           /*EventPredicate=*/detail::event_is_here,

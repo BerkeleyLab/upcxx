@@ -2,7 +2,7 @@
 #define _62341dee_845f_407c_9241_cd36da9f0e1c
 
 #include <upcxx/backend_fwd.hpp>
-#include <upcxx/cuda_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
 #include <upcxx/device_allocator.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/memory_kind.hpp>
@@ -10,76 +10,74 @@
 #include <cstdint>
 
 #if UPCXXI_CUDA_ENABLED
-  // cuda feature macro
-  #define UPCXX_KIND_CUDA 202103L
+  // feature macro: ONLY changes when a new spec is officially released that alters CUDA feature
+  #define UPCXX_KIND_CUDA 202203L
 #else
   #undef UPCXX_KIND_CUDA
 #endif
 
 namespace upcxx {
 
-  class cuda_device {
+  class cuda_device final : public gpu_device {
     friend struct detail::device_allocator_core<cuda_device>;
     friend class device_allocator<cuda_device>;
-    int device_;
-    int heap_idx_;
     
   public:
-    template<typename T>
-    using pointer = T*;
-    using id_type = int;
-
-    template<typename T>
-    static constexpr T* null_pointer() { return nullptr; }
+    using gpu_device::id_type;
+    using gpu_device::pointer; 
+    using gpu_device::null_pointer;
+    using gpu_device::invalid_device_id;
+    using gpu_device::auto_device_id;
+    using gpu_device::device_id;
     
     static constexpr memory_kind kind = memory_kind::cuda_device;
 
-    static constexpr id_type invalid_device_id = -1;
-
-    cuda_device(int device = invalid_device_id);
+    cuda_device() : gpu_device(detail::internal_only(), invalid_device_id,
+                               memory_kind::cuda_device) {}
+    cuda_device(id_type device_id);
     cuda_device(cuda_device const&) = delete;
-    cuda_device(cuda_device&& other) : 
-      device_(other.device_), heap_idx_(other.heap_idx_) {
-      other.device_ = invalid_device_id; 
-      other.heap_idx_ = -1;
-    }
-    ~cuda_device();
+    cuda_device(cuda_device&& other) : gpu_device(std::move(other)) {}
+    cuda_device& operator=(cuda_device&& other) = default;
 
-    int device_id() const { return device_; }
-    bool is_active() const { return device_ != invalid_device_id; }
+    static id_type device_n();
 
     template<typename T>
     static constexpr std::size_t default_alignment() {
-      return alignof(T) < 256 ? 256 : alignof(T);
+      return default_alignment_erased(sizeof(T), alignof(T), normal_alignment);
     }
 
-    void destroy(upcxx::entry_barrier eb = entry_barrier::user);
+    void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
+
+    static constexpr bool use_gex_mk(detail::internal_only) {
+      #if UPCXXI_GEX_MK_CUDA
+        return true;
+      #else
+        return false;
+      #endif
+    }
 
   private:
-    static id_type device_id(detail::internal_only, int heap_idx);
+    static constexpr int min_alignment = 16;
+    static constexpr int normal_alignment = 256;
   };
 
   namespace detail {
-    template<size_t val> 
-    struct device_allocator_core_min_align {
-      static constexpr std::size_t min_alignment = val;
-    };
-    template<size_t val>
-    constexpr std::size_t device_allocator_core_min_align<val>::min_alignment; // see issue #333
-
     template<>
-    struct device_allocator_core<cuda_device>: device_allocator_base, device_allocator_core_min_align<16> {
+    struct device_allocator_core<cuda_device>: device_allocator_base {
 
-      device_allocator_core();
+      device_allocator_core() {}
       device_allocator_core(cuda_device &dev, void *base, std::size_t size);
       device_allocator_core(device_allocator_core&&) = default;
-      void destroy();
-
-      // Issue 490
-      void real_destructor();
-      ~device_allocator_core() { real_destructor(); }
+      device_allocator_core& operator=(device_allocator_core&&) = default;
+      ~device_allocator_core() { release(); }
+      void release();
     };
 
-  }
+    #if UPCXXI_CUDA_ENABLED
+      extern void cuda_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s, 
+                                  std::size_t size, backend::device_cb *cb);
+    #endif
+
+  } // namespace detail
 }
 #endif

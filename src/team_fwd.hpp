@@ -90,36 +90,43 @@ namespace std {
 }
 
 namespace upcxx {
-  class team:
+  class team final :
       backend::team_base /* defined by <backend>/runtime_fwd.hpp */ {
     detail::digest id_;
     std::uint64_t coll_counter_;
-    intrank_t const n_, me_;
+    intrank_t n_, me_;
     
   public:
+    team();
     team(detail::internal_only, backend::team_base &&base, detail::digest id,
          intrank_t n, intrank_t me);
     team(team const&) = delete;
     team(team &&that);
+    team& operator=(team &&that);
     ~team();
+
+    UPCXXI_ATTRIB_PURE
+    bool is_active() const {
+      return id_ != detail::tombstone;
+    }
    
     UPCXXI_ATTRIB_PURE
     intrank_t rank_n() const { 
       UPCXXI_ASSERT_INIT(); 
-      UPCXXI_ASSERT_NOT_TOMB(id_);
+      UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
       return n_; 
     }
     UPCXXI_ATTRIB_PURE
     intrank_t rank_me() const { 
       UPCXXI_ASSERT_INIT(); 
-      UPCXXI_ASSERT_NOT_TOMB(id_);
+      UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
       return me_; 
     }
     
     UPCXXI_ATTRIB_PURE
     intrank_t from_world(intrank_t rank) const {
       UPCXXI_ASSERT_INIT();
-      UPCXXI_ASSERT_NOT_TOMB(id_);
+      UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
       UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(), 
                    "team::from_world(rank) requires rank in [0, world().rank_n()-1] == [0, " << upcxx::rank_n()-1 << "], but given: " << rank);
       return backend::team_rank_from_world(*this, rank);
@@ -127,7 +134,7 @@ namespace upcxx {
     UPCXXI_ATTRIB_PURE
     intrank_t from_world(intrank_t rank, intrank_t otherwise) const {
       UPCXXI_ASSERT_INIT();
-      UPCXXI_ASSERT_NOT_TOMB(id_);
+      UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
       UPCXX_ASSERT(rank >= 0 && rank < upcxx::rank_n(), 
                    "team::from_world(rank, otherwise) requires rank in [0, world().rank_n()-1] == [0, " << upcxx::rank_n()-1 << "], but given: " << rank);
       return backend::team_rank_from_world(*this, rank, otherwise);
@@ -136,7 +143,7 @@ namespace upcxx {
     UPCXXI_ATTRIB_PURE
     intrank_t operator[](intrank_t peer) const {
       UPCXXI_ASSERT_INIT();
-      UPCXXI_ASSERT_NOT_TOMB(id_);
+      UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
       UPCXX_ASSERT(peer >= 0 && peer < this->rank_n(), 
                    "team[peer_index] requires peer_index in [0, rank_n()-1] == [0, " << this->rank_n()-1 << "], but given: " << peer);
       return backend::team_rank_to_world(*this, peer);
@@ -144,7 +151,7 @@ namespace upcxx {
     
     UPCXXI_ATTRIB_PURE
     team_id id() const {
-      UPCXXI_ASSERT_NOT_TOMB(id_);
+      UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
       return team_id{id_};
     }
     
@@ -203,6 +210,8 @@ namespace upcxx {
     }
 
     void destroy(detail::internal_only, entry_barrier eb = entry_barrier::user);
+
+    void invalidate(detail::internal_only);
   };
   
   team& world();

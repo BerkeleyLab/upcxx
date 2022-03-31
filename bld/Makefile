@@ -223,6 +223,9 @@ else
 UPCXX_META_COMPILERS := GASNET
 endif
 RUNTIME_LIBS = $(GASNET_LIBS)
+ifeq ($(UPCXX_HIP),1)
+RUNTIME_LIBS += $(UPCXX_HIP_LIBFLAGS)
+endif
 ifeq ($(UPCXX_CUDA),1)
 RUNTIME_LIBS += $(UPCXX_CUDA_LIBFLAGS)
 endif
@@ -306,6 +309,9 @@ endif
 ifeq ($(UPCXX_CUDA),1)
 UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
 endif
+ifeq ($(UPCXX_HIP),1)
+UPCXX_DEFINES += -DUPCXXI_HIP_ENABLED=1 $(UPCXX_HIP_CPPFLAGS)
+endif
 
 # For git cloned source trees, embed git-describe output in runtime.o
 ifneq ($(wildcard $(top_srcdir)/.git),)
@@ -321,11 +327,11 @@ endif
 
 LIBUPCXX_C_COMPILE   := $(GASNET_CC)  $(LIBUPCXX_CFLAGS) \
                         $(GASNET_CPPFLAGS)    $(GASNET_CFLAGS) \
-                        $(UPCXX_DEFINES) \
+                        $(UPCXX_DEFINES) -DUPCXXI_BUILDING_LIBUPCXX \
                         -I$(UPCXX_DIR)/include -I$(UPCXX_DIR)/gen_include
 LIBUPCXX_CXX_COMPILE := $(GASNET_CXX) $(LIBUPCXX_CXXFLAGS) \
                         $(GASNET_CXXCPPFLAGS) $(GASNET_CXXFLAGS) \
-                        $(UPCXX_STDCXX) $(UPCXX_DEFINES) \
+                        $(UPCXX_STDCXX) $(UPCXX_DEFINES) -DUPCXXI_BUILDING_LIBUPCXX \
                         -I$(UPCXX_DIR)/include -I$(UPCXX_DIR)/gen_include
 
 %.o: %.c   %.dep; $(LIBUPCXX_C_COMPILE)   $($*_EXTRA_FLAGS) $(UPCXX_COLOR_CFLAGS)   -c $< -o $@

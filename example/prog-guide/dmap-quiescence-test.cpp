@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     long global[2];
     upcxx::reduce_all(local, global, 2, upcxx::op_fast_add).wait();
     // Test if all inserts have now completed
-    assert(global[0] >= global[1]);
+    UPCXX_ASSERT(global[0] >= global[1]);
     done = (global[0] == global[1]);
   } while (!done);
 //SNIPPET  
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
       upcxx::future<> fut = dmap.find(key).then(
         // lambda to check the return value
         [key](const string &val) {
-          assert(val == key);
+          UPCXX_ASSERT(val == key);
         });
       // conjoin the futures
       fut_all = upcxx::when_all(fut_all, fut);

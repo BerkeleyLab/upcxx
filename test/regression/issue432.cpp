@@ -4,8 +4,8 @@
 #include <upcxx/upcxx.hpp>
 #include "../util.hpp"
 
-#if !UPCXX_KIND_CUDA 
-#error This test requires CUDA support
+#ifndef DEVICE
+#error This test requires GPU support
 #endif
 
 #if !UPCXX_THREADMODE
@@ -25,9 +25,9 @@ int main(int argc, char *argv[]) {
   int peer = (me + 1)%ranks;
 {
   #define SZ 1024
-  cuda_device gpu(0);
-  device_allocator<cuda_device> da(gpu,10*SZ);
-  using gp_d = global_ptr<char,memory_kind::cuda_device>;
+  Device gpu(0);
+  device_allocator<Device> da(gpu,10*SZ);
+  using gp_d = global_ptr<char,Device::kind>;
   gp_d gp = da.allocate<char>(SZ*2);
   gp_d gp2 = gp+SZ;
   global_ptr<char> sp = upcxx::new_array<char>(SZ);

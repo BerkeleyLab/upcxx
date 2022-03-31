@@ -12,6 +12,8 @@
 #include <upcxx/dist_object.hpp>
 #include <upcxx/future.hpp>
 #include <upcxx/global_ptr.hpp>
+#include <upcxx/hip.hpp>
+#include <upcxx/make_allocator.hpp>
 #include <upcxx/os_env.hpp>
 #include <upcxx/persona.hpp>
 #include <upcxx/reduce.hpp>

@@ -18,6 +18,7 @@ function probe_macro {
 #include <gasnetex.h>
 #include <gasnet_tools.h>
 #include <gasnet_portable_platform.h>
+#include <gasnet_mk.h>
 
 #ifdef $1
   $TOKEN1+$2+$TOKEN2
@@ -36,13 +37,16 @@ _EOF
   if [[ $UPCXX_VERBOSE ]] ; then
     echo "// probe_macro($1, $2, $3, $4) => ($result)"
   fi
+  barevar=${3%%(*}
   if [[ $result = $UNDEF && $4 ]]; then
-    echo "#undef $3 // $1 not defined"
+    echo "#undef $barevar // $1 not defined"
+    eval unset $barevar
   elif [[ $result = $UNDEF && !$4 ]]; then
     echo "Missing required definition of $1" >&2
     exit 1
   else
     echo "#define $3 $result"
+    eval $barevar=\"$result\"
   fi
 }
 
@@ -52,6 +56,13 @@ probe_macro GASNETT_PURE     GASNETT_PURE     UPCXXI_ATTRIB_PURE
 probe_macro GASNETT_CONST    GASNETT_CONST    UPCXXI_ATTRIB_CONST
 
 probe_macro GASNET_MAXEPS GASNET_MAXEPS UPCXXI_MAXEPS
+if [[ $UPCXXI_MAXEPS -gt 1 ]] ; then
+  probe_macro GASNET_HAVE_MK_CLASS_CUDA_UVA GASNET_HAVE_MK_CLASS_CUDA_UVA UPCXXI_GEX_MK_CUDA 1
+  probe_macro GASNET_HAVE_MK_CLASS_HIP      GASNET_HAVE_MK_CLASS_HIP      UPCXXI_GEX_MK_HIP  1
+else
+  echo "#undef UPCXXI_GEX_MK_CUDA"
+  echo "#undef UPCXXI_GEX_MK_HIP"
+fi
 
 probe_macro GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM GASNET_NATIVE_NP_ALLOC_REQ_MEDIUM UPCXXI_NATIVE_NP_ALLOC_REQ_MEDIUM 1
 
@@ -65,13 +76,28 @@ probe_macro gasneti_builtin_unreachable "gasneti_builtin_unreachable()" "UPCXXI_
 probe_macro GASNETT_PREDICT_TRUE  "GASNETT_PREDICT_TRUE(expr)"  "UPCXXI_PREDICT_TRUE(expr)"
 probe_macro GASNETT_PREDICT_FALSE "GASNETT_PREDICT_FALSE(expr)" "UPCXXI_PREDICT_FALSE(expr)"
 
+if [[ $UPCXX_ASSERT = 0 ]]; then
+  # conditionally define UPCXXI_ASSUME iff GASNet assertions are off and gasnett_assume exists (2021.9.0+)
+  # otherwise we define it to UPCXX_ASSERT below
+  probe_macro gasnett_assume "gasnett_assume(expr)" "UPCXXI_ASSUME(expr)" 1
+fi
+
 # probe platform identification macros
-for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ; do
+for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ARCH_BIG_ENDIAN OS_LINUX OS_FREEBSD OS_NETBSD OS_OPENBSD OS_DARWIN OS_CNL OS_WSL ; do
   name="PLATFORM_$feature"
   probe_macro $name $name "UPCXXI_$name" 1
 done
 
 cat <<_EOF
+
+// ASSUME: States simple expression cond is always true, as an annotation directive to guide compiler analysis.
+// Becomes an assertion in DEBUG mode and an analysis directive (when available) in NDEBUG mode.
+// This notably differs from typical assertions in that the expression must remain valid in NDEBUG mode
+// (because it is not preprocessed away), and furthermore may or may not be evaluated at runtime.
+// To ensure portability and performance, cond should NOT contain any function calls or side-effects.
+#ifndef UPCXXI_ASSUME
+#define UPCXXI_ASSUME UPCXX_ASSERT
+#endif
 
 // replacements for if statement, with branch prediction annotation
 #define UPCXXI_IF_PT(expr) if (UPCXXI_PREDICT_TRUE(expr))

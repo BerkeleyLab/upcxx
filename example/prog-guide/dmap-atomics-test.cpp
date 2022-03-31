@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
       upcxx::future<> fut = dmap.find(key).then(
         // lambda to check the return value
         [key](const string &val) {
-          assert(val == key);
+          UPCXX_ASSERT(val == key);
         });
       // conjoin the futures
       fut_all = upcxx::when_all(fut_all, fut);

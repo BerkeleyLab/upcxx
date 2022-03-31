@@ -222,6 +222,10 @@ composition of GitLab CI pipeline launch requests.
   runs in a valgrind leak check. This greatly slows execution time, and
   also disables the normal test timeout mechanism. 
   Requires a working valgrind tool.
+  Additional settings recommended for running valgrind on our dev-tests suite:
+  ```text
+  env UPCXX_VERBOSE=1 UPCXX_OVERSUBSCRIBED=1 OMP_NUM_THREADS=1 TEST_ARGS_PERSONA_EXAMPLE=100 
+  ```
 
 ## Internal-Only Configuration Options
 
@@ -291,10 +295,93 @@ The variables with a `test_exclude_` prefix will exclude certain `.cpp` files
 or limit their build to specific conditions (such as `test_exclude_par` for
 seq-only tests).
 
+See the comments in `bld/tests.mak` for all the details on the search and
+exclusion logic.
+
 Additionally, `TEST_FLAGS_*` variables in `bld/tests.mak` can be used to
 provide test-specific compiler flags, such as for OpenMP.
 
-See the comments in `bld/tests.mak` for all the details.
+Additionally, all `.sh` scripts found by the same search and exclusion steps
+are run to generate tests.  The name of the test to generate is derived from
+the basename of the script and passed as the only argument.  The script name
+may optionally have a leading `.` prefix (hiding it from normal directory
+listings) which is stripped off by the testing infrastructure during test
+generation.  The script file is run using the `$(UPCXX_BASH)` interpreter
+selected by `configure`.  The environment provided to the script contains all
+of the variables exported in the generated `Makefile` in the top-level build
+directory, plus the following:
+
+* `UPCXX_{CODEMODE,THREADMODE,NETWORK}`  
+  These setting influence the behavior of `upcxx` and `upcxx-meta`, which are
+  both available in `$upcxx_bld/bin`.
+* `TEST_FLAGS_[BASENAME]`  
+  Just as with the `.cpp` tests, a variable named for the script can be set in
+  `bld/tests.mak` (and overridden by the user or CI scripting) to provide any
+  relevant "flags" to the script.  Unlike `.cpp` tests, however, a script is
+  not passed the flags on the command line, and should instead access the
+  environment variable.
+* `GASNET_{CXX,CC}_{FAMILY,SUBFAMILY}`  
+  These report the family, and sub-family if any, of the compilers.  They can
+  be used to provide appropriate conditional logic in addition to use of
+  `TEST_FLAGS_[BASENAME]`.  However, it is strongly recommended to allow for
+  overrides of any settings/behaviors derived from these variables whenever
+  practical.
+* `EXTRAFLAGS`  
+  This environment variable is provided to allow users and CI scripting to
+  add flags to every test compilation.  This is appended uniformly to the
+  command lines for building `.cpp` tests, and its strongly recommended that
+  the same be done for compilation of UPC\+\+ code in scripts.
+
+In addition to the recommendations given with the environment variables,
+above, the following practices are encouraged:
+
+* Note that a given script may be run multiple times concurrently with
+  different arguments and environment.  Therefore, care must be taken in
+  naming temporary files.  The output file name is guaranteed to be unique
+  within the current working directory, and so may safely be used to derive
+  temporary file names.
+* The exit code of the script is used by the caller to know if the build has
+  succeeded or failed.  Ensure it is accurate.  In particular, use of `set -e`
+  is recommended to ensure the script terminates upon the first failure of any
+  command, unless error recovery is implemented.
+* Upon failure, the script should ensure the output file is removed.
+* Temporary files should be removed on termination (both normal and abnormal).
+* Use of `set -x` is recommended to ensure that `UPCXX_VERBOSE` will capture
+  not only the output of commands run in the script, but the commands
+  themselves.
+* Be aware that the test infrastructure applies the same warning detection
+  to the output of build scripts as to compilation of `.cpp` tests.  So,
+  appropriate use of warning suppression flags or output filtering should be
+  employed.  This is one use of the compiler family variables.
+
+Finally, there is a mechanism for tests which cannot be run directly using
+`upcxx-run ... [full-test-name]`.  If a script compiling a test also generates
+a matching file with a `.runcmd` suffix then it is used to construct the final
+arguments to `upcxx-run`.  In the absence of a `.runcmd` tests are run using
+
+```bash
+upcxx-run ... ./[full-test-name] [app-args]
+```
+
+When a `.runcmd` exists this becomes approximately
+```bash
+env RANKS=... NETWORK=...  upcxx-run ... $(./[full-test-name].runcmd [app-args])
+```
+
+This passes the application arguments to the `.runcmd`, allowing it to either
+consume them or forward them to the test by echoing them.  If the `.runcmd` is a bash
+script, one can get the test name using `${0%.runcmd}`.  The settings of `RANKS` and
+`NETWORK` in the environment provide other pertinent information.  In addition,
+any settings given in `TEST_ENV_[short-test-name]` will also be in the
+environment of the `.runcmd`.
+
+The command line echoed by the `.runcmd` must not make assumptions about the
+value of `$PATH` when it is run.  In particular, use of `${0%.runcmd}` shown
+above is recommend to preserve any directory part in `$0` (which `basename`
+would remove, for instance).
+
+See [hello_via_shell.sh](../test/hello_via_shell.sh) for an example script
+demonstrating several of the best practices given above.
 
 #### To add tests that are intended to generate a compile error
 
@@ -309,12 +396,14 @@ new-lines) in the output is collapsed to a single space before matching,
 because some compilers (*cough*, PGI) will wrap lines such that they insert
 line breaks and whitespace between words inside a static_assert message.
 
+This also works for `.sh`-suffixed tests.
+
 #### To add tests to `make check` and `make tests`
 
 Keep in mind that these targets are the ones we advise end-users (including
 auditors) to run.  Tests that are not stable/reliable should not be added.
 If/when it is appropriate to add a new test, it should be added to either
-`testprograms_seq` or `testprograms_par` (depending on the backend it should be
+`test_sources_seq` or `test_sources_par` (depending on the backend it should be
 built with) in `bld/tests.mak`.
 
 #### Add a new GASNet-EX conduit

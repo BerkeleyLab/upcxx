@@ -1,0 +1,51 @@
+compile2() (
+  set -ex
+
+  local os="$(uname -s 2>/dev/null)"
+  if [ "$os" = "Darwin" ]; then
+    export LINK_ORIGIN="@executable_path"
+    export WHOLE_ARCHIVE_FLAG=-Wl,-all_load
+    export NO_WHOLE_ARCHIVE_FLAG=
+  else
+    export LINK_ORIGIN='$$ORIGIN'
+  fi
+  read -r -d '' runscript_default <<EOF || true
+#!${UPCXX_BASH}
+echo "${testname}/test-${name}"
+EOF
+
+  mkdir -p ${testname}
+  cd ${testname}
+
+  ${GMAKE:-make} -f ${source_dir}/Makefile test-${name} libccs-dlopen-test-funcs.so 2> >(grep -v 'in statically linked applications' >&2) || return 1
+
+  cd ..
+
+  echo -e "${runscript:-${runscript_default}}" > "${testname}.runcmd"
+  chmod +x "${testname}.runcmd"
+)
+
+# Quoting of bash -c "echo Test result: SKIPPED" not preserved
+skip() {
+  [ ! -z "$1" ] && skipreason="$1"
+  ${UPCXX_BINDIR}/upcxx "-DREASON=\"${skipreason:-Unknown}\"" ${source_dir}/skip.cxx -o ${testname}
+}
+
+compile() {
+  local os="$(uname -s 2>/dev/null)"
+  local res
+  if ! [ "$os" = "Linux" -o "$os" = "Darwin" ]; then
+    skip "Test requires Linux or MacOS"
+    return 0
+  fi
+  [ "${UPCXX_NETWORK}" != "udp" ] && skip "Network not UDP" && return 0
+  [ ! -z "${require_fpic}" -a -z "${UPCXX_LIB_FPIC}" ] && skip "fPIC not enabled" && return 0
+  set +e; (set -e; compile2); res=$?
+  set -e
+  if ((res)); then
+    rm -r "${testdir:-${testname}}" || true
+    rm "${testname}.runcmd" || true
+    return 1
+  fi
+}
+

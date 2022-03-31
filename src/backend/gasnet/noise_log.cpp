@@ -21,14 +21,14 @@ void noise_log::show() {
     GEX_DT_USER, sizeof(reduced), 1,
     GEX_OP_USER,
     (gex_Coll_ReduceFn_t)[](const void *arg1, void *arg2_out, std::size_t n, const void*) {
-
-      // issue 506: This property is NOT guaranteed by GEX spec, but happens to currently be true
-      UPCXX_ASSERT(n == 1);
-
       reduced const *in = (reduced const*)arg1;
       reduced *acc = (reduced*)arg2_out;
-      acc->rank_least = std::min(acc->rank_least, in->rank_least);
-      acc->rank_n += in->rank_n;
+      UPCXX_ASSERT(n >= 1);
+      while (n--) {
+        acc->rank_least = std::min(acc->rank_least, in->rank_least);
+        acc->rank_n += in->rank_n;
+        acc++; in++;
+      }
     },
     nullptr, 0
   ));

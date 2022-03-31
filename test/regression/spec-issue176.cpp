@@ -10,7 +10,7 @@ size_t freemem() {
 }
 
 #if defined(__PGIC__) && __PGIC__ < 20
-// PGI 18.10 whines about large types that are never even instantiated..
+// PGI 18.10/19.3 on PPC whines about large types that are never even instantiated..
 #define BROKEN_COMPILER 1
 #endif
 
@@ -66,6 +66,9 @@ struct tracker {
   ~tracker() { live_count--; }
   void operator()() {
     say() << "ERROR: Call to tracker::operator()";
+  }
+  void operator()(int) {
+    say() << "ERROR: Call to tracker::operator(int)";
   }
   static void check() { 
     if (live_count) say() << "ERROR: " << live_count << " tracker destructors skipped";
@@ -147,6 +150,9 @@ int main() {
     CHECK("rpc(view(unbounded))", 
           auto f = rpc(peer, [](view<byte_bag> const &v) {}, unbounded_view););
 
+    CHECK("rpc(view(char[toobig]) -> int)", 
+          auto f = rpc(peer, [](view<char> const &v) { return 0; }, big_view););
+
 #if 0
     // rput is currently noexcept
     CHECK("rput(remote_cx::as_rpc(view(char[toobig])))", 
@@ -190,7 +196,7 @@ int main() {
     tracker::check();
 
     { promise<> sp,p;
-      promise<int> sp2,p2;
+      promise<int> sp2,p2,p3;
       tracker t;
       CHECK("rpc(view(char[toobig])) with completions", 
          {  auto ftup = rpc(peer, 
@@ -202,16 +208,51 @@ int main() {
             operation_cx::as_future() | 
             operation_cx::as_promise(p) | 
             operation_cx::as_promise(p2) | 
+            operation_cx::as_promise(p3) | 
+            operation_cx::as_promise(p3) | 
             operation_cx::as_lpc(current_persona(), tracker()) |
             operation_cx::as_lpc(current_persona(), t) 
             , [](view<char> const &v) {}, big_view);
          });
       if (!sp.finalize().ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
+      sp2.fulfill_result(42);
+      if (!sp2.get_future().ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
+
       if (!p.finalize().ready()) say() << "ERROR: operation_cx::as_promise() completion was not cleaned up.";
       p2.fulfill_result(42);
       if (!p2.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>) completion was not cleaned up.";
+      p3.fulfill_result(42);
+      if (!p3.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>)x2 completion was not cleaned up.";
+    }
+    tracker::check();
+
+    { promise<> sp;
+      promise<int> sp2,p2,p3;
+      tracker t;
+      CHECK("rpc(view(char[toobig]) -> int) with completions", 
+         {  auto ftup = rpc(peer, 
+            source_cx::as_future() | 
+            source_cx::as_promise(sp) | 
+            source_cx::as_promise(sp2) | 
+            source_cx::as_lpc(current_persona(), tracker()) | 
+            source_cx::as_lpc(current_persona(), t) | 
+            operation_cx::as_future() | 
+            operation_cx::as_future() | 
+            operation_cx::as_promise(p2) | 
+            operation_cx::as_promise(p3) | 
+            operation_cx::as_promise(p3) | // corner case: this is ONLY valid because of the exception
+            operation_cx::as_lpc(current_persona(), tracker()) |
+            operation_cx::as_lpc(current_persona(), t) 
+            , [](view<char> const &v) { return 0; }, big_view);
+         });
+      if (!sp.finalize().ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
       sp2.fulfill_result(42);
       if (!sp2.get_future().ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
+
+      p2.fulfill_result(42); // crash here indicates erroneous fulfillment
+      if (!p2.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>) completion was not cleaned up.";
+      p3.fulfill_result(42); // crash here indicates erroneous fulfillment
+      if (!p3.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>)x2 completion was not cleaned up.";
     }
     tracker::check();
 

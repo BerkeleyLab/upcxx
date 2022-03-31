@@ -17,6 +17,8 @@
 */
 
 #include<chrono>
+#include<cmath>
+#include<algorithm>
 #include<upcxx/upcxx.hpp>
 
 typedef struct _Expected {
@@ -48,7 +50,7 @@ static void validate(int cube, int iters, double avg) {
             printf("Average temperature: expected = %e, calculated = %e, "
                     "absolute error = %e, percent error = %e\n",
                     exp->avg, avg, abs, rel);
-            if (rel > 0.01)
+            if (rel > 0.01 || std::isnan(rel))
                 printf("FAIL\n");
             else
                 printf("SUCCESS\n");
@@ -158,8 +160,10 @@ struct System {
     hi = lo + dX;
 
     printf("Rank %i Domain: [%i,%i)\n",comm.x,lo,hi);
-    T = new double[(hi-lo)*X*X];
-    dT = new double[(hi-lo)*X*X];
+    size_t local_sz = (hi-lo)*X*X;
+    T = new double[local_sz];
+    std::fill_n(T, local_sz, T0);
+    dT = new double[local_sz]();
 
     if(lo != 0) {
         left_ghost_slab = upcxx::new_array<double>(X*X);
@@ -179,6 +183,8 @@ struct System {
   }
 
   void destroy_subdomain() {
+    delete [] T;
+    delete [] dT;
     upcxx::delete_array<double>(left_ghost_slab);
     upcxx::delete_array<double>(right_ghost_slab);
   }
@@ -224,7 +230,7 @@ struct System {
       T_ave = compute_T();
       T_ave/=1e-9*(X * X * X);
       if(I != 0 && (t%I == 0 || t==N) && (comm.x==0)) 
-        printf("%i T=%lf\n",t,T_ave);
+        printf("%i T=%f\n",t,T_ave);
     }
     if (comm.x==0)
         validate(X,N,T_ave);

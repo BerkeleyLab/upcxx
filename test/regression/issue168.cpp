@@ -1,9 +1,10 @@
 #include <upcxx/upcxx.hpp>
 #include <thread>
-#include <cassert>
+#include "../util.hpp"
 
 int main (int argc, char ** argv) {
   upcxx::init();
+  print_test_header();
 
   upcxx::persona lpc_persona;
   int done = 0;
@@ -44,8 +45,7 @@ int main (int argc, char ** argv) {
 
   t1.join();
 
-  if (!upcxx::rank_me()) std::cout << "SUCCESS" << std::endl;
-
+  print_test_success();
   upcxx::finalize();
   return 0;
 }

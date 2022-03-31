@@ -1,4 +1,4 @@
-#include <upcxx/upcxx.hpp>
+#include "../util.hpp"
 #include <type_traits>
 #include <vector>
 #include <iostream>
@@ -30,6 +30,7 @@ struct T {
 
 int main() {
   upcxx::init();
+  print_test_header();
 
   T t;
   t.x = 42;
@@ -59,7 +60,6 @@ int main() {
                   assert(cnt == 10);
                 }, upcxx::make_view(vt)).wait();
 
-  upcxx::barrier();
-  if (!upcxx::rank_me()) std::cout << "SUCCESS" << std::endl;
+  print_test_success();
   upcxx::finalize();
 }

@@ -2,7 +2,8 @@
 #define _850ece2c_7b55_43a8_9e57_8cbd44974055
 
 #include <upcxx/backend_fwd.hpp>
-#include <upcxx/cuda_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
+#include <upcxx/ccs_fwd.hpp>
 #include <upcxx/future.hpp>
 #include <upcxx/intru_queue.hpp>
 #include <upcxx/lpc.hpp>
@@ -55,7 +56,7 @@ namespace upcxx {
     
   public: //private!
     backend::persona_state UPCXXI_INTERNAL_ONLY(backend_state_);
-    cuda::persona_state UPCXXI_INTERNAL_ONLY(cuda_state_);
+    backend::persona_device_state UPCXXI_INTERNAL_ONLY(device_state_);
     std::intptr_t UPCXXI_INTERNAL_ONLY(undischarged_n_); // num reasons progress_required() is true
   
   private:
@@ -253,6 +254,7 @@ namespace upcxx {
       std::uintptr_t top_unique_xor_default;  // = xor(top_unique, &this->default_scope_raw)
       // persona *top_persona = &this->default_persona;
       std::uintptr_t top_persona_xor_default;  // = xor(top_persona, &this->default_persona)
+      segmap_cache segcache;
       
       static_assert(std::is_trivially_destructible<persona>::value, "upcxx::persona must be TriviallyDestructible.");
       static_assert(std::is_trivially_destructible<persona_scope_raw>::value, "upcxx::detail::persona_scope_raw must be TriviallyDestructible.");
@@ -265,8 +267,9 @@ namespace upcxx {
         default_scope_raw(),
         top_xor_default(),
         top_unique_xor_default(),
-        top_persona_xor_default() {
-      }
+        top_persona_xor_default(),
+        segcache()
+      {}
       
       //////////////////////////////////////////////////////////////////////////
       // getters/setters for fields with zero-friendly encodings

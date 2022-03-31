@@ -75,5 +75,14 @@
 }
 
 
-
+# Valgrind is unable to follow the CUDA ioctls (or see device memory), 
+# so is basically useless for any objects allocated by libcuda
+{
+   cuda-leaks-like-crazy
+   Memcheck:Leak
+   match-leak-kinds: all
+   fun:*
+   ...
+   obj:*/libcuda.so*
+}
 

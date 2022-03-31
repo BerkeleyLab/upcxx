@@ -18,6 +18,11 @@ raw_storage<team> detail::the_local_team;
 std::unordered_map<upcxx::detail::digest, void*> upcxx::detail::registry;
 
 GASNETT_COLD
+team::team():
+  team(detail::internal_only{}, backend::team_base{}, tombstone, 0, -1) {
+}
+
+GASNETT_COLD
 team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
            intrank_t n, intrank_t me):
   backend::team_base(std::move(base)),
@@ -35,20 +40,35 @@ team::team(detail::internal_only, backend::team_base &&base, detail::digest id,
 }
 
 GASNETT_COLD
-team::team(team &&that):
-  backend::team_base(std::move(that)),
-  id_(that.id_),
-  coll_counter_(that.coll_counter_),
-  n_(that.n_),
-  me_(that.me_) {
+team::team(team &&that): team() {
+  *this = std::move(that);
+}
 
+GASNETT_COLD
+team& team::operator=(team &&that) {
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();
-  UPCXXI_ASSERT_NOT_TOMB(that.id_);
+  UPCXX_ASSERT(&that != &world(),
+               "team world() cannot be passed to move constructor or assignment");
+  UPCXX_ASSERT(&that != &local_team(),
+               "team local_team() cannot be passed to move constructor or assignment");
+  UPCXX_ASSERT(
+    !this->is_active(),
+    "team move assignment operator requires receiver to be inactive"
+  );
 
-  that.id_ = tombstone;
-  
-  detail::registry[id_] = this;
+  backend::team_base::operator=(std::move(that));
+  id_ = that.id_;
+  coll_counter_ = that.coll_counter_;
+  n_ = that.n_;
+  me_ = that.me_;
+
+  that.invalidate(detail::internal_only{});
+
+  if (id_ != tombstone) {
+    detail::registry[id_] = this;
+  }
+  return *this;
 }
 
 GASNETT_COLD
@@ -70,7 +90,7 @@ team team::split(intrank_t color, intrank_t key) const {
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
   UPCXX_ASSERT(color >= 0 || color == color_none);
-  UPCXXI_ASSERT_NOT_TOMB(id_);
+  UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
   
   gex_TM_t sub_tm = GEX_TM_INVALID;
   gex_TM_t *p_sub_tm = color == color_none ? nullptr : &sub_tm;
@@ -121,7 +141,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::user);
-  UPCXXI_ASSERT_NOT_TOMB(id_);
+  UPCXX_ASSERT(is_active(), "function call prohibited on an inactive team");
 
   #if UPCXXI_ASSERT_ENABLED
     std::stringstream ss;
@@ -198,7 +218,7 @@ team team::create(detail::internal_only, const gex_EP_Location_t *locs, size_t c
 GASNETT_COLD
 void team::destroy(entry_barrier eb) {
   UPCXXI_ASSERT_INIT();
-  if (id_ == tombstone) return; // issue 500: ignore destroy of invalid teams
+  if (!is_active()) return; // issue 500: ignore destroy of invalid teams
   UPCXXI_ASSERT_MASTER();
   UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
   UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
@@ -231,4 +251,14 @@ void team::destroy(detail::internal_only, entry_barrier eb) {
   
   UPCXX_ASSERT(id_ != tombstone);
   detail::registry.erase(id_);
+
+  invalidate(detail::internal_only{});
+}
+
+GASNETT_COLD
+void team::invalidate(detail::internal_only) {
+  id_ = tombstone;
+  handle = reinterpret_cast<uintptr_t>(GEX_TM_INVALID);
+  n_ = 0;
+  me_ = -1;
 }

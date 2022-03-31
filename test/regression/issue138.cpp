@@ -12,6 +12,12 @@
 
 static const char *alphabet = "abcdefghijklmnopqrstuvwxyz";
 
+#if MINIMAL
+  static constexpr int scale = 1;
+#else
+  static constexpr int scale = 100;
+#endif
+
 template<typename T>
 struct the_hasher {
   std::size_t operator()(T const &x) const {
@@ -33,20 +39,20 @@ void do_sequence(Elt elt) {
   for(int j=0; j < 10; j++) {
     Seq seq1, seq2;
     
-    for(int i=0; i < 1000*j; i++)
+    for(int i=0; i < 10*scale*j; i++)
       seq1.push_back(elt(i));
-    for(int i=0; i < 100*j; i++)
+    for(int i=0; i < scale*j; i++)
       seq2.push_back(elt(i));
     
     upcxx::rpc(
       (upcxx::rank_me() + j%3) % upcxx::rank_n(),
       [=](Seq const &seq1, Seq const &seq2) {
-        UPCXX_ASSERT_ALWAYS((int)seq1.size() == 1000*j);
+        UPCXX_ASSERT_ALWAYS((int)seq1.size() == 10*scale*j);
         int i=0;
         for(auto const &x: seq1)
           UPCXX_ASSERT_ALWAYS(x == elt(i++));
         
-        UPCXX_ASSERT_ALWAYS((int)seq2.size() == 100*j);
+        UPCXX_ASSERT_ALWAYS((int)seq2.size() == scale*j);
         i = 0;
         for(auto const &x: seq2)
           UPCXX_ASSERT_ALWAYS(x == elt(i++));
@@ -70,11 +76,11 @@ void do_set(Elt elt, EltOk ok) {
   for(int j=0; j < 10; j++) {
     Set set1, set2;
     
-    for(int i=0; i < 1000*j; i++)
+    for(int i=0; i < 10*scale*j; i++)
       set1.insert(elt(i));
     auto set1_n = set1.size();
     
-    for(int i=0; i < 100*j; i++)
+    for(int i=0; i < scale*j; i++)
       set2.insert(elt(i));
     auto set2_n = set2.size();
     

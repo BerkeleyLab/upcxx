@@ -19,6 +19,11 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     feature to which this implementation adheres, defined only when the library
     is built with CUDA enabled. See the UPC++ specification for the specified
     value.
+  * `UPCXX_KIND_HIP`:
+    An integer literal providing the version number of the ROCm/HIP memory-kind
+    feature to which this implementation adheres, defined only when the library
+    is built with ROCm/HIP enabled. See the UPC++ specification for the specified
+    value.
 
   * `UPCXX_THREADMODE`:
     This is either undefined (for the default "seq" threadmode) or defined to
@@ -55,24 +60,83 @@ eager.
 
 ## Exceptions thrown from RPC ##
 
-The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw an
-exception if they encounter resource exhaustion while trying to inject the
-RPC. In the current release, this should only occur when the RPC payload is
-somewhat large (over a few KiB) and the shared heap on the initiating 
-process fails to allocate a temporary buffer large enough to hold the
-serialized RPC. 
+The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw
+exceptions. The exceptions may be thrown on the initiating thread before or
+after serialization of the function arguments. In all other ways, a call
+throwing such an exception is effectively "cancelled" -- it will not lead to
+invocation of the function object at the target, nor will it deliver any event
+notifications (for example, a promise passed using an `as_promise()` completion
+will remain unchanged by the exceptional call).
 
-In releases prior to 2021.9.0, such conditions led to an immediate fatal error.
-Starting in 2021.9.0, an `rpc` or `rpc_ff` call encountering this condition
-will instead throw a `upcxx::bad_shared_alloc` exception, where the `what()`
-member function includes information about the shared heap state at the
-point of failure. The exception may be thrown before or after serialization
-of the function arguments. In all other ways, a call throwing such an exception 
-is effectively "cancelled" -- it will not lead to invocation of the 
-function object at the target, nor will it deliver any event notifications
-(for example, a promise passed using an `as_promise()` completion will
-remain unchanged by the exceptional call).
+Starting in 2021.9.0, resource exhaustion while trying to inject an RPC will
+throw a `upcxx::bad_shared_alloc` exception. The `what()` member function
+includes information about the shared heap state at the point of failure. In
+the current release, this should only occur when the RPC payload is somewhat
+large (over a few KiB) and the shared heap on the initiating process fails to
+allocate a temporary buffer large enough to hold the serialized RPC. In
+releases prior to 2021.9.0, such conditions led to an immediate fatal error.
 
+Starting in 2022.3.0, attempting to make a cross-code segment (CCS) RPC call
+into an unverified segment when CCS segment verification is enabled will throw
+a `upcxx::segment_verification_error`.  CCS RPC calls are RPC calls which
+directly invoke functions existing in other executable program segments, such
+as dynamic libraries. The `what()` member function includes information about
+the state of the function pointer relocation tables.  Catching this exception
+may be used to arrange for later collective synchronization of cross-segment
+function pointer relocation information using
+`upcxx::experimental::relo::verify_all()` or
+`upcxx::experimental::relo::verify_segment()` when libraries are `dlopen`ed
+asynchronously.  See [docs/ccs-rpc.md](docs/ccs-rpc.md) for more information
+about the CCS RPC feature.
+
+## Simplified Device Allocator Management
+
+UPC++ specifies the type `upcxx::gpu_default_device` which is an implementation-defined
+alias for a GPU device type. The binding of that alias is determined as follows:
+
+1. For the common case where UPC++ is configured for exactly one GPU
+   variety (e.g. `configure --enable-cuda` OR `configure --enable-hip`) then
+   `upcxx::gpu_default_device` defaults to an alias for that corresponding device
+   type (i.e. `upcxx::cuda_device` or `upcxx::hip_device`).
+
+2. When no device support is configured, then `upcxx::gpu_default_device`
+   defaults to an alias for `upcxx::cuda_device`.
+
+3. User programs may override this default choice by defining one of the following 
+   preprocessor macros to 1 before including upcxx.hpp (these may be set
+   independently per translation unit):
+    * `UPCXX_GPU_DEFAULT_DEVICE_CUDA=1` makes `gpu_default_device` an alias for `cuda_device`
+    * `UPCXX_GPU_DEFAULT_DEVICE_HIP=1` makes `gpu_default_device` an alias for `hip_device`
+
+4. For rare cases where UPC++ is configured to support two or more GPU varieties, then 
+   `upcxx::gpu_default_device` will default to aliasing an unspecified device type.
+   Users of such configurations are advised to define one of the two macros
+   described above.
+
+The resulting memory kind can be queried via the `gpu_default_device::kind` constant.
+`upcxx::make_gpu_allocator()` defaults to returning a `device_allocator<gpu_default_device>`,
+but this can also be overriden on a callsite basis via template argument.
+
+The `upcxx::make_gpu_allocator<Device>(sz,device_id)` factory function defaults
+to `device_id = auto_device_id` which activates an implementation-defined
+"smart" choice of valid GPU device when a device ID was not explicitly provided
+by the caller. That "smart" choice is determined as follows:
+
+1. If `Device::device_n()` is zero, there are no valid GPUs at the calling
+   process and the call to `upcxx::make_gpu_allocator(sz, auto_device_id)` will
+   return an inactive `device_allocator` (one with no corresponding segment).
+
+2. If `Device::device_n()` is one, there is a single valid GPU at the calling
+   process and the call will attempt to construct a `device_allocator` segment
+   for that GPU.
+
+3. Otherwise, there are multiple valid GPUs at the calling process. In this
+   case the "smart" choice will cycle through valid IDs with subsequent calls,
+   with a starting point determined from the process rank in `local_team()`.
+   The resulting device ID can be queried via `device_allocator::device_id()`.
+   Programs wanting finer-grained control over device selection in multi-GPU
+   environments may override this choice by explicitly passing the `device_id`
+   argument to `upcxx::make_gpu_allocator(sz,device_id)`.
 
 ## Assertion Macros ##
 
@@ -180,10 +244,9 @@ them useful, please send an email to `upcxx@googlegroups.com`, and we will
 consider adding them to the specification proper.
 
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
-are intended solely for internal use by the implementation (e.g.
-`upcxx::backend`, `upcxx::cuda`, `upcxx::detail`). Similarly, all identifiers
-with the `UPCXXI` or `upcxxi` prefix are intended for internal use by the
-implementation.
+are intended solely for internal use by the implementation (e.g. `upcxx::backend`,
+`upcxx::detail`). Similarly, all identifiers with the `UPCXXI` or `upcxxi`
+prefix are intended solely for internal use by the implementation.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 
@@ -242,102 +305,3 @@ upcxx::master_persona().lpc_ff([=]() {
 });
 ```
 
-## Interoperability and Multi-Threading ##
-
-Some caution must be taken when integrating threaded upcxx code with other
-threading paradigms (notably OpenMP). The main issue comes about when one
-threading library blocks a thread waiting for a condition that is satisfied
-concurrently by another thread. Unfortunately, when threading libraries block,
-they tend only to service their internal state and not the state of the other
-threading libraries that have outstanding work. For instance, when an OpenMP
-thread enters an OpenMP barrier it will no longer be capable of servicing
-the upcxx runtime: OpenMP is not kind enough make calls to `upcxx::progress()`
-while waiting for the condition that will release it from the barrier. Deadlock
-can ensue whenever there are two threads A and B (possibly on different
-processes) where thread A is blocking for an OpenMP condition before servicing
-upcxx and thread B is blocking for a upcxx condition before servicing OpenMP.
-
-The following example has such a deadlock:
-
-```c++
-
-#pragma omp parallel num_threads(2)
-{
-  // Assume thread 0 has the master persona...
-  
-  if(omp_get_thread_num() == 1) {
-    // Bounce an rpc off buddy rank and wait for it.
-    upcxx::rpc(upcxx::rank_me() ^ 1, [=](){}).wait();
-  }
-  // Here comes the implicit OpenMP barrier at the end of the parallel region. 
-  // While in the OpenMP barrier, the master can't respond to rpc's. So we can't 
-  // reply to our buddy's message and therefore will delay the buddy's sending
-  // thread from making it to the OpenMP barrier. And if our buddy is in the same
-  // situation with respect to our message then we deadlock.
-}
-
-```
-
-Unfortunately we have no simple fix for this scenario. There are two separate
-runtimes blocking for conditions that can only be satisfied by the other
-runtime making progress. The user must ensure this doesn't happen by either
-breaking the cyclic dependencies, or carefully quiescing the activity of one
-runtime before blocking in the another. Another strategy is to separate
-the master persona from the threads using OpenMP, for example by moving the
-master persona to a scheduling thread that never blocks in OpenMP constructs.
-This can ensure the master persona always remains attentive to service incoming
-RPCs from other processes.
-
-Another deadlock issue can arise from failing to discharge personas before
-they cease to be attentive:
-
-```c++
-
-int got = -1;
-
-#pragma omp parallel num_threads(2)
-{
-  // Assume thread 0 has master...
-  
-  upcxx::global_ptr<int> gp = /*...*/;
-  
-  if(omp_get_thread_num() == 1) {
-    int *value_spot = &got;
-    upcxx::rget(gp,
-      upcxx::operation_cx::as_lpc(
-        upcxx::master_persona(),
-        [=](int value) { *value_spot = value; }
-      )
-    );
-  }
-
-  upcxx::progress(); // Try to be nice, not good enough!
-}
-
-// wait for the rget injected by omp thread=1 to complete... will it?
-while(got == -1)
-  upcxx::progress();
-```
-
-Here, upon leaving the parallel region, the thread which injected the rget will
-most likely go to sleep in OpenMP's thread pool. Unfortunately, if the rget
-hasn't replied before the thread sleeps, then the associated lpc won't be fired
-since no thread is polling that persona (thread 1's default persona). Possible
-fixes include calling `upcxx::discharge()` from thread 1 before leaving the
-region, or thread 1 releasing the persona it used to inject the rget (the
-default persona won't work), and the serial thread outside the region picks up
-that persona while spinning.
-
-The astute reader of the "UPC++ Specification: Progress" section may notice
-that `upcxx::progress_required()` is semantically prohibited from ever
-conveying to the application that the master persona is free from needing
-progress. So attempting to discharge the master persona has no effect on being
-provably deadlock free, which begs the question can that thread ever enter an
-OpenMP barrier safely? Not by the specification's rules. But here in the
-implementation we've loosened the requirement somewhat. This implementation and
-all of its future versions guarantee that under `UPCXX_THREADMODE={seq|par}`
-the master persona will never silently be required to progress outgoing work
-initiated by another persona on this process. The implication is that for
-`upcxx::discharge/progress_required()` the master persona comes with the same
-discharging guarantees as other personas. With this property of the
-implementation, the second example remains fixable according to the advice given.

@@ -10,20 +10,26 @@
 #if UPCXXI_BACKEND_GASNET
     #include <gasnet.h>
     #include <gasnet_coll.h>
+
+    // The provided GASNet-EX spec version
+    #define UPCXXI_GEX_SPEC_VERSION (GEX_SPEC_VERSION_MAJOR*100 + GEX_SPEC_VERSION_MINOR)
+    // The provided GASNet-EX package version
+    #define UPCXXI_GEX_RELEASE_VERSION \
+            (GASNET_RELEASE_VERSION_MAJOR*10000 + GASNET_RELEASE_VERSION_MINOR*100 + GASNET_RELEASE_VERSION_PATCH)
+
     #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR  0
-    #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR  13 // if you change this number, also change the package version below!!!
+    #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR  14 // if you change this number, also change the package version below!!!
+    #define UPCXXI_REQUIRES_GEX_SPEC_VERSION \
+            (UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR*100 + UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR)
+
     #if GASNET_RELEASE_VERSION_MAJOR < 2000
       // User is trying to compile against GASNet-1, or some other gasnet.h header that is not GASNet-EX
       #error UPC++ requires a current version of GASNet-EX (not to be confused with GASNet-1). Please rerun configure without '--with-gasnet=...' to use the default GASNet-EX layer.
-    #elif GEX_SPEC_VERSION_MAJOR <  UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR || \
-         (GEX_SPEC_VERSION_MAJOR == UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR && \
-          GEX_SPEC_VERSION_MINOR <  UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR)
+    #elif UPCXXI_GEX_SPEC_VERSION < UPCXXI_REQUIRES_GEX_SPEC_VERSION
       // User is trying to compile with a GASNet-EX version that does not meet our current minimum requirement:
-      #error This version of UPC++ requires GASNet-EX version 2021.3.0 or newer. Please rerun configure (without '--with-gasnet=...') to fetch and use the default GASNet-EX layer.
+      #error This version of UPC++ requires GASNet-EX version 2021.9.0 or newer. Please rerun configure (without '--with-gasnet=...') to fetch and use the default GASNet-EX layer.
     #endif
 
-    #define UPCXXI_GEX_VERSION \
-            (GASNET_RELEASE_VERSION_MAJOR*10000 + GASNET_RELEASE_VERSION_MINOR*100 + GASNET_RELEASE_VERSION_PATCH)
 #else
     #error "You've either pulled in this header without first including" \
            "<upcxx/backend.hpp>, or you've made the assumption that" \

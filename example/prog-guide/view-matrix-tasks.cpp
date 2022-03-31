@@ -63,7 +63,7 @@ int main() {
   sum = upcxx::reduce_all(sum, upcxx::op_fast_add).wait();
   
   // 1000 elements with value=1, from 10 neighbors, across all processes.
-  assert(sum == 1000*10*upcxx::rank_n());
+  UPCXX_ASSERT(sum == 1000*10*upcxx::rank_n());
   
   if(upcxx::rank_me()==0)
     std::cout<<"SUCCESS\n";
