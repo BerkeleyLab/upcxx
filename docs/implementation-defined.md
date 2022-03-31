@@ -86,7 +86,7 @@ may be used to arrange for later collective synchronization of cross-segment
 function pointer relocation information using
 `upcxx::experimental::relo::verify_all()` or
 `upcxx::experimental::relo::verify_segment()` when libraries are `dlopen`ed
-asynchronously.  See [docs/ccs-rpc.md](docs/ccs-rpc.md) for more information
+asynchronously.  See [docs/ccs-rpc.md](ccs-rpc.md) for more information
 about the CCS RPC feature.
 
 ## Simplified Device Allocator Management
