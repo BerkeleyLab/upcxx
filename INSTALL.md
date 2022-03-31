@@ -400,7 +400,7 @@ After running `configure`, return to
 ### Configuration: HPE Cray EX
 
 This release of UPC++ includes initial support for the HPE Cray EX platform,
-including both the "Slingshot 10" and "Slingshot 11" network interface cards
+including both the "Slingshot-10" and "Slingshot-11" network interface cards
 (NICs) and GPUs from both Nvidia and AMD.  When built in a supported
 configuration, this release passes all of the UPC++ test suite.  However, the
 performance has not yet been tuned on this platform.
@@ -429,14 +429,14 @@ The `libfabric` and `cray-pmi` environment modules may or may not be loaded by
 default at any given site.  Please ensure they are loaded (as shown above) or
 the configure or build steps may fail.
 
-There are two NICs options in an HPE Cray EX system, known as "Slingshot 10" and
-"Slingshot 11".  They require different libfabric "providers", as indicated by
+There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
+"Slingshot-11".  They require different libfabric "providers", as indicated by
 the `<PROVIDER>` placeholder above:  
 
-  + `--with-ofi-provider='verbs;ofi_rxm'` for Slingshot 10.  
+  + `--with-ofi-provider='verbs;ofi_rxm'` for Slingshot-10.  
     This is a Mellanox ConnectX-5 100Gbps NIC.  
     Due to the presence of `;` in the value, please do not omit the quotes.
-  + `--with-ofi-provider=cxi` for Slingshot 11.  
+  + `--with-ofi-provider=cxi` for Slingshot-11.  
     This is an HPE 200Gbps NIC  
 
 If you are uncertain of which NIC is used on a given system, please consult the
