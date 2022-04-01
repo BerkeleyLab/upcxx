@@ -2,13 +2,13 @@
 #if UPCXX_VERSION < 20210905
 #error This test requires UPC++ 2021.9.5 or newer
 #endif
+//SNIPPET
+#include <upcxx/upcxx.hpp>
+#include <iostream>
+
 #if !UPCXX_KIND_CUDA
 #error "This example requires UPC++ to be built with CUDA support."
 #endif
-
-//SNIPPET
-#include <iostream>
-#include <upcxx/upcxx.hpp>
 
 using namespace std;
 using namespace upcxx;
