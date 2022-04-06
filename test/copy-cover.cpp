@@ -132,8 +132,8 @@ std::string bufdesc(any_ptr ptr) {
   memory_kind kind = ptr.dynamic_kind();
   std::string res("other ");
   if (rank == me) res = "my "; 
-  if (rank == (me+1)%ranks) res = "his ";
-  if (rank == (me+2)%ranks) res = "her ";
+  else if (rank == (me+1)%ranks) res = "his ";
+  else if (rank == (me+2)%ranks) res = "her ";
   if (kind == memory_kind::host) res += "host";
   #if USE_CUDA
   else if (kind == memory_kind::cuda_device) res += "cuda";
