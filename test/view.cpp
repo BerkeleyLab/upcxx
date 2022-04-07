@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <sched.h>
 
 using namespace upcxx;
 using namespace std;
@@ -198,8 +199,10 @@ int main() {
       []() {
         persona_scope worker_scope{worker};
 
-        while(!worker_shutdown.load(memory_order_relaxed))
+        while(!worker_shutdown.load(memory_order_relaxed)) {
           upcxx::progress();
+          sched_yield();
+        }
       }
     };
 
