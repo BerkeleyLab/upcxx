@@ -203,6 +203,10 @@ int main() {
           upcxx::progress();
           sched_yield();
         }
+        // Lines below ensure the runtime is done using this thread.
+        // This avoids a subtle leak on internal resources seen in single-rank runs
+        upcxx::progress();
+        upcxx::discharge();
       }
     };
 
