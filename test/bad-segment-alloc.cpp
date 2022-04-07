@@ -24,11 +24,11 @@ int main() {
   try {
     if (!me) say("") << "Making an absurd segment request on some ranks...";
     barrier();
-    // even ranks request 1MB
-    // odd ranks request roughly rank TB
+    // odd ranks request 1MB
+    // even ranks request roughly rank+1 TB
     size_t mysz;
-    if (me % 2 == 0) mysz = 1<<20;
-    else             mysz = me*trillion; 
+    if (me % 2 == 1) mysz = 1<<20;
+    else             mysz = (me+1)*trillion; 
     assert(mysz > 0);
     dap = new device_allocator<Device>(dev, mysz);
     say() << "ERROR:  device_allocator construction failed to throw exception!";

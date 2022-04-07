@@ -126,6 +126,12 @@ double run_trial_bw(int peer, size_t size, Inject inject, Finish finish) {
 
 int main() {
   upcxx::init();
+
+  if (upcxx::rank_n() < 2) {
+    print_test_skipped("test requires two or more ranks");
+    upcxx::finalize();
+    return 0;
+  }
   
   #if USE_GPROF
     setenv("GMON_OUT_PREFIX", (std::string("gmon.rank-") + std::to_string(upcxx::rank_me())).c_str(), 1);
@@ -189,7 +195,7 @@ int main() {
     if(local_peer != -1) peers[peer_n++] = local_peer;
     if(remote_peer != -1) peers[peer_n++] = remote_peer;
     
-    UPCXX_ASSERT_ALWAYS(peer_n != 0, "Must run with at least 2 ranks.");
+    UPCXX_ASSERT_ALWAYS(peer_n != 0);
     
     cout<<"Running with peers: "
         <<"local="<<local_peer<<" and "
