@@ -59,7 +59,11 @@ endif
 
 # Use CXX so libupcxx.a isn't linked in
 test-ccs-inlib: upcxx-inlib-fpic.o libccs-inlib.so
+ifeq ($(UNAME_S),Darwin)
 	$(CXX) $^ -o $@ $(RPATH_THIS_DIR)
+else
+	$(CXX) $^ -o $@ $(RPATH_THIS_DIR) -Wl,--rpath-link,.
+endif
 
 ## Static link with dlopen: libupcxx in executable
 test-ccs-static-dlopen: static.o
