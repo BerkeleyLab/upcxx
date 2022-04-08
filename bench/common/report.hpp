@@ -12,6 +12,22 @@
 #include <iostream>
 #include <string>
 
+template<typename=void>
+void print_test_skipped(const char *reason, const char *success_msg="SUCCESS") {
+  bool speak = true;
+  if (upcxx::initialized()) {
+     upcxx::barrier();
+     if (upcxx::rank_me()) speak = false;
+  }
+  if (speak) std::cout
+        << "Test result: "<< "SKIPPED" << "\n"
+        << "UPCXX_TEST_SKIPPED: This test was skipped due to: " << reason << "\n"
+        << "Please ignore the following line which placates our automated test infrastructure:\n"
+        << success_msg << "\n";
+  if (upcxx::initialized()) upcxx::barrier();
+}
+
+
 namespace bench {
   // Writes a report file consisting of emitted rows. This may not be entered
   // concurrently, so you will need to funnel your report data to a single rank
