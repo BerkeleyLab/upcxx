@@ -5,6 +5,34 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
+### 2022.XX.YY: PENDING
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
+* ...
+
+Infrastructure changes:
+
+* ...
+
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
+
+
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
+
+* ...
+
+This library release conforms to the
+[UPC++ v1.0 Specification, Revision 2022.3.0](docs/spec.pdf).
+All currently specified features are fully implemented.
+See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
+
+Breaking changes:
+
+* ...
+
 ### 2022.03.31: Release 2022.3.0
 
 Improvements to GPU memory kinds:
