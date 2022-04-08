@@ -18,6 +18,8 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #501: Poor failure behavior for tests with RANKS=1
+* issue #539: PG: dmap-quiescence-test hangs with one process
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
