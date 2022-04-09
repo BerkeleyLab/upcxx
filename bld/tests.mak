@@ -109,6 +109,7 @@ test_exclude_compile_only = \
 	issue219 \
 	issue224 \
 	issue333 \
+	issue412 \
 	issue428 \
 	issue450 \
 	nodiscard \
@@ -249,7 +250,6 @@ endif
 
 ifeq ($(strip $(UPCXX_PLATFORM_CUDA_HAS_BUG_4396)),1)
   # Compile-time measure(s) to avoid known failures attributable to GASNet bug 4396
-  # This should be removed when GEX_SPEC_VERSION requirement advances to 0.15
   export TEST_FLAGS_CUDA_CONTEXT:=$(TEST_FLAGS_CUDA_CONTEXT) -DSKIP_DEVICE_FREE
 endif
 
