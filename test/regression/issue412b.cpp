@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include "../util.hpp"
 
-bool success = true;
-
 using namespace upcxx;
 
 template<typename CO>
@@ -85,7 +83,7 @@ int main(int argc, char **argv) {
     destroy(ad2);
     destroy(ad3);
 
-    print_test_success(success);
+    print_test_success(false);
 
     upcxx::finalize();
     return 0;

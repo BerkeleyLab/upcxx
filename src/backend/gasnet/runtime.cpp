@@ -1253,25 +1253,17 @@ void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
       // memory fencing is handled inside gex_Coll_BarrierNB + gex_Event_Test
       //std::atomic_thread_fence(std::memory_order_release);
       
+      UPCXX_ASSERT(!upcxx::in_progress()); // issue #412 / spec issue 169/185
+     
       gex_Event_t e = gex_Coll_BarrierNB( gasnet::handle_of(tm), 0);
 
-      bool const in_progress = upcxx::in_progress();
-      UPCXX_ASSERT(!(eb == entry_barrier::user && in_progress)); // issue #412
-     
-      if (in_progress) {
-        // issue 412: we are already inside (user) progress in the restricted context,
-        // thus user-level progress is a no-op. Ensure GASNet makes internal progress
-        // to complete this quiescence barrier.
-        gex_Event_Wait(e);
-      } else {
-        while(0 != gex_Event_Test(e)) {
+      while(0 != gex_Event_Test(e)) {
           UPCXXI_SPINLOOP_HINT();
           upcxx::progress(
             eb == entry_barrier::internal
               ? progress_level::internal
               : progress_level::user
           );
-        }
       }
       
       //std::atomic_thread_fence(std::memory_order_acquire);
