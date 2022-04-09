@@ -109,6 +109,7 @@ test_exclude_compile_only = \
 	issue219 \
 	issue224 \
 	issue333 \
+	issue412 \
 	issue428 \
 	issue450 \
 	nodiscard \

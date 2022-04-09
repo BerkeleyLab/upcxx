@@ -17,7 +17,8 @@ int main(int argc, char **argv) {
     upcxx::init();
 
     int test = 0;
-    if (argc > 1) test = std::atoi(argv[1]);
+    UPCXX_ASSERT_ALWAYS(argc == 2, "Pass test number as an argument");
+    test = std::atoi(argv[1]);
 
     print_test_header();
 
@@ -33,8 +34,7 @@ int main(int argc, char **argv) {
     auto tm2 = new team(world().split(0, 0));
     auto tm3 = new team(world().split(0, 0));
 
-    const int max_permitted = 11;
-    for (int i=test; i==test || i <= max_permitted ; i++) {
+    {
       dist_object<int> foo(1);
       foo.fetch(rank_me()).then([&](int) { 
         #define CASE(i, action) case i: { \
@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
           volatile bool truth = true; /* avoid pedantic warning from PGI */ \
           if (truth) action; \
           break; }
-        switch (i) {
-          // permitted cases
+        switch (test) {
+          // previously permitted, now prohibited cases
           CASE(0, return barrier_async())
           CASE(1, dist_object<int> ok(0))
           CASE(2, dist_object<int> ok(world(),0))
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
           CASE(10, return reduce_all<int>(1,op_fast_add).then([](int){}))
           CASE(11, return broadcast<int>(1,0).then([](int){}))
 
-          // prohibited cases
+          // always prohibited cases
           CASE(100, barrier())
           CASE(101, destroy(ad3))
           CASE(102, atomic_domain<int> ad4({atomic_op::fetch_add}))
@@ -69,7 +69,6 @@ int main(int argc, char **argv) {
           default:
             if (!rank_me()) std::cout << "unknown test: " << test << std::endl;
         }
-        if (i < 0 || i > max_permitted) success = false;
         return make_future();
       }).wait();
       barrier();
