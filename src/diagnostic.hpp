@@ -125,24 +125,11 @@ namespace detail {
 #endif
 
 // asserting collective-safe context
-#ifndef UPCXXI_COLLECTIVES_IN_PROGRESS
-#define UPCXXI_COLLECTIVES_IN_PROGRESS 1 // whether or not to allow collective invocations in progress
-#endif
-#if !UPCXXI_COLLECTIVES_IN_PROGRESS // hard prohibition against collectives in progress
 #define UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED(fnname, eb) \
   UPCXX_ASSERT_ALWAYS(!(::upcxx::initialized() && ::upcxx::in_progress()), \
        "Collective operation " << fnname << " invoked within the restricted context. \n" \
        "Initiation of collective operations from within callbacks running inside user-level progress is prohibited.")
 #define UPCXXI_ASSERT_COLLECTIVE_SAFE(eb) UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED("shown above", eb)
-#else // Allow collectives in progress with a deprecation warning
-// eb is an entry_barrier constant actually representing the progress level
-// cannot use progress_level enum because it lacks a "none" constant
-#define UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED(fnname, eb) ( \
-    (::upcxx::initialized() && ::upcxx::in_progress()) ? \
-    ::upcxx::backend::warn_collective_in_progress(fnname, eb) \
-    : (void)0 )
-#define UPCXXI_ASSERT_COLLECTIVE_SAFE(eb) UPCXXI_ASSERT_COLLECTIVE_SAFE_NAMED(UPCXXI_FUNC, eb)
-#endif
 
 #ifndef UPCXX_WARN_EMPTY_RMA
 #define UPCXX_WARN_EMPTY_RMA UPCXXI_ASSERT_ENABLED
