@@ -20,6 +20,7 @@ Notable issues resolved
 
 * issue #501: Poor failure behavior for tests with RANKS=1
 * issue #539: PG: dmap-quiescence-test hangs with one process
+* spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
@@ -33,6 +34,10 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 
 Breaking changes:
 
+* Initiating collective operations with a progress level of `internal` or `none` from within
+  the restricted context (within a callback running inside progress), an action
+  deprecated with a runtime warning since 2020.10.0, is now prohibited with a fatal error.
+  For details, see spec issue 169.
 * ...
 
 ### 2022.03.31: Release 2022.3.0
