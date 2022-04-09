@@ -291,14 +291,14 @@ namespace detail {
             segment_info seg{};
             seg.start = info->dlpi_addr + phdr.p_vaddr;
             seg.end = seg.start + phdr.p_memsz;
-#if GASNETT_SPEC_VERSION_MAJOR > 1 || GASNETT_SPEC_VERSION_MINOR >= 19
+         #if UPCXXI_GASNET_TOOLS_SPEC_VERSION >= 119
             if (phdr_num > 0)
               seg.dlpi_name = info->dlpi_name;
             else
               seg.dlpi_name = gasnett_exe_name();
-#else
+         #else
             seg.dlpi_name = info->dlpi_name;
-#endif
+         #endif
             seg.flags = flags;
             seg.segnum = std::numeric_limits<decltype(seg.segnum)>::max();
             if (phdr.p_flags & PF_W || has_textrel || has_build_id)
