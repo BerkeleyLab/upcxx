@@ -39,7 +39,7 @@ namespace detail {
     template<typename R, typename... Args>
     static function_token_ms tokenize(R(*ptr)(Args...), const segmap_cache& cache = upcxx::detail::the_persona_tls.segcache)
     {
-      return tokenize(fnptr_to_uintptr(ptr));
+      return tokenize(fnptr_to_uintptr(ptr), cache);
     }
     static function_token_ms tokenize(uintptr_t ptr, segmap_cache& = upcxx::detail::the_persona_tls.segcache);
 
@@ -106,10 +106,12 @@ namespace detail {
   inline function_token_ss function_token_ss::tokenize(uintptr_t uptr, const segmap_cache& cache)
   {
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    UPCXX_ASSERT(uptr >= cache.primary().start && uptr < cache.primary().end, "Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer. See: docs/ccs-rpc.md.");
+    UPCXX_ASSERT(uptr >= segmap_cache::primary().start && uptr < segmap_cache::primary().end, "Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer. See: docs/ccs-rpc.md.");
+#if UPCXXI_ASSERT_ENABLED
     segmap_cache::check_verification(cache.primary().start, cache.primary().end, uptr);
 #endif
-    return {uptr - cache.primary().start};
+#endif
+    return {uptr - segmap_cache::primary().start};
   }
 
   template<typename It>
@@ -197,11 +199,11 @@ namespace detail {
 
   inline function_token function_token::tokenize(uintptr_t uptr, segmap_cache& cache)
   {
-    if (uptr >= cache.primary().start && uptr < cache.primary().end)
+    if (uptr >= segmap_cache::primary().start && uptr < segmap_cache::primary().end)
     {
       return {function_token_ss::tokenize(uptr)};
     } else {
-      return {function_token_ms::tokenize(uptr)};
+      return {function_token_ms::tokenize(uptr, cache)};
     }
   }
 
@@ -222,7 +224,7 @@ namespace detail {
   void segmap_cache::check_verification(uintptr_t start, uintptr_t end, uintptr_t uptr)
   {
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    if (segmap_cache::enforce_verification_ && !(flag_map_[start] & (uint16_t) segment_flags::verified))
+    UPCXXI_IF_PF(segmap_cache::enforce_verification_ && !(flag_map_[start] & (uint16_t) segment_flags::verified))
     {
       throw segment_verification_error(verification_failed_message(start, end, uptr));
     }
@@ -232,7 +234,7 @@ namespace detail {
   template<typename Fp>
   Fp function_token_ss::detokenize(const segmap_cache& cache) const noexcept
   {
-    return fnptr_from_uintptr<Fp>(cache.primary().start + offset);
+    return fnptr_from_uintptr<Fp>(segmap_cache::primary().start + offset);
   }
 
   inline std::tuple<bool, typename segmap_cache::cl1_cache_tkn_iterator> segmap_cache::search_l1(const segment_hash& ident) const

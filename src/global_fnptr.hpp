@@ -108,30 +108,36 @@ namespace detail {
     };
   }
 
-  // Would the compiler be smart enough to optimize this if the serialization/deserialization were to occur
-  // in function_token, or would it encur an additional move?
   template<typename Fn>
   struct serialization<detail::global_fnptr<Fn,detail::function_token>> {
+
+    // The MSB is used to encode the function token type. Because non-legacy relocations use the start of the segment as the basis, the offset should never be negative.
+    static constexpr uintptr_t msb = 1ull << (std::numeric_limits<uintptr_t>::digits-1);
 
     template<typename Writer>
     static void serialize(Writer& w, const detail::global_fnptr<Fn,detail::function_token>& gfnptr)
     {
-      auto token_ident = gfnptr.u_.token_ident();
-      w.write(token_ident);
-      if (token_ident == detail::function_token::identifier::single)
-        w.write(gfnptr.u_.template get<detail::function_token_ss>());
-      else
-        w.write(gfnptr.u_.template get<detail::function_token_ms>());
+      if (gfnptr.u_.token_ident() == detail::function_token::identifier::single) {
+        const auto& ss = gfnptr.u_.template get<detail::function_token_ss>();
+        UPCXX_ASSERT((ss.offset & msb) == 0);
+        w.write_trivial(ss.offset);
+      } else {
+        const auto& ms = gfnptr.u_.template get<detail::function_token_ms>();
+        UPCXX_ASSERT((ms.offset & msb) == 0);
+        w.write_trivial(ms.offset | msb);
+        w.write_trivial(ms.ident);
+      }
     }
 
     template<typename Reader>
     static detail::global_fnptr<Fn,detail::function_token>* deserialize(Reader& r, void* storage)
     {
-      auto active = r.template read<detail::function_token::identifier>();
-      if (active == detail::function_token::identifier::single)
-        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{r.template read<detail::function_token_ss>()};
-      else
-        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{r.template read<detail::function_token_ms>()};
+      auto offset = r.template read_trivial<uintptr_t>();
+      if (!(offset & msb)) {
+        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ss{offset}};
+      } else {
+        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ms{offset ^ msb, r.template read_trivial<detail::segment_hash>()}};
+      }
     }
   };
 }

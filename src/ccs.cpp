@@ -1139,7 +1139,7 @@ namespace detail {
 
   void function_token_ss::debug_write(int fd, const segmap_cache& cache, int color) const
   {
-    uintptr_t uptr = cache.primary().start + offset;
+    uintptr_t uptr = segmap_cache::primary().start + offset;
     const char* dli_sname = segmap_cache::get_symbol(uptr);
 #if UPCXXI_HAVE___CXA_DEMANGLE
     const char* dname = nullptr;
@@ -1149,9 +1149,9 @@ namespace detail {
 #else
     const char* dname = dli_sname;
 #endif
-    int size = snprintf(nullptr, 0, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", cache.primary().start, cache.primary().end, offset, cache.primary().start, reinterpret_cast<void*>(uptr), dname);
+    int size = snprintf(nullptr, 0, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", segmap_cache::primary().start, segmap_cache::primary().end, offset, segmap_cache::primary().start, reinterpret_cast<void*>(uptr), dname);
     char *buffer = new char[size+1];
-    sprintf(buffer, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", cache.primary().start, cache.primary().end, offset, cache.primary().start, reinterpret_cast<void*>(uptr), dname);
+    sprintf(buffer, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", segmap_cache::primary().start, segmap_cache::primary().end, offset, segmap_cache::primary().start, reinterpret_cast<void*>(uptr), dname);
     write_helper(fd, buffer, size);
     delete[] buffer;
 #if UPCXXI_HAVE___CXA_DEMANGLE
