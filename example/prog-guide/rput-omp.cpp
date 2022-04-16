@@ -31,7 +31,7 @@ int main () {
 
   int thread_count = os_env<int>("THREADS", os_env<int>("OMP_NUM_THREADS", 10));
   if(upcxx::rank_me() == 0) std::cout<<"Threads: "<<thread_count<<std::endl;
-
+  omp_set_dynamic(0);
 //SNIPPET
   const int n = upcxx::rank_n();
   const int me = upcxx::rank_me();
