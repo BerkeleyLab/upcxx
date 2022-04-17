@@ -13,7 +13,7 @@ int main() {
   upcxx::init();
   int thread_count = os_env<int>("THREADS", os_env<int>("OMP_NUM_THREADS", 4));
   if(upcxx::rank_me() == 0) std::cout<<"Threads: "<<thread_count<<std::endl;
-  omp_set_dynamic(0);
+  omp_set_dynamic(0); // required to guarantee exact OMP parallel thread count
 //SNIPPET
   const int me = upcxx::rank_me();
   const int n = upcxx::rank_n();
