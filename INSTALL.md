@@ -111,7 +111,7 @@ The current release is known to work on the following configurations:
 
 * Perl version 5.005 or newer
 
-* GNU Bash 3.2 or newer (must be installed, user's shell doesn't matter)
+* GNU Bash 3.2.57 or newer (must be installed, user's shell doesn't matter)
 
 * GNU Make 3.80 or newer
 
@@ -205,9 +205,9 @@ full path to the python interpreter will be used in the installed `upcxx-run`
 script, rather than a runtime search of `$PATH`.  Therefore, the interpreter
 specified must be available in a batch-job environment where applicable.
 
-Bash 3.2 or newer is required by UPC\+\+ scripts, including `configure`.  By
+Bash 3.2.57 or newer is required by UPC\+\+ scripts, including `configure`.  By
 default, `configure` will try `/bin/sh` and then the first instance of `bash`
-found in `$PATH`.  If neither of these is bash 3.2 (or newer), or if the one
+found in `$PATH`.  If neither of these is bash 3.2.57 (or newer), or if the one
 found is not appropriate to use (for instance not accessible on compute
 nodes), one can override the automated selection by invoking `configure` _via_
 the desired instance of `bash`:

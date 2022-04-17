@@ -26,12 +26,15 @@ if test x"$BASH" = x"/bin/sh" && test -z "$UPCXX_REEXEC$UPCXX_REEXEC_SILENT" ; t
   exec env UPCXX_REEXEC=1 bash "$0" "$@"
 fi
 
-# Minimum we claim to support is 3.2
+# Minimum we support is 3.2.57
 UPCXX_BASH_MAJ=3
 UPCXX_BASH_MIN=2
+UPCXX_BASH_PATCH=57
+UPCXX_BASH_FLOOR="$UPCXX_BASH_MAJ.$UPCXX_BASH_MIN.$UPCXX_BASH_PATCH"
 
 bad_shell() {
-  echo "ERROR: UPC++ requires bash in \$PATH, version $UPCXX_BASH_MAJ.$UPCXX_BASH_MIN or newer." >&2
+  echo "ERROR: UPC++ requires bash version $UPCXX_BASH_FLOOR or newer, please re-run" >&2
+  echo "ERROR: using '/full/path/to/suitable/bash $0 [args]'" >&2
   echo "ERROR: $*" >&2
   exit 1
 }
@@ -46,8 +49,10 @@ fi
 ## We may now assume we are running bash
 ##
 
-if test ${BASH_VERSINFO[0]} -lt $UPCXX_BASH_MAJ ||
- ( test ${BASH_VERSINFO[0]} -eq $UPCXX_BASH_MAJ && test ${BASH_VERSINFO[1]} -lt $UPCXX_BASH_MIN ); then
+## Versioning scheme changed between 2 and 3, but has been stable since
+if (( BASH_VERSINFO[0] < 3 )) ||
+   (( 10000*BASH_VERSINFO[0] + 100*BASH_VERSINFO[1] + BASH_VERSINFO[2] <
+      10000*UPCXX_BASH_MAJ   + 100*UPCXX_BASH_MIN   + UPCXX_BASH_PATCH )); then
   bad_shell "This bash reports a version of '$BASH_VERSION'."
 fi
 set +o posix
@@ -1290,7 +1295,7 @@ EOF
 # Report on bash if we had to search for it
 #
 if test -n "$UPCXX_REEXEC"; then
-  warnings+="\nWARNING: The initial shell was not bash version $UPCXX_BASH_MAJ.$UPCXX_BASH_MIN or newer.\n"
+  warnings+="\nWARNING: The initial shell was not bash version $UPCXX_BASH_FLOOR or newer.\n"
   warnings+="WARNING: Using '$BASH', found in \$PATH.\n"
   check_known_path "$BASH"
   warnings+="NOTE: Run 'full_path_to_bash $0 [args]' to override the automatic detection.\n"
