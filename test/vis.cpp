@@ -19,10 +19,16 @@ typedef long long int lli;
 
 typedef lli patch_t[M][N];
 
-template<typename ptr_t>
+template<typename ptr_t, typename value_t=ptr_t>
 class Iter 
 {
 public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = value_t;
+  using difference_type = std::ptrdiff_t;
+  using pointer = value_type*; 
+  using reference = value_type&;
+
   Iter() = default;
   Iter(ptr_t a_p,  std::size_t a_size, int a_stride)
     :m_ptr(a_p),m_size(a_size), m_stride(a_stride) {}
@@ -47,23 +53,24 @@ public:
 
 template<typename ptr_t>
 
-class IterF: public Iter<ptr_t>, public std::iterator<std::forward_iterator_tag, std::pair<ptr_t,std::size_t>>
+class IterF: public Iter<ptr_t, std::pair<ptr_t,std::size_t>>
 {
 public:
-  using Iter<ptr_t>::Iter;
-  std::pair<ptr_t, std::size_t> operator*() const
-  {return {Iter<ptr_t>::m_ptr,Iter<ptr_t>::m_size};}
+  using Iter<ptr_t, std::pair<ptr_t,std::size_t>>::Iter;
+  std::pair<ptr_t, std::size_t> operator*() const {
+    return {this->m_ptr,this->m_size};
+  }
 };
 
 template<typename ptr_t>
-class IterR: public Iter<ptr_t>, public std::iterator<std::forward_iterator_tag, ptr_t>
+class IterR: public Iter<ptr_t>
 {
 public:
   using Iter<ptr_t>::Iter;
-  IterR(ptr_t a_ptr, int a_stride)
-  { Iter<ptr_t>::m_ptr=a_ptr; Iter<ptr_t>::m_stride=a_stride;}
-  ptr_t operator*() const
-  {return Iter<ptr_t>::m_ptr ;}
+  IterR(ptr_t a_ptr, int a_stride) : Iter<ptr_t>(a_ptr,0,a_stride) { }
+  ptr_t operator*() const {
+    return this->m_ptr;
+  }
 };
 
 template<typename Irreg, typename value_t>
