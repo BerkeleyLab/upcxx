@@ -1,4 +1,4 @@
-MKFILE_PATH=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+MKFILE_PATH=$(patsubst %/,%,$(dir $(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))))
 SOURCE_DIR:=$(MKFILE_PATH)
 UPCXX_BINDIR?=$(MKFILE_PATH)/../../build3/bin
 UPCXX_PYTHON?=python3
