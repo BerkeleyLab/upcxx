@@ -862,8 +862,9 @@ void upcxx::init() {
   init_localheap_tables();
 
   // Automatically verify segments on init() in debug mode
-#if UPCXXI_ASSERT_ENABLED && !UPCXXI_FORCE_LEGACY_RELOCATIONS
-  detail::segmap_cache::verify_all(entry_barrier::none);
+#if !UPCXXI_FORCE_LEGACY_RELOCATIONS
+  if (os_env<bool>("UPCXX_CCS_AUTOVERIFY", true))
+    detail::segmap_cache::verify_all(entry_barrier::none);
 #endif
 
   noise.show();

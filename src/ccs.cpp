@@ -531,8 +531,10 @@ namespace detail {
     {
       for (const auto& oseg : segmap)
       {
-        if (nseg.ident == oseg.ident)
+        if (nseg.ident == oseg.ident) {
           nseg.flags |= oseg.flags & keepflags;
+          nseg.idx = oseg.idx;
+        }
       }
     }
     flag_map_.clear();
@@ -612,6 +614,7 @@ namespace detail {
     ss << std::setw(cwidth_name+1) << std::right << std::setfill('-') << '|';
     ss << std::setw(segmap_cache::cwidth_hash+1) << '|';
     ss << std::setw(segmap_cache::cwidth_segment+1) << '|';
+    ss << std::setw(segmap_cache::cwidth_idx+1) << '|';
     ss << std::setw(segmap_cache::cwidth_flags+1) << '|';
     ss << std::setw(segmap_cache::cwidth_pointer+1) << '|';
     ss << std::setw(segmap_cache::cwidth_pointer+1) << '|';
@@ -636,14 +639,15 @@ namespace detail {
     if (max_namelen == 0)
       max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
-    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
+    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     if (print_top)
       ss << "[" << rank_me() << "] " << std::setfill('-') << std::right << std::setw(table_width+1) << '\n';
-    ss << "[" << rank_me() << "] |" << std::setfill(' ') << std::left << std::setw(cwidth_name) << (std::string(" dlpi_name (rank_me: ") + std::to_string(rank_me()) + ")")
+    ss << "[" << rank_me() << "] |" << std::setfill(' ') << std::left << std::setw(cwidth_name) << " dlpi_name "
        << '|' << std::setw(cwidth_hash) << " hash "
        << '|' << std::setw(cwidth_segment) << " segment # "
+       << '|' << std::setw(cwidth_idx) << " index "
        << '|' << std::setw(cwidth_flags) << " flags "
        << '|' << std::setw(cwidth_pointer) << " start_addr "
        << '|' << std::setw(cwidth_pointer) << " end_addr " << "|\n";
@@ -682,6 +686,12 @@ namespace detail {
         ss << style_start << color_start << "segment hash" << color_end;
       else
         ss << style_start << color_start << std::setw(cwidth_segment-padding) << seg.segnum << color_end;
+      ss << " | " << style_start << color_start << std::setw(cwidth_idx-padding);
+      if (seg.idx > 0)
+        ss << seg.idx;
+      else
+        ss << ' ';
+      ss << color_end;
       ss << " | " << style_start << color_start << std::setw(cwidth_flags-padding) << seg.flags << color_end;
       ss << std::setfill('0') << std::internal; 
       ss << " | " << style_start << color_start << std::setw(cwidth_pointer-padding) << reinterpret_cast<void*>(seg.start) << color_end;
@@ -744,7 +754,7 @@ namespace detail {
 
     size_t max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
-    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
+    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
 
     ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char pointer_desc[] = "Lookup for pointer: ";
@@ -801,7 +811,7 @@ namespace detail {
 
     size_t max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
-    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
+    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
     ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char token_desc[] = "Lookup for token: ";
     ss << "[" << rank_me() << "] | " << token_desc << color_start << style_start;
@@ -902,7 +912,21 @@ namespace detail {
   {
     seg.flags |= static_cast<uint16_t>(segment_flags::touched);
     size_t size = max_cache_size;
-    if (cache_occupancy_ < max_cache_size)
+    if (seg.idx > 0) {
+      if (idx_cache_occupancy_ < max_cache_size) {
+        cache_idx_[idx_cache_occupancy_] = segment_lookup_idx{seg.start, seg.end, seg.idx};
+        ++idx_cache_occupancy_;
+      } else {
+        UPCXX_ASSERT(idx_cache_evict_index_ < max_cache_size);
+        cache_idx_[idx_cache_evict_index_] = segment_lookup_idx{seg.start, seg.end, seg.idx};
+        idx_cache_evict_index_ = (idx_cache_evict_index_+1) % max_cache_size;
+      }
+      std::sort(begin(cache_idx_), begin(cache_idx_)+idx_cache_occupancy_, [](const segment_lookup_idx& lhs, const segment_lookup_idx& rhs)
+      {
+        return lhs.start < rhs.start;
+      });
+    }
+    else if (cache_occupancy_ < max_cache_size)
     {
       cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
       cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
@@ -1018,7 +1042,14 @@ namespace detail {
     segment_hash reduced = reduce_all(h, binop).wait();
     if (it != end(segmap)) {
       if (reduced != segment_hash{}) {
+        if (it->flags & static_cast<typename std::underlying_type<segment_flags>::type>(segment_flags::verified))
+          return;
+        epoch++;
         it->set_verified();
+        int16_t idx = verified_segment_count_;
+        it->idx = idx;
+        segment_vector_.push_back({it->start, it->end, idx});
+        verified_segment_count_++;
       } else {
         it->set_bad_verification();
         throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
@@ -1081,6 +1112,43 @@ namespace detail {
         seg.set_bad_verification();
       flag_map_[seg.start] = seg.flags;
     }
+
+    struct segment_info_idx {
+      uintptr_t start;
+      uintptr_t end;
+      segment_hash ident;
+    };
+
+    std::vector<segment_info_idx> new_segments;
+    for (const auto& seg : segmap) {
+      if (seg.flags & static_cast<uint16_t>(segment_flags::verified)) {
+        bool found = false;
+        for (const auto& seg2 : segment_vector_) {
+          if (seg.start == seg2.start) {
+            found = true;
+            break;
+          }
+        }
+        if (!found)
+          new_segments.push_back({seg.start, seg.end, seg.ident});
+      }
+    }
+    // Sort ensures each hash gets assigned the same index across all processes, regardless of their position in segmap
+    std::sort(begin(new_segments), end(new_segments), [](const typename decltype(new_segments)::value_type& lhs, const typename decltype(new_segments)::value_type& rhs)
+    {
+      return lhs.ident < rhs.ident;
+    });
+    UPCXX_ASSERT(verified_segment_count_ + new_segments.size() > 0);
+    for (auto& seg : new_segments) {
+      auto idx = verified_segment_count_++;
+      segment_vector_.push_back({seg.start, seg.end, idx});
+      for (auto& seg2 : segmap) {
+        if (seg.start == seg2.start)
+          seg2.idx = idx;
+      }
+    }
+    if (new_segments.size() > 0)
+      epoch++;
 #endif
   }
 
@@ -1129,6 +1197,9 @@ namespace detail {
 
   std::recursive_mutex segmap_cache::mutex_{};
   segment_info segmap_cache::primary_ = find_primary_upcxx_segment();
+  decltype(segmap_cache::segment_vector_) segmap_cache::segment_vector_{1};
+  int16_t segmap_cache::verified_segment_count_{1};
+  decltype(segmap_cache::epoch) segmap_cache::epoch{};
 
   bool segmap_cache::enforce_verification_{!!UPCXXI_ASSERT_ENABLED};
   constexpr const char segmap_cache::success_start[];
@@ -1141,6 +1212,7 @@ namespace detail {
   constexpr size_t segmap_cache::cwidth_indicator;
   constexpr size_t segmap_cache::cwidth_hash;
   constexpr size_t segmap_cache::cwidth_segment;
+  constexpr size_t segmap_cache::cwidth_idx;
   constexpr size_t segmap_cache::cwidth_flags;
   constexpr size_t segmap_cache::cwidth_pointer;
   constexpr size_t segmap_cache::cols;

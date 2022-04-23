@@ -2,6 +2,7 @@
 #define _837545aa_e335_4355_b0ff_18d00c06c69a
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -203,11 +204,16 @@ namespace detail {
   {
     std::uintptr_t start;
     std::uintptr_t end;
+    // Unique identification of this segment. May be the hash of the segment itself or
+    // the library hash with the segment number mixed in.
     segment_hash ident;
+    // Library hash if the library is built with a build-id
     segment_hash lib_hash;
+    // Segment number within the dynamic shared object
     uint16_t segnum;
     uint16_t flags;
     const char* dlpi_name;
+    int16_t idx;
 #if UPCXXI_EXEFORMAT_ELF
     std::uintptr_t basis;
     // ElfW(Sym)*
@@ -249,8 +255,16 @@ namespace detail {
       segment_hash ident;
       uintptr_t start;
     };
+    struct segment_lookup_idx
+    {
+      uintptr_t start;
+      uintptr_t end;
+      int16_t idx;
+    };
     std::array<segment_lookup_ptr,max_cache_size> cache_ptr_; // sorted by address. address to token
+    std::array<segment_lookup_idx,max_cache_size> cache_idx_; // sorted by address. address to segment_vector index
     std::array<segment_lookup_tkn,max_cache_size> cache_tkn_; // sorted by hash. token to address
+    static std::vector<segment_lookup_idx> segment_vector_;
 
     template<typename It>
     static std::tuple<bool, It> search(It start, It end, uintptr_t uptr);
@@ -259,6 +273,8 @@ namespace detail {
     using const_cache_ptr_iterator = typename decltype(cache_ptr_)::const_iterator;
     using cache_tkn_iterator = typename decltype(cache_tkn_)::iterator;
     using const_cache_tkn_iterator = typename decltype(cache_tkn_)::const_iterator;
+    using cache_idx_iterator = typename decltype(cache_idx_)::iterator;
+    using const_cache_idx_iterator = typename decltype(cache_idx_)::const_iterator;
     using segment_iterator = typename std::vector<segment_info>::iterator;
     using const_segment_iterator = typename std::vector<segment_info>::const_iterator;
 
@@ -274,14 +290,18 @@ namespace detail {
     static constexpr size_t cwidth_indicator = 2;
     static constexpr size_t cwidth_hash = 2*segment_hash::size + padding;
     static constexpr size_t cwidth_segment = 12 + padding;
+    static constexpr size_t cwidth_idx = 5 + padding;
     static constexpr size_t cwidth_flags = 8 + padding;
     static constexpr size_t cwidth_pointer = 14 + padding;
-    static constexpr size_t cols = 6;
+    static constexpr size_t cols = 7;
 
     static inline const segment_info& primary() noexcept { return primary_; }
+    static const segment_lookup_idx& lookup_at_idx(int16_t idx);
+    static segment_hash ident_at_idx(int16_t idx);
 
-    std::tuple<bool, const_cache_ptr_iterator> search_cache(uintptr_t uptr) const;
-    std::tuple<uintptr_t, uintptr_t, segment_hash>   search_map(uintptr_t uptr);
+    std::tuple<bool, const_cache_idx_iterator> search_idx_cache(uintptr_t uptr) const;
+    std::tuple<bool, const_cache_ptr_iterator> search_cache(uintptr_t uptr);
+    std::tuple<uintptr_t, uintptr_t, segment_hash, int16_t>   search_map(uintptr_t uptr);
 
     std::tuple<bool, const_cache_tkn_iterator> search_cache(const segment_hash& ident) const;
     std::tuple<bool, uintptr_t>   search_map(const segment_hash& ident);
@@ -294,6 +314,11 @@ namespace detail {
     inline bool cache_full() const {
       UPCXX_ASSERT(cache_occupancy_ <= max_cache_size);
       return cache_occupancy_ == max_cache_size;
+    }
+
+    inline bool idx_cache_full() const {
+      UPCXX_ASSERT(idx_cache_occupancy_ <= max_cache_size);
+      return idx_cache_occupancy_ == max_cache_size;
     }
 
     template<typename R, typename... Args>
@@ -315,11 +340,13 @@ namespace detail {
     static inline bool enforce_verification(bool v) noexcept { bool prev = enforce_verification_; enforce_verification_ = v; return prev; }
     static inline bool verification_enforced() noexcept { return enforce_verification_; }
     static bool should_debug_color(int,int);
+
   private:
     static std::recursive_mutex mutex_;
     static segment_info primary_;
     static bool enforce_verification_;
     static std::unordered_map<uintptr_t,uint16_t> flag_map_;
+    static int16_t verified_segment_count_;
 
     static size_t find_max_namelen();
     typename std::vector<segment_info>::iterator try_inactive(uintptr_t);
@@ -334,8 +361,12 @@ namespace detail {
 
     static void fallback_primary_segment_sentinel();
 
+    static std::atomic_ullong epoch;
+    unsigned long long cache_epoch_;
     size_t cache_occupancy_;
     size_t cache_evict_index_;
+    size_t idx_cache_occupancy_;
+    size_t idx_cache_evict_index_;
   };
 }} // namespace upcxx::detail
 
