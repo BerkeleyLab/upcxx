@@ -294,7 +294,7 @@ namespace detail {
     static constexpr size_t cwidth_pointer = 14 + padding;
     static constexpr size_t cols = 6;
 
-    inline const segment_info& primary() const noexcept { return primary_; }
+    static inline const segment_info& primary() noexcept { return primary_; }
 
     std::tuple<bool, cl1_cache_ptr_iterator> search_l1(uintptr_t uptr) const;
     std::tuple<bool, cl2_cache_ptr_iterator> search_l2(uintptr_t uptr) const;
