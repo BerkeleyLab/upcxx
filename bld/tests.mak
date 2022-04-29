@@ -28,8 +28,8 @@ test_sources_par = \
 	test/uts/uts_hybrid.cpp \
 	test/view.cpp
 
-test_progs_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(test_sources_par))))
-test_progs_par = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_par),$(test_sources_seq))))
+test_progs_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(test_sources_seq))))
+test_progs_par = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_par),$(test_sources_par))))
 
 ###
 # Section 2: Maintainer/development tests
