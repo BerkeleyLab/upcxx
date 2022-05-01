@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
   upcxx::init();
   long N = 0;
   if (argc > 1) N = atol(argv[1]);
-  if (N < 1) N = 100000;
+  if (N < 1) N = 10000;
   if (!upcxx::rank_me())
     cout << "Running persona-example on " << upcxx::rank_n() 
          << " procs with " << N << " iterations." << endl;
