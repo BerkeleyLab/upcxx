@@ -10,22 +10,24 @@
 
 test_sources_seq = \
 	test/hello_upcxx.cpp \
+	test/alloc.cpp \
 	test/atomics.cpp \
+	test/barrier.cpp \
 	test/collectives.cpp \
 	test/dist_object.cpp \
+	test/future.cpp \
 	test/global_ptr.cpp \
 	test/local_team.cpp \
-	test/barrier.cpp \
+	test/memory_kinds.cpp \
 	test/rpc_barrier.cpp \
 	test/rpc_ff_ring.cpp \
 	test/rput.cpp \
 	test/vis.cpp \
-	test/vis_stress.cpp \
 	test/uts/uts_ranks.cpp
 
 test_sources_par = \
+	example/prog-guide/persona-example.cpp \
 	test/rput_thread.cpp \
-	test/uts/uts_hybrid.cpp \
 	test/view.cpp
 
 test_progs_seq = $(patsubst %.cpp,%,$(patsubst %.sh,%,$(filter-out $(tests_filter_out_seq),$(test_sources_seq))))

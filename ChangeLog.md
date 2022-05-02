@@ -14,6 +14,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 Infrastructure changes:
 
 * ...
+* The set of tests run by `make check` has been adjusted to improve coverage and balance
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
