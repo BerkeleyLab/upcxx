@@ -633,9 +633,19 @@ int do_main(int argc, char **argv) {
          return 1;
        }
 
+     #if UPCXX_VERSION >= 20210905
+       // use GPU auto-assignment, which spreads local_team members across available physical GPUs
+       auto gpu_alloc = upcxx::make_gpu_allocator<Device>(max_msg_size); // alloc GPU segment 
+       UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active());
+       auto& cleanup = gpu_alloc;
+       string my_gpu_desc = DeviceStr + ":" + to_string(gpu_alloc.device_id()) + "/" + to_string(Device::device_n());
+     #else // pre 2022.3.0 API
        auto gpu_device = Device( 0 ); // open device 0
        // alloc GPU segment
        auto gpu_alloc = device_allocator<Device>(gpu_device,max_msg_size);
+       auto& cleanup = gpu_device;
+       string my_gpu_desc = DeviceStr + ":0";
+     #endif
 
        local_gpu_array = gpu_alloc.allocate<uint8_t>(max_msg_size);
 
@@ -688,8 +698,9 @@ int do_main(int argc, char **argv) {
        { std::ostringstream oss;
          auto col = std::setw(2);
          oss << "Rank " << col << rank_me() << "/" << col << rank_n();
+         oss << ": " << my_gpu_desc;
          if (active_uni || active_bi) {
-           oss << " : partner = " << col << partner;
+           oss << " partner = " << col << partner;
            if (use_downcast_peer)
              oss << ", downcast peer = " << col << try_global_ptr(local_private_array).where();
          }
@@ -771,7 +782,7 @@ int do_main(int argc, char **argv) {
        upcxx::delete_array(local_shared_array);
        upcxx::delete_array(gp_downcast_area);
        delete[] private_array_free;
-       gpu_device.destroy();
+       cleanup.destroy();
 
        upcxx::barrier();
 
