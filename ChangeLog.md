@@ -21,6 +21,7 @@ Notable issues resolved
 
 * issue #501: Poor failure behavior for tests with RANKS=1
 * issue #539: PG: dmap-quiescence-test hangs with one process
+* issue #544: CCS: Segment verification not clearing previous `bad_verification` flag
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 
 Embeds a GASNet-EX library that addresses the following notable issues
