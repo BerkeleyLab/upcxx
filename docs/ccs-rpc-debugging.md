@@ -167,8 +167,7 @@ between processes.
 The `flags` column of the segment table is a bit field that may have the
 following flags set:
 
-* `active` (0x1): This segment is active in the CCS cache, which occurs on
-  first usage. Colorized as bold.
+* `touched` (0x1): This segment has been used at least once. Colorized as bold.
 * `verified` (0x2): A `verify_*()` call has verified that this segment has been
   found to be identical on all ranks. Colorized as cyan.
 * `bad_verification` (0x4): A `verify_*()` call has determined that this

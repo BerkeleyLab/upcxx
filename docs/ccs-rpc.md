@@ -79,40 +79,20 @@ the segment to offset against.
 
 ## Cache
 
-The meat of the segment mapping and caching takes place in the `segmap_cache`
-class.  The main components of this class are the level 1 cache, level 2 cache,
-and detailed segment map used for debugging and building the caches.
-
-The level 1 cache is intended to be used at thread level and is not thread safe
-to avoid the overhead of locking and atomic operations. An instance of
-`segmap_cache` is created in the `persona_tls` for this purpose.  Due to the
-restrictions on constructors and destructors of thread local storage, the level
-1 cache uses `std::array`s for storage. Two sorted arrays are used to enable
-binary searches of the level 1 cache in each direction. The capacity of this
-storage can be set with `UPCXX_MAX_L1_DLCACHE_SIZE`, which defaults to 20.
-This cache only contains segments that the program has actually used, so in
-order to exceed this threshold, the program would have to not only use at least
-20 libraries, but also make direct RPC calls to function pointers within them.
-In practice, even if that many libraries were loaded, most would likely not
-have function pointers invoked directly.  
-
-The level 2 cache is held as a process-wide static structure and is only used
-if the level 1 cache is full.  It contains all mapped segments. If there is a
-miss at level 1 cache and the level 1 cache is not full, lookup goes directly
-to the heavy-weight segment map that can be used to add the segment to the
-level 1 cache. While it would be possible to promote a level 2 segment to level
-2, rebuilding the level 2 cache is not thread safe and requires the user to
-call `rebuild_cache()`. The segment map, on the other hand, uses locks and can
-be rebuilt automatically if a library was loaded. Because hitting the uncached
-segment map would only happen once per thread per segment, there is negligible
-benefit to maintaining an additional cache promotion mechanism.
+Each UPC++ thread  maintains a cache of segments previously used by the CCS
+mechanism for faster subsequent lookup. An instance of `segmap_cache` is
+created in the `persona_tls` for this purpose. Due to the restrictions of
+`__thread` storage, the cache uses `std::array`s with a capacity defined by
+`UPCXXI_MAX_SEGCACHE_SIZE` of 20. This doesn't require a guard as a dynamically
+sized cache would. It is unlikely that a program will exceed this cache
+capacity, as the program would not only have to use at least 20 libraries but
+also make direct RPC calls to function pointers within them.  If the cache
+capacity is exceeded, an old entry is evicted.  
 
 It is assumed that libraries are not unloaded, or at least not unloaded and the
-address space reused by another library.  The level 1 caches are not purged if
-a library is unloaded as `rebuild_cache()` only affects the level 2 cache and
-segment map and is unable to touch every thread's thread-local storage. In
-practice, `dlclose` usually doesn't actually unmap the library and this
-shouldn't be a limitation with any practical effect.
+address space reused by another library.  In practice, `dlclose` usually doesn't
+actually unmap the library and this shouldn't be a limitation with any practical
+effect.
 
 ## CCS Verification
 
@@ -175,11 +155,6 @@ enforcement is enabled.
 
 This namespace has a shorthand name of `upcxx::experimental::relo`.
 
-#### `void rebuild_cache()`
-
-Rebuilds the process's segment map and populates the level 2 cache.  Should be
-called after `dlopen`s to avoid expensive misses if the level 1 cache misses.
-
 #### `void verify_segment(R(*ptr)(Args...), entry_barrier eb = entry_barrier::user)`
 
 World collective function. Checks the segment is not a bad segment (RWX segment
@@ -231,6 +206,14 @@ pointer. Prints to the `STDERR_FILENO` file descriptor by default. See
 #### `void debug_write_segment_table(std::ostream& out, bool color = false)`
 
 As above, but writes to a `std::ostream`.
+
+#### `void debug_write_cache(int fd = 2)`
+
+Dumps a table containing the state of the current thread's cache.
+
+### `void debug_write_cache(std::ostream& out)`
+
+As above, but writes to a `std::ostream`
 
 ## Environment Variables
 
