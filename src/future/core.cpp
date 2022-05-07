@@ -157,6 +157,9 @@ void future_header::entered_ready_with_sucs(future_header *result, dependency_li
     }
     active_tail_ = nullptr;
   }
+
+  // Avoid dangling-pointer warning from GCC 12+
+  UPCXXI_ASSUME(active_tail_ != &active_head);
 }
 
 void future_header_dependent::enter_proxying(
