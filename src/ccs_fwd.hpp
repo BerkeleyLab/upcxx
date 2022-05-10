@@ -233,6 +233,14 @@ namespace detail {
     const void* symtblend;
     const char* strtbl;
 #endif
+    inline void set_verified() {
+      flags |= static_cast<uint16_t>(segment_flags::verified);
+      flags &= ~static_cast<uint16_t>(segment_flags::bad_verification);
+    }
+    inline void set_bad_verification() {
+      flags |= static_cast<uint16_t>(segment_flags::bad_verification);
+      flags &= ~static_cast<uint16_t>(segment_flags::verified);
+    }
     inline friend bool operator==(const segment_info& lhs, const segment_info& rhs)
     {
       return std::tie(lhs.start, lhs.end, lhs.ident) ==

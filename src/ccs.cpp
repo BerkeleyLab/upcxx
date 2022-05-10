@@ -1008,9 +1008,9 @@ namespace detail {
     segment_hash reduced = reduce_all(h, binop).wait();
     if (it != end(segmap)) {
       if (reduced != segment_hash{}) {
-        it->flags |= (uint16_t) segment_flags::verified;
+        it->set_verified();
       } else {
-        it->flags |= (uint16_t) segment_flags::bad_verification;
+        it->set_bad_verification();
         throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
       }
       flag_map_[it->start] = it->flags;
@@ -1056,9 +1056,9 @@ namespace detail {
         if (seg.ident == hashlist[i])
         {
           if (checklist[i])
-            seg.flags |= static_cast<uint16_t>(segment_flags::verified);
+            seg.set_verified();
           else
-            seg.flags |= static_cast<uint16_t>(segment_flags::bad_verification);
+            seg.set_bad_verification();
           break;
         }
       }
@@ -1068,7 +1068,7 @@ namespace detail {
     flag_map_.clear();
     for (auto& seg : segmap) {
       if (!(seg.flags & found_flags))
-        seg.flags |= static_cast<uint16_t>(segment_flags::bad_verification);
+        seg.set_bad_verification();
       flag_map_[seg.start] = seg.flags;
     }
 #endif
