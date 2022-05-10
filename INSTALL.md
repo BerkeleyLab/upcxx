@@ -407,10 +407,9 @@ performance has not yet been tuned on this platform.
 
 Unlike the Cray XC, the HPE Cray EX is *not* treated as a cross-compilation
 target when building UPC++.  However, we strongly advise use of the vendor's
-wrapper compilers, `cc` and `CC`.  Additionally, we recommend use of the Slurm
-Workload Manager for job launch and the two NICs require distinct non-default
-settings.  The following shows our recommended configure command with some
-"<placeholders>" which are explained below.
+wrapper compilers, `cc` and `CC`.  Additionally, the two NICs require distinct
+non-default settings.  The following shows our recommended configure command
+with some "<placeholders>" which are explained below.
 
 ```bash
 module load libfabric cray-pmi
@@ -445,13 +444,14 @@ site-specific documentation or ask the support staff for assistance.
 On _some_ systems with multiple Slingshot NICs, one will need to add
 `--with-host-detect=hostname`.  This option is recommended only when actually
 required.  If your system _does_ require this setting, then you will see a
-message at application runtime directing you to use this option, or an
+message at application run time directing you to use this option, or an
 environment-based alternative.
 
 If appropriate at your site, you may also wish to customize the command
 passed to `--with-pmi-runcmd=...`.
 
-Currently only AMD-based HPE Cray EX systems have been tested.
+At the time of this writing we've only tested UPCR on HPE Cray EX systems with
+AMD CPUs.
 
 As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
 UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
