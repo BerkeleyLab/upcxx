@@ -60,33 +60,22 @@ cross-segment calls "magically" working, but was unspecified behavior.  This is
 now prohibited.  Conforming UPC++ programs must make all cross-segment calls
 using CCS Multi-Segment mode.
 
-### Legacy
+### Legacy RPC Relocation (`configure --disable-ccs-rpc`)
 
 Active if CCS support is disabled.  Relocates pointers as an offset from a
 basis address of a function pointer within `libupcxx`.  Executable segment
 mapping is disabled.  The CCS API interprets this as a single code segment one
 byte in size starting at the address of the internal sentinel function.  All
 function pointer relocations are performed as an offset from this address.
-Attempting to enable multi-segment relocation results in a compile-time error
-and attempting to enable segment verification results in a runtime error.
+Segment verification is not enabled and attempting an RPC that requires CCS may
+result in a segmentation fault.
 
-### Single Segment
+### CCS RPC Relocation (default, `configure --enable-ccs-rpc`)
 
-Default if CCS support is enabled.  Relocates pointers as an offset from a
-single basis address, that of the start of the code segment containing
-libupcxx.  Executable segment mapping is enabled, allowing for full use of the
-CCS API such as segment verification, which will check that all calls made with
-this mode correctly target only functions within this primary code segment.
-
-### Multi Segment
-
-Available if CCS support is enabled. Optionally enabled on a
-per-translation-unit basis by setting the preprocessor definition
-`UPCXX_CCS_RPC=1`, either on the command line with `-D` or by setting it with
-`#define` before including the UPC++ headers.  If executing an RPC on the
-primary code segment, shortcuts to use just an offset from the start of this
-segment.  Otherwise, performs a relocation by using a combination of a code
-segment identification hash and address offset.
+If the pointer is within the primary code segment, this mode performs the
+relocation by sending an offset to the target as in legacy mode. If the pointer
+is in another segment, the segment hash is sent along side the offset to identify
+the segment to offset against.
 
 ## Cache
 
@@ -134,23 +123,17 @@ libraries across processes.
 
 CCS verification is automatically enabled in debug mode and can be controlled
 by the `upcxx::experimental::relocation::enforce_verification(bool)` function.
-This verification can help a user to deterimine when multi-segment mode must be
-enabled.  If a segment verification error indicates an RPC was made to a
-segment outside the primary segment in single-segment mode, multi-segment
-mode can either by enabled with `UPCXX_CCS_RPC=1` either globally defined for
-each translation unit for which it is required. If enabling for individual
-translation units, this process can be repeated until all necessary usages are
-found and enabled.  Verification is enabled by default in debug mode.
-
-CCS verification also detecs  asymmetry in loaded libraries, such as if
-different processes loaded different versions of a library or if a library uses
-writable executable segments or TEXTRELs.  These sources of asymmetry may
-result in different hashes of the executable segments and/or different function
-offsets within the library, both of which prevent UPC++ from properly
-relocating function pointers. The library can be rebuilt with `-Wl,--build-id`
-to provide a consistent hash. Otherwise, UPC++ will fall back to trying to use
-the hash of the library's file path as an identifier.  Some systems can report
-inconsistent file paths for a library, in which case this will fail.
+CCS verification detects asymmetry in loaded libraries, such as if different
+processes loaded different versions of a library or if a library uses writable
+executable segments or TEXTRELs.  It causes these errors to be detected by the
+sender rather than the receiver for easier debugging.  These sources of
+asymmetry may result in different hashes of the executable segments and/or
+different function offsets within the library, both of which prevent UPC++ from
+properly relocating function pointers. The library can be rebuilt with
+`-Wl,--build-id` to provide a consistent hash.  Otherwise, UPC++ will fall back
+to trying to use the hash of the library's file path as an identifier.  Some
+systems can report inconsistent file paths for a library, in which case this
+will fail.
 
 Duplicate code segments are also a problem for UPC++ acquiring unique hashes.
 This is a known occurrance with small libraries that return different
@@ -249,11 +232,6 @@ pointer. Prints to the `STDERR_FILENO` file descriptor by default. See
 
 As above, but writes to a `std::ostream`.
 
-## Macros
-
-* `UPCXX_CCS_RPC`: causes `global_fnptr` to use multi-segment tokens, allowing
-  RPCs to occur outside of the primary UPC++ code segment.
-
 ## Environment Variables
 
 * `UPCXX_COLORIZE_DEBUG`: Controls colorization of segment table printing.
@@ -272,9 +250,5 @@ As above, but writes to a `std::ostream`.
   cache.  Although caching happens automatically, this might be nice for
   sensitive benchmarks to pre-premote the segment, caching would be triggered
   by warmup runs, too.
-
-* Allow specifying token type when calling `upcxx::rpc`: This would allow
-  selecting between single-segment and multi-segment relocation modes within a
-  translation unit and remove the need to set macros.
 
 * Add a `par_recursive_mutex` to optimize `CODEMODE=seq`

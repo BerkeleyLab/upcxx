@@ -12,9 +12,9 @@ namespace upcxx {
 namespace detail {
   // command<Arg...>: Collection of static functions for managing commands which
   // accept argument list of type Arg... when executed.
-  template<typename FunctionToken, typename ...Arg>
+  template<typename ...Arg>
   class command {
-    using executor_wire_t = global_fnptr<void(Arg...), FunctionToken>;
+    using executor_wire_t = global_fnptr<void(Arg...)>;
     
     template<typename Fn, bool fn_on_heap, void(*cleanup)(Arg...)>
     struct after_execute {

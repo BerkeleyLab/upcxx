@@ -8,61 +8,6 @@ information produced by the cross-code segment (CCS) RPC feature (see
 require but not enabled and various errors from invalid usage of CCS will be
 covered.
 
-## CCS Not Enabled
-
-CCS must be enabled to make cross-segment RPC calls.  CCS must be enabled in
-both the build of `libupcxx` and when compiling a translation unit that
-requires this feature. If CCS is enabled for `libupcxx`, it is able to detect
-when the translation unit needs to be built with CCS support, enabled with
-`-DUPCXX_CCS_RPC=1`.
-
-Take the following example:
-
-```c++
-#include <upcxx/upcxx.hpp>
-
-// Lives in liblibrary.so
-void dynamic_library_function();
-
-int main() {
-  upcxx::init();
-  upcxx::rpc(0,dynamic_library_function).wait();
-  upcxx::finalize();
-  return 0;
-}
-```
-
-If this is built as `upcxx ccs1.cpp liblibrary.so -o ccs1` and `libupcxx` has
-been built with CCS support via `configure --enable-ccs-rpc`, it will produce
-the following error on the RPC-initiating process:
-
-```
-*** FATAL ERROR (proc 0):
-//////////////////////////////////////////////////////////////////////
-UPC++ assertion failure:
- on process 0 (abominable-gentoo)
- at /home/colin/upcxx/build-fpic/bld/upcxx.assert1.optlev0.dbgsym1.gasnet_seq.smp/include/upcxx/ccs.hpp:109
- in function: static upcxx::detail::function_token_ss upcxx::detail::function_token_ss::tokenize(uintptr_t, const upcxx::detail::segmap_cache&)
-
-Function pointer not in primary segment. CCS mode must be enabled to relocate this function pointer. See: docs/ccs-rpc.md.
-
-To have UPC++ freeze during these errors so you can attach a debugger,
-rerun the program with GASNET_FREEZE_ON_ERROR=1 in the environment.
-//////////////////////////////////////////////////////////////////////
-```
-
-This error is an easy fix. The example just needs to be compiled with CCS
-enabled: `upcxx ccs1.cpp liblibrary.so -o ccs1 -DUPCXX_CCS_RPC=1`.
-
-This sort of error is harder to debug if `libupcxx` is built with `configure
---disable-ccs-rpc`. UPC++ is not able to properly relocate the function
-pointers across processes and the result is likely to be a segmentation fault.
-When CCS is disabled in the UPC++ library, there is no mechanism available to
-map executable segment ranges and check function pointers for this error.  To
-eliminate this as suspected cause of a segmentation fault, the application
-should be debugged with a UPC++ library built with `--enable-ccs-rpc`.
-
-
 ## CCS Verification Failure
 
 CCS verification is enabled by default with `UPCXX_CODEMODE=debug` and disabled
