@@ -524,7 +524,7 @@ namespace detail {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     auto newmap = build_segment_map();
-    constexpr uint16_t keepflags = (uint16_t) segment_flags::active |
+    constexpr uint16_t keepflags = (uint16_t) segment_flags::touched |
                                    (uint16_t) segment_flags::verified |
                                    (uint16_t) segment_flags::bad_verification;
     for (auto& nseg : newmap)
@@ -663,7 +663,7 @@ namespace detail {
           color_start = success_start;
         else if (segmap[i].flags & (uint16_t) segment_flags::verified)
           color_start = "\033[96m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::active)
+        else if (segmap[i].flags & (uint16_t) segment_flags::touched)
           style_start = "\033[1m";
         else if (segmap[i].flags & (uint16_t) segment_flags::upcxx_binary)
           color_start = "\033[94m";
@@ -818,10 +818,58 @@ namespace detail {
     debug_write_table(ss, bcolor, max_namelen, false, found_index);
   }
 
+  void segmap_cache::debug_write_cache(std::ostream& os)
+  {
+    constexpr size_t ptr_fields = 3;
+    constexpr size_t tkn_fields = 2;
+    constexpr size_t addr_width = sizeof(uintptr_t)*2+2;
+    constexpr size_t ptr_table_width = ptr_fields+1 + 2*ptr_fields + 2*segment_hash::size + 2*addr_width;
+    constexpr size_t tkn_table_width = tkn_fields+1 + 2*tkn_fields + 2*segment_hash::size + addr_width;
+    os << '[' << rank_me() << "] Pointer Lookup Cache:\n";
+    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(ptr_table_width) << "-\n";
+    os << '[' << rank_me() << "] | " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
+    os << std::setw(addr_width+3) << "end | " << std::setw(segment_hash::size*2+2) << "hash |" << '\n';
+    os << '[' << rank_me() << "] |" << std::setfill('-') << std::setw(addr_width+3) << "|";
+    os << std::setw(addr_width+3) << "|" << std::setw(segment_hash::size*2+3) << "|" << '\n';
+    os << std::setfill(' ');
+    for (const auto& entry : cache_ptr_) {
+      os << "[" << rank_me() << "] | " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
+      os << std::setw(addr_width) << reinterpret_cast<void*>(entry.end) << " | ";
+      std::stringstream hashstr;
+      hashstr << std::setfill('0') << std::hex;
+      for (size_t j = 0; j < segment_hash::size; ++j)
+        hashstr << std::setw(2) << static_cast<int>(entry.ident[j]);
+      os << std::setw(segment_hash::size*2) << hashstr.str() << " |" << '\n';
+    }
+    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(ptr_table_width) << "-\n[" << rank_me() << "]\n";
+    os << '[' << rank_me() << "] Token Lookup Cache:\n";
+    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
+    os << '[' << rank_me() << "] | " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
+    os << std::setw(segment_hash::size*2+2) << "hash |" << '\n';
+    os << '[' << rank_me() << "] |" << std::setfill('-') << std::setw(addr_width+3) << "|";
+    os << std::setw(segment_hash::size*2+3) << "|" << '\n';
+    os << std::setfill(' ');
+    for (const auto& entry : cache_tkn_) {
+      os << "[" << rank_me() << "] | " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
+      std::stringstream hashstr;
+      hashstr << std::setfill('0') << std::hex;
+      for (size_t j = 0; j < segment_hash::size; ++j)
+        hashstr << std::setw(2) << static_cast<int>(entry.ident[j]);
+      os << std::setw(segment_hash::size*2) << hashstr.str() << " |" << '\n';
+    }
+    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
+  }
+
+  void segmap_cache::debug_write_cache(int fd)
+  {
+    std::stringstream ss;
+    debug_write_cache(ss);
+    write_helper(fd, ss.str().c_str(), ss.str().size());
+  }
+
+
   typename std::vector<segment_info>::iterator segmap_cache::try_inactive(uintptr_t uptr)
   {
-    using std::begin;
-    using std::end;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     auto it = begin(segmap);
@@ -844,39 +892,41 @@ namespace detail {
     return it;
   }
 
+  /**
+   * segmap_cache::activate() promotes an entry from the segment map
+   * into the active cache.  It should be used when a sement is found
+   * in the map after a cache miss. `seg` is assumed to not already
+   * be cached.
+   */
   void segmap_cache::activate(segment_info& seg)
   {
-    using std::begin;
-    using std::end;
-    seg.flags |= (uint16_t) segment_flags::active;
-    size_t l1_size = max_level1_cache_size;
-    if (cache_occupancy_ < max_level1_cache_size)
+    seg.flags |= static_cast<uint16_t>(segment_flags::touched);
+    size_t size = max_cache_size;
+    if (cache_occupancy_ < max_cache_size)
     {
-      l1_cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
-      l1_cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
+      cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
+      cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
       ++cache_occupancy_;
-      l1_size = cache_occupancy_;
-      std::sort(begin(l1_cache_ptr_), begin(l1_cache_ptr_)+l1_size, [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
-      {
-        return lhs.start < rhs.start;
-      });
-      std::sort(begin(l1_cache_tkn_), begin(l1_cache_tkn_)+l1_size, [](const segment_lookup_tkn& lhs, const segment_lookup_tkn& rhs)
-      {
-        return lhs.ident < rhs.ident;
-      });
+      size = cache_occupancy_;
     } else {
-#if UPCXXI_ASSERT_ENABLED
-      static bool emitted_warning = false;
-      if (!emitted_warning)
-      {
-        experimental::say() << "WARNING: Level 1 dynamic linking relocation cache exceeded capacity.\n";
-        emitted_warning = true;
-      }
-#endif
-      /*
-       * L2 cache is rebuilt with rebuild_cache(), as L2 cache is process-wide
-       */
+      UPCXX_ASSERT(cache_evict_index_ < max_cache_size);
+      uintptr_t old_start = cache_tkn_[cache_evict_index_].start;
+      auto it = std::upper_bound(begin(cache_ptr_),end(cache_ptr_),old_start,[](uintptr_t p, const segmap_cache::segment_lookup_ptr& seg) {
+        return p <= seg.end;
+      });
+      UPCXX_ASSERT(it->start == old_start);
+      *it = {seg.start, seg.end, seg.ident};
+      cache_tkn_[cache_evict_index_] = {seg.ident, seg.start};
+      cache_evict_index_ = (cache_evict_index_ + 1) % max_cache_size;
     }
+    std::sort(begin(cache_ptr_), begin(cache_ptr_)+size, [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
+    {
+      return lhs.start < rhs.start;
+    });
+    std::sort(begin(cache_tkn_), begin(cache_tkn_)+size, [](const segment_lookup_tkn& lhs, const segment_lookup_tkn& rhs)
+    {
+      return lhs.ident < rhs.ident;
+    });
   }
 
   segment_info segmap_cache::find_primary_upcxx_segment()
@@ -930,44 +980,6 @@ namespace detail {
     UPCXXI_FATAL_ERROR("Unable to set primary UPC++ segment: Supplied pointer not in address range of an executable segment.");
   }
 
-  void segmap_cache::rebuild_cache()
-  {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    rebuild_segment_map();
-    l2_cache_ptr_ = build_cache_ptr();
-    l2_cache_tkn_ = build_cache_tkn();
-  }
-
-  decltype(segmap_cache::l2_cache_ptr_) segmap_cache::build_cache_ptr()
-  {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto& segmap = segment_map();
-    decltype(segmap_cache::l2_cache_ptr_) ret{};
-
-    for (const auto& seg : segmap)
-      ret.emplace_back(segment_lookup_ptr{seg.start, seg.end, seg.ident});
-
-    using std::begin;
-    using std::end;
-    std::sort(begin(ret), end(ret), [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
-    {
-      return lhs.start < rhs.start;
-    });
-    return ret;
-  }
-
-  decltype(segmap_cache::l2_cache_tkn_) segmap_cache::build_cache_tkn()
-  {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto& segmap = segment_map();
-    decltype(segmap_cache::l2_cache_tkn_) ret;
-
-    for (const auto& seg : segmap)
-      ret[seg.ident] = seg.start;
-
-    return ret;
-  }
-
   void segmap_cache::verify_segment(uintptr_t uptr, entry_barrier eb)
   {
     UPCXXI_ASSERT_INIT();
@@ -976,8 +988,6 @@ namespace detail {
     UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
     backend::quiesce(world(), eb);
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    using std::begin;
-    using std::end;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     rebuild_segment_map();
     auto& segmap = segment_map();
@@ -1119,8 +1129,6 @@ namespace detail {
 
   std::recursive_mutex segmap_cache::mutex_{};
   segment_info segmap_cache::primary_ = find_primary_upcxx_segment();
-  std::vector<segmap_cache::segment_lookup_ptr> segmap_cache::l2_cache_ptr_ = segmap_cache::build_cache_ptr();
-  std::unordered_map<segment_hash,uintptr_t> segmap_cache::l2_cache_tkn_ = segmap_cache::build_cache_tkn();
 
   bool segmap_cache::enforce_verification_{!!UPCXXI_ASSERT_ENABLED};
   constexpr const char segmap_cache::success_start[];

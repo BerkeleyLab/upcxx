@@ -35,6 +35,8 @@ void upcxx_test2()
   UPCXX_ASSERT_ALWAYS(fut2.result() == 2);
   UPCXX_ASSERT_ALWAYS(fut3.result() == 3);
   UPCXX_ASSERT_ALWAYS(fut4.result() == 4);
+  if (printrank)
+    upcxx::experimental::relocation::debug_write_cache();
   print_test_success();
 }
 

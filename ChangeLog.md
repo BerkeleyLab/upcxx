@@ -22,6 +22,7 @@ Notable issues resolved
 * issue #501: Poor failure behavior for tests with RANKS=1
 * issue #539: PG: dmap-quiescence-test hangs with one process
 * issue #544: CCS: Segment verification not clearing previous `bad_verification` flag
+* issue #546: CCS: Level 2 cache thread safety
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 
 Embeds a GASNet-EX library that addresses the following notable issues
@@ -40,6 +41,7 @@ Breaking changes:
   the restricted context (within a callback running inside progress), an action
   deprecated with a runtime warning since 2020.10.0, is now prohibited with a fatal error.
   For details, see spec issue 169.
+* `experimental::relocation::rebuild_cache()` removed.
 * ...
 
 ### 2022.03.31: Release 2022.3.0

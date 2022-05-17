@@ -123,22 +123,13 @@ namespace detail {
     return {it != end && uptr >= it->start, it};
   }
 
-  inline std::tuple<bool, typename segmap_cache::cl1_cache_ptr_iterator> segmap_cache::search_l1(uintptr_t uptr) const
+  inline std::tuple<bool, typename segmap_cache::const_cache_ptr_iterator> segmap_cache::search_cache(uintptr_t uptr) const
   {
-    using std::begin;
-    using std::end;
-    auto l1end = begin(l1_cache_ptr_)+cache_occupancy_;
-    return search(begin(l1_cache_ptr_), l1end, uptr);
+    auto end = begin(cache_ptr_)+cache_occupancy_;
+    return search(begin(cache_ptr_), end, uptr);
   }
 
-  inline std::tuple<bool, typename segmap_cache::cl2_cache_ptr_iterator> segmap_cache::search_l2(uintptr_t uptr) const
-  {
-    using std::begin;
-    using std::end;
-    return search(begin(l2_cache_ptr_),end(l2_cache_ptr_),uptr);
-  }
-
-  inline std::tuple<bool, typename segmap_cache::segment_iterator> segmap_cache::search_all(uintptr_t uptr)
+  inline std::tuple<bool, typename segmap_cache::segment_iterator> segmap_cache::search_map(uintptr_t uptr)
   {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -160,8 +151,8 @@ namespace detail {
   {
     bool found;
     {
-      typename segmap_cache::cl1_cache_ptr_iterator it;
-      std::tie(found, it) = cache.search_l1(uptr);
+      typename segmap_cache::const_cache_ptr_iterator it;
+      std::tie(found, it) = cache.search_cache(uptr);
       if (found)
       {
         // Found in active cache
@@ -170,27 +161,15 @@ namespace detail {
       }
     }
 
-    if (cache.l1_cache_full())
-    {
-      typename segmap_cache::cl2_cache_ptr_iterator it2;
-      std::tie(found, it2) = cache.search_l2(uptr);
-      if (found)
-      {
-        // Found in process-wide cache
-        segmap_cache::check_verification(it2->start, it2->end, uptr);
-        return {uptr-(it2->start), it2->ident};
-      }
-    }
-
     // Not found in active cache.
 
     {
-      typename segmap_cache::csegment_iterator it3;
-      std::tie(found, it3) = cache.search_all(uptr);
+      typename segmap_cache::const_segment_iterator it;
+      std::tie(found, it) = cache.search_map(uptr);
       if (found)
       {
-        segmap_cache::check_verification(it3->start, it3->end, uptr);
-        return {uptr-(it3->start), it3->ident};
+        segmap_cache::check_verification(it->start, it->end, uptr);
+        return {uptr-(it->start), it->ident};
       }
     }
     UPCXXI_FATAL_ERROR(tokenization_failed_message(uptr));
@@ -237,26 +216,18 @@ namespace detail {
     return fnptr_from_uintptr<Fp>(segmap_cache::primary().start + offset);
   }
 
-  inline std::tuple<bool, typename segmap_cache::cl1_cache_tkn_iterator> segmap_cache::search_l1(const segment_hash& ident) const
+  inline std::tuple<bool, typename segmap_cache::const_cache_tkn_iterator> segmap_cache::search_cache(const segment_hash& ident) const
   {
-    using std::begin;
-    auto l1begin = begin(l1_cache_tkn_);
-    auto l1end = l1begin+cache_occupancy_;
-    auto it = std::lower_bound(l1begin,l1end,ident,[](const segmap_cache::segment_lookup_tkn& seg, const segment_hash& id) {
+    auto it_begin = begin(cache_tkn_);
+    auto it_end = it_begin+cache_occupancy_;
+    auto it = std::lower_bound(it_begin,it_end,ident,[](const segmap_cache::segment_lookup_tkn& seg, const segment_hash& id) {
       return seg.ident < id;
     });
-    return {it != l1end && it->ident == ident, it};
+    return {it != it_end && it->ident == ident, it};
   }
 
-  inline uintptr_t segmap_cache::search_l2(const segment_hash& ident) const
+  inline std::tuple<bool, typename segmap_cache::segment_iterator> segmap_cache::search_map(const segment_hash& ident)
   {
-    return l2_cache_tkn_.at(ident);
-  }
-
-  inline std::tuple<bool, typename segmap_cache::segment_iterator> segmap_cache::search_all(const segment_hash& ident)
-  {
-    using std::begin;
-    using std::end;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     for (segment_iterator it = begin(segmap); it != end(segmap); ++it)
@@ -284,25 +255,17 @@ namespace detail {
   {
     bool found;
     {
-      typename segmap_cache::cl1_cache_tkn_iterator it;
-      std::tie(found, it) = cache.search_l1(ident);
+      typename segmap_cache::const_cache_tkn_iterator it;
+      std::tie(found, it) = cache.search_cache(ident);
       if (found)
         return fnptr_from_uintptr<Fp>(it->start + offset);
     }
 
-    if (cache.l1_cache_full())
     {
-      try {
-        uintptr_t uptr = cache.search_l2(ident) + offset;
-        return fnptr_from_uintptr<Fp>(uptr);
-      } catch (const std::out_of_range& e) {}
-    }
-
-    {
-      typename segmap_cache::segment_iterator it2;
-      std::tie(found, it2) = cache.search_all(ident);
+      typename segmap_cache::segment_iterator it;
+      std::tie(found, it) = cache.search_map(ident);
       if (found)
-        return fnptr_from_uintptr<Fp>(it2->start + offset);
+        return fnptr_from_uintptr<Fp>(it->start + offset);
     }
 
     UPCXXI_FATAL_ERROR(detokenization_failed_message(*this));
@@ -358,11 +321,6 @@ namespace relocation {
     detail::segmap_cache::verify_all(eb);
   }
 
-  inline void rebuild_cache()
-  {
-    detail::segmap_cache::rebuild_cache();
-  }
-
   inline bool enforce_verification(bool v)
   {
     return detail::segmap_cache::enforce_verification(v);
@@ -393,6 +351,14 @@ namespace relocation {
   inline void debug_write_segment_table(int fd = 2, int color = 2)
   {
     detail::segmap_cache::debug_write_table(fd,color);
+  }
+
+  inline void debug_write_cache(std::ostream& out) {
+    detail::the_persona_tls.segcache.debug_write_cache(out);
+  }
+
+  inline void debug_write_cache(int fd = 2) {
+    detail::the_persona_tls.segcache.debug_write_cache(fd);
   }
 
 }}} // namespace upcxx::experimental::relocation
