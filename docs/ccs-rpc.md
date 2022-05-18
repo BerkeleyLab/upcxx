@@ -74,8 +74,19 @@ result in a segmentation fault.
 
 If the pointer is within the primary code segment, this mode performs the
 relocation by sending an offset to the target as in legacy mode. If the pointer
-is in another segment, the segment hash is sent along side the offset to identify
-the segment to offset against.
+is in another segment, the mechanism for relocation is dependent upon the
+verification state of the segment.  Unverified segments use an offset plus a
+hash to look up the segment's basis address.  Sets of verfied segments are
+guaranteed to be identical on all ranks and soare assigned deterministic
+indexes for unique identification.  This allows a verified segment to be
+relocated using just the space of a single `uint64_t` without the need to send
+the segment's hash. The most significant bit indicates a multisegment
+relocation, the next 15 bits the segment index, and the bottom bits are the
+address offset from the basis pointer.
+
+Each batch of `verify_all()` or `verify_segment()` newly verified segments are
+sorted and appended to a vector of segments that can be identified by index.
+Index zero indicates a segment that is relocated using a hash.
 
 ## Cache
 
@@ -89,10 +100,17 @@ capacity, as the program would not only have to use at least 20 libraries but
 also make direct RPC calls to function pointers within them.  If the cache
 capacity is exceeded, an old entry is evicted.  
 
+There are two caches for unverified segment relocation. One is sorted for fast
+binary search lookup of function address to segment hash and basis pointer. The
+other is sorted for fast binary search lookup of segment hash to basis address.
+Entries are promoted and evicted from these caches together. A separate cache
+is used for lookup of verified segment index and basis pointer from a function
+address.  There is no need for a cache for the reverse direction.
+
 It is assumed that libraries are not unloaded, or at least not unloaded and the
-address space reused by another library.  In practice, `dlclose` usually doesn't
-actually unmap the library and this shouldn't be a limitation with any practical
-effect.
+address space reused by another library.  In practice, `dlclose` usually
+doesn't actually unmap the library and this shouldn't be a limitation with any
+practical effect.
 
 ## CCS Verification
 
@@ -101,9 +119,10 @@ detect UPC++ RPC function pointer relocation errors, such as invoking functions
 outside the primary segment in single segment mode or asymmetry in loaded
 libraries across processes.
 
-CCS verification is automatically enabled in debug mode and can be controlled
-by the `upcxx::experimental::relocation::enforce_verification(bool)` function.
-CCS verification detects asymmetry in loaded libraries, such as if different
+CCS verification is automatically enabled on `init()` and enforcement of
+verification for RPCs can be controlled by the
+`upcxx::experimental::relocation::enforce_verification(bool)` function.  CCS
+verification detects asymmetry in loaded libraries, such as if different
 processes loaded different versions of a library or if a library uses writable
 executable segments or TEXTRELs.  It causes these errors to be detected by the
 sender rather than the receiver for easier debugging.  These sources of
@@ -124,8 +143,12 @@ executable segment can be identical if the number of functions is the same.
 MacOS automatically builds all libraries with the equivalent of
 `-Wl,--build-id`.
 
-Disabling CCS verification may be necessary for advanced use cases such as
-intentional asymmetry and heterogeneity.
+It is possible to catch `upcxx::segment_verification_error` exceptions to then
+arrange for synchronizing and loading the necessary libraries before
+reverifying and continuing.
+
+Disabling CCS verification enforcement may be necessary for advanced use cases
+such as intentional asymmetry and heterogeneity.
 
 See [ccs-rpc-debugging.md](ccs-rpc-debugging.md) for practical examples of 
 debugging CCS RPCs.
@@ -161,7 +184,8 @@ World collective function. Checks the segment is not a bad segment (RWX segment
 or containing TEXTRELs with an unknown file path). Runs a reduction on the
 segment hash to verify all processes have the same hash for the segment.  `ptr`
 must be a pointer to the same function on all processes.  Raises an error on
-failure.  Allows outgoing RPC verification.
+failure.  Allows outgoing RPC verification. Allows for more compact function
+pointer relocation.
 
 #### `void verify_all(entry_barrier eb = entry_barrier::user)`
 
@@ -171,7 +195,8 @@ symmetric among all processes but does not raise an error if there are
 failures.  Segments invalid for UPC++ RPCs can still be used indirectly within
 functions in valid segments.  Called automatically by `upcxx::init()`.  This
 function should be called after `dlopen` if UPC++ intends to RPC the functions
-contained withinthis library.
+contained within this library. Allows for more compact function pointer
+relocation.
 
 #### `bool enforce_verification(bool)` 
 
@@ -224,6 +249,9 @@ As above, but writes to a `std::ostream`
   
 ## Potential Improvements
 
+Additional features which could be implemented if users express a desire for
+them:
+
 * Map the main executable file into memory and use `.symtab`/`.strtab` rather
   than `.dynsym`/`.dynstr`. This would enable symbol lookup for executables not
   linked with `-rdynamic`. Possibly build with `-rdynamic` by default in debug
@@ -235,3 +263,9 @@ As above, but writes to a `std::ostream`
   by warmup runs, too.
 
 * Add a `par_recursive_mutex` to optimize `CODEMODE=seq`
+
+* Asymmetric verification. Verify a single segment within a team and pass
+  `nullptr` for non-member ranks (world collective). This would allow for
+  appending segments to the indexed list for more space efficient multisegment
+  relocations. A check of if the correct team is used for RPC might not be
+  implemented as that would require additional complexity.
