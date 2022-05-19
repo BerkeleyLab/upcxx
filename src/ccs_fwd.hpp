@@ -281,10 +281,10 @@ namespace detail {
     static inline const segment_info& primary() noexcept { return primary_; }
 
     std::tuple<bool, const_cache_ptr_iterator> search_cache(uintptr_t uptr) const;
-    std::tuple<bool, segment_iterator>   search_map(uintptr_t uptr);
+    std::tuple<uintptr_t, uintptr_t, segment_hash>   search_map(uintptr_t uptr);
 
     std::tuple<bool, const_cache_tkn_iterator> search_cache(const segment_hash& ident) const;
-    std::tuple<bool, segment_iterator>   search_map(const segment_hash& ident);
+    std::tuple<bool, uintptr_t>   search_map(const segment_hash& ident);
 
     static std::vector<segment_info> build_segment_map();
     static void rebuild_segment_map();

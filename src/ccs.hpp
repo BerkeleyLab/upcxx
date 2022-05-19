@@ -129,7 +129,7 @@ namespace detail {
     return search(begin(cache_ptr_), end, uptr);
   }
 
-  inline std::tuple<bool, typename segmap_cache::segment_iterator> segmap_cache::search_map(uintptr_t uptr)
+  inline std::tuple<uintptr_t, uintptr_t, segment_hash> segmap_cache::search_map(uintptr_t uptr)
   {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -137,14 +137,14 @@ namespace detail {
     auto it = try_inactive(uptr);
     auto& segmap = segment_map();
     if (it != segmap.end())
-      return {true, it};
+      return {it->start, it->end, it->ident};
     // Not found in inactive cache.
     // Try rebuilding segment map and search again
     rebuild_segment_map();
     it = try_inactive(uptr);
     if (it != segmap.end())
-      return {true, it};
-    return {false, segmap.end()};
+      return {it->start, it->end, it->ident};
+    return {};
   }
 
   inline function_token_ms function_token_ms::tokenize(uintptr_t uptr, segmap_cache& cache)
@@ -164,12 +164,13 @@ namespace detail {
     // Not found in active cache.
 
     {
-      typename segmap_cache::const_segment_iterator it;
-      std::tie(found, it) = cache.search_map(uptr);
-      if (found)
+      uintptr_t s, e;
+      segment_hash h;
+      std::tie(s, e, h) = cache.search_map(uptr);
+      if (e != 0)
       {
-        segmap_cache::check_verification(it->start, it->end, uptr);
-        return {uptr-(it->start), it->ident};
+        segmap_cache::check_verification(s, e, uptr);
+        return {uptr-s, h};
       }
     }
     UPCXXI_FATAL_ERROR(tokenization_failed_message(uptr));
@@ -226,7 +227,7 @@ namespace detail {
     return {it != it_end && it->ident == ident, it};
   }
 
-  inline std::tuple<bool, typename segmap_cache::segment_iterator> segmap_cache::search_map(const segment_hash& ident)
+  inline std::tuple<bool, uintptr_t> segmap_cache::search_map(const segment_hash& ident)
   {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
@@ -235,7 +236,7 @@ namespace detail {
       if (ident == it->ident)
       {
         activate(*it);
-        return {true, it};
+        return {true, it->start};
       }
     }
     rebuild_segment_map();
@@ -244,10 +245,10 @@ namespace detail {
       if (ident == it->ident)
       {
         activate(*it);
-        return {true, it};
+        return {true, it->start};
       }
     }
-    return {false, end(segmap)};
+    return {false, 0};
   }
 
   template<typename Fp>
@@ -262,10 +263,11 @@ namespace detail {
     }
 
     {
-      typename segmap_cache::segment_iterator it;
-      std::tie(found, it) = cache.search_map(ident);
+      bool found;
+      uintptr_t start;
+      std::tie(found, start) = cache.search_map(ident);
       if (found)
-        return fnptr_from_uintptr<Fp>(it->start + offset);
+        return fnptr_from_uintptr<Fp>(start + offset);
     }
 
     UPCXXI_FATAL_ERROR(detokenization_failed_message(*this));
