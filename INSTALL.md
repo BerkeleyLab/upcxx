@@ -175,7 +175,7 @@ in the following sections, below:
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
-* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
@@ -459,7 +459,7 @@ EX systems.  Please _also_ see the respective sections of this document for
 UPC++ configure options needed to enable this support:
 
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
-* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
@@ -795,7 +795,7 @@ options:
 * Options for control of (optional) CUDA support are documented in the section
   [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * Options for control of (optional) AMD ROCm/HIP GPU support are documented in the section
-  [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
+  [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 * Options not recognized by the UPC\+\+ `configure` script will be passed to
   the GASNet-EX `configure`.  For instance, `--with-mpirun-cmd=...` might be
   required to setup MPI-based launch of ibv-conduit applications.  Please read
