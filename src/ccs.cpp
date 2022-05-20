@@ -1059,7 +1059,7 @@ namespace detail {
       }
     }
 
-    reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_mul).wait();
+    reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_bit_and).wait();
 
     for (std::size_t i = 0; i < segment_count; ++i) {
       for (auto& seg : segmap) {
