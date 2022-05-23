@@ -42,6 +42,9 @@ void upcxx_test2()
 
 void upcxx_test()
 {
+  // INTERNAL ONLY: Test that we can prefix the debug output if run before init()
+  std::cerr << upcxx::detail::debug_prefix_string() << "Test of pre-init debug prefix" << std::endl;
+
   upcxx::init();
   upcxx_test2();
   upcxx::finalize();

@@ -89,6 +89,8 @@ namespace detail {
     upcxx_binary = 0x10,
   };
 
+  std::string debug_prefix_string();
+
   template<typename Fp>
   static std::uintptr_t fnptr_to_uintptr(Fp fp) noexcept {
     static_assert(sizeof(Fp) == sizeof(uintptr_t), "Function pointer has incompatible size");
@@ -324,10 +326,10 @@ namespace detail {
 
     template<typename R, typename... Args>
     static void debug_write_ptr(R(*)(Args...), std::ostream&, int color = 2);
-    static void debug_write_ptr(uintptr_t, std::ostream&, int color = 2);
-    static void debug_write_token(const function_token_ms& token, std::ostream&, int color = 2);
-    static void debug_write_table(std::ostream&, int color = 2, size_t max_namelen = 0, bool print_top = true, size_t found_index = (size_t)-1, bool buffer = true);
-    void debug_write_cache(std::ostream&);
+    static void debug_write_ptr(uintptr_t, std::ostream&, int color = 2, const std::string& line_prefix = debug_prefix_string());
+    static void debug_write_token(const function_token_ms& token, std::ostream&, int color = 2, const std::string& line_prefix = debug_prefix_string());
+    static void debug_write_table(std::ostream&, int color = 2, size_t max_namelen = 0, bool print_top = true, size_t found_index = (size_t)-1, const std::string& line_prefix = debug_prefix_string());
+    void debug_write_cache(std::ostream&, const std::string& line_prefix = debug_prefix_string());
     template<typename R, typename... Args>
     static void debug_write_ptr(R(*)(Args...), int fd = 2, int color = 2);
     static void debug_write_ptr(uintptr_t, int fd = 2, int color = 2);
