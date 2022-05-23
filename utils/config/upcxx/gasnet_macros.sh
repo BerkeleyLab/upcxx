@@ -51,6 +51,13 @@ _EOF
 }
 
 probe_macro GASNETT_NEVER_INLINE "GASNETT_NEVER_INLINE(/*fnname*/,/*declarator*/)" UPCXXI_ATTRIB_NOINLINE
+cat <<_EOF
+#if defined(HIP_INCLUDE_HIP_AMD_DETAIL_HOST_DEFINES_H) && defined(__noinline__)
+  /* issue 550: workaround ROCm HIP headers breaking the GNU __noinline__ attribute */
+  #undef  UPCXXI_ATTRIB_NOINLINE
+  #define UPCXXI_ATTRIB_NOINLINE
+#endif
+_EOF
 probe_macro GASNETT_NORETURN GASNETT_NORETURN UPCXXI_ATTRIB_NORETURN
 probe_macro GASNETT_PURE     GASNETT_PURE     UPCXXI_ATTRIB_PURE
 probe_macro GASNETT_CONST    GASNETT_CONST    UPCXXI_ATTRIB_CONST

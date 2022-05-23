@@ -21,6 +21,8 @@ Notable issues resolved
 
 * issue #501: Poor failure behavior for tests with RANKS=1
 * issue #539: PG: dmap-quiescence-test hangs with one process
+* issue #549: UPC++ headers choke hipcc device-mode compilation
+* issue #550: ROCm/HIP headers break the GNU `__noinline__` attribute
 * issue #544: CCS: Segment verification not clearing previous `bad_verification` flag
 * issue #546: CCS: Level 2 cache thread safety
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
