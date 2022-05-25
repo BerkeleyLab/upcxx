@@ -133,9 +133,6 @@ namespace detail {
   {
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
     UPCXX_ASSERT(uptr >= segmap_cache::primary().start && uptr < segmap_cache::primary().end, "Function pointer not in primary segment.");
-#if UPCXXI_ASSERT_ENABLED
-    segmap_cache::check_verification(segmap_cache::primary().start, segmap_cache::primary().end, uptr);
-#endif
 #endif
     return {uptr - segmap_cache::primary().start};
   }
@@ -196,7 +193,6 @@ namespace detail {
       if (found)
       {
         // Found in active cache
-        segmap_cache::check_verification(it->start, it->end, uptr);
         return {uptr-(it->start), it->ident};
       }
     }
@@ -209,7 +205,6 @@ namespace detail {
       std::tie(s, e, h, std::ignore) = cache.search_map(uptr);
       if (e != 0)
       {
-        segmap_cache::check_verification(s, e, uptr);
         return {uptr-s, h};
       }
     }
@@ -224,7 +219,6 @@ namespace detail {
       typename segmap_cache::const_cache_idx_iterator it;
       std::tie(found, it) = cache.search_idx_cache(uptr);
       if (found) {
-        segmap_cache::check_verification(it->start, it->end, uptr);
         return {uptr-(it->start), it->idx};
       }
     }
@@ -234,7 +228,6 @@ namespace detail {
       int16_t id;
       std::tie(s, e, std::ignore, id) = cache.search_map(uptr);
       if (e != 0 && id > 0) {
-        segmap_cache::check_verification(s, e, uptr);
         return {uptr-s, id};
       }
     }
@@ -255,12 +248,13 @@ namespace detail {
         if (found)
           return {function_token_ms_idx{uptr-(it->start), it->idx}};
       }
+      // Verified segments will always use `ms_idx` tokens
+      if (!segmap_cache::verification_enforced())
       {
         typename segmap_cache::const_cache_ptr_iterator it;
         std::tie(found, it) = cache.search_cache(uptr);
         if (found)
         {
-          segmap_cache::check_verification(it->start, it->end, uptr);
           return {function_token_ms{uptr-(it->start), it->ident}};
         }
       }
@@ -270,11 +264,12 @@ namespace detail {
         int16_t idx;
         std::tie(start, end, ident, idx) = cache.search_map(uptr);
         if (end != 0) {
-          segmap_cache::check_verification(start, end, uptr);
           if (idx > 0)
             return {function_token_ms_idx{uptr-start, idx}};
-          else
+          else if (!segmap_cache::verification_enforced())
             return {function_token_ms{uptr-start, ident}};
+          else
+            throw segment_verification_error(verification_failed_message(start, end, uptr));
         }
       }
       UPCXXI_FATAL_ERROR(tokenization_failed_message(uptr));
@@ -295,16 +290,6 @@ namespace detail {
   }
 
   inline void debug_write_ptr(uintptr_t uptr, int fd = 2, int color = 2);
-
-  void segmap_cache::check_verification(uintptr_t start, uintptr_t end, uintptr_t uptr)
-  {
-#if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    UPCXXI_IF_PF(segmap_cache::enforce_verification_ && !(flag_map_[start] & (uint16_t) segment_flags::verified))
-    {
-      throw segment_verification_error(verification_failed_message(start, end, uptr));
-    }
-#endif
-  }
 
   template<typename Fp>
   Fp function_token_ss::detokenize() const noexcept
