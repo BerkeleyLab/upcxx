@@ -25,6 +25,7 @@ Notable issues resolved
 * issue #550: ROCm/HIP headers break the GNU `__noinline__` attribute
 * issue #544: CCS: Segment verification not clearing previous `bad_verification` flag
 * issue #546: CCS: Level 2 cache thread safety
+* issue #551: CCS: Thread safety race in segment verification
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 
 Embeds a GASNet-EX library that addresses the following notable issues

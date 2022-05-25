@@ -200,9 +200,9 @@ relocation.
 
 #### `bool enforce_verification(bool)` 
 
-Not threadsafe. If set to true causes an error to be raised if attempting to
-tokenize a function pointer in an unverified segment.  Returns the previous
-verification state.
+Not threadsafe. State read on RPC injection and `debug_write_*()` calls. If set
+to true causes an error to be raised if attempting to tokenize a function
+pointer in an unverified segment.  Returns the previous verification state.
 
 #### `bool verification_enforced()`
 
