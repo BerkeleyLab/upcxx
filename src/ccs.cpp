@@ -925,32 +925,33 @@ namespace detail {
       {
         return lhs.start < rhs.start;
       });
-    }
-    else if (cache_occupancy_ < max_cache_size)
-    {
-      cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
-      cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
-      ++cache_occupancy_;
-      size = cache_occupancy_;
     } else {
-      UPCXX_ASSERT(cache_evict_index_ < max_cache_size);
-      uintptr_t old_start = cache_tkn_[cache_evict_index_].start;
-      auto it = std::upper_bound(begin(cache_ptr_),end(cache_ptr_),old_start,[](uintptr_t p, const segmap_cache::segment_lookup_ptr& seg) {
-        return p <= seg.end;
+      if (cache_occupancy_ < max_cache_size)
+      {
+        cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
+        cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
+        ++cache_occupancy_;
+        size = cache_occupancy_;
+      } else {
+        UPCXX_ASSERT(cache_evict_index_ < max_cache_size);
+        uintptr_t old_start = cache_tkn_[cache_evict_index_].start;
+        auto it = std::upper_bound(begin(cache_ptr_),end(cache_ptr_),old_start,[](uintptr_t p, const segmap_cache::segment_lookup_ptr& seg) {
+          return p <= seg.end;
+        });
+        UPCXX_ASSERT(it->start == old_start);
+        *it = {seg.start, seg.end, seg.ident};
+        cache_tkn_[cache_evict_index_] = {seg.ident, seg.start};
+        cache_evict_index_ = (cache_evict_index_ + 1) % max_cache_size;
+      }
+      std::sort(begin(cache_ptr_), begin(cache_ptr_)+size, [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
+      {
+        return lhs.start < rhs.start;
       });
-      UPCXX_ASSERT(it->start == old_start);
-      *it = {seg.start, seg.end, seg.ident};
-      cache_tkn_[cache_evict_index_] = {seg.ident, seg.start};
-      cache_evict_index_ = (cache_evict_index_ + 1) % max_cache_size;
+      std::sort(begin(cache_tkn_), begin(cache_tkn_)+size, [](const segment_lookup_tkn& lhs, const segment_lookup_tkn& rhs)
+      {
+        return lhs.ident < rhs.ident;
+      });
     }
-    std::sort(begin(cache_ptr_), begin(cache_ptr_)+size, [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
-    {
-      return lhs.start < rhs.start;
-    });
-    std::sort(begin(cache_tkn_), begin(cache_tkn_)+size, [](const segment_lookup_tkn& lhs, const segment_lookup_tkn& rhs)
-    {
-      return lhs.ident < rhs.ident;
-    });
   }
 
   segment_info segmap_cache::find_primary_upcxx_segment()
