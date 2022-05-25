@@ -113,6 +113,10 @@ namespace detail {
 
     // The MSB is used to encode the function token type. Because non-legacy relocations use the start of the segment as the basis, the offset should never be negative.
     static constexpr uintptr_t msb = 1ull << (std::numeric_limits<uintptr_t>::digits-1);
+    static constexpr int idx_shift = std::numeric_limits<uintptr_t>::digits - std::numeric_limits<uint16_t>::digits;
+    static constexpr uintptr_t upper_bits = static_cast<uintptr_t>(static_cast<uint16_t>(-1)) << idx_shift;
+    static constexpr uintptr_t lower_bits = ~upper_bits;
+    static constexpr uintptr_t idx_bits = upper_bits & ~msb;
 
     template<typename Writer>
     static void serialize(Writer& w, const detail::global_fnptr<Fn,detail::function_token>& gfnptr)
@@ -121,9 +125,14 @@ namespace detail {
         const auto& ss = gfnptr.u_.template get<detail::function_token_ss>();
         UPCXX_ASSERT((ss.offset & msb) == 0);
         w.write_trivial(ss.offset);
+      } else if (gfnptr.u_.token_ident() == detail::function_token::identifier::multi_idx) {
+        const auto& mx = gfnptr.u_.template get<detail::function_token_ms_idx>();
+        UPCXX_ASSERT(mx.offset < (1ull << idx_shift));
+        UPCXX_ASSERT(mx.idx > 0);
+        w.write_trivial(mx.offset | ((static_cast<uintptr_t>(mx.idx) << idx_shift)) | msb);
       } else {
         const auto& ms = gfnptr.u_.template get<detail::function_token_ms>();
-        UPCXX_ASSERT((ms.offset & msb) == 0);
+        UPCXX_ASSERT((ms.offset & upper_bits) == 0);
         w.write_trivial(ms.offset | msb);
         w.write_trivial(ms.ident);
       }
@@ -136,7 +145,11 @@ namespace detail {
       if (!(offset & msb)) {
         return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ss{offset}};
       } else {
-        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ms{offset ^ msb, r.template read_trivial<detail::segment_hash>()}};
+        int16_t idx = (offset & idx_bits) >> idx_shift;
+        if (idx > 0)
+          return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ms_idx{offset & lower_bits, idx}};
+        else
+          return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ms{offset & lower_bits, r.template read_trivial<detail::segment_hash>()}};
       }
     }
   };

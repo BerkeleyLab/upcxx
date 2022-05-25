@@ -49,12 +49,33 @@ namespace detail {
     segment_hash ident;
   };
 
+  struct function_token_ms_idx
+  {
+    template<typename Fp>
+    Fp detokenize(segmap_cache& = upcxx::detail::the_persona_tls.segcache) const;
+
+    template<typename R, typename... Args>
+    static function_token_ms_idx tokenize(R(*ptr)(Args...), const segmap_cache& cache = upcxx::detail::the_persona_tls.segcache)
+    {
+      return tokenize(fnptr_to_uintptr(ptr), cache);
+    }
+    static function_token_ms_idx tokenize(uintptr_t ptr, segmap_cache& = upcxx::detail::the_persona_tls.segcache);
+
+    void debug_write(int fd = 2, segmap_cache& cache = upcxx::detail::the_persona_tls.segcache, int color = 2) const {
+      function_token_ms{offset, cache.ident_at_idx(idx)}.debug_write(fd,cache,color);
+    }
+
+    uintptr_t offset;
+    int16_t idx;
+  };
+
   struct function_token
   {
     enum class identifier {
       automatic,
       single,
-      multi
+      multi,
+      multi_idx,
     };
 
     function_token() noexcept = default;
@@ -66,6 +87,10 @@ namespace detail {
     function_token(const function_token_ms& t) noexcept
       : active(identifier::multi)
       , m(t)
+    {}
+    function_token(const function_token_ms_idx& t) noexcept
+      : active(identifier::multi_idx)
+      , mx(t)
     {}
     function_token(function_token_ms&& t) noexcept
       : active(identifier::multi)
@@ -97,6 +122,7 @@ namespace detail {
     union {
       function_token_ss s;
       function_token_ms m;
+      function_token_ms_idx mx;
     };
   };
 
@@ -117,19 +143,33 @@ namespace detail {
   template<typename It>
   inline std::tuple<bool, It> segmap_cache::search(It start, It end, uintptr_t uptr)
   {
-    auto it = std::upper_bound(start,end,uptr,[](uintptr_t p, const segmap_cache::segment_lookup_ptr& seg) {
+    auto it = std::upper_bound(start,end,uptr,[](uintptr_t p, const typename std::iterator_traits<It>::value_type& seg) {
       return p <= seg.end;
     });
     return {it != end && uptr >= it->start, it};
   }
 
-  inline std::tuple<bool, typename segmap_cache::const_cache_ptr_iterator> segmap_cache::search_cache(uintptr_t uptr) const
+  inline std::tuple<bool, typename segmap_cache::const_cache_ptr_iterator> segmap_cache::search_cache(uintptr_t uptr)
   {
-    auto end = begin(cache_ptr_)+cache_occupancy_;
-    return search(begin(cache_ptr_), end, uptr);
+    auto current_epoch = epoch.load(std::memory_order_relaxed);
+    if (current_epoch == cache_epoch_) {
+      auto end = begin(cache_ptr_)+cache_occupancy_;
+      return search(begin(cache_ptr_), end, uptr);
+    } else {
+      std::fill(begin(cache_ptr_), end(cache_ptr_), decltype(cache_ptr_)::value_type{});
+      std::fill(begin(cache_tkn_), end(cache_tkn_), decltype(cache_tkn_)::value_type{});
+      cache_occupancy_ = 0;
+      cache_epoch_ = current_epoch;
+      return {false, end(cache_ptr_)};
+    }
   }
 
-  inline std::tuple<uintptr_t, uintptr_t, segment_hash> segmap_cache::search_map(uintptr_t uptr)
+  inline std::tuple<bool, typename segmap_cache::const_cache_idx_iterator> segmap_cache::search_idx_cache(uintptr_t uptr) const
+  {
+    return search(begin(cache_idx_), begin(cache_idx_)+idx_cache_occupancy_, uptr);
+  }
+
+  inline std::tuple<uintptr_t, uintptr_t, segment_hash, int16_t> segmap_cache::search_map(uintptr_t uptr)
   {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
 
@@ -137,13 +177,13 @@ namespace detail {
     auto it = try_inactive(uptr);
     auto& segmap = segment_map();
     if (it != segmap.end())
-      return {it->start, it->end, it->ident};
+      return {it->start, it->end, it->ident, it->idx};
     // Not found in inactive cache.
     // Try rebuilding segment map and search again
     rebuild_segment_map();
     it = try_inactive(uptr);
     if (it != segmap.end())
-      return {it->start, it->end, it->ident};
+      return {it->start, it->end, it->ident, it->idx};
     return {};
   }
 
@@ -166,7 +206,7 @@ namespace detail {
     {
       uintptr_t s, e;
       segment_hash h;
-      std::tie(s, e, h) = cache.search_map(uptr);
+      std::tie(s, e, h, std::ignore) = cache.search_map(uptr);
       if (e != 0)
       {
         segmap_cache::check_verification(s, e, uptr);
@@ -177,13 +217,68 @@ namespace detail {
     return {0,{}};
   }
 
+  inline function_token_ms_idx function_token_ms_idx::tokenize(uintptr_t uptr, segmap_cache& cache)
+  {
+    bool found;
+    {
+      typename segmap_cache::const_cache_idx_iterator it;
+      std::tie(found, it) = cache.search_idx_cache(uptr);
+      if (found) {
+        segmap_cache::check_verification(it->start, it->end, uptr);
+        return {uptr-(it->start), it->idx};
+      }
+    }
+
+    {
+      uintptr_t s, e;
+      int16_t id;
+      std::tie(s, e, std::ignore, id) = cache.search_map(uptr);
+      if (e != 0 && id > 0) {
+        segmap_cache::check_verification(s, e, uptr);
+        return {uptr-s, id};
+      }
+    }
+
+    return {};
+  }
+
   inline function_token function_token::tokenize(uintptr_t uptr, segmap_cache& cache)
   {
     if (uptr >= segmap_cache::primary().start && uptr < segmap_cache::primary().end)
     {
       return {function_token_ss::tokenize(uptr)};
     } else {
-      return {function_token_ms::tokenize(uptr, cache)};
+      bool found;
+      {
+        typename segmap_cache::const_cache_idx_iterator it;
+        std::tie(found, it) = cache.search_idx_cache(uptr);
+        if (found)
+          return {function_token_ms_idx{uptr-(it->start), it->idx}};
+      }
+      {
+        typename segmap_cache::const_cache_ptr_iterator it;
+        std::tie(found, it) = cache.search_cache(uptr);
+        if (found)
+        {
+          segmap_cache::check_verification(it->start, it->end, uptr);
+          return {function_token_ms{uptr-(it->start), it->ident}};
+        }
+      }
+      {
+        uintptr_t start, end;
+        segment_hash ident;
+        int16_t idx;
+        std::tie(start, end, ident, idx) = cache.search_map(uptr);
+        if (end != 0) {
+          segmap_cache::check_verification(start, end, uptr);
+          if (idx > 0)
+            return {function_token_ms_idx{uptr-start, idx}};
+          else
+            return {function_token_ms{uptr-start, ident}};
+        }
+      }
+      UPCXXI_FATAL_ERROR(tokenization_failed_message(uptr));
+      return {};
     }
   }
 
@@ -275,10 +370,18 @@ namespace detail {
   }
 
   template<typename Fp>
+  Fp function_token_ms_idx::detokenize(segmap_cache& cache) const
+  {
+    return fnptr_from_uintptr<Fp>(cache.lookup_at_idx(idx).start + offset);
+  }
+
+  template<typename Fp>
   Fp function_token::detokenize(segmap_cache& cache) const
   {
     if (active == identifier::single)
       return s.detokenize<Fp>();
+    else if (active == identifier::multi_idx)
+      return mx.detokenize<Fp>(cache);
     else //if (active == identifier::multi)
       return m.detokenize<Fp>(cache);
   }
@@ -296,9 +399,34 @@ namespace detail {
   }
 
   template<>
+  inline const function_token_ms_idx& function_token::get<function_token_ms_idx>() const noexcept
+  {
+    return mx;
+  }
+
+  template<>
   inline const function_token& function_token::get<function_token>() const noexcept
   {
     return *this;
+  }
+
+  inline const segmap_cache::segment_lookup_idx& segmap_cache::lookup_at_idx(int16_t idx)
+  {
+    UPCXXI_ASSERT_MASTER(); //potential data race on segment_vector_
+    UPCXX_ASSERT(static_cast<int64_t>(idx) < static_cast<int64_t>(segment_vector_.size()));
+    return segment_vector_[idx];
+  }
+
+  inline segment_hash segmap_cache::ident_at_idx(int16_t idx)
+  {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    auto& segmap = segment_map();
+    for (const auto& seg : segmap)
+    {
+      if (segment_vector_[idx].start == seg.start)
+        return seg.ident;
+    }
+    UPCXXI_FATAL_ERROR("Segment ident not found.");
   }
 } // namespace detail
 
