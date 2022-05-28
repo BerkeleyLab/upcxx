@@ -202,6 +202,7 @@ namespace detail {
 
   struct segment_info
   {
+    using flags_type = typename std::underlying_type<segment_flags>::type;
     std::uintptr_t start;
     std::uintptr_t end;
     // Unique identification of this segment. May be the hash of the segment itself or
@@ -211,7 +212,7 @@ namespace detail {
     segment_hash lib_hash;
     // Segment number within the dynamic shared object
     uint16_t segnum;
-    uint16_t flags;
+    flags_type flags;
     const char* dlpi_name;
     int16_t idx;
 #if UPCXXI_EXEFORMAT_ELF
@@ -222,12 +223,12 @@ namespace detail {
     const char* strtbl;
 #endif
     inline void set_verified() {
-      flags |= static_cast<uint16_t>(segment_flags::verified);
-      flags &= ~static_cast<uint16_t>(segment_flags::bad_verification);
+      flags |= static_cast<flags_type>(segment_flags::verified);
+      flags &= ~static_cast<flags_type>(segment_flags::bad_verification);
     }
     inline void set_bad_verification() {
-      flags |= static_cast<uint16_t>(segment_flags::bad_verification);
-      flags &= ~static_cast<uint16_t>(segment_flags::verified);
+      flags |= static_cast<flags_type>(segment_flags::bad_verification);
+      flags &= ~static_cast<flags_type>(segment_flags::verified);
     }
     inline friend bool operator==(const segment_info& lhs, const segment_info& rhs)
     {
@@ -243,6 +244,7 @@ namespace detail {
   {
   public:
     static constexpr size_t max_cache_size = UPCXXI_MAX_SEGCACHE_SIZE;
+    using flags_type = typename std::underlying_type<segment_flags>::type;
   private:
     struct segment_lookup_ptr
     {
@@ -310,7 +312,6 @@ namespace detail {
     static void rebuild_segment_map();
     static void set_primary_segment(uintptr_t, entry_barrier);
 
-    static inline void check_verification(uintptr_t start, uintptr_t end, uintptr_t uptr);
     inline bool cache_full() const {
       UPCXX_ASSERT(cache_occupancy_ <= max_cache_size);
       return cache_occupancy_ == max_cache_size;
@@ -345,7 +346,6 @@ namespace detail {
     static std::recursive_mutex mutex_;
     static segment_info primary_;
     static bool enforce_verification_;
-    static std::unordered_map<uintptr_t,uint16_t> flag_map_;
     static int16_t verified_segment_count_;
 
     static size_t find_max_namelen();

@@ -381,7 +381,7 @@ namespace detail {
              * might not be a problem. Instead, mark it as a bad segment, allowing the unrelocatable pointer
              * and bad segment address range to be printed together when this fatal situation is encountered.
              */
-            seg.flags |= (uint16_t) segment_flags::bad_segment;
+            seg.flags |= static_cast<flags_type>(segment_flags::bad_segment);
           }
         }
       }
@@ -393,8 +393,8 @@ namespace detail {
       for (size_t j = i+1; j < map.size(); ++j)
       {
         if (map[i].ident == map[j].ident) {
-          map[i].flags |= (uint16_t) segment_flags::bad_segment;
-          map[j].flags |= (uint16_t) segment_flags::bad_segment;
+          map[i].flags |= static_cast<flags_type>(segment_flags::bad_segment);
+          map[j].flags |= static_cast<flags_type>(segment_flags::bad_segment);
         }
       }
     }
@@ -464,9 +464,9 @@ namespace detail {
             intptr_t slide = _dyld_get_image_vmaddr_slide(i);
             uintptr_t lo = sc->vmaddr + slide;
             uintptr_t hi = lo + sc->vmsize;
-            uint16_t flags = 0;
+            flags_type flags = 0;
             if (upcxx_segment)
-              flags |= (uint16_t) segment_flags::upcxx_binary;
+              flags |= static_cast<flags_type>(segment_flags::upcxx_binary);
             if (uuid) {
               map.emplace_back(segment_info{lo, hi, {uuid,j}, {uuid}, static_cast<uint16_t>(j), flags, info->imageFilePath});
             } else {
@@ -488,8 +488,8 @@ namespace detail {
       for (size_t j = i+1; j < map.size(); ++j)
       {
         if (map[i].ident == map[j].ident) {
-          map[i].flags |= (uint16_t) segment_flags::bad_segment;
-          map[j].flags |= (uint16_t) segment_flags::bad_segment;
+          map[i].flags |= static_cast<flags_type>(segment_flags::bad_segment);
+          map[j].flags |= static_cast<flags_type>(segment_flags::bad_segment);
         }
       }
     }
@@ -524,9 +524,9 @@ namespace detail {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     auto newmap = build_segment_map();
-    constexpr uint16_t keepflags = (uint16_t) segment_flags::touched |
-                                   (uint16_t) segment_flags::verified |
-                                   (uint16_t) segment_flags::bad_verification;
+    constexpr flags_type keepflags = static_cast<flags_type>(segment_flags::touched) |
+                                     static_cast<flags_type>(segment_flags::verified) |
+                                     static_cast<flags_type>(segment_flags::bad_verification);
     for (auto& nseg : newmap)
     {
       for (const auto& oseg : segmap)
@@ -537,9 +537,6 @@ namespace detail {
         }
       }
     }
-    flag_map_.clear();
-    for (const auto& seg : newmap)
-      flag_map_[seg.start] = seg.flags;
     segmap = newmap;
   }
 
@@ -658,18 +655,18 @@ namespace detail {
       if (bcolor) {
         color_start = "";
         style_start = "";
-        if ((segmap[i].flags & (uint16_t) segment_flags::bad_verification)
-            || (enforce_verification_ && !(seg.flags & (uint16_t) segment_flags::verified)))
+        if ((segmap[i].flags & static_cast<flags_type>(segment_flags::bad_verification))
+            || (enforce_verification_ && !(seg.flags & static_cast<flags_type>(segment_flags::verified))))
           color_start = "\033[93m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::bad_segment)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::bad_segment))
           color_start = "\033[91m";
         else if (i == found_index)
           color_start = success_start;
-        else if (segmap[i].flags & (uint16_t) segment_flags::verified)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::verified))
           color_start = "\033[96m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::touched)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::touched))
           style_start = "\033[1m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::upcxx_binary)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::upcxx_binary))
           color_start = "\033[94m";
         color_end = ccolor_end;
       }
@@ -730,10 +727,10 @@ namespace detail {
       if (uptr >= seg.start && uptr < seg.end)
       {
         found_index = i;
-        if (seg.flags & (uint16_t) segment_flags::bad_segment) {
+        if (seg.flags & static_cast<flags_type>(segment_flags::bad_segment)) {
           bad_segment = true;
-        } else if ((seg.flags & (uint16_t) segment_flags::bad_verification) ||
-            (enforce_verification_ && !(seg.flags & (uint16_t) segment_flags::verified))) {
+        } else if ((seg.flags & static_cast<flags_type>(segment_flags::bad_verification)) ||
+            (enforce_verification_ && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))) {
           lookup_res = "BAD VERIFICATION";
           bad_verification = true;
         } else {
@@ -887,7 +884,7 @@ namespace detail {
     {
       if (uptr > it->start && uptr < it->end)
       {
-        if (it->flags & (uint16_t) segment_flags::bad_segment)
+        if (it->flags & static_cast<flags_type>(segment_flags::bad_segment))
         {
           std::stringstream ss;
           ss << "Attempted to activate a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
@@ -910,7 +907,7 @@ namespace detail {
    */
   void segmap_cache::activate(segment_info& seg)
   {
-    seg.flags |= static_cast<uint16_t>(segment_flags::touched);
+    seg.flags |= static_cast<flags_type>(segment_flags::touched);
     size_t size = max_cache_size;
     if (seg.idx > 0) {
       if (idx_cache_occupancy_ < max_cache_size) {
@@ -960,7 +957,7 @@ namespace detail {
     auto& segmap = segment_map();
     for (const auto& seg : segmap)
     {
-      if (seg.flags & (uint16_t) segment_flags::upcxx_binary)
+      if (seg.flags & static_cast<flags_type>(segment_flags::upcxx_binary))
         return seg;
     }
     // No upcxx_binary flag found. Fall back to the segment
@@ -1021,7 +1018,7 @@ namespace detail {
     {
       if (uptr > it->start && uptr < it->end)
       {
-        if (it->flags & (uint16_t) segment_flags::bad_segment)
+        if (it->flags & static_cast<flags_type>(segment_flags::bad_segment))
         {
           std::stringstream ss;
           ss << "Attempted to use a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
@@ -1043,7 +1040,7 @@ namespace detail {
     segment_hash reduced = reduce_all(h, binop).wait();
     if (it != end(segmap)) {
       if (reduced != segment_hash{}) {
-        if (it->flags & static_cast<typename std::underlying_type<segment_flags>::type>(segment_flags::verified))
+        if (it->flags & static_cast<flags_type>(segment_flags::verified))
           return;
         epoch++;
         it->set_verified();
@@ -1055,7 +1052,6 @@ namespace detail {
         it->set_bad_verification();
         throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
       }
-      flag_map_[it->start] = it->flags;
     } else {
       throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
     }
@@ -1106,12 +1102,14 @@ namespace detail {
       }
     }
 
-    uint16_t found_flags = static_cast<uint16_t>(segment_flags::verified) | static_cast<uint16_t>(segment_flags::bad_verification);
-    flag_map_.clear();
+    constexpr flags_type found_flags = static_cast<flags_type>(segment_flags::verified) | static_cast<flags_type>(segment_flags::bad_verification);
     for (auto& seg : segmap) {
       if (!(seg.flags & found_flags))
         seg.set_bad_verification();
-      flag_map_[seg.start] = seg.flags;
+#if UPCXXI_ASSERT_ENABLED
+      if (seg.start == primary().start && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))
+        UPCXXI_FATAL_ERROR("Primary segment verification failed");
+#endif
     }
 
     struct segment_info_idx {
@@ -1187,14 +1185,6 @@ namespace detail {
   }
 
   void segmap_cache::fallback_primary_segment_sentinel() {}
-
-  std::unordered_map<uintptr_t,uint16_t> segmap_cache::flag_map_ = []() {
-    auto& segmap = segmap_cache::segment_map();
-    std::unordered_map<uintptr_t,uint16_t> ret;
-    for (const auto& seg : segmap)
-      ret[seg.start] = seg.flags;
-    return ret;
-  }();
 
   std::recursive_mutex segmap_cache::mutex_{};
   segment_info segmap_cache::primary_ = find_primary_upcxx_segment();
