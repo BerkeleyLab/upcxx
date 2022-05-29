@@ -36,12 +36,28 @@
 #include <cxxabi.h>
 #endif
 
+#if UPCXXI_BACKEND_GASNET
+  #include <upcxx/backend/gasnet/runtime_internal.hpp>
+#endif
+
 #define ALIGN_UP(val,align)     (((val) + (align) - 1) & ~((align) -1))
 
 using upcxx::detail::fnv128;
 
 namespace upcxx {
 namespace detail {
+  std::string debug_prefix_string()
+  {
+    if (upcxx::initialized()) {
+      return std::string("[") + std::to_string(rank_me()) + "] ";
+    } else {
+#if UPCXXI_BACKEND_GASNET
+      return std::string("[") + gasnett_gethostname() + ":" + std::to_string(getpid()) + "] ";
+#else
+      return std::string("[") + std::to_string(getpid()) + "] ";
+#endif
+    }
+  }
 
   void write_helper(int fd, const char* buf, size_t size)
   {
@@ -565,7 +581,7 @@ namespace detail {
     return max_namelen;
   }
 
-  inline void debug_symbol_header(uintptr_t uptr, std::ostream& ss, size_t table_width)
+  inline void debug_symbol_header(uintptr_t uptr, std::ostream& ss, size_t table_width, const std::string& line_prefix)
   {
     const char* dli_sname = segmap_cache::get_symbol(uptr);
     if (dli_sname)
@@ -578,7 +594,7 @@ namespace detail {
 #else
       const char* dname = dli_sname;
 #endif
-      ss << "[" << rank_me() << "] | Symbol: " << std::setfill(' ') << std::setw(table_width - 11) << std::left << dname << "|\n";
+      ss << line_prefix << "| Symbol: " << std::setfill(' ') << std::setw(table_width - 11) << std::left << dname << "|\n";
 #if UPCXXI_HAVE___CXA_DEMANGLE
       if (status == 0)
         free((void*)dname);
@@ -586,7 +602,7 @@ namespace detail {
     }
   }
 
-  inline void debug_ptr_header(uintptr_t uptr, std::ostream& ss, size_t table_width, int color)
+  inline void debug_ptr_header(uintptr_t uptr, std::ostream& ss, size_t table_width, int color, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -601,13 +617,13 @@ namespace detail {
         style_start = segmap_cache::bold;
         color_end = segmap_cache::ccolor_end;
       }
-      ss << "[" << rank_me() << "] | Pointer: " << color_start << style_start << std::setfill(' ') << std::setw(table_width-26) << std::left << reinterpret_cast<void*>(uptr) << color_end << "|\n" << std::right;
+      ss << line_prefix << "| Pointer: " << color_start << style_start << std::setfill(' ') << std::setw(table_width-26) << std::left << reinterpret_cast<void*>(uptr) << color_end << "|\n" << std::right;
     }
   }
 
-  inline void debug_table_write_hline(std::ostream& ss, size_t cwidth_name)
+  inline void debug_table_write_hline(std::ostream& ss, size_t cwidth_name, const std::string& line_prefix)
   {
-    ss << "[" << rank_me() << "] |";
+    ss << line_prefix << "|";
     ss << std::setw(cwidth_name+1) << std::right << std::setfill('-') << '|';
     ss << std::setw(segmap_cache::cwidth_hash+1) << '|';
     ss << std::setw(segmap_cache::cwidth_segment+1) << '|';
@@ -625,7 +641,7 @@ namespace detail {
     write_helper(fd, ss.str().c_str(), ss.str().size());
   }
 
-  void segmap_cache::debug_write_table(std::ostream& ss, int color, size_t max_namelen, bool print_top, size_t found_index, bool buffer)
+  void segmap_cache::debug_write_table(std::ostream& ss, int color, size_t max_namelen, bool print_top, size_t found_index, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -640,15 +656,15 @@ namespace detail {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     if (print_top)
-      ss << "[" << rank_me() << "] " << std::setfill('-') << std::right << std::setw(table_width+1) << '\n';
-    ss << "[" << rank_me() << "] |" << std::setfill(' ') << std::left << std::setw(cwidth_name) << " dlpi_name "
+      ss << line_prefix << std::setfill('-') << std::right << std::setw(table_width+1) << '\n';
+    ss << line_prefix << "|" << std::setfill(' ') << std::left << std::setw(cwidth_name) << " dlpi_name "
        << '|' << std::setw(cwidth_hash) << " hash "
        << '|' << std::setw(cwidth_segment) << " segment # "
        << '|' << std::setw(cwidth_idx) << " index "
        << '|' << std::setw(cwidth_flags) << " flags "
        << '|' << std::setw(cwidth_pointer) << " start_addr "
        << '|' << std::setw(cwidth_pointer) << " end_addr " << "|\n";
-    debug_table_write_hline(ss,cwidth_name);
+    debug_table_write_hline(ss, cwidth_name, line_prefix);
     for (size_t i = 0; i < segmap.size(); ++i)
     {
       const auto& seg = segmap[i];
@@ -674,7 +690,7 @@ namespace detail {
       if (i == found_index)
         mark = '*';
       size_t len = max_namelen - strlen(seg.dlpi_name) + 1;
-      ss << "[" << rank_me() << "] | " << style_start << color_start << mark << ' ' << seg.dlpi_name << std::setw(len) << ' ' << color_end << "| " << style_start << color_start;
+      ss << line_prefix << "| " << style_start << color_start << mark << ' ' << seg.dlpi_name << std::setw(len) << ' ' << color_end << "| " << style_start << color_start;
       ss << std::setfill('0') << std::hex;
       for (size_t j = 0; j < segment_hash::size; ++j)
         ss << std::setw(2) << static_cast<int>(seg.ident.hash[j]);
@@ -696,7 +712,7 @@ namespace detail {
       ss << std::setfill(' ');
       ss << " |\n";
     }
-    ss << "[" << rank_me() << "] " << std::setfill('-') << std::setw(table_width) << '-' << '\n' << std::setfill(' ');
+    ss << line_prefix << std::setfill('-') << std::setw(table_width) << '-' << '\n' << std::setfill(' ');
   }
 
   void segmap_cache::debug_write_ptr(uintptr_t uptr, int fd, int color)
@@ -706,7 +722,7 @@ namespace detail {
     write_helper(fd, ss.str().c_str(), ss.str().size());
   }
 
-  void segmap_cache::debug_write_ptr(uintptr_t uptr, std::ostream& ss, int color)
+  void segmap_cache::debug_write_ptr(uintptr_t uptr, std::ostream& ss, int color, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -753,15 +769,15 @@ namespace detail {
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
     size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
 
-    ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
+    ss << line_prefix << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char pointer_desc[] = "Lookup for pointer: ";
     ss << std::setfill(' ');
-    ss << "[" << rank_me() << "] | " << pointer_desc << color_start << style_start << std::setw(cwidth_pointer-padding+2) << std::hex << reinterpret_cast<void*>(uptr) << std::dec << " (" << lookup_res << ")" << color_end;
+    ss << line_prefix << "| " << pointer_desc << color_start << style_start << std::setw(cwidth_pointer-padding+2) << std::hex << reinterpret_cast<void*>(uptr) << std::dec << " (" << lookup_res << ")" << color_end;
     size_t sz = table_width - sizeof(pointer_desc) - cwidth_pointer - 4 /*" () "*/ - strlen(lookup_res) + 1;
     ss << std::setw(sz) << std::setfill(' ') << std::right << "|\n";
-    debug_symbol_header(uptr, ss, table_width);
-    ss << "[" << rank_me() << "] |" << std::setw(table_width) << std::setfill('-') << std::right << "|\n";
-    debug_write_table(ss, bcolor, max_namelen, false, found_index);
+    debug_symbol_header(uptr, ss, table_width, line_prefix);
+    ss << line_prefix << "|" << std::setw(table_width) << std::setfill('-') << std::right << "|\n";
+    debug_write_table(ss, bcolor, max_namelen, false, found_index, line_prefix);
   }
 
   void segmap_cache::debug_write_token(const function_token_ms& token, int fd, int color)
@@ -771,7 +787,7 @@ namespace detail {
     write_helper(fd, ss.str().c_str(), ss.str().size());
   }
 
-  void segmap_cache::debug_write_token(const function_token_ms& token, std::ostream& ss, int color)
+  void segmap_cache::debug_write_token(const function_token_ms& token, std::ostream& ss, int color, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -809,9 +825,9 @@ namespace detail {
     size_t max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
     size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
-    ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
+    ss << line_prefix << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char token_desc[] = "Lookup for token: ";
-    ss << "[" << rank_me() << "] | " << token_desc << color_start << style_start;
+    ss << line_prefix << "| " << token_desc << color_start << style_start;
     std::stringstream ss2;
     ss2 << '{' << std::setfill('0') << std::hex;
     for (size_t j = 0; j < segment_hash::size; ++j)
@@ -819,28 +835,28 @@ namespace detail {
     ss2 << ", " << token.offset << "} (" << lookup_res << ')' << std::dec;
     ss << std::dec << std::setfill(' ');
     ss << std::left << std::setw(table_width-2-sizeof(token_desc)) << ss2.str() << std::right << color_end << "|\n";
-    debug_symbol_header(uptr, ss, table_width);
-    debug_ptr_header(uptr, ss, table_width, bcolor);
-    ss << "[" << rank_me() << "] |" << std::setfill('-') << std::setw(table_width) << "|\n";
-    debug_write_table(ss, bcolor, max_namelen, false, found_index);
+    debug_symbol_header(uptr, ss, table_width, line_prefix);
+    debug_ptr_header(uptr, ss, table_width, bcolor, line_prefix);
+    ss << line_prefix << "|" << std::setfill('-') << std::setw(table_width) << "|\n";
+    debug_write_table(ss, bcolor, max_namelen, false, found_index, line_prefix);
   }
 
-  void segmap_cache::debug_write_cache(std::ostream& os)
+  void segmap_cache::debug_write_cache(std::ostream& os, const std::string& line_prefix)
   {
     constexpr size_t ptr_fields = 3;
     constexpr size_t tkn_fields = 2;
     constexpr size_t addr_width = sizeof(uintptr_t)*2+2;
     constexpr size_t ptr_table_width = ptr_fields+1 + 2*ptr_fields + 2*segment_hash::size + 2*addr_width;
     constexpr size_t tkn_table_width = tkn_fields+1 + 2*tkn_fields + 2*segment_hash::size + addr_width;
-    os << '[' << rank_me() << "] Pointer Lookup Cache:\n";
-    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(ptr_table_width) << "-\n";
-    os << '[' << rank_me() << "] | " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
+    os << line_prefix << "Pointer Lookup Cache:\n";
+    os << line_prefix << "-" << std::setfill('-') << std::setw(ptr_table_width) << "-\n";
+    os << line_prefix << "| " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
     os << std::setw(addr_width+3) << "end | " << std::setw(segment_hash::size*2+2) << "hash |" << '\n';
-    os << '[' << rank_me() << "] |" << std::setfill('-') << std::setw(addr_width+3) << "|";
+    os << line_prefix << "|" << std::setfill('-') << std::setw(addr_width+3) << "|";
     os << std::setw(addr_width+3) << "|" << std::setw(segment_hash::size*2+3) << "|" << '\n';
     os << std::setfill(' ');
     for (const auto& entry : cache_ptr_) {
-      os << "[" << rank_me() << "] | " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
+      os << line_prefix << "| " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
       os << std::setw(addr_width) << reinterpret_cast<void*>(entry.end) << " | ";
       std::stringstream hashstr;
       hashstr << std::setfill('0') << std::hex;
@@ -848,23 +864,23 @@ namespace detail {
         hashstr << std::setw(2) << static_cast<int>(entry.ident[j]);
       os << std::setw(segment_hash::size*2) << hashstr.str() << " |" << '\n';
     }
-    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(ptr_table_width) << "-\n[" << rank_me() << "]\n";
-    os << '[' << rank_me() << "] Token Lookup Cache:\n";
-    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
-    os << '[' << rank_me() << "] | " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
+    os << line_prefix << "-" << std::setfill('-') << std::setw(ptr_table_width) << "-\n" << line_prefix << "\n";
+    os << line_prefix << "Token Lookup Cache:\n";
+    os << line_prefix << "-" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
+    os << line_prefix << "| " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
     os << std::setw(segment_hash::size*2+2) << "hash |" << '\n';
-    os << '[' << rank_me() << "] |" << std::setfill('-') << std::setw(addr_width+3) << "|";
+    os << line_prefix << "|" << std::setfill('-') << std::setw(addr_width+3) << "|";
     os << std::setw(segment_hash::size*2+3) << "|" << '\n';
     os << std::setfill(' ');
     for (const auto& entry : cache_tkn_) {
-      os << "[" << rank_me() << "] | " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
+      os << line_prefix << "| " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
       std::stringstream hashstr;
       hashstr << std::setfill('0') << std::hex;
       for (size_t j = 0; j < segment_hash::size; ++j)
         hashstr << std::setw(2) << static_cast<int>(entry.ident[j]);
       os << std::setw(segment_hash::size*2) << hashstr.str() << " |" << '\n';
     }
-    os << '[' << rank_me() << "] -" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
+    os << line_prefix << "-" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
   }
 
   void segmap_cache::debug_write_cache(int fd)
