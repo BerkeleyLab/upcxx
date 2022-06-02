@@ -353,8 +353,9 @@ int main() {
       delete rpc_done2;
     }
 
-    // test deserialize_into
     big_nontrivial *bn = new big_nontrivial;
+
+    // test deserialize_into
     bn->data.fill(upcxx::rank_me());
     upcxx::rpc(
       (upcxx::rank_me()+1)%upcxx::rank_n(),
@@ -369,6 +370,21 @@ int main() {
         delete z;
       },
       upcxx::make_view(bn, bn+1)).wait();
+
+    // test deserialize_into optional
+    bn->data.fill(upcxx::rank_me());
+    upcxx::rpc(
+      (upcxx::rank_me()+1)%upcxx::rank_n(),
+      [](upcxx::view<big_nontrivial> v) {
+        auto spot = new upcxx::optional<big_nontrivial>;
+        big_nontrivial *z = v.begin().deserialize_into(*spot);
+        UPCXX_ASSERT_ALWAYS(
+          z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
+        );
+        delete spot;
+      },
+      upcxx::make_view(bn, bn+1)).wait();
+
     delete bn;
 
     // quiesce the world
