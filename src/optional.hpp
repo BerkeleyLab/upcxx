@@ -1014,14 +1014,12 @@ namespace std
 // upcxx extras
 template<typename T>
 void* operator new(std::size_t, upcxx::optional<T> &where) {
-  std::cout << "custom operator new invoked" << std::endl;
   where.activate(upcxx::detail::internal_only{});
   return where.raw(upcxx::detail::internal_only{});
 }
 
 template<typename T>
 void operator delete(void *ptr, upcxx::optional<T> &where) {
-  std::cout << "custom operator delete invoked" << std::endl;
   UPCXX_ASSERT_ALWAYS(ptr == where.raw(upcxx::detail::internal_only{}));
   where.deactivate(upcxx::detail::internal_only{});
 }

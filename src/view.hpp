@@ -1,6 +1,7 @@
 #ifndef _3493eefe_7dec_42a4_b7dc_b98f99716dfe
 #define _3493eefe_7dec_42a4_b7dc_b98f99716dfe
 
+#include <upcxx/optional.hpp>
 #include <upcxx/serialization.hpp>
 #include <upcxx/utility.hpp>
 
@@ -53,6 +54,13 @@ namespace upcxx {
     pointer deserialize_into(void *spot) const noexcept {
       detail::serialization_reader r1(r_);
       return detail::serialization_view_element<T>::deserialize(r1, spot);
+    }
+
+    pointer deserialize_into(upcxx::optional<value_type> &spot) const noexcept {
+      spot.reset();  // clear the optional in case it contains a value
+      auto result = deserialize_into(spot.raw(detail::internal_only{}));
+      spot.activate(detail::internal_only{});
+      return result;
     }
     
     deserializing_iterator operator++(int) noexcept {
