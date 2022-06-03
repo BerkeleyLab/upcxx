@@ -999,25 +999,6 @@ namespace detail {
       return {};
   };
 
-  void segmap_cache::set_primary_segment(uintptr_t uptr, upcxx::entry_barrier eb)
-  {
-    backend::quiesce(world(), eb);
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto& segmap = segment_map();
-    for (const auto& seg : segmap)
-    {
-      if (uptr >= seg.start && uptr < seg.end)
-      {
-        primary_ = seg;
-        segment_hash reduced = reduce_all(seg.ident, seghash_reduce).wait();
-        if (reduced == segment_hash{})
-          UPCXXI_FATAL_ERROR("Inconsistent segment hash while attempting to set primary segment.");
-        return;
-      }
-    }
-    UPCXXI_FATAL_ERROR("Unable to set primary UPC++ segment: Supplied pointer not in address range of an executable segment.");
-  }
-
   void segmap_cache::verify_segment(uintptr_t uptr, entry_barrier eb)
   {
     UPCXXI_ASSERT_INIT();

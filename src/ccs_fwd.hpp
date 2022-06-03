@@ -312,7 +312,6 @@ namespace detail {
 
     static std::vector<segment_info> build_segment_map();
     static void rebuild_segment_map();
-    static void set_primary_segment(uintptr_t, entry_barrier);
 
     inline bool cache_full() const {
       UPCXX_ASSERT(cache_occupancy_ <= max_cache_size);
