@@ -106,91 +106,6 @@ namespace upcxx{
 namespace detail {
 namespace optional_impl_{
 
-// BEGIN workaround for missing is_trivially_destructible
-# if defined UPCXXI_TR2_OPTIONAL_GCC_4_8_AND_HIGHER___
-    // leave it: it is already there
-  using std::is_trivially_destructible;
-# elif defined UPCXXI_TR2_OPTIONAL_CLANG_3_4_2_AND_HIGHER_
-    // leave it: it is already there
-  using std::is_trivially_destructible;
-# elif defined UPCXXI_TR2_OPTIONAL_MSVC_2015_AND_HIGHER___
-    // leave it: it is already there
-  using std::is_trivially_destructible;
-# elif defined UPCXXI_TR2_OPTIONAL_DISABLE_EMULATION_OF_TYPE_TRAITS
-    // leave it: the user doesn't want it
-# else
-	template <typename T>
-	using is_trivially_destructible = std::has_trivial_destructor<T>;
-# endif
-// END workaround for missing is_trivially_destructible
-
-# if (defined UPCXXI_TR2_OPTIONAL_GCC_4_7_AND_HIGHER___)
-    // leave it; our metafunctions are already defined.
-  using std::is_nothrow_move_constructible;
-  using std::is_assignable;
-  using std::is_nothrow_move_assignable;
-# elif defined UPCXXI_TR2_OPTIONAL_CLANG_3_4_2_AND_HIGHER_
-    // leave it; our metafunctions are already defined.
-  using std::is_nothrow_move_constructible;
-  using std::is_assignable;
-  using std::is_nothrow_move_assignable;
-# elif defined UPCXXI_TR2_OPTIONAL_MSVC_2015_AND_HIGHER___
-    // leave it: it is already there
-  using std::is_nothrow_move_constructible;
-  using std::is_assignable;
-  using std::is_nothrow_move_assignable;
-# elif defined UPCXXI_TR2_OPTIONAL_DISABLE_EMULATION_OF_TYPE_TRAITS
-    // leave it: the user doesn't want it
-  using std::is_nothrow_move_constructible;
-  using std::is_assignable;
-  using std::is_nothrow_move_assignable;
-# else
-
-
-// workaround for missing traits in GCC and CLANG
-template <class T>
-struct is_nothrow_move_constructible
-{
-  constexpr static bool value = std::is_nothrow_constructible<T, T&&>::value;
-};
-
-
-template <class T, class U>
-struct is_assignable
-{
-  template <class X, class Y>
-  constexpr static bool has_assign(...) { return false; }
-
-  template <class X, class Y, size_t S = sizeof((std::declval<X>() = std::declval<Y>(), true)) >
-  // the comma operator is necessary for the cases where operator= returns void
-  constexpr static bool has_assign(bool) { return true; }
-
-  constexpr static bool value = has_assign<T, U>(true);
-};
-
-
-template <class T>
-struct is_nothrow_move_assignable
-{
-  template <class X, bool has_any_move_assign>
-  struct has_nothrow_move_assign {
-    constexpr static bool value = false;
-  };
-
-  template <class X>
-  struct has_nothrow_move_assign<X, true> {
-    constexpr static bool value = noexcept( std::declval<X&>() = std::declval<X&&>() );
-  };
-
-  constexpr static bool value = has_nothrow_move_assign<T, is_assignable<T&, T&&>::value>::value;
-};
-// end workaround
-
-
-# endif
-
-
-
 // 20.5.4, optional for object types
 template <class T> class optional;
 
@@ -377,7 +292,7 @@ struct constexpr_optional_base
 
 template <class T>
 using OptionalBase = typename std::conditional<
-    is_trivially_destructible<T>::value,                          // if possible
+    std::is_trivially_destructible<T>::value,                     // if possible
     constexpr_optional_base<typename std::remove_const<T>::type>, // use base with trivial destructor
     optional_base<typename std::remove_const<T>::type>
 >::type;
@@ -446,7 +361,7 @@ public:
     }
   }
 
-  optional(optional&& rhs) noexcept(is_nothrow_move_constructible<T>::value)
+  optional(optional&& rhs) noexcept(std::is_nothrow_move_constructible<T>::value)
   : OptionalBase<T>()
   {
     if (rhs.initialized()) {
@@ -486,7 +401,7 @@ public:
   }
 
   optional& operator=(optional&& rhs)
-  noexcept(is_nothrow_move_assignable<T>::value && is_nothrow_move_constructible<T>::value)
+  noexcept(std::is_nothrow_move_assignable<T>::value && std::is_nothrow_move_constructible<T>::value)
   {
     if      (initialized() == true  && rhs.initialized() == false) clear();
     else if (initialized() == false && rhs.initialized() == true)  initialize(std::move(*rhs));
@@ -523,7 +438,7 @@ public:
   }
 
   // 20.5.4.4, Swap
-  void swap(optional<T>& rhs) noexcept(is_nothrow_move_constructible<T>::value
+  void swap(optional<T>& rhs) noexcept(std::is_nothrow_move_constructible<T>::value
                                        && noexcept(detail2_::swap_ns::adl_swap(std::declval<T&>(), std::declval<T&>())))
   {
     if      (initialized() == true  && rhs.initialized() == false) { rhs.initialize(std::move(**this)); clear(); }
