@@ -18,7 +18,6 @@
 # include <utility>
 # include <type_traits>
 # include <initializer_list>
-# include <cassert>
 # include <functional>
 # include <string>
 # include <stdexcept>
@@ -214,10 +213,10 @@ template <class T> inline constexpr typename std::remove_reference<T>::type&& co
 }
 
 
-#if defined NDEBUG
+#if UPCXXI_ASSERT_ENABLED
 # define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) (EXPR)
 #else
-# define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) ((CHECK) ? (EXPR) : ([]{assert(!#CHECK);}(), (EXPR)))
+# define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) ((CHECK) ? (EXPR) : ([]{UPCXX_ASSERT(!#CHECK);}(), (EXPR)))
 #endif
 
 
@@ -418,7 +417,7 @@ class optional : private OptionalBase<T>
   template <class... Args>
   void initialize(Args&&... args) noexcept(noexcept(T(std::forward<Args>(args)...)))
   {
-    assert(!OptionalBase<T>::init_);
+    UPCXX_ASSERT(!OptionalBase<T>::init_);
     ::new (static_cast<void*>(dataptr())) T(std::forward<Args>(args)...);
     OptionalBase<T>::init_ = true;
   }
@@ -426,7 +425,7 @@ class optional : private OptionalBase<T>
   template <class U, class... Args>
   void initialize(std::initializer_list<U> il, Args&&... args) noexcept(noexcept(T(il, std::forward<Args>(args)...)))
   {
-    assert(!OptionalBase<T>::init_);
+    UPCXX_ASSERT(!OptionalBase<T>::init_);
     ::new (static_cast<void*>(dataptr())) T(il, std::forward<Args>(args)...);
     OptionalBase<T>::init_ = true;
   }
@@ -544,7 +543,7 @@ public:
 # if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
 
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T* operator ->() {
-    assert (initialized());
+    UPCXX_ASSERT(initialized());
     return dataptr();
   }
 
@@ -553,12 +552,12 @@ public:
   }
 
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T& operator *() & {
-    assert (initialized());
+    UPCXX_ASSERT(initialized());
     return contained_val();
   }
 
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T&& operator *() && {
-    assert (initialized());
+    UPCXX_ASSERT(initialized());
     return constexpr_move(contained_val());
   }
 
@@ -578,7 +577,7 @@ public:
 # else
 
   T* operator ->() {
-    assert (initialized());
+    UPCXX_ASSERT(initialized());
     return dataptr();
   }
 
@@ -587,7 +586,7 @@ public:
   }
 
   T& operator *() {
-    assert (initialized());
+    UPCXX_ASSERT(initialized());
     return contained_val();
   }
 
@@ -645,11 +644,11 @@ public:
     return dataptr();
   }
   void activate(detail::internal_only) {
-    assert(!initialized());
+    UPCXX_ASSERT(!initialized());
     OptionalBase<T>::init_ = true;
   }
   void deactivate(detail::internal_only) {
-    assert(initialized());
+    UPCXX_ASSERT(initialized());
     OptionalBase<T>::init_ = false;
   }
 };
