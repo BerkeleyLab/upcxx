@@ -1132,7 +1132,6 @@ TEST(optional_ref_emulation)
 };
 
 
-# if UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS == 1
 TEST(moved_on_value_or)
 {
   using namespace upcxx;
@@ -1164,7 +1163,6 @@ TEST(moved_on_value_or)
   }
 # endif
 };
-# endif
 
 
 #if 0  // optional references are not allowed
@@ -1558,11 +1556,6 @@ int main() {
     assert (!oi);
 
     VEC v = {5, 6};
-
-    if (UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS)
-      std::cout << "Optional has rvalue references for *this" << std::endl;
-    else
-      std::cout << "Optional doesn't have rvalue references for *this" << std::endl;
 
     if (UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST)
       std::cout << "Optional has constexpr initializer_list" << std::endl;

@@ -25,81 +25,22 @@
 
 # define UPCXXI_TR2_OPTIONAL_REQUIRES(...) typename std::enable_if<__VA_ARGS__::value, bool>::type = false
 
-# if defined __GNUC__ // NOTE: GNUC is also defined for Clang
-#   if (__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_8_AND_HIGHER___
-#   elif (__GNUC__ > 4)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_8_AND_HIGHER___
-#   endif
-
-#   if (__GNUC__ == 4) && (__GNUC_MINOR__ >= 7)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_7_AND_HIGHER___
-#   elif (__GNUC__ > 4)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_7_AND_HIGHER___
-#   endif
-
-#   if (__GNUC__ == 4) && (__GNUC_MINOR__ == 8) && (__GNUC_PATCHLEVEL__ >= 1)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_8_1_AND_HIGHER___
-#   elif (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_8_1_AND_HIGHER___
-#   elif (__GNUC__ > 4)
-#     define UPCXXI_TR2_OPTIONAL_GCC_4_8_1_AND_HIGHER___
-#   endif
-# endif
-
-# if defined __clang_major__
-#   if (__clang_major__ == 3 && __clang_minor__ >= 5)
-#     define UPCXXI_TR2_OPTIONAL_CLANG_3_5_AND_HIGHTER_
-#   elif (__clang_major__ > 3)
-#     define UPCXXI_TR2_OPTIONAL_CLANG_3_5_AND_HIGHTER_
-#   endif
-#   if defined UPCXXI_TR2_OPTIONAL_CLANG_3_5_AND_HIGHTER_
-#     define UPCXXI_TR2_OPTIONAL_CLANG_3_4_2_AND_HIGHER_
-#   elif (__clang_major__ == 3 && __clang_minor__ == 4 && __clang_patchlevel__ >= 2)
-#     define UPCXXI_TR2_OPTIONAL_CLANG_3_4_2_AND_HIGHER_
-#   endif
-# endif
-
-# if defined _MSC_VER
-#   if (_MSC_VER >= 1900)
-#     define UPCXXI_TR2_OPTIONAL_MSVC_2015_AND_HIGHER___
-#   endif
-# endif
-
-# if defined __clang__
-#   if (__clang_major__ > 2) || (__clang_major__ == 2) && (__clang_minor__ >= 9)
-#     define UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS 1
-#   else
-#     define UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS 0
-#   endif
-# elif defined UPCXXI_TR2_OPTIONAL_GCC_4_8_1_AND_HIGHER___
-#   define UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS 1
-# elif defined UPCXXI_TR2_OPTIONAL_MSVC_2015_AND_HIGHER___
-#   define UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS 1
-# else
-#   define UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS 0
-# endif
-
-
-# if defined UPCXXI_TR2_OPTIONAL_GCC_4_8_1_AND_HIGHER___
-#   define UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST 1
-#   define UPCXXI_OPTIONAL_CONSTEXPR_INIT_LIST constexpr
-# else
-#   define UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST 0
-#   define UPCXXI_OPTIONAL_CONSTEXPR_INIT_LIST
-# endif
-
-# if defined UPCXXI_TR2_OPTIONAL_CLANG_3_5_AND_HIGHTER_ && (defined __cplusplus) && (__cplusplus != 201103L)
+# if defined __clang_major__ && (__cplusplus != 201103L)
 #   define UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS 1
 # else
 #   define UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS 0
 # endif
 
+# if __cplusplus < 201402L
 // In C++11 constexpr implies const, so we need to make non-const members also non-constexpr
-# if (defined __cplusplus) && (__cplusplus == 201103L)
 #   define UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR
+// In C++11, the constructor for std::initializer_list is not constexpr
+#   define UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST 0
+#   define UPCXXI_OPTIONAL_CONSTEXPR_INIT_LIST
 # else
 #   define UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR constexpr
+#   define UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST 1
+#   define UPCXXI_OPTIONAL_CONSTEXPR_INIT_LIST constexpr
 # endif
 
 namespace upcxx{
@@ -310,18 +251,13 @@ class optional : private OptionalBase<T>
   typename std::remove_const<T>::type* dataptr() {  return std::addressof(OptionalBase<T>::storage_.value_); }
   constexpr const T* dataptr() const { return detail2_::static_addressof(OptionalBase<T>::storage_.value_); }
 
-# if UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS == 1
   constexpr const T& contained_val() const& { return OptionalBase<T>::storage_.value_; }
-#   if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
+# if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T&& contained_val() && { return std::move(OptionalBase<T>::storage_.value_); }
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T& contained_val() & { return OptionalBase<T>::storage_.value_; }
-#   else
+# else
   T& contained_val() & { return OptionalBase<T>::storage_.value_; }
   T&& contained_val() && { return std::move(OptionalBase<T>::storage_.value_); }
-#   endif
-# else
-  constexpr const T& contained_val() const { return OptionalBase<T>::storage_.value_; }
-  T& contained_val() { return OptionalBase<T>::storage_.value_; }
 # endif
 
   void clear() noexcept {
@@ -515,15 +451,13 @@ public:
 
 # endif
 
-# if UPCXXI_OPTIONAL_HAS_THIS_RVALUE_REFS == 1
-
   template <class V>
   constexpr T value_or(V&& v) const&
   {
     return *this ? **this : detail2_::convert<T>(constexpr_forward<V>(v));
   }
 
-#   if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
+# if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
 
   template <class V>
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T value_or(V&& v) &&
@@ -531,22 +465,12 @@ public:
     return *this ? constexpr_move(const_cast<optional<T>&>(*this).contained_val()) : detail2_::convert<T>(constexpr_forward<V>(v));
   }
 
-#   else
+# else
 
   template <class V>
   T value_or(V&& v) &&
   {
     return *this ? constexpr_move(const_cast<optional<T>&>(*this).contained_val()) : detail2_::convert<T>(constexpr_forward<V>(v));
-  }
-
-#   endif
-
-# else
-
-  template <class V>
-  constexpr T value_or(V&& v) const
-  {
-    return *this ? **this : detail2_::convert<T>(constexpr_forward<V>(v));
   }
 
 # endif
