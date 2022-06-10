@@ -25,10 +25,11 @@
 
 # define UPCXXI_TR2_OPTIONAL_REQUIRES(...) typename std::enable_if<__VA_ARGS__::value, bool>::type = false
 
-# if defined __clang_major__ && (__cplusplus != 201103L)
-#   define UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS 1
-# else
+# if __cplusplus < 201402L || __PGI || __INTEL_COMPILER
+// These do not work on PGI or Intel at any language level
 #   define UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS 0
+# else
+#   define UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS 1
 # endif
 
 # if __cplusplus < 201402L
