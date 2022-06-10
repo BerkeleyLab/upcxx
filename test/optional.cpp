@@ -1469,7 +1469,9 @@ void constexpr_test_disengaged()
 constexpr upcxx::optional<int> g0{};
 constexpr upcxx::optional<int> g2{2};
 static_assert( g2, "not initialized!" );
+#if !(__INTEL_COMPILER && __INTEL_COMPILER < 1800)  // intel 17 ICE's on this
 static_assert( *g2 == 2, "not 2!" );
+#endif
 static_assert( g2 == upcxx::optional<int>(2), "not 2!" );
 static_assert( g2 != g0, "eq!" );
 
@@ -1481,7 +1483,9 @@ static_assert( upcxx::optional<int>{}.value_or(4) == 4, "WTF!" );
 # endif
 
 constexpr upcxx::optional<Combined> gc0{upcxx::in_place};
+#if !(__INTEL_COMPILER && __INTEL_COMPILER < 1800)  // intel 17 ICE's on this
 static_assert(gc0->n == 6, "WTF!");
+#endif
 
 #if 0  // optional references are not allowed
 // optional refs
