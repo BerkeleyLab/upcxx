@@ -649,6 +649,12 @@ TEST(example_rationale)
   optional<optional<T>> ot {in_place};
   optional<optional<T>> ou {in_place, nullopt};
   optional<optional<T>> ov {optional<T>{}};
+  assert (ot);
+  assert (!*ot);
+  assert (ou);
+  assert (!*ou);
+  assert (ov);
+  assert (!*ov);
 
   optional<int> oi;
   auto ooi = make_optional(oi);
@@ -675,7 +681,7 @@ TEST(example_converting_ctor)
 TEST(bad_comparison)
 {
   upcxx::optional<int> oi, oj;
-  int i;
+  int i = 0;
   bool b = (oi == oj);
   b = (oi >= i);
   b = (oi == i);
@@ -881,15 +887,19 @@ TEST(const_propagation)
 
   optional<int> mmi{0};
   static_assert(std::is_same<decltype(*mmi), int&>::value, "WTF");
+  assert (*mmi == 0);
 
   const optional<int> cmi{0};
   static_assert(std::is_same<decltype(*cmi), const int&>::value, "WTF");
+  assert (*cmi == 0);
 
   optional<const int> mci{0};
   static_assert(std::is_same<decltype(*mci), const int&>::value, "WTF");
+  assert (*mci == 0);
 
   optional<const int> cci{0};
   static_assert(std::is_same<decltype(*cci), const int&>::value, "WTF");
+  assert (*cci == 0);
 };
 
 
@@ -1394,21 +1404,25 @@ void test_noexcept()
     upcxx::optional<NothrowBoth> b1, b2;
     static_assert(noexcept(upcxx::optional<NothrowBoth>{constexpr_move(b1)}), "bad noexcept!");
     static_assert(noexcept(b1 = constexpr_move(b2)), "bad noexcept!");
+    assert (!b1 && !b2);
   }
   {
     upcxx::optional<NothrowCtor> c1, c2;
     static_assert(noexcept(upcxx::optional<NothrowCtor>{constexpr_move(c1)}), "bad noexcept!");
     static_assert(!noexcept(c1 = constexpr_move(c2)), "bad noexcept!");
+    assert (!c1 && !c2);
   }
   {
     upcxx::optional<NothrowAssign> a1, a2;
     static_assert(!noexcept(upcxx::optional<NothrowAssign>{constexpr_move(a1)}), "bad noexcept!");
     static_assert(!noexcept(a1 = constexpr_move(a2)), "bad noexcept!");
+    assert (!a1 && !a2);
   }
   {
     upcxx::optional<NothrowNone> n1, n2;
     static_assert(!noexcept(upcxx::optional<NothrowNone>{constexpr_move(n1)}), "bad noexcept!");
     static_assert(!noexcept(n1 = constexpr_move(n2)), "bad noexcept!");
+    assert (!n1 && !n2);
   }
 }
 
