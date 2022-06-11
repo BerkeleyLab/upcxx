@@ -1101,7 +1101,7 @@ namespace upcxx {
       template<typename Reader>
       static void deserialize_read(Reader &r, TupRefs refs) {
         Ti *spot = &std::template get<i>(refs);
-        r.template read_into<Ti>(spot);
+        r.template read_into<Ti>((void*) spot);
         
         serialization_fields_each<TupRefs, i+1, n>::deserialize_read(r, refs);
       }
