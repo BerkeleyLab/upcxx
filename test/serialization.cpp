@@ -340,7 +340,7 @@ struct my_seq_base {
         // deserialize one elt individually
         elts = r.template read_into<T>(mem);
         // then the rest as a sequence
-        r.template read_sequence_into<T>(elts+1, n-1);
+        r.template read_sequence_into<T>(static_cast<void*>(elts+1), n-1);
       }
 
       Derived *ans = storage.construct(decltype(Derived::elts)(elts, elts + n));
@@ -392,7 +392,7 @@ struct array_write_read_into {
     static array_write_read_into* deserialize(Reader &r, Storage storage) {
       auto result = storage.construct();
       r.template read_into<int[4]>(result->arr1);
-      r.template read_into<std::string[2]>(result->arr2);
+      r.template read_overwrite<std::string[2]>(result->arr2);
       return result;
     }
   };

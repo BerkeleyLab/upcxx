@@ -31,6 +31,17 @@
   #include <vector>
 #endif
 
+#define UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, bad_func, good_func) \
+  UPCXX_ASSERT(std::is_trivially_destructible<U>::value,                \
+               bad_func " invoked on a pointer to a "                   \
+               "non-TriviallyDestructible type.\nSince " bad_func       \
+               " does not destruct the underlying object, this is an\n" \
+               "error if the pointer refers to a live object. If you "  \
+               "are certain that the\npointer does not refer to a "     \
+               "live object, cast the pointer to void* to bypass\n"     \
+               "this assertion. Otherwise, use " good_func              \
+               ", which does destruct\nthe underlying object.")
+
 namespace upcxx {
   namespace detail {
     constexpr std::uintptr_t serialization_align_max = 64;
@@ -752,6 +763,14 @@ namespace upcxx {
         return res;
       }
 
+      template<typename T, typename U, bool AssertSerializable = true,
+               typename T1 = typename serialization_traits<T>::deserialized_type>
+      T1* read_into(U *raw) {
+        UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, "read_into()",
+                                              "read_overwrite()");
+        return read_into<T, AssertSerializable, T1>((void*) raw);
+      }
+
       template<typename T,
                typename T1 = typename serialization_traits<T>::deserialized_type>
       T1* read_into(upcxx::optional<T1> &spot) {
@@ -764,6 +783,15 @@ namespace upcxx {
         return upcxx::template serialization_traits<T>::deserialize(
           *this, wrapper_t{&spot}
         );
+      }
+
+      template<typename T, bool AssertSerializable = true>
+      deserialized_type_t<T>* read_overwrite(
+          typename std::remove_extent<deserialized_type_t<T>>::type *ptr) {
+        using T1 = deserialized_type_t<T>;
+        // properly destruct both scalar and array types
+        serialization_traits<T1>::destruct(ptr, internal_only{});
+        return read_into<T, AssertSerializable, T1>((void*) ptr);
       }
 
       void* unplace(std::size_t obj_size, std::size_t obj_align) {
@@ -830,7 +858,7 @@ namespace upcxx {
       T1* read_sequence_into_(void *raw, std::size_t n, std::false_type trivial_serz) {
         T1 *ans = reinterpret_cast<T1*>(raw);
         for(std::size_t i=0; i != n; i++) {
-          T1 *elt = this->template read_into<T>(reinterpret_cast<T1*>(raw) + i);
+          T1 *elt = this->template read_into<T>((void*) (reinterpret_cast<T1*>(raw) + i));
           if(i == 0) ans = elt;
         }
         return ans;
@@ -846,6 +874,25 @@ namespace upcxx {
           );
       }
       
+      template<typename T, typename U,
+               typename T1 = typename serialization_traits<T>::deserialized_type>
+      T1* read_sequence_into(U *raw, std::size_t n) {
+        UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, "read_sequence_into()",
+                                              "read_sequence_overwrite()");
+        return read_sequence_into<T, T1>((void*) raw, n);
+      }
+
+      template<typename T>
+      deserialized_type_t<T>* read_sequence_overwrite(deserialized_type_t<T> *ptr,
+                                                      std::size_t n) {
+        UPCXXI_ASSERT_INIT();
+        using T1 = deserialized_type_t<T>;
+        for(std::size_t i=0; i != n; i++) {
+          T1 *elt = this->template read_overwrite<T>(ptr + i);
+        }
+        return ptr;
+      }
+
       template<typename T, typename OutIter>
       void read_sequence_into_iterator(OutIter into, std::size_t n) {
         while(n--) {
@@ -1524,10 +1571,33 @@ namespace upcxx {
         UPCXXI_ASSERT_NOEXCEPTIONS_END
       }
     };
+
+    template<typename T, bool = std::is_trivially_destructible<T>::value>
+    struct serialization_traits_destruct {
+      static void destruct(void *ptr, internal_only) {
+        reinterpret_cast<T*>(ptr)->~T();
+      }
+    };
+
+    template<typename T>
+    struct serialization_traits_destruct<T, true> {
+      static void destruct(void *ptr, internal_only) {}
+    };
+
+    template<typename T, std::size_t n>
+    struct serialization_traits_destruct<T[n], false> {
+      static void destruct(void *ptr, internal_only) {
+        T *arr = reinterpret_cast<T*>(ptr);
+        for (std::size_t i = 0; i < n; ++i) {
+          serialization_traits_destruct<T>::destruct(arr + i, internal_only{});
+        }
+      }
+    };
     
     template<typename T>
     struct serialization_traits1:
       detail::serialization_traits_deserialized_value<T>,
+      serialization_traits_destruct<T>,
       serialization_traits2<T> {
     };
   }

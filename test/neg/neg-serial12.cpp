@@ -13,7 +13,7 @@ struct B {
     template<typename Reader>
     static B* deserialize(Reader &r, void *spot) {
       B* result = new(spot) B;
-      r.template read_into<A>(&result->a);
+      r.template read_overwrite<A>(&result->a);
       return result;
     }
   };
