@@ -1756,6 +1756,17 @@ namespace upcxx {
     // arrays are technically not Serializable
     static constexpr bool is_serializable = false;
 
+    // serialize/deserialize work on a linearization of this array --
+    // if this is a multidimensional array, we can't call
+    // write_sequence on the elements since they aren't technically
+    // Serializable
+    using base_elem_type_ = typename std::remove_all_extents<T>::type;
+    // C++ guarantees that the size of an array of n elements is n
+    // times the size of an element (see [expr.sizeof] in the
+    // standard)
+    static constexpr std::size_t base_elem_count_ =
+      sizeof(T[n]) / sizeof(base_elem_type_);
+
     // but we define serialization for use in UPCXX_SERIALIZED_FIELDS,
     // Writer::write, and Reader::read_into
     template<typename Prefix>
@@ -1768,7 +1779,8 @@ namespace upcxx {
     
     template<typename Writer>
     static void serialize(Writer &w, T const(&x)[n]) {
-      w.write_sequence(&x[0], &x[0] + n, n);
+      auto ptr = reinterpret_cast<const base_elem_type_*>(&x[0]);
+      w.write_sequence(ptr, ptr + base_elem_count_, base_elem_count_);
     }
 
     static constexpr bool references_buffer = serialization_traits<T>::references_buffer;
@@ -1779,7 +1791,9 @@ namespace upcxx {
     
     template<typename Reader>
     static deserialized_type* deserialize(Reader &r, void *raw) {
-      return reinterpret_cast<T1(*)[n]>(r.template read_sequence_into<T>(raw, n));
+      return reinterpret_cast<T1(*)[n]>(
+        r.template read_sequence_into<base_elem_type_>(raw, base_elem_count_)
+      );
     }
 
     static constexpr bool skip_is_fast = detail::serialization_reader::template skip_sequence_is_fast<T>();
