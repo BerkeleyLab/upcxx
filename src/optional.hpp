@@ -70,13 +70,6 @@ template <class T> inline constexpr typename std::remove_reference<T>::type&& co
 }
 
 
-#if UPCXXI_ASSERT_ENABLED
-# define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) (EXPR)
-#else
-# define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) ((CHECK) ? (EXPR) : ([]{UPCXX_ASSERT(!#CHECK);}(), (EXPR)))
-#endif
-
-
 namespace detail2_
 {
 
@@ -389,7 +382,7 @@ public:
   constexpr bool has_value() const noexcept { return initialized(); }
 
   constexpr T const* operator ->() const {
-    return UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(initialized(), dataptr());
+    return UPCXX_ASSERT(initialized()), dataptr();
   }
 
 # if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
@@ -400,7 +393,7 @@ public:
   }
 
   constexpr T const& operator *() const& {
-    return UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(initialized(), contained_val());
+    return UPCXX_ASSERT(initialized()), contained_val();
   }
 
   UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T& operator *() & {
@@ -434,7 +427,7 @@ public:
   }
 
   constexpr T const& operator *() const {
-    return UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(initialized(), contained_val());
+    return UPCXX_ASSERT(initialized()), contained_val();
   }
 
   T& operator *() {
@@ -864,6 +857,5 @@ void operator delete(void *ptr, upcxx::optional<T> &where) {
 }
 
 # undef UPCXXI_TR2_OPTIONAL_REQUIRES
-# undef UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION
 
 #endif // _7f4d2f35_031e_403e_ac70_7b1cafb357f3
