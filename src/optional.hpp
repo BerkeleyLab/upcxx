@@ -73,6 +73,11 @@ template <class T> inline constexpr typename std::remove_reference<T>::type&& co
 #if UPCXXI_ASSERT_ENABLED
 # define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) (EXPR)
 #else
+// This is used in a constexpr context, so we need to ensure that the
+// test expression is constexpr-compatible. Not all compilers treat
+// __builtin_expect (used by UPCXX_ASSERT) as constexpr, so we have to
+// lift the check out of UPCXX_ASSERT so that the whole conditional is
+// constexpr-compatible.
 # define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) ((CHECK) ? (EXPR) : (UPCXX_ASSERT(!#CHECK), (EXPR)))
 #endif
 
