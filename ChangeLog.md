@@ -27,6 +27,7 @@ Notable issues resolved
 * issue #545: CCS: Allow `experimental::relo::debug*()` before `init()`
 * issue #546: CCS: Level 2 cache thread safety
 * issue #551: CCS: Thread safety race in segment verification
+* issue #552: Compilation errors for write and read_into on a multidimensional array
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 
 Embeds a GASNet-EX library that addresses the following notable issues
