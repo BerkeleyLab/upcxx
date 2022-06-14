@@ -409,7 +409,7 @@ int main() {
       (upcxx::rank_me()+1)%upcxx::rank_n(),
       [](upcxx::view<big_nontrivial> v) {
         auto spot = new big_nontrivial;
-        big_nontrivial *z = v.begin().deserialize_overwrite(spot); ++big_nontrivial::expected_dtor_count;
+        big_nontrivial *z = v.begin().deserialize_overwrite(*spot); ++big_nontrivial::expected_dtor_count;
         UPCXX_ASSERT_ALWAYS(
           z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
         );

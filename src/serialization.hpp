@@ -786,12 +786,10 @@ namespace upcxx {
       }
 
       template<typename T, bool AssertSerializable = true>
-      deserialized_type_t<T>* read_overwrite(
-          typename std::remove_extent<deserialized_type_t<T>>::type *ptr) {
+      deserialized_type_t<T>* read_overwrite(deserialized_type_t<T> &obj) {
         using T1 = deserialized_type_t<T>;
-        // properly destruct both scalar and array types
-        serialization_traits<T1>::destruct(ptr, internal_only{});
-        return read_into<T, AssertSerializable, T1>((void*) ptr);
+        detail::template destruct<T1>(obj);
+        return read_into<T, AssertSerializable, T1>((void*) &obj);
       }
 
       void* unplace(std::size_t obj_size, std::size_t obj_align) {
@@ -888,7 +886,7 @@ namespace upcxx {
         UPCXXI_ASSERT_INIT();
         using T1 = deserialized_type_t<T>;
         for(std::size_t i=0; i != n; i++) {
-          T1 *elt = this->template read_overwrite<T>(ptr + i);
+          T1 *elt = this->template read_overwrite<T>(ptr[i]);
         }
         return ptr;
       }
@@ -1571,33 +1569,10 @@ namespace upcxx {
         UPCXXI_ASSERT_NOEXCEPTIONS_END
       }
     };
-
-    template<typename T, bool = std::is_trivially_destructible<T>::value>
-    struct serialization_traits_destruct {
-      static void destruct(void *ptr, internal_only) {
-        reinterpret_cast<T*>(ptr)->~T();
-      }
-    };
-
-    template<typename T>
-    struct serialization_traits_destruct<T, true> {
-      static void destruct(void *ptr, internal_only) {}
-    };
-
-    template<typename T, std::size_t n>
-    struct serialization_traits_destruct<T[n], false> {
-      static void destruct(void *ptr, internal_only) {
-        T *arr = reinterpret_cast<T*>(ptr);
-        for (std::size_t i = 0; i < n; ++i) {
-          serialization_traits_destruct<T>::destruct(arr + i, internal_only{});
-        }
-      }
-    };
     
     template<typename T>
     struct serialization_traits1:
       detail::serialization_traits_deserialized_value<T>,
-      serialization_traits_destruct<T>,
       serialization_traits2<T> {
     };
   }

@@ -72,9 +72,9 @@ namespace upcxx {
       return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{&spot});
     }
 
-    pointer deserialize_overwrite(pointer ptr) const noexcept {
-      ptr->~value_type();
-      return deserialize_into((void*) ptr);
+    pointer deserialize_overwrite(value_type &obj) const noexcept {
+      detail::template destruct<value_type>(obj);
+      return deserialize_into((void*) &obj);
     }
     
     deserializing_iterator operator++(int) noexcept {
