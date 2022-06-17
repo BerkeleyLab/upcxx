@@ -143,7 +143,10 @@ namespace detail {
     {
       auto offset = r.template read_trivial<uintptr_t>();
       if (!(offset & msb)) {
-        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{detail::function_token_ss{offset}};
+        // issue 553: Workaround for CUDA 11.0.3 nvcc frontend bug where it fails to recognize the single-member aggregate initialization 
+        // if the `function_token_ss` is constructed in the same line
+        detail::function_token_ss ss{offset};
+        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{std::move(ss)};
       } else {
         int16_t idx = (offset & idx_bits) >> idx_shift;
         if (idx > 0)
