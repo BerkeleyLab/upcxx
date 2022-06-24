@@ -57,10 +57,7 @@ namespace upcxx {
     }
 
     pointer deserialize_into(upcxx::optional<value_type> &spot) const noexcept {
-      spot.reset();  // clear the optional in case it contains a value
-      auto result = deserialize_into(spot.raw(detail::internal_only{}));
-      spot.activate(detail::internal_only{});
-      return result;
+      return deserialize_into(::operator new(sizeof(value_type), spot));
     }
     
     deserializing_iterator operator++(int) noexcept {

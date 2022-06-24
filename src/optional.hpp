@@ -484,18 +484,24 @@ public:
   // 20.6.3.6, modifiers
   void reset() noexcept { clear(); }
 
+private:
   // upcxx extras
-  void* raw(detail::internal_only) {
+  void* raw() {
     return dataptr();
   }
-  void activate(detail::internal_only) {
+  void activate() {
     UPCXX_ASSERT(!initialized());
     OptionalBase<T>::init_ = true;
   }
-  void deactivate(detail::internal_only) {
+  void deactivate() {
     UPCXX_ASSERT(initialized());
     OptionalBase<T>::init_ = false;
   }
+
+  template<typename U>
+  friend void* ::operator new(std::size_t, optional<U> &where);
+  template<typename U>
+  friend void ::operator delete(void *ptr, optional<U> &where);
 };
 
 // https://en.cppreference.com/w/cpp/utility/optional:
@@ -858,14 +864,15 @@ namespace std
 // upcxx extras
 template<typename T>
 void* operator new(std::size_t, upcxx::optional<T> &where) {
-  where.activate(upcxx::detail::internal_only{});
-  return where.raw(upcxx::detail::internal_only{});
+  where.reset();
+  where.activate();
+  return where.raw();
 }
 
 template<typename T>
 void operator delete(void *ptr, upcxx::optional<T> &where) {
-  UPCXX_ASSERT_ALWAYS(ptr == where.raw(upcxx::detail::internal_only{}));
-  where.deactivate(upcxx::detail::internal_only{});
+  UPCXX_ASSERT_ALWAYS(ptr == where.raw());
+  where.deactivate();
 }
 
 # undef UPCXXI_TR2_OPTIONAL_REQUIRES
