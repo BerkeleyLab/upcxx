@@ -440,6 +440,12 @@ the `<PROVIDER>` placeholder above:
 
 If you are uncertain of which NIC is used on a given system, please consult the
 site-specific documentation or ask the support staff for assistance.
+Another alternative is to pass `--with-ofi-provider=generic`, which requests
+provider adaptation be performed during runtime startup, at some cost in
+additional communication overhead. This option may be useful for systems
+with a mix of Slingshot-10 and Slingshot-11 nodes, although all processes in a
+job still need to be using matching hardware and software (including provider)
+at runtime.
 
 On _some_ systems with multiple Slingshot NICs, one will need to add
 `--with-host-detect=hostname`.  This option is recommended only when actually
