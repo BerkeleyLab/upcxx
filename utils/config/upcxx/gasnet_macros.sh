@@ -90,6 +90,8 @@ if [[ $UPCXX_ASSERT = 0 ]]; then
 fi
 
 # probe platform identification macros
+# TODO: OS_CNL and OS_WSL have been renamed in recent GASNet and subsumed into OS_LINUX.
+# The two flavor variants can safely be removed after we require UPCXXI_GEX_RELEASE_VERSION >= 2022.9.0
 for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ARCH_BIG_ENDIAN OS_LINUX OS_FREEBSD OS_NETBSD OS_OPENBSD OS_DARWIN OS_CNL OS_WSL ; do
   name="PLATFORM_$feature"
   probe_macro $name $name "UPCXXI_$name" 1
