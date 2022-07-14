@@ -82,7 +82,8 @@ int main() {
   } catch (...) {
   }
   check_counts(4, 1, 1, 4);
-  UPCXX_ASSERT_ALWAYS(!*p5);  // check that *p5 was deactivated
+  // check that placement new deactivated *p5 after the exception was thrown
+  UPCXX_ASSERT_ALWAYS(!*p5);
   delete p5;
   check_counts(4, 1, 1, 4);
   p3 = new upcxx::optional<foo>;

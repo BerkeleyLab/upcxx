@@ -863,7 +863,8 @@ namespace std
 
 // upcxx extras
 template<typename T>
-void* operator new(std::size_t, upcxx::optional<T> &where) {
+void* operator new(std::size_t size, upcxx::optional<T> &where) {
+  UPCXX_ASSERT(size == sizeof(T));
   where.reset();
   where.activate();
   return where.raw();
