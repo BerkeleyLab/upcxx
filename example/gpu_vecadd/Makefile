@@ -34,10 +34,16 @@ HIPFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_HIP=1
 
 TARGETS = cuda_vecadd hip_vecadd
 OBJS = cuda_kernels.o hip_kernels.o
+default:
+	@echo "Please select one of the following three targets:"
+	@echo " - \`make cuda_vecadd\` makes an executable using CUDA kernels for NVIDIA GPUs"
+	@echo " - \`make hip_vecadd\`  makes an executable using ROCm/HIP kernels for AMD GPUs"
+	@echo " - \`make all\`         makes both executables"
+
 all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) $(OBJS)
-.PHONY: all clean
+.PHONY: all clean default
 
 %.o: %.cu kernels.hpp
 	$(NVCC) $(NVCCFLAGS) $(NVCCARCH_FLAGS) $(CUDAFLAGS) -c $<
