@@ -73,6 +73,11 @@ namespace backend {
   extern intrank_t pshm_peer_lb_;
   #if UPCXXI_ALL_RANKS_DEFINITELY_LOCAL
     constexpr intrank_t pshm_peer_lb = 0;
+  #elif __HIP_DEVICE_COMPILE__
+    // issue 554: branch below chokes ROCm/5 device compilation, where code paths using
+    // this variable should be unreachable anyhow. Insert an obvious poison
+    // value that will trigger assertions if this invariant is ever violated.
+    constexpr intrank_t pshm_peer_lb = 0x2152DEAD;
   #else
     static constexpr intrank_t const& pshm_peer_lb = pshm_peer_lb_;
   #endif
