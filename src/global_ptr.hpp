@@ -57,8 +57,12 @@ namespace upcxx {
       base_type(detail::internal_only(), other, offset) {
     }
 
+    // trivial copy constructor (TriviallyCopyable)
+    global_ptr(global_ptr const &) = default;
+
+    // kind conversion constructor
     template<memory_kind FromKind,
-             typename = typename std::enable_if<(Kind == FromKind || Kind == memory_kind::any)>::type>
+             typename = typename std::enable_if<(Kind != FromKind && Kind == memory_kind::any)>::type>
     global_ptr(global_ptr<const T,FromKind> const &that):
       base_type(that) {
     }
@@ -107,6 +111,11 @@ namespace upcxx {
       UPCXXI_INTERNAL_ONLY(rank_)(rank),
       UPCXXI_INTERNAL_ONLY(raw_ptr_)(const_cast<T*>(raw)) {
       static_assert(std::is_trivially_copyable<global_ptr<T,Kind>>::value, "Internal error.");
+      static_assert(std::is_trivially_copyable<global_ptr<const T,Kind>>::value, "Internal error.");
+      static_assert(std::is_trivially_destructible<global_ptr<T,Kind>>::value, "Internal error.");
+      static_assert(std::is_trivially_destructible<global_ptr<const T,Kind>>::value, "Internal error.");
+      static_assert(std::is_default_constructible<global_ptr<T,Kind>>::value, "Internal error.");
+      static_assert(std::is_default_constructible<global_ptr<const T,Kind>>::value, "Internal error.");
       static_assert(sizeof(global_ptr) <= 16, "global_ptr should be 128-bits or less");
       UPCXXI_GPTR_CHK(*this);
     }
@@ -128,8 +137,12 @@ namespace upcxx {
         UPCXXI_GPTR_CHK_NONNULL(*this);
       }
 
+    // trivial copy constructor (TriviallyCopyable)
+    global_ptr(global_ptr const &) = default;
+
+    // kind conversion constructor
     template<memory_kind FromKind,
-             typename = typename std::enable_if<(Kind == FromKind || Kind == memory_kind::any)>::type>
+             typename = typename std::enable_if<(Kind != FromKind && Kind == memory_kind::any)>::type>
     global_ptr(global_ptr<const T,FromKind> const &that):
       global_ptr(detail::internal_only(),
                  that.UPCXXI_INTERNAL_ONLY(rank_),
