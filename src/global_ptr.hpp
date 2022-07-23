@@ -57,8 +57,9 @@ namespace upcxx {
       base_type(detail::internal_only(), other, offset) {
     }
 
-    // trivial copy constructor (TriviallyCopyable)
+    // trivial copy construct/assign (TriviallyCopyable)
     global_ptr(global_ptr const &) = default;
+    global_ptr& operator=(global_ptr const &) = default;
 
     // kind conversion constructor
     template<memory_kind FromKind,
@@ -137,8 +138,9 @@ namespace upcxx {
         UPCXXI_GPTR_CHK_NONNULL(*this);
       }
 
-    // trivial copy constructor (TriviallyCopyable)
+    // trivial copy construct/assign (TriviallyCopyable)
     global_ptr(global_ptr const &) = default;
+    global_ptr& operator=(global_ptr const &) = default;
 
     // kind conversion constructor
     template<memory_kind FromKind,
