@@ -75,9 +75,10 @@ namespace upcxx {
         }
         return nullptr;
       }
-      
+
+      T *result;
       try {
-        ::new(ptr) T(std::forward<Args>(args)...); // placement new
+        result = ::new(ptr) T(std::forward<Args>(args)...); // placement new
       } catch (...) {
         // reclaim memory and rethrow the exception
         deallocate(ptr);
@@ -87,7 +88,7 @@ namespace upcxx {
       return global_ptr<T>(
         detail::internal_only{},
         upcxx::rank_me(),
-        reinterpret_cast<T*>(ptr)
+        result
       );
     }
   }
