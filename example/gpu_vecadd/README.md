@@ -37,3 +37,8 @@ Run these examples as usual, e.g.
 
 `upcxx-run -n 4 ./cuda_vecadd`
 `upcxx-run -n 4 ./hip_vecadd`
+
+When targeting HIP devices it is also usefule to specify the `HIPCCARCH_FLAGS` 
+variable, since without it GPU kernels might not be generated. For AMD MI100 GPUs
+(like those found on OLCF's Spock), set `HIPCCARCH_FLAGS` to `gfx908`. For AMD MI250X GPUs
+(like those found on OLCF's Crusher), use `gfx90A`.

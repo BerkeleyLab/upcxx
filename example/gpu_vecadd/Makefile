@@ -28,6 +28,20 @@ ifneq ($(strip $(NVCCARCH)),)
   endif
 endif
 
+# format flag properly for hipcc
+ifeq ($(findstring --amdgpu-target=,$(HIPCCARCH_FLAGS)),)
+  HIPCCARCH_FLAGS := --amdgpu-target=$(HIPCCARCH_FLAGS)
+endif
+# Honor user's HIPCCARCH_FLAGS (if any) warning if HCC_AMDGPU_TARGET is also set.
+# Otherwise convert HCC_AMDGPU_TARGET to an -arch=... option.
+ifneq ($(strip $(HCC_AMDGPU_TARGET)),)
+  ifneq ($(strip $(HIPCCARCH_FLAGS)),)
+	$(warning Both HCC_AMDGPU_TARGET and HIPCCARCH_FLAGS are set. Ignoring HCC_AMDGPU_TARGET.)
+  else
+    HIPCCARCH_FLAGS = --amdgpu-target=$(HCC_AMDGPU_TARGET)
+  endif
+endif
+
 CXXFLAGS ?= -g # optional command-line override
 CUDAFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_CUDA=1
 HIPFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_HIP=1
@@ -52,7 +66,7 @@ cuda_vecadd: vecadd.cxx cuda_kernels.o
 	$(UPCXX) $(CUDAFLAGS) $^ -o $@
 
 %.o : %.cxx kernels.hpp
-	$(HIPCC) $(HIPCCFLAGS) $(HIPFLAGS) -c $<
+	$(HIPCC) $(HIPCCFLAGS) $(HIPCCARCH_FLAGS) $(HIPFLAGS) -c $<
 
 hip_vecadd: vecadd.cxx hip_kernels.o
 	$(UPCXX) $(HIPFLAGS) $^ -o $@
