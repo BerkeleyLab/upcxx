@@ -29,12 +29,15 @@ ifneq ($(strip $(NVCCARCH)),)
 endif
 
 # Honor user's HIPCCARCH_FLAGS (if any), prepending it with --amdgpu-target= if necessary.
-ifneq ($(strip $(HIPCCARCH_FLAGS)),)
-    HIPCCARCH=--amdgpu-target=
-  ifneq ($(strip $(findstring --amdgpu-target,$(HIPCCARCH_FLAGS))),)
-    HIPCCARCH=$(HIPCCARCH_FLAGS)
+ifneq ($(strip $(HIPCCARCH)),)
+  ifneq ($(strip $(HIPCCARCH_FLAGS)),)
+	$(warning Both HIPCCARCH and HIPCCARCH_FLAGS are set. Ignoring HIPCCARCH.)
+    HIPCCARCH = $(HIPCCARCH_FLAGS)
+  endif
+  ifneq ($(strip $(findstring --amdgpu-target,$(HIPCCARCH))),)
+    HIPCCARCH_FLAGS = $(HIPCCARCH)
   else
-    HIPCCARCH:=$(HIPCCARCH)$(HIPCCARCH_FLAGS)
+    HIPCCARCH_FLAGS:=--amdgpu-target=$(HIPCCARCH)
   endif
 endif
 
@@ -62,7 +65,7 @@ cuda_vecadd: vecadd.cxx cuda_kernels.o
 	$(UPCXX) $(CUDAFLAGS) $^ -o $@
 
 %.o : %.cxx kernels.hpp
-	$(HIPCC) $(HIPCCFLAGS) $(HIPCCARCH) $(HIPFLAGS) -c $<
+	$(HIPCC) $(HIPCCFLAGS) $(HIPCCARCH_FLAGS) $(HIPFLAGS) -c $<
 
 hip_vecadd: vecadd.cxx hip_kernels.o
 	$(UPCXX) $(HIPFLAGS) $^ -o $@
