@@ -30,6 +30,7 @@ Notable issues resolved
 * issue #552: Compilation errors for write and read_into on a multidimensional array
 * Issue #553: CUDA 11.0.3 fails to recognize aggregate initialization in some contexts
 * Issue #554: UPC++ headers choke ROCm 5.x hipcc device-mode compilation
+* Issue #555: Error running HIP/ROCm examples
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 
 Embeds a GASNet-EX library that addresses the following notable issues

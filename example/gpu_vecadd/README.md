@@ -42,5 +42,5 @@ When targeting CUDA devices it is useful to specify the `NVCCARCH_FLAGS` variabl
 since compiling device code for the correct GPU architecture can improve performance.
 There is also a `HIPCCARCH_FLAGS` that can be used for properly targeting a
 HIP device. For AMD MI100 GPUs (like those found on OLCF's Spock), set 
-`HIPCCARCH_FLAGS` to `gfx908`. For AMD MI250X GPUs (like those found on OLCF's 
+`HIPCCARCH_FLAGS=gfx908`. For AMD MI250X GPUs (like those found on OLCF's 
 Crusher), use `gfx90A`.
