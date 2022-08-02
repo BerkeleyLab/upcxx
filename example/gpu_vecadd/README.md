@@ -38,9 +38,9 @@ Run these examples as usual, e.g.
 `upcxx-run -n 4 ./cuda_vecadd`
 `upcxx-run -n 4 ./hip_vecadd`
 
-When targeting CUDA devices it is useful to specify the `NVCCARCH_FLAGS` variable,
+When targeting CUDA devices it is useful to specify the `NVCCARCH` variable,
 since compiling device code for the correct GPU architecture can improve performance.
-There is also a `HIPCCARCH_FLAGS` that can be used for properly targeting a
+There is also a `HIPCCARCH` that can be used for properly targeting a
 HIP device. For AMD MI100 GPUs (like those found on OLCF's Spock), set 
-`HIPCCARCH_FLAGS=gfx908`. For AMD MI250X GPUs (like those found on OLCF's 
+`HIPCCARCH=gfx908`. For AMD MI250X GPUs (like those found on OLCF's 
 Crusher), use `gfx90A`.
