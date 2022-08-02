@@ -43,4 +43,5 @@ since compiling device code for the correct GPU architecture can improve perform
 There is also a `HIPCCARCH` that can be used for properly targeting a
 HIP device. For AMD MI100 GPUs (like those found on OLCF's Spock), set 
 `HIPCCARCH=gfx908`. For AMD MI250X GPUs (like those found on OLCF's 
-Crusher), use `gfx90A`.
+Crusher), use `gfx90A`. Without specifying that flag HIP kernels might not be
+generated, although that problem does not seem to exist for CUDA executables.
