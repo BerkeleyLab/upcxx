@@ -434,8 +434,7 @@ VALGRIND_WRAPPER=$(VALGRIND) -q --error-exitcode=123 --error-markers=VALGRIND_ER
 TIMEOUT ?= timeout
 UPCXX_RUN_TIME_LIMIT ?= 300
 HARD_TIME_LIMIT_PAD = 120
-HARD_TIME_LIMIT := $(shell echo $$(($(UPCXX_RUN_TIME_LIMIT) + $(HARD_TIME_LIMIT_PAD) )) )
-TIMEOUT_WRAPPER=$(TIMEOUT) --foreground -k $(HARD_TIME_LIMIT)s $(UPCXX_RUN_TIME_LIMIT)s
+TIMEOUT_WRAPPER=$(TIMEOUT) --foreground -k $(HARD_TIME_LIMIT_PAD)s $(UPCXX_RUN_TIME_LIMIT)s
 RUN_WRAPPER=# default is to use $(TIMEOUT_WRAPPER), when available
 # Default to the bash shell time builtin
 # The time command in POSIX output mode should also work (/usr/bin/time -p)
