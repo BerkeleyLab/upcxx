@@ -370,7 +370,7 @@ int main() {
         delete z;
       },
       upcxx::make_view(bn, bn+1)).wait();
-
+#if 0
     // test deserialize_into optional
     bn->data.fill(upcxx::rank_me());
     upcxx::rpc(
@@ -384,7 +384,7 @@ int main() {
         delete spot;
       },
       upcxx::make_view(bn, bn+1)).wait();
-
+#endif
     delete bn;
 
     // quiesce the world

@@ -1,6 +1,7 @@
 #ifndef _af3a33ad_9fc7_4d84_990b_b9caa94daf02
 #define _af3a33ad_9fc7_4d84_990b_b9caa94daf02
 
+#include <upcxx/optional.hpp>
 #include <upcxx/utility.hpp>
 #include <upcxx/backend_fwd.hpp>
 
@@ -83,6 +84,42 @@ namespace upcxx {
     template<typename T>
     struct is_deserialized_move_constructible:
       std::is_move_constructible<deserialized_type_t<T>> {};
+  }
+
+  namespace detail {
+    template<typename T>
+    struct serialization_storage_wrapper;
+
+    template<>
+    struct serialization_storage_wrapper<void> {
+      template<typename ...Args>
+      std::nullptr_t construct(Args&& ...args) {
+        return nullptr;
+      }
+    };
+
+    template<typename T>
+    struct serialization_storage_wrapper<T*> {
+      template<typename ...Args>
+      T* construct(Args&& ...args) {
+        return new (ptr_) T{std::forward<Args>(args)...};
+      }
+      // implicit conversion to allow legacy definition of deserialize()
+      operator void*() {
+        return ptr_;
+      }
+      void* ptr_;
+    };
+
+    template<typename T>
+    struct serialization_storage_wrapper<upcxx::optional<T>> {
+      template<typename ...Args>
+      T* construct(Args&& ...args) {
+        opt_.emplace(std::forward<Args>(args)...);
+        return &*opt_;
+      }
+      upcxx::optional<T> &opt_;
+    };
   }
 
   namespace detail {
@@ -642,10 +679,11 @@ namespace upcxx {
                      "Cannot return array type from read -- use read_into or read_sequence_into instead.");
         UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("[Reader]::read()", "[Reader]::read_into()", T1);
 
+        using wrapper_t = detail::serialization_storage_wrapper<T1*>;
         detail::raw_storage<T1> raw;
-        T1 *res = upcxx::template serialization_traits<T>::deserialize(*this, &raw);
+        T1 *res = upcxx::template serialization_traits<T>::deserialize(*this, wrapper_t{&raw});
         UPCXX_ASSERT((void *)res == (void *)&raw, "Unrecognized pointer returned by deserialize: "
-                                                  "must use placement-new onto the provided storage");
+                                                  "must use construct() on the provided storage");
         return raw.value_and_destruct();
       }
 
@@ -656,9 +694,10 @@ namespace upcxx {
         static_assert(!AssertSerializable || detail::is_serializable_type_or_array<T>::value,
                      "Template argument of read_into must either be Serializable or an array of Serializable elements.");
 
-        T1* res = upcxx::template serialization_traits<T>::deserialize(*this, raw);
+        using wrapper_t = detail::serialization_storage_wrapper<T1*>;
+        T1* res = upcxx::template serialization_traits<T>::deserialize(*this, wrapper_t{raw});
         UPCXX_ASSERT((void *)res == raw, "Unrecognized pointer returned by deserialize: "
-                                         "must use placement-new onto the provided storage");
+                                         "must use construct() on the provided storage");
         return res;
       }
 
