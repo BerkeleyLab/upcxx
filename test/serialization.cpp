@@ -33,7 +33,7 @@ void roundtrip(T const &x) {
   detail::serialization_reader r(buf1);
   
   typename std::aligned_storage<sizeof(T),alignof(T)>::type x1_;
-  T *x1 = serialization_traits<T>::deserialize(r, &x1_);
+  T *x1 = serialization_traits<T>::deserialize(r, detail::serialization_storage_wrapper<T*>{&x1_});
 
   const bool is_triv = is_trivially_serializable<T>::value; // workaround a bug in Xcode 8.2.1
   UPCXX_ASSERT_ALWAYS(equals(*x1, x), "Serialization roundtrip failed. sizeof(T)="<<sizeof(T)<<" is_triv_serz="<<is_triv);

@@ -45,9 +45,10 @@ namespace upcxx {
       UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("deserializing_iterator::operator*()",
                                             "deserializing_iterator::deserialize_into()",
                                             value_type);
+      using wrapper_t = detail::serialization_storage_wrapper<pointer>;
       detail::serialization_reader r1(r_);
       detail::raw_storage<value_type> raw;
-      detail::serialization_view_element<T>::deserialize(r1, &raw);
+      detail::serialization_view_element<T>::deserialize(r1, wrapper_t{&raw});
       return raw.value_and_destruct();
     }
 

@@ -96,6 +96,10 @@ namespace upcxx {
       std::nullptr_t construct(Args&& ...args) {
         return nullptr;
       }
+      // implicit conversion to allow legacy definition of deserialize()
+      operator void*() {
+        return nullptr;
+      }
     };
 
     template<typename T>
@@ -717,14 +721,49 @@ namespace upcxx {
       }
 
       template<typename T>
-      T* read_trivial_into(void *raw) {
-        return detail::template construct_trivial<T>(raw, this->unplace(storage_size_of<T>()));
+      T* read_trivial_into(serialization_storage_wrapper<T*> &raw) {
+        return detail::template construct_trivial<T>(raw.ptr_, this->unplace(storage_size_of<T>()));
+      }
+
+      #ifndef UPCXXI_SERIALIZATION_TRIVIAL_STACK_MAX_SIZE
+      #define UPCXXI_SERIALIZATION_TRIVIAL_STACK_MAX_SIZE 2048
+      #endif
+
+      template<typename T, typename Storage>
+      T* read_trivial_into(Storage &&storage) {
+        void *src = this->unplace(storage_size_of<T>());
+        std::size_t space = sizeof(T);
+        // Option 1: src is appropriately aligned for T. Treat it is a
+        // valid T* and move the underlying T into storage.
+        if (std::align(alignof(T), sizeof(T), src, space)) {
+          return storage.construct(std::move(
+            *detail::launder_unconstructed(reinterpret_cast<T*>(src))
+          ));
+        }
+        // Option 2: src is not aligned for T. Construct object on the
+        // stack if it is small enough, otherwise on the heap. Then move
+        // it into the target storage.
+        constexpr bool on_stack =
+          sizeof(T) <= UPCXXI_SERIALIZATION_TRIVIAL_STACK_MAX_SIZE;
+        using local_storage_t =
+          typename std::conditional<on_stack,
+                                    detail::raw_storage<T>,
+                                    int>::type;
+        local_storage_t tmp_storage;
+        void *spot = on_stack ? (void*)&tmp_storage : ::operator new(sizeof(T));
+        T *obj = detail::template construct_trivial<T>(spot, src);
+        T *result = storage.construct(std::move(*obj));
+        obj->~T();
+        if (!on_stack) operator delete(spot);
+        return result;
       }
 
       template<typename T>
       T read_trivial() {
         detail::raw_storage<T> raw;
-        T ans = std::move(*this->template read_trivial_into<T>(&raw));
+        T ans = std::move(*this->template read_trivial_into<T>(
+          serialization_storage_wrapper<T*>{&raw}
+        ));
         raw.destruct();
         return ans;
       }
@@ -825,9 +864,9 @@ namespace upcxx {
       static constexpr bool references_buffer = false;
       using deserialized_type = T;
       
-      template<typename Reader>
-      static T* deserialize(Reader &r, void *raw) {
-        return r.template read_trivial_into<T>(raw);
+      template<typename Reader, typename Storage>
+      static T* deserialize(Reader &r, Storage &&storage) {
+        return r.template read_trivial_into<T>(storage);
       }
 
       static constexpr bool skip_is_fast = true;
@@ -1325,7 +1364,8 @@ namespace upcxx {
     struct serialization_traits_deserialized_type {
       using deserialized_type = typename std::remove_pointer<
           decltype(
-            serialization<T>::deserialize(std::declval<detail::serialization_reader&>(), nullptr)
+            serialization<T>::deserialize(std::declval<detail::serialization_reader&>(),
+                                          serialization_storage_wrapper<void>{})
           )
         >::type;
     };
@@ -1430,9 +1470,10 @@ namespace upcxx {
           w.compact_and_invalidate(storage);
         }
         
+        using wrapper_t = detail::serialization_storage_wrapper<T1*>;
         detail::serialization_reader r(storage);
         detail::raw_storage<T1> x1_raw;
-        T1 *res = the_traits::deserialize(r, &x1_raw);
+        T1 *res = the_traits::deserialize(r, wrapper_t{&x1_raw});
         UPCXX_ASSERT((void *)res == (void *)&x1_raw, "Unrecognized pointer returned by deserialize: "
                                                      "must use placement-new onto the provided storage");
         
@@ -1498,9 +1539,9 @@ namespace upcxx {
     // inherit serialize
     // inherit skip_is_fast
 
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *spot) {
-      return serialization_traits<T>::deserialize(r, spot);
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+      return serialization_traits<T>::deserialize(r, storage);
     }
 
     // inherit skip
@@ -1542,9 +1583,9 @@ namespace upcxx {
       w.write_trivial(deserialized_type(fn));
     }
 
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *raw) {
-      return r.template read_trivial_into<deserialized_type>(raw);
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+      return r.template read_trivial_into<deserialized_type>(storage);
     }
 
     static constexpr bool skip_is_fast = true;

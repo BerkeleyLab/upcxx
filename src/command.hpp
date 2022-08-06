@@ -65,8 +65,9 @@ namespace detail {
       local_storage_t storage;
       void *spot = on_stack ? (void*)&storage : ::operator new(sizeof(FnDez));
       FnDez *fn;
+      using wrapper_t = detail::serialization_storage_wrapper<FnDez*>;
       UPCXXI_ASSERT_NOEXCEPTIONS_BEGIN
-        fn = serialization_traits<Fn>::deserialize(r, spot);
+        fn = serialization_traits<Fn>::deserialize(r, wrapper_t{spot});
       UPCXXI_ASSERT_NOEXCEPTIONS_END
 
       // after_execute<...>() will cleanup fn. This will happen
