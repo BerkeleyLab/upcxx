@@ -721,7 +721,7 @@ namespace upcxx {
       }
 
       template<typename T>
-      T* read_trivial_into(serialization_storage_wrapper<T*> &raw) {
+      T* read_trivial_into(const serialization_storage_wrapper<T*> &raw) {
         return detail::template construct_trivial<T>(raw.ptr_, this->unplace(storage_size_of<T>()));
       }
 
@@ -755,6 +755,20 @@ namespace upcxx {
         T *result = storage.construct(std::move(*obj));
         obj->~T();
         if (!on_stack) operator delete(spot);
+        return result;
+      }
+
+      template<typename T>
+      T* read_trivial_empty_into(const serialization_storage_wrapper<T*> &raw) {
+        return detail::template construct_default<T>(raw.ptr_);
+      }
+
+      template<typename T, typename Storage>
+      T* read_trivial_empty_into(Storage &&storage) {
+        detail::raw_storage<T> tmp_storage;
+        T *obj = detail::template construct_default<T>(&tmp_storage);
+        T *result = storage.construct(std::move(*obj));
+        tmp_storage.destruct();
         return result;
       }
 
@@ -866,7 +880,7 @@ namespace upcxx {
       
       template<typename Reader, typename Storage>
       static T* deserialize(Reader &r, Storage &&storage) {
-        return r.template read_trivial_into<T>(storage);
+        return r.template read_trivial_into<T>(std::forward<Storage>(storage));
       }
 
       static constexpr bool skip_is_fast = true;
@@ -892,9 +906,9 @@ namespace upcxx {
       static constexpr bool references_buffer = false;
       using deserialized_type = T;
       
-      template<typename Reader>
-      static T* deserialize(Reader&, void *raw) {
-        return detail::template construct_default<T>(raw);
+      template<typename Reader, typename Storage>
+      static T* deserialize(Reader &r, Storage &&storage) {
+        return r.template read_trivial_empty_into(std::forward<Storage>(storage));
       }
 
       static constexpr bool skip_is_fast = true;
@@ -912,8 +926,8 @@ namespace upcxx {
           static void serialize(Writer &w, T const&) { \
             static_assert(-sizeof(Writer)==1, "Type has serialization deleted via UPCXX_SERIALIZED_DELETE."); \
           } \
-          template<typename Reader> \
-          static T* deserialize(Reader &r, void *spot) { \
+          template<typename Reader, typename Storage> \
+          static T* deserialize(Reader &r, Storage &&storage) { \
             static_assert(-sizeof(Reader)==1, "Type has serialization deleted via UPCXX_SERIALIZED_DELETE."); \
             return nullptr; \
           } \
@@ -1541,7 +1555,7 @@ namespace upcxx {
 
     template<typename Reader, typename Storage>
     static deserialized_type* deserialize(Reader &r, Storage &&storage) {
-      return serialization_traits<T>::deserialize(r, storage);
+      return serialization_traits<T>::deserialize(r, std::forward<Storage>(storage));
     }
 
     // inherit skip
@@ -1585,7 +1599,7 @@ namespace upcxx {
 
     template<typename Reader, typename Storage>
     static deserialized_type* deserialize(Reader &r, Storage &&storage) {
-      return r.template read_trivial_into<deserialized_type>(storage);
+      return r.template read_trivial_into<deserialized_type>(std::forward<Storage>(storage));
     }
 
     static constexpr bool skip_is_fast = true;
