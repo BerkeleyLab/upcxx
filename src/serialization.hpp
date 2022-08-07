@@ -1171,7 +1171,7 @@ namespace upcxx {
         using Ti1 = typename serialization_traits<Ti>::deserialized_type;
         typename std::aligned_storage<sizeof(Ti1), alignof(Ti1)>::type storage;
         Ti1 *val = r.template read_into<Ti>(&storage);
-        Obj *ans = recurse_tail::template deserialize<Obj>(r, spot, ptrs..., val);
+        Obj *ans = recurse_tail::template deserialize<Obj>(r, std::forward<Storage>(spot), ptrs..., val);
         detail::template destruct<Ti1>(*val);
         return ans;
       }
@@ -1236,7 +1236,7 @@ namespace upcxx {
            
       template<typename Reader, typename Storage>
       static deserialized_type* deserialize(Reader &r, Storage &&storage) {
-        return serialization_values_each<refs_tup_type>::template deserialize<T>(r, storage);
+        return serialization_values_each<refs_tup_type>::template deserialize<T>(r, std::forward<Storage>(storage));
       }
 
       static constexpr bool skip_is_fast = serialization_values_each<refs_tup_type>::skip_is_fast;
@@ -1650,11 +1650,11 @@ namespace upcxx {
         recurse_tail::serialize(w, x);
       }
 
-      template<typename TupOut, typename Reader, typename ...Ptrs>
-      static TupOut* deserialize_each(Reader &r, void *spot, Ptrs ...ptrs) {
+      template<typename TupOut, typename Reader, typename Storage, typename ...Ptrs>
+      static TupOut* deserialize_each(Reader &r, Storage &&spot, Ptrs ...ptrs) {
         typename std::aligned_storage<sizeof(Ti1),alignof(Ti1)>::type storage;
         Ti1 *val = r.template read_into<Ti>(&storage);
-        TupOut *ans = recurse_tail::template deserialize_each<TupOut>(r, spot, ptrs..., val);
+        TupOut *ans = recurse_tail::template deserialize_each<TupOut>(r, std::forward<Storage>(spot), ptrs..., val);
         detail::template destruct<Ti1>(*val);
         return ans;
       }
@@ -1684,9 +1684,9 @@ namespace upcxx {
       template<typename Writer>
       static void serialize(Writer &w, std::tuple<T...> const &x) {}
       
-      template<typename TupOut, typename Reader, typename ...Ptrs>
-      static TupOut* deserialize_each(Reader &r, void *spot, Ptrs ...ptrs) {
-        return ::new(spot) TupOut(static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
+      template<typename TupOut, typename Reader, typename Storage, typename ...Ptrs>
+      static TupOut* deserialize_each(Reader &r, Storage &&spot, Ptrs ...ptrs) {
+        return spot.construct(static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
       }
 
       static constexpr bool skip_is_fast = true;
@@ -1704,9 +1704,9 @@ namespace upcxx {
         typename serialization_traits<T>::deserialized_type...
       >;
     
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *spot) {
-      return detail::serialization_tuple<std::tuple<T...>>::template deserialize_each<deserialized_type>(r, spot);
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+      return detail::serialization_tuple<std::tuple<T...>>::template deserialize_each<deserialized_type>(r, std::forward<Storage>(storage));
     }
   };
 
@@ -1747,11 +1747,11 @@ namespace upcxx {
     
     using deserialized_type = std::pair<A1,B1>;
     
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *raw) {
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage &&storage) {
       A1 a = r.template read<A>();
       B1 b = r.template read<B>();
-      return ::new(raw) std::pair<A1,B1>{std::move(a), std::move(b)};
+      return storage.construct(std::move(a), std::move(b));
     }
 
     static constexpr bool skip_is_fast =
@@ -1795,10 +1795,25 @@ namespace upcxx {
     using T1 = typename serialization_traits<T>::deserialized_type;
     
     using deserialized_type = std::array<T1,n>;
-    
+
+    // specialization for reading into memory -- uses more efficient
+    // (but technically UB) deserialization
     template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *raw) {
-      return reinterpret_cast<std::array<T1,n>*>(r.template read_sequence_into<T>(raw, n));
+    static deserialized_type* deserialize(
+      Reader &r, const detail::serialization_storage_wrapper<deserialized_type*> &storage
+    ) {
+      return reinterpret_cast<std::array<T1,n>*>(r.template read_sequence_into<T>(storage.ptr_, n));
+    }
+
+    // generic version that uses tuple logic to deserialize elements
+    // individually
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+      return detail::serialization_tuple<
+        detail::make_nary_tuple<T,n>
+      >::template deserialize_each<deserialized_type>(
+        r, std::forward<Storage>(storage)
+      );
     }
 
     static constexpr bool skip_is_fast = detail::serialization_reader::template skip_sequence_is_fast<T>();
@@ -1873,6 +1888,9 @@ namespace upcxx {
     
     using deserialized_type = T1[n];
     
+    // since arrays are not Serializable, we only support
+    // deserializing into raw memory, which is what is needed by
+    // UPCXX_DESERIALIZED_FIELDS
     template<typename Reader>
     static deserialized_type* deserialize(Reader &r, void *raw) {
       return reinterpret_cast<T1(*)[n]>(

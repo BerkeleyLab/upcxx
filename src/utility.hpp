@@ -452,6 +452,21 @@ namespace detail {
   template<int n>
   using make_index_sequence = typename help::make_index_sequence<n>::type;
 
+  //////////////////////////////////////////////////////////////////////
+
+  namespace help {
+    template<typename T, typename IS>
+    struct make_nary_tuple;
+
+    template<typename T, int ...s>
+    struct make_nary_tuple<T, index_sequence<s...>> {
+      using type = std::tuple<typename std::conditional<bool(s), T, T>::type...>;
+    };
+  }
+
+  template<typename T, int n>
+  using make_nary_tuple = typename help::make_nary_tuple<T, make_index_sequence<n>>::type;
+
   //////////////////////////////////////////////////////////////////////////////
   // add_lref_if_nonref: Add a lvalue-reference (&) to type T if T isn't already
   // a reference (& or &&) type.
