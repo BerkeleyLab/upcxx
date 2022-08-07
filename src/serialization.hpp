@@ -938,6 +938,8 @@ namespace upcxx {
     private: /* this macro requires "public" protection so we know what to restore */ \
       template<typename> \
       friend struct ::upcxx::detail::serialization_fields; \
+      template<typename> \
+      friend struct ::upcxx::detail::serialization_storage_wrapper; \
       template<typename upcxxi_fields_not_values = ::std::true_type> \
       auto upcxxi_serialized_fields() \
         UPCXXI_RETURN_DECLTYPE(::std::forward_as_tuple(__VA_ARGS__)) { \
@@ -945,13 +947,6 @@ namespace upcxx {
       } \
     public: /* restore "public" protection */ \
       struct upcxx_serialization { \
-      private: \
-        template<typename> \
-        friend struct ::upcxx::detail::serialization_fields; \
-        template<typename upcxxi_T> \
-        static upcxxi_T* default_construct(void *spot) { \
-          return ::new(spot) upcxxi_T; \
-        } \
       public: \
         template<typename upcxxi_T> \
         struct supply_type_please: ::upcxx::detail::serialization_fields<upcxxi_T> {}; \
@@ -1082,9 +1077,9 @@ namespace upcxx {
 
       static constexpr bool references_buffer = serialization_fields_each<refs_tup_type>::references_buffer;
       
-      template<typename Reader>
-      static deserialized_type* deserialize(Reader &r, void *raw) {
-        T *rec = T::upcxx_serialization::template default_construct<T>(raw);
+      template<typename Reader, typename Storage>
+      static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+        T *rec = storage.construct();
         //T *rec = ::new(raw) T;
         refs_tup_type refs_tup(rec->upcxxi_serialized_fields());
         
@@ -1125,6 +1120,8 @@ namespace upcxx {
     private: /* macro requires "public" protection so we know what to restore */ \
       template<typename> \
       friend struct ::upcxx::detail::serialization_values; \
+      template<typename> \
+      friend struct ::upcxx::detail::serialization_storage_wrapper; \
       template<typename upcxxi_fields_not_values = ::std::false_type> \
       auto upcxxi_serialized_values() const \
         UPCXXI_RETURN_DECLTYPE(::upcxx::detail::forward_as_tuple_decay_rrefs(__VA_ARGS__)) { \
@@ -1132,13 +1129,6 @@ namespace upcxx {
       } \
     public: /* restore "public" protection */ \
       struct upcxx_serialization { \
-      private: \
-        template<typename, int, int> \
-        friend struct ::upcxx::detail::serialization_values_each; \
-        template<typename upcxxi_T, typename ...upcxxi_Arg> \
-        static upcxxi_T* construct(void *spot, upcxxi_Arg &&...arg) { \
-          return ::new(spot) upcxxi_T(static_cast<upcxxi_Arg&&>(arg)...); \
-        } \
       public: \
         template<typename upcxxi_T> \
         struct supply_type_please: ::upcxx::detail::serialization_values<upcxxi_T> {}; \
@@ -1176,8 +1166,8 @@ namespace upcxx {
       static constexpr bool references_buffer = serialization_traits<Ti>::references_buffer
                                              || recurse_tail::references_buffer;
       
-      template<typename Obj, typename Reader, typename ...Ptrs>
-      static Obj* deserialize(Reader &r, void *spot, Ptrs ...ptrs) {
+      template<typename Obj, typename Reader, typename Storage, typename ...Ptrs>
+      static Obj* deserialize(Reader &r, Storage &&spot, Ptrs ...ptrs) {
         using Ti1 = typename serialization_traits<Ti>::deserialized_type;
         typename std::aligned_storage<sizeof(Ti1), alignof(Ti1)>::type storage;
         Ti1 *val = r.template read_into<Ti>(&storage);
@@ -1208,10 +1198,10 @@ namespace upcxx {
 
       static constexpr bool references_buffer = false;
 
-      template<typename Obj, typename Reader, typename ...Ptrs>
-      static Obj* deserialize(Reader &r, void *spot, Ptrs ...ptrs) {
+      template<typename Obj, typename Reader, typename Storage, typename ...Ptrs>
+      static Obj* deserialize(Reader &r, Storage &&spot, Ptrs ...ptrs) {
         //return ::new(spot) Obj(static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
-        return Obj::upcxx_serialization::template construct<Obj>(spot, static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
+        return spot.construct(static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
       }
       
       static constexpr bool skip_is_fast = true;
@@ -1244,9 +1234,9 @@ namespace upcxx {
 
       static constexpr bool references_buffer = serialization_values_each<refs_tup_type>::references_buffer;
            
-      template<typename Reader>
-      static deserialized_type* deserialize(Reader &r, void *spot) {
-        return serialization_values_each<refs_tup_type>::template deserialize<T>(r, spot);
+      template<typename Reader, typename Storage>
+      static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+        return serialization_values_each<refs_tup_type>::template deserialize<T>(r, storage);
       }
 
       static constexpr bool skip_is_fast = serialization_values_each<refs_tup_type>::skip_is_fast;
