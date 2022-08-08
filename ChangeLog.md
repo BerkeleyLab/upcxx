@@ -27,6 +27,7 @@ Notable issues resolved
 * issue #545: CCS: Allow `experimental::relo::debug*()` before `init()`
 * issue #546: CCS: Level 2 cache thread safety
 * issue #551: CCS: Thread safety race in segment verification
+* issue #556: CCS: Fix race condition at segment verification exit
 * issue #552: Compilation errors for write and read_into on a multidimensional array
 * Issue #553: CUDA 11.0.3 fails to recognize aggregate initialization in some contexts
 * Issue #554: UPC++ headers choke ROCm 5.x hipcc device-mode compilation
