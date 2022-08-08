@@ -185,7 +185,7 @@ namespace upcxx {
     template<typename Iter>
     team create(Iter cbegin, Iter cend) const {
       size_t count = 0;
-      if (std::is_same<std::random_access_iterator_tag, 
+      if (std::is_base_of<std::random_access_iterator_tag, 
                        typename std::iterator_traits<Iter>::iterator_category>::value) 
           count = std::distance(cbegin, cend);
 

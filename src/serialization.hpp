@@ -534,7 +534,7 @@ namespace upcxx {
             is_iterator_contiguous<Iter>::value
           >();
         
-        if(n_is_valid || std::is_same<std::random_access_iterator_tag, typename std::iterator_traits<Iter>::iterator_category>::value) {
+        if(n_is_valid || std::is_base_of<std::random_access_iterator_tag, typename std::iterator_traits<Iter>::iterator_category>::value) {
           if(!n_is_valid)
             n = std::distance(beg, end);
           
