@@ -53,6 +53,8 @@ as there is currently no way to express a single atomic domain shared by both la
 * All object files linked into one executable must agree upon GASNet conduit, debug mode and thread-safety setting.
 * If `UPCXX_THREADMODE=par`, then must pass `upcc -uses-threads`.
   This in turn may require UPCR's `configure --enable-uses-threads`.
+* If using ibv-conduit (InfiniBand systems) one must pass `--disable-ibv-rcv-thread` 
+  (or optionally `--enable-ibv-rcv-thread`) to both configures.
 * The link command should use the UPCR link wrapper, and specify `upcc -link-with='upcxx <args>'`.
 * If the `main()` function appears outside UPC code, the link command should include `upcc -extern-main`.
 * Additional restrictions apply to `upcc -pthreads` mode, see "UPC++ with Berkeley UPC -pthreads mode" below.
