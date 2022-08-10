@@ -60,7 +60,8 @@ namespace upcxx {
 
     pointer deserialize_into(upcxx::optional<value_type> &spot) const noexcept {
       using wrapper_t = detail::serialization_storage_wrapper<upcxx::optional<value_type>>;
-      return deserialize_into(::operator new(sizeof(value_type), wrapper_t{spot}));
+      detail::serialization_reader r1(r_);
+      return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{spot});
     }
     
     deserializing_iterator operator++(int) noexcept {

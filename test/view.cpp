@@ -166,9 +166,9 @@ struct big_nontrivial {
     static void serialize(Writer &w, const big_nontrivial &x) {
       w.write_sequence(x.data.begin(), x.data.end(), x.data.size());
     }
-    template<typename Reader>
-    static big_nontrivial* deserialize(Reader &r, void *spot) {
-      auto result = new(spot) big_nontrivial;
+    template<typename Reader, typename Storage>
+    static big_nontrivial* deserialize(Reader &r, Storage &&storage) {
+      auto result = storage.construct();
       r.template read_sequence_into<int>(result->data.data(),
                                          result->data.size());
       return result;
@@ -370,7 +370,7 @@ int main() {
         delete z;
       },
       upcxx::make_view(bn, bn+1)).wait();
-#if 0
+
     // test deserialize_into optional
     bn->data.fill(upcxx::rank_me());
     upcxx::rpc(
@@ -384,7 +384,7 @@ int main() {
         delete spot;
       },
       upcxx::make_view(bn, bn+1)).wait();
-#endif
+
     delete bn;
 
     // quiesce the world
