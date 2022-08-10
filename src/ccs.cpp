@@ -1034,7 +1034,7 @@ namespace detail {
     segment_hash h{};
     if (it != end(segmap))
       h = it->ident;
-    segment_hash reduced = reduce_all(h, binop).wait();
+    segment_hash reduced = reduce_all(h, binop, world(), operation_cx_as_internal_future_t{{}}).wait();
     if (it != end(segmap)) {
       if (reduced != segment_hash{}) {
         if (it->flags & static_cast<flags_type>(segment_flags::verified))
@@ -1066,12 +1066,12 @@ namespace detail {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     rebuild_segment_map();
     auto& segmap = segment_map();
-    size_t segment_count = broadcast(segmap.size(), 0).wait();
+    size_t segment_count = broadcast(segmap.size(), 0, world(), operation_cx_as_internal_future_t{{}}).wait();
     std::unique_ptr<segment_hash[]> hashlist(new segment_hash[segment_count]);
     if (rank_me() == 0)
       for (std::size_t i = 0; i < segment_count; ++i)
         new (&hashlist[i]) segment_hash(segmap[i].ident);
-    broadcast(hashlist.get(), segment_count, 0).wait();
+    broadcast(hashlist.get(), segment_count, 0, world(), operation_cx_as_internal_future_t{{}}).wait();
 
     std::unique_ptr<bool[]> checklist(new bool[segment_count]());
 
@@ -1084,7 +1084,7 @@ namespace detail {
       }
     }
 
-    reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_bit_and).wait();
+    reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_bit_and, world(), operation_cx_as_internal_future_t{{}}).wait();
 
     for (std::size_t i = 0; i < segment_count; ++i) {
       for (auto& seg : segmap) {

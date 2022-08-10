@@ -185,7 +185,10 @@ or containing TEXTRELs with an unknown file path). Runs a reduction on the
 segment hash to verify all processes have the same hash for the segment.  `ptr`
 must be a pointer to the same function on all processes.  Raises an error on
 failure.  Allows outgoing RPC verification. Allows for more compact function
-pointer relocation.
+pointer relocation.  
+
+UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
+otherwise.
 
 #### `void verify_all(entry_barrier eb = entry_barrier::user)`
 
@@ -197,6 +200,9 @@ functions in valid segments.  Called automatically by `upcxx::init()`.  This
 function should be called after `dlopen` if UPC++ intends to RPC the functions
 contained within this library. Allows for more compact function pointer
 relocation.
+
+UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
+otherwise.
 
 #### `bool enforce_verification(bool)` 
 
