@@ -113,14 +113,11 @@ namespace upcxx {
     template<>
     struct serialization_storage_wrapper<void> {
       template<typename ...Args>
-      std::nullptr_t construct(Args&& ...args) {
+      std::nullptr_t construct(Args&& ...args) const {
         return nullptr;
       }
       // implicit conversion to allow legacy definition of deserialize()
       operator void*() const {
-        return nullptr;
-      }
-      std::nullptr_t unwrap() const {
         return nullptr;
       }
     };
@@ -132,14 +129,11 @@ namespace upcxx {
     struct serialization_storage_wrapper<T*> {
       using value_type = typename std::remove_const<T>::type;
       template<typename ...Args>
-      value_type* construct(Args&& ...args) {
+      value_type* construct(Args&& ...args) const {
         return new (ptr_) value_type{std::forward<Args>(args)...};
       }
       // implicit conversion to allow legacy definition of deserialize()
       operator void*() const {
-        return ptr_;
-      }
-      void* unwrap() const {
         return ptr_;
       }
       void* ptr_;
@@ -149,15 +143,20 @@ namespace upcxx {
     struct serialization_storage_wrapper<upcxx::optional<T>> {
       using value_type = typename std::remove_const<T>::type;
       template<typename ...Args>
-      value_type* construct(Args&& ...args) {
+      value_type* construct(Args&& ...args) const {
         opt_.emplace(std::forward<Args>(args)...);
         return const_cast<value_type*>(&*opt_);
       }
-      upcxx::optional<T>& unwrap() const {
-        return opt_;
-      }
       upcxx::optional<T> &opt_;
     };
+
+    // trait to check whether a type is a specialization of
+    // serialization_storage_wrapper
+    template<typename T>
+    struct is_serialization_storage_wrapper : std::false_type {};
+    template<typename Unwrapped>
+    struct is_serialization_storage_wrapper<serialization_storage_wrapper<Unwrapped>>
+      : std::true_type {};
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -727,6 +726,9 @@ namespace upcxx {
         return raw.value_and_destruct();
       }
 
+      // AssertSerializable is turned off in the implementation of
+      // bind() to avoid checking function objects that are assumed to
+      // be Serializable. It is not intended to be set by other users.
       template<typename T, bool AssertSerializable = true,
                typename T1 = typename serialization_traits<T>::deserialized_type>
       T1* read_into(void *raw) {
@@ -741,18 +743,33 @@ namespace upcxx {
         return res;
       }
 
-      template<typename T, bool AssertSerializable = true,
-               typename T1 = typename serialization_traits<T>::deserialized_type>
-      T1* read_into(upcxx::optional<T1> &spot) {
+      // This overload allows any supported storage type to be passed
+      // to read_into(). The storage type must have a specialization
+      // of detail::serialization_storage_wrapper defined.
+      template<typename T, typename UnwrappedStorage,
+               typename T1 = typename serialization_traits<T>::deserialized_type,
+               typename = typename std::enable_if<
+                 // force pointers to use the void* overload above
+                 !std::is_pointer<
+                   typename std::decay<UnwrappedStorage>::type
+                 >::value &&
+                 // force wrappers to use the overload below
+                 !is_serialization_storage_wrapper<
+                   typename std::decay<UnwrappedStorage>::type
+                 >::value,
+                 void
+               >::type>
+      T1* read_into(UnwrappedStorage &&spot) {
         UPCXXI_ASSERT_INIT();
-        static_assert(!AssertSerializable || detail::is_serializable_type_or_array<T>::value,
+        static_assert(detail::is_serializable_type_or_array<T>::value,
                      "Template argument of read_into must either be Serializable or an array of Serializable elements.");
 
-        using wrapper_t = detail::serialization_storage_wrapper<upcxx::optional<T1>>;
-        T1* res = upcxx::template serialization_traits<T>::deserialize(*this, wrapper_t{spot});
-        UPCXX_ASSERT(res == &*spot, "Unrecognized pointer returned by deserialize: "
-                                    "must use construct() on the provided storage");
-        return res;
+        using wrapper_t = detail::serialization_storage_wrapper<
+          typename std::decay<UnwrappedStorage>::type
+        >;
+        return upcxx::template serialization_traits<T>::deserialize(
+          *this, wrapper_t{std::forward<UnwrappedStorage>(spot)}
+        );
       }
 
       // This overload allows deserialize(wrapper) to delegate to
@@ -760,13 +777,14 @@ namespace upcxx {
       // be useful for asymmetric serialization. See deserialization
       // of serialization_view_element<T,false> in view.hpp as an
       // example.
-      // For delegation to work, read_into() must support all storage
-      // types that we allow (contained in a wrapper) to be passed to
-      // deserialize().
-      template<typename T, typename Unwrapped, bool AssertSerializable = true,
+      template<typename T, typename Unwrapped,
                typename T1 = typename serialization_traits<T>::deserialized_type>
-      T1* read_into(const detail::serialization_storage_wrapper<Unwrapped> &wrapper) {
-        return read_into<T, AssertSerializable, T1>(wrapper.unwrap());
+      T1* read_into(const serialization_storage_wrapper<Unwrapped> &wrapper) {
+        UPCXXI_ASSERT_INIT();
+        static_assert(detail::is_serializable_type_or_array<T>::value,
+                     "Template argument of read_into must either be Serializable or an array of Serializable elements.");
+
+        return upcxx::template serialization_traits<T>::deserialize(*this, wrapper);
       }
 
       void* unplace(std::size_t obj_size, std::size_t obj_align) {
