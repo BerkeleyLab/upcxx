@@ -98,18 +98,44 @@ struct nonpod3: nonpod_base {
       w.write(x.h);
       w.write(x.i);
     }
-    template<typename Reader>
-    static nonpod3* deserialize(Reader &r, void *spot) {
+    template<typename Reader, typename Storage>
+    static nonpod3* deserialize(Reader &r, Storage &&storage) {
       UPCXX_ASSERT_ALWAYS(r.template read<int>() == 0xbeef);
       char h = r.template read<char>();
       char i = r.template read<char>();
-      return ::new(spot) nonpod3(h,i);
+      return storage.construct(h,i);
+    }
+  };
+};
+
+// same as nonpod3, but using old-style deserialize()
+struct nonpod3_old: nonpod_base {
+  nonpod3_old(char h, char i): nonpod_base(h,i) {}
+
+  struct upcxx_serialization {
+    template<typename Writer>
+    static void serialize(Writer &w, nonpod3_old const &x) {
+      w.write(0xbeef);
+      w.write(x.h);
+      w.write(x.i);
+    }
+    template<typename Reader>
+    static nonpod3_old* deserialize(Reader &r, void *spot) {
+      UPCXX_ASSERT_ALWAYS(r.template read<int>() == 0xbeef);
+      char h = r.template read<char>();
+      char i = r.template read<char>();
+      return ::new(spot) nonpod3_old(h,i);
     }
   };
 };
 
 struct nonpod4: nonpod_base {
   nonpod4(char h, char i): nonpod_base(h,i) {}
+};
+
+// same as nonpod4_old, but using old-style deserialize()
+struct nonpod4_old: nonpod_base {
+  nonpod4_old(char h, char i): nonpod_base(h,i) {}
 };
 
 namespace upcxx {
@@ -128,12 +154,36 @@ namespace upcxx {
       w.write(x.h);
       w.write(x.i);
     }
-    template<typename Reader>
-    static nonpod4* deserialize(Reader &r, void *spot) {
+    template<typename Reader, typename Storage>
+    static nonpod4* deserialize(Reader &r, Storage &&storage) {
       UPCXX_ASSERT_ALWAYS(r.template read<int>() == 0xbeef);
       char h = r.template read<char>();
       char i = r.template read<char>();
-      return ::new(spot) nonpod4(h,i);
+      return storage.construct(h,i);
+    }
+  };
+
+  template<>
+  struct serialization<nonpod4_old> {
+    // unpspec'd upper-bound support
+    template<typename Prefix>
+    static auto ubound(Prefix pre, nonpod4_old const &x)
+      -> decltype(pre.cat_ubound_of(x.h).cat_ubound_of(x.i)) {
+      return pre.cat_ubound_of(x.h).cat_ubound_of(x.i);
+    }
+
+    template<typename Writer>
+    static void serialize(Writer &w, nonpod4_old const &x) {
+      w.write(0xbeef);
+      w.write(x.h);
+      w.write(x.i);
+    }
+    template<typename Reader>
+    static nonpod4_old* deserialize(Reader &r, void *spot) {
+      UPCXX_ASSERT_ALWAYS(r.template read<int>() == 0xbeef);
+      char h = r.template read<char>();
+      char i = r.template read<char>();
+      return ::new(spot) nonpod4_old(h,i);
     }
   };
 }
@@ -187,8 +237,14 @@ static_assert(is_serializable<nonpod2>::value, "Uh-oh");
 static_assert(!is_trivially_serializable<nonpod3>::value, "Uh-oh");
 static_assert(is_serializable<nonpod3>::value, "Uh-oh");
 
+static_assert(!is_trivially_serializable<nonpod3_old>::value, "Uh-oh");
+static_assert(is_serializable<nonpod3_old>::value, "Uh-oh");
+
 static_assert(!is_trivially_serializable<nonpod4>::value, "Uh-oh");
 static_assert(is_serializable<nonpod4>::value, "Uh-oh");
+
+static_assert(!is_trivially_serializable<nonpod4_old>::value, "Uh-oh");
+static_assert(is_serializable<nonpod4_old>::value, "Uh-oh");
 
 static_assert(!is_trivially_serializable<nonpod5>::value, "Uh-oh");
 static_assert(is_serializable<nonpod5>::value, "Uh-oh");
@@ -197,6 +253,20 @@ struct asym_type {
   struct upcxx_serialization {
     template<typename W>
     static void serialize(W &w, asym_type const &x) {
+      w.template write<int>(123);
+    }
+    template<typename R, typename S>
+    static int* deserialize(R &r, S &&storage) {
+      return storage.construct(r.template read<int>());
+    }
+  };
+};
+
+// same as asym_type, but using old-style deserialize()
+struct asym_type_old {
+  struct upcxx_serialization {
+    template<typename W>
+    static void serialize(W &w, asym_type_old const &x) {
       w.template write<int>(123);
     }
     template<typename R>
@@ -209,6 +279,10 @@ struct asym_type {
 static_assert(is_serializable<asym_type>::value, "Uh-oh.");
 static_assert(!is_trivially_serializable<asym_type>::value, "Uh-oh.");
 static_assert(std::is_same<int, deserialized_type_t<asym_type>>::value, "Uh-oh.");
+
+static_assert(is_serializable<asym_type_old>::value, "Uh-oh.");
+static_assert(!is_trivially_serializable<asym_type_old>::value, "Uh-oh.");
+static_assert(std::is_same<int, deserialized_type_t<asym_type_old>>::value, "Uh-oh.");
 
 struct mod_eq {
   int mod;
@@ -256,8 +330,8 @@ struct my_seq_base {
       w.template commit<int>(handle, n);
     }
 
-    template<typename Reader>
-    static Derived* deserialize(Reader &r, void *spot) {
+    template<typename Reader, typename Storage>
+    static Derived* deserialize(Reader &r, Storage &&storage) {
       int n = r.template read<int>();
       void *mem = ::operator new(n*sizeof(T));
 
@@ -269,7 +343,7 @@ struct my_seq_base {
         r.template read_sequence_into<T>(elts+1, n-1);
       }
 
-      Derived *ans = ::new(spot) Derived(decltype(Derived::elts)(elts, elts + n));
+      Derived *ans = storage.construct(decltype(Derived::elts)(elts, elts + n));
       for(int i=0; i < n; i++)
         elts[i].~T();
       ::operator delete(mem);
@@ -314,9 +388,9 @@ struct array_write_read_into {
       w.write(x.arr2);
     }
 
-    template<typename Reader>
-    static array_write_read_into* deserialize(Reader &r, void *spot) {
-      auto result = new(spot) array_write_read_into;
+    template<typename Reader, typename Storage>
+    static array_write_read_into* deserialize(Reader &r, Storage &&storage) {
+      auto result = storage.construct();
       r.template read_into<int[4]>(result->arr1);
       r.template read_into<std::string[2]>(result->arr2);
       return result;
@@ -334,6 +408,70 @@ struct array_write_read_into {
     }
     return result;
   }
+};
+
+struct read_into_optional {
+  // trivially serializable types
+  upcxx::optional<int> a;
+  upcxx::optional<std::pair<int,char>> b;
+  // type that uses UPCXX_SERIALIZED_FIELDS
+  upcxx::optional<nonpod1> c;
+  // type that uses UPCXX_SERIALIZED_VALUES
+  upcxx::optional<nonpod2> d;
+  // type that uses custom serialization defined in-class
+  upcxx::optional<nonpod3> e;
+  // type that uses custom serialization defined externally
+  upcxx::optional<nonpod4> f;
+  // type that has asymmetric serialization
+  upcxx::optional<asym_type> g1;
+  upcxx::optional<int> g2;
+
+  read_into_optional() {}
+  read_into_optional(char x, char y) {
+    a.emplace(static_cast<int>(x));
+    b.emplace(static_cast<int>(y), x);
+    c.emplace(x+1, y+1);
+    d.emplace(x+2, y+2);
+    e.emplace(x+3, y+3);
+    f.emplace(x+4, y+4);
+    g1.emplace();
+    g2.emplace(123);
+  }
+
+  bool operator==(read_into_optional const &that) const {
+    return *this->a == *that.a &&
+      *this->b == *that.b &&
+      *this->c == *that.c &&
+      *this->d == *that.d &&
+      *this->e == *that.e &&
+      *this->f == *that.f &&
+      *this->g2 == *that.g2;
+  }
+
+  struct upcxx_serialization {
+    template<typename Writer>
+    static void serialize(Writer &w, read_into_optional const &x) {
+      w.write(*x.a);
+      w.write(*x.b);
+      w.write(*x.c);
+      w.write(*x.d);
+      w.write(*x.e);
+      w.write(*x.f);
+      w.write(*x.g1);
+    }
+    template<typename Reader, typename Storage>
+    static read_into_optional* deserialize(Reader &r, Storage &&storage) {
+      auto result = storage.construct();
+      r.template read_into<int>(result->a);
+      r.template read_into<std::pair<int,char>>(result->b);
+      r.template read_into<nonpod1>(result->c);
+      r.template read_into<nonpod2>(result->d);
+      r.template read_into<nonpod3>(result->e);
+      r.template read_into<nonpod4>(result->f);
+      r.template read_into<asym_type>(result->g2);
+      return result;
+    }
+  };
 };
 
 struct noserz {
@@ -388,6 +526,7 @@ int main() {
   roundtrip<nonpod2[3]>({{'a','b'}, {'x','y'}, {'u','v'}});
   roundtrip(std::make_pair('a', 1));
   roundtrip(std::make_pair('a', nonpod3('h','i')));
+  roundtrip(std::make_pair('a', nonpod3_old('h','i')));
   roundtrip(std::make_tuple('a', 1, 3.14));
   roundtrip(std::make_tuple('a', 1, 3.14, std::string("abcdefghijklmnopqrstuvwxyz")));
   roundtrip(std::vector<int>{1,2,3});
@@ -412,6 +551,16 @@ int main() {
       }
     }
   );
+  roundtrip<std::vector<std::list<std::tuple<std::string,nonpod3_old>>>>(
+    std::initializer_list<std::list<std::tuple<std::string,nonpod3_old>>>{
+      {},
+      std::initializer_list<std::tuple<std::string,nonpod3_old>>{
+        std::tuple<std::string,nonpod3_old>("hi",{'a','b'}),
+        std::tuple<std::string,nonpod3_old>("bob",{'x','y'}),
+        std::tuple<std::string,nonpod3_old>("alice",{'\0','!'})
+      }
+    }
+  );
   roundtrip<std::vector<std::list<std::tuple<std::string,nonpod4>>>>(
     std::initializer_list<std::list<std::tuple<std::string,nonpod4>>>{
       {},
@@ -419,6 +568,16 @@ int main() {
         std::tuple<std::string,nonpod4>("hi",{'a','b'}),
         std::tuple<std::string,nonpod4>("bob",{'x','y'}),
         std::tuple<std::string,nonpod4>("alice",{'\0','!'})
+      }
+    }
+  );
+  roundtrip<std::vector<std::list<std::tuple<std::string,nonpod4_old>>>>(
+    std::initializer_list<std::list<std::tuple<std::string,nonpod4_old>>>{
+      {},
+      std::initializer_list<std::tuple<std::string,nonpod4_old>>{
+        std::tuple<std::string,nonpod4_old>("hi",{'a','b'}),
+        std::tuple<std::string,nonpod4_old>("bob",{'x','y'}),
+        std::tuple<std::string,nonpod4_old>("alice",{'\0','!'})
       }
     }
   );
@@ -505,8 +664,31 @@ int main() {
   }
 
   {
+    std::deque<int> lots;
+    for(int i=0; i < 1<<20; i++)
+      lots.push_back(i);
+
+    roundtrip<std::pair<nonpod3_old, my_seq2<my_seq2<int>>>>({
+      {'u','v'},
+      my_seq2<my_seq2<int>>(
+        std::initializer_list<my_seq2<int>>{
+          std::deque<int>{100, 200, 300},
+          lots,
+          std::deque<int>{},
+          std::deque<int>{100, 200, 300}
+        }
+      )
+    });
+  }
+
+  {
     array_write_read_into a = {{-1, -2, 3, 4}, {"hello", "world"}};
     roundtrip(a);
+  }
+
+  {
+    read_into_optional rio = {'a', 'm'};
+    roundtrip(rio);
   }
 
   print_test_success();
