@@ -483,25 +483,6 @@ public:
 
   // 20.6.3.6, modifiers
   void reset() noexcept { clear(); }
-
-private:
-  // upcxx extras
-  void* raw() {
-    return dataptr();
-  }
-  void activate() {
-    UPCXX_ASSERT(!initialized());
-    OptionalBase<T>::init_ = true;
-  }
-  void deactivate() {
-    UPCXX_ASSERT(initialized());
-    OptionalBase<T>::init_ = false;
-  }
-
-  template<typename U>
-  friend void* ::operator new(std::size_t, optional<U> &where);
-  template<typename U>
-  friend void ::operator delete(void *ptr, optional<U> &where);
 };
 
 // https://en.cppreference.com/w/cpp/utility/optional:
@@ -859,21 +840,6 @@ namespace std
       return arg ? std::hash<T>{}(*arg) : result_type{};
     }
   };
-}
-
-// upcxx extras
-template<typename T>
-void* operator new(std::size_t size, upcxx::optional<T> &where) {
-  UPCXX_ASSERT(size == sizeof(T));
-  where.reset();
-  where.activate();
-  return where.raw();
-}
-
-template<typename T>
-void operator delete(void *ptr, upcxx::optional<T> &where) {
-  UPCXX_ASSERT_ALWAYS(ptr == where.raw());
-  where.deactivate();
 }
 
 # undef UPCXXI_TR2_OPTIONAL_REQUIRES
