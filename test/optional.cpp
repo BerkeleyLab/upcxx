@@ -155,7 +155,9 @@ TEST(value_ctor)
   assert (!!oo1);
   assert (bool(oo1));
   // NA: assert (oo1->s == sValueCopyConstructed);
+#if 0  // not necessarily true for std::optional
   assert (oo1->s == sMoveConstructed);
+#endif
   assert (v.s == sValueConstructed);
 
   upcxx::optional<Oracle> oo2(std::move(v));
@@ -165,7 +167,9 @@ TEST(value_ctor)
   assert (!!oo2);
   assert (bool(oo2));
   // NA: assert (oo2->s == sValueMoveConstructed);
+#if 0  // not necessarily true for std::optional
   assert (oo2->s == sMoveConstructed);
+#endif
   assert (v.s == sMovedFrom);
 
   {
@@ -812,7 +816,9 @@ TEST(bad_relops)
 
   optional<BadRelops> oa = a, ob = b;
   assert (oa < ob);
+#if 0  // not necessarily true for std::optional
   assert (!(oa > ob));
+#endif
 
   assert (oa < b);
   assert (oa > b);
@@ -1399,6 +1405,7 @@ struct NothrowNone {
 
 void test_noexcept()
 {
+#if !UPCXXI_USE_STD_OPTIONAL  // test internal function
   using upcxx::detail::optional_impl_::constexpr_move;  // internal function
   {
     upcxx::optional<NothrowBoth> b1, b2;
@@ -1424,6 +1431,7 @@ void test_noexcept()
     static_assert(!noexcept(n1 = constexpr_move(n2)), "bad noexcept!");
     assert (!n1 && !n2);
   }
+#endif // !UPCXXI_USE_STD_OPTIONAL
 }
 
 
@@ -1575,6 +1583,7 @@ int main() {
 
     VEC v = {5, 6};
 
+#if !UPCXXI_USE_STD_OPTIONAL
     if (UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST)
       std::cout << "Optional has constexpr initializer_list" << std::endl;
     else
@@ -1584,6 +1593,7 @@ int main() {
       std::cout << "Optional has constexpr move accessors" << std::endl;
     else
       std::cout << "Optional doesn't have constexpr move accessors" << std::endl;
+#endif // !UPCXXI_USE_STD_OPTIONAL
   }
 
   print_test_success();

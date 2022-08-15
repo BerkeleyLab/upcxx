@@ -15,6 +15,23 @@
 // The idea and interface is based on Boost.Optional library
 // authored by Fernando Luis Cacciola Carballal
 
+#ifndef UPCXXI_USE_STD_OPTIONAL
+#define UPCXXI_USE_STD_OPTIONAL (__cplusplus >= 201703L)
+#endif
+
+#if UPCXXI_USE_STD_OPTIONAL
+// Use std::optional and associated entities.
+#include <optional>
+namespace upcxx {
+  using std::optional;
+  using std::make_optional;
+  using std::in_place_t;
+  using std::in_place;
+  using std::nullopt_t;
+  using std::nullopt;
+  using std::bad_optional_access;
+}
+#else
 # include <utility>
 # include <type_traits>
 # include <initializer_list>
@@ -133,14 +150,6 @@ namespace swap_ns
 
 constexpr struct trivial_init_t{} trivial_init{};
 
-#if __cplusplus >= 201703L
-using std::in_place_t;
-using std::in_place;
-using std::nullopt_t;
-using std::nullopt;
-using std::bad_optional_access;
-#else
-
 // 20.5.6, In-place construction
 constexpr struct in_place_t{} in_place{};
 
@@ -159,8 +168,6 @@ class bad_optional_access : public std::logic_error {
 public:
   explicit bad_optional_access() : logic_error{"bad optional access"} {}
 };
-
-#endif // __cplusplus >= 201703L
 
 template <class T>
 union storage_t
@@ -844,5 +851,7 @@ namespace std
 
 # undef UPCXXI_TR2_OPTIONAL_REQUIRES
 # undef UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION
+
+#endif // UPCXXI_USE_STD_OPTIONAL
 
 #endif // _7f4d2f35_031e_403e_ac70_7b1cafb357f3
