@@ -159,6 +159,7 @@ namespace upcxx {
     // dynamic_kind arguments are only used for kind::any
     const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
     const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
+    UPCXX_ASSERT(kind_s != memory_kind::any); UPCXX_ASSERT(kind_d != memory_kind::any);
 
     const intrank_t initiator = upcxx::rank_me();
     persona *initiator_per = &upcxx::current_persona();
@@ -312,6 +313,7 @@ namespace upcxx {
     // dynamic_kind arguments are only used for kind::any
     const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
     const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
+    UPCXX_ASSERT(kind_s != memory_kind::any); UPCXX_ASSERT(kind_d != memory_kind::any);
 
     #if UPCXXI_COPY_OPTIMIZEHOST
       // only reach this function for calls involving device memory
