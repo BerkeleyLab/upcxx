@@ -99,7 +99,7 @@ struct nonpod3: nonpod_base {
       w.write(x.i);
     }
     template<typename Reader, typename Storage>
-    static nonpod3* deserialize(Reader &r, Storage &&storage) {
+    static nonpod3* deserialize(Reader &r, Storage storage) {
       UPCXX_ASSERT_ALWAYS(r.template read<int>() == 0xbeef);
       char h = r.template read<char>();
       char i = r.template read<char>();
@@ -155,7 +155,7 @@ namespace upcxx {
       w.write(x.i);
     }
     template<typename Reader, typename Storage>
-    static nonpod4* deserialize(Reader &r, Storage &&storage) {
+    static nonpod4* deserialize(Reader &r, Storage storage) {
       UPCXX_ASSERT_ALWAYS(r.template read<int>() == 0xbeef);
       char h = r.template read<char>();
       char i = r.template read<char>();
@@ -331,7 +331,7 @@ struct my_seq_base {
     }
 
     template<typename Reader, typename Storage>
-    static Derived* deserialize(Reader &r, Storage &&storage) {
+    static Derived* deserialize(Reader &r, Storage storage) {
       int n = r.template read<int>();
       void *mem = ::operator new(n*sizeof(T));
 
@@ -389,7 +389,7 @@ struct array_write_read_into {
     }
 
     template<typename Reader, typename Storage>
-    static array_write_read_into* deserialize(Reader &r, Storage &&storage) {
+    static array_write_read_into* deserialize(Reader &r, Storage storage) {
       auto result = storage.construct();
       r.template read_into<int[4]>(result->arr1);
       r.template read_into<std::string[2]>(result->arr2);
@@ -460,7 +460,7 @@ struct read_into_optional {
       w.write(*x.g1);
     }
     template<typename Reader, typename Storage>
-    static read_into_optional* deserialize(Reader &r, Storage &&storage) {
+    static read_into_optional* deserialize(Reader &r, Storage storage) {
       auto result = storage.construct();
       r.template read_into<int>(result->a);
       r.template read_into<std::pair<int,char>>(result->b);

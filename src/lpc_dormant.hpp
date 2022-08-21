@@ -181,7 +181,7 @@ namespace upcxx {
           w.write(x.tup);
         }
         template<typename Reader, typename Storage>
-        static deserialized_raw_tuple<T...>* deserialize(Reader &r, Storage &&storage) {
+        static deserialized_raw_tuple<T...>* deserialize(Reader &r, Storage storage) {
           return storage.construct(r);
         }
       };

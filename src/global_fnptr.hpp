@@ -140,7 +140,7 @@ namespace detail {
     }
 
     template<typename Reader, typename Storage>
-    static detail::global_fnptr<Fn,detail::function_token>* deserialize(Reader& r, Storage &&storage)
+    static detail::global_fnptr<Fn,detail::function_token>* deserialize(Reader& r, Storage storage)
     {
       auto offset = r.template read_trivial<uintptr_t>();
       if (!(offset & msb)) {

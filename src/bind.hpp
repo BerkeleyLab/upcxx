@@ -379,7 +379,7 @@ namespace upcxx {
     }
 
     template<typename Reader, typename Storage>
-    static deserialized_type* deserialize(Reader &r, Storage &&storage) {
+    static deserialized_type* deserialize(Reader &r, Storage storage) {
       // deserialized_bound_function handles all its own deserialization
       return storage.construct(r);
     }

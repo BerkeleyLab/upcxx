@@ -61,7 +61,7 @@ namespace upcxx {
     pointer deserialize_into(upcxx::optional<value_type> &spot) const noexcept {
       using wrapper_t = detail::serialization_storage_wrapper<upcxx::optional<value_type>>;
       detail::serialization_reader r1(r_);
-      return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{spot});
+      return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{&spot});
     }
     
     deserializing_iterator operator++(int) noexcept {
@@ -336,9 +336,9 @@ namespace upcxx {
 
       template<typename Reader, typename Storage>
       static typename serialization_traits<T>::deserialized_type*
-      deserialize(Reader &r, Storage &&storage) noexcept {
+      deserialize(Reader &r, Storage storage) noexcept {
         r.template read_trivial<std::size_t>();
-        return r.template read_into<T>(std::forward<Storage>(storage));
+        return r.template read_into<T>(storage);
       }
 
       static constexpr bool skip_is_fast = true;
@@ -389,7 +389,7 @@ namespace upcxx {
                                      /*, default iterator*/>;
       
       template<typename Reader, typename Storage>
-      static deserialized_type* deserialize(Reader &r, Storage &&storage) noexcept {
+      static deserialized_type* deserialize(Reader &r, Storage storage) noexcept {
         std::size_t delta = r.template read_trivial<std::size_t>();
         
         Reader r1(r);
@@ -443,7 +443,7 @@ namespace upcxx {
       }
       
       template<typename Reader, typename Storage>
-      static deserialized_type* deserialize(Reader &r, Storage &&storage) noexcept {
+      static deserialized_type* deserialize(Reader &r, Storage storage) noexcept {
         std::size_t n = r.template read_trivial<std::size_t>();
         void *elts_mem = r.unplace(storage_size_of<T>().arrayed(n));
         T *elts = detail::launder_unconstructed((T*)elts_mem);
