@@ -805,45 +805,21 @@ namespace upcxx {
       }
 
       template<typename T>
-      T* read_trivial_into(const serialization_storage_wrapper<T*> &raw) {
-        return detail::template construct_trivial<T>(raw.ptr_, this->unplace(storage_size_of<T>()));
+      T* read_trivial_into(serialization_storage_wrapper<T*> raw) {
+        return detail::template construct_trivial<T>(
+          raw.ptr_, this->unplace(storage_size_of<T>())
+        );
       }
-
-      #ifndef UPCXXI_SERIALIZATION_TRIVIAL_STACK_MAX_SIZE
-      #define UPCXXI_SERIALIZATION_TRIVIAL_STACK_MAX_SIZE 2048
-      #endif
 
       template<typename T, typename Storage>
       T* read_trivial_into(Storage storage) {
-        void *src = this->unplace(storage_size_of<T>());
-        std::size_t space = sizeof(T);
-        // Option 1: src is appropriately aligned for T. Treat it is a
-        // valid T* and move the underlying T into storage.
-        if (std::align(alignof(T), sizeof(T), src, space)) {
-          return storage.construct(std::move(
-            *detail::launder_unconstructed(reinterpret_cast<T*>(src))
-          ));
-        }
-        // Option 2: src is not aligned for T. Construct object on the
-        // stack if it is small enough, otherwise on the heap. Then move
-        // it into the target storage.
-        constexpr bool on_stack =
-          sizeof(T) <= UPCXXI_SERIALIZATION_TRIVIAL_STACK_MAX_SIZE;
-        using local_storage_t =
-          typename std::conditional<on_stack,
-                                    detail::raw_storage<T>,
-                                    int>::type;
-        local_storage_t tmp_storage;
-        void *spot = on_stack ? (void*)&tmp_storage : ::operator new(sizeof(T));
-        T *obj = detail::template construct_trivial<T>(spot, src);
-        T *result = storage.construct(std::move(*obj));
-        obj->~T();
-        if (!on_stack) operator delete(spot);
-        return result;
+        return detail::template construct_trivial_into_storage<T>(
+          storage, this->unplace(storage_size_of<T>())
+        );
       }
 
       template<typename T>
-      T* read_trivial_empty_into(const serialization_storage_wrapper<T*> &raw) {
+      T* read_trivial_empty_into(serialization_storage_wrapper<T*> raw) {
         return detail::template construct_default<T>(raw.ptr_);
       }
 
