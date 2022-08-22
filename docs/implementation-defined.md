@@ -171,8 +171,8 @@ Several unspecified, experimental features are implemented in the
 
     ```c++
     template<typename T, typename Cx=/*unspecified*/>
-    RType broadcast(T &&value, intrank_t root, const team &team=world(),
-                    Cx &&completions=operation_cx::as_future());
+    RType broadcast_nontrivial(T &&value, intrank_t root, const team &team=world(),
+                               Cx &&completions=operation_cx::as_future());
     ```
 
   * reduction of Serializable but non-TriviallySerializable values:
@@ -186,16 +186,13 @@ Several unspecified, experimental features are implemented in the
     constexpr /*unspecified*/ op_bit_or;
     constexpr /*unspecified*/ op_bit_xor;
 
-    template<typename T, typename Cx=/*unspecified*/>
-    RType broadcast(T &&value, intrank_t root, const team &team=world(),
-                    Cx &&completions=operation_cx::as_future());
     template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
-    RType reduce_one(T &&value, BinaryOp &&op, intrank_t root,
-                     const team &team = world(),
-                     Cx &&completions=operation_cx::as_future());
+    RType reduce_one_nontrivial(T &&value, BinaryOp &&op, intrank_t root,
+                                const team &team = world(),
+                                Cx &&completions=operation_cx::as_future());
     template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
-    RType reduce_all(T &&value, BinaryOp &&op, const team &team = world(),
-                     Cx &&completions=operation_cx::as_future());
+    RType reduce_all_nontrivial(T &&value, BinaryOp &&op, const team &team = world(),
+                                Cx &&completions=operation_cx::as_future());
     ```
 
   * utilities for reading environment variables:
