@@ -421,6 +421,7 @@ cd <upcxx-source-path>
     --with-ofi-spawner=pmi \
       --with-pmi-version=cray \
       --with-pmi-runcmd='srun -n %N -- %C' \
+    --enable-issue557-workaround <SEE-BELOW> \
     <GPU_OPTIONS>    
 ```
 
@@ -458,6 +459,14 @@ passed to `--with-pmi-runcmd=...`.
 
 At the time of this writing we've only tested UPCR on HPE Cray EX systems with
 AMD CPUs.
+
+The `--enable-issue557-workaround` flag activates a UPC++-level workaround for
+a libfabric defect that impacts the correctness of the native `cuda_device`
+memory kind with the ofi network on HPE Cray EX systems. This workaround is
+believed to be necessary when using `--enable-cuda` (NVIDIA GPUs) with the ofi
+network over either Slingshot-10 or -11 (for all versions of libfabric
+available as of this writing). It is currently recommended only for systems
+with NVIDIA GPUs. For up-to-date details, please consult issue #557.
 
 As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
 UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
