@@ -18,6 +18,10 @@
 #define UPCXXI_COPY_PROMOTEPRIVATE 1 // private promotion optimization can be disabled for debugging library behavior
 #endif
 
+#ifndef UPCXXI_USING_ISSUE557_WORKAROUND
+#define UPCXXI_USING_ISSUE557_WORKAROUND (UPCXXI_ISSUE557_WORKAROUND && UPCXX_NETWORK_OFI)
+#endif
+
 namespace upcxx {
   namespace detail {
     void rma_copy_get_nonlocal(void *buf_d, intrank_t rank_s, void const *buf_s, std::size_t size, backend::gasnet::handle_cb *cb);
@@ -159,6 +163,7 @@ namespace upcxx {
     // dynamic_kind arguments are only used for kind::any
     const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
     const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
+    UPCXX_ASSERT(kind_s != memory_kind::any); UPCXX_ASSERT(kind_d != memory_kind::any);
 
     const intrank_t initiator = upcxx::rank_me();
     persona *initiator_per = &upcxx::current_persona();
@@ -312,6 +317,7 @@ namespace upcxx {
     // dynamic_kind arguments are only used for kind::any
     const memory_kind kind_s = ( Ks == memory_kind::any ? kind_s_ : Ks);
     const memory_kind kind_d = ( Kd == memory_kind::any ? kind_d_ : Kd);
+    UPCXX_ASSERT(kind_s != memory_kind::any); UPCXX_ASSERT(kind_d != memory_kind::any);
 
     #if UPCXXI_COPY_OPTIMIZEHOST
       // only reach this function for calls involving device memory
@@ -393,7 +399,13 @@ namespace upcxx {
       constexpr bool use_gex_mk = false;
     #endif
     if (  use_gex_mk && rank_s == initiator && // MK put to different-rank
-        ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
+          (
+            ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
+            #if UPCXXI_USING_ISSUE557_WORKAROUND
+              // invert MK puts from device source memory, where necessary for correctness
+              || kind_s != memory_kind::host 
+            #endif
+          )
       ) { // convert MK put into MK get, as an optimization to reduce completion latency
       UPCXX_ASSERT(rank_d != initiator);
       UPCXX_ASSERT(heap_d != private_heap);
@@ -455,6 +467,9 @@ namespace upcxx {
     else if (use_gex_mk) { // MK-enabled GASNet backend
       // GASNet will do a direct source-to-dest memory transfer.
       // No bounce buffering, we just need to orchestrate the completions
+      #if UPCXXI_USING_ISSUE557_WORKAROUND
+        UPCXX_ASSERT(rank_s != initiator || kind_s == memory_kind::host); // not a put from local device
+      #endif
       
       deserialized_cxs_remote_bound_t *cxs_remote_heaped_local = nullptr;
       using cxs_remote_am_t = decltype(backend::prepare_deferred_am_master(rank_d, 
