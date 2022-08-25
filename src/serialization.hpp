@@ -143,11 +143,12 @@ namespace upcxx {
 
     template<typename T>
     struct serialization_storage_wrapper<upcxx::optional<T>> {
-      using value_type = typename std::remove_const<T>::type;
+      static_assert(!std::is_const<T>::value,
+                    "Deserialization into optional<const T> not supported");
       template<typename ...Args>
-      value_type* construct(Args&& ...args) const {
+      T* construct(Args&& ...args) const {
         opt_->emplace(std::forward<Args>(args)...);
-        return const_cast<value_type*>(&**opt_);
+        return &**opt_;
       }
       upcxx::optional<T> *opt_;
     };
