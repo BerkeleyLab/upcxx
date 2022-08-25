@@ -211,6 +211,47 @@ namespace detail {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  // detail::construct_trivial_into_storage: Similar to construct_trivial,
+  // but constructs a T into a serialization_storage_wrapper. T must be
+  // DefaultConstructible.
+
+  namespace help {
+    template<typename T, typename Storage>
+    T* construct_trivial_into_storage(Storage storage, const void *src,
+                                      std::true_type triv_copy) {
+      // Default construct a T, then memcpy into it.
+      T *ans = reinterpret_cast<T*>(storage.construct());
+      detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
+      #if UPCXXI_ISSUE400_WORKAROUND
+        // See construct_trivial() for a detailed discussion of issue #400.
+        return detail::launder_unconstructed<T>(ans);
+      #else
+        return ans;
+      #endif
+    }
+    template<typename T, typename Storage>
+    T* construct_trivial_into_storage(Storage storage, const void *src,
+                                      std::false_type triv_copy) {
+      // Default construct a T, then memcpy into it.
+      T *ans = storage.construct();
+      detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
+      return detail::template launder<T>(reinterpret_cast<T*>(ans));
+    }
+  }
+
+  template<typename T, typename Storage>
+  T* construct_trivial_into_storage(Storage storage, const void *src) {
+    using T1 = typename std::remove_const<T>::type;
+    static_assert(std::is_default_constructible<T1>::value,
+                  "Deserializing a TriviallySerializable type T into "
+                  "storage requires T to be DefaultConstructible");
+    return help::template construct_trivial_into_storage<T1>(
+      storage, src,
+      std::integral_constant<bool, std::is_trivially_copyable<T1>::value>()
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   // detail::destruct
 
   template<typename T>
@@ -360,90 +401,6 @@ namespace detail {
     }
   };
   
-  //////////////////////////////////////////////////////////////////////////////
-  // detail::construct_trivial_into_storage: Similar to construct_trivial,
-  // but constructs a T into a serialization_storage_wrapper. T must be
-  // either DefaultConstructible or MoveConstructible.
-
-  #ifndef UPCXXI_TRIVIAL_STACK_MAX_SIZE
-  #define UPCXXI_TRIVIAL_STACK_MAX_SIZE 2048
-  #endif
-
-  namespace help {
-    template<typename T, typename Storage, bool any1, bool any2>
-    T* construct_trivial_into_storage(Storage storage, const void *src,
-                                      std::true_type deft_ctor,
-                                      std::integral_constant<bool,any1> move_ctor,
-                                      std::true_type triv_copy,
-                                      std::integral_constant<bool,any2> is_small) {
-      // Default construct a T, then memcpy into it.
-      T *ans = reinterpret_cast<T*>(storage.construct());
-      detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
-      #if UPCXXI_ISSUE400_WORKAROUND
-        // See construct_trivial() for a detailed discussion of issue #400.
-        return detail::launder_unconstructed<T>(ans);
-      #else
-        return ans;
-      #endif
-    }
-    template<typename T, typename Storage, bool any1, bool any2>
-    T* construct_trivial_into_storage(Storage storage, const void *src,
-                                      std::true_type deft_ctor,
-                                      std::integral_constant<bool,any1> move_ctor,
-                                      std::false_type triv_copy,
-                                      std::integral_constant<bool,any2> is_small) {
-      // Default construct a T, then memcpy into it.
-      T *ans = storage.construct();
-      detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
-      return detail::template launder<T>(reinterpret_cast<T*>(ans));
-    }
-    template<typename T, typename Storage, bool any>
-    T* construct_trivial_into_storage(Storage storage, const void *src,
-                                      std::false_type deft_ctor,
-                                      std::true_type move_ctor,
-                                      std::integral_constant<bool,any> triv_copy,
-                                      std::true_type is_small) {
-      // Use construct_trivial() to construct T on the stack, then
-      // move it into storage.
-      detail::raw_storage<T> raw;
-      T *obj = detail::help::template construct_trivial<T>(
-        &raw, src, deft_ctor, triv_copy
-      );
-      T *result = storage.construct(std::move(*obj));
-      raw.destruct();
-      return result;
-    }
-    template<typename T, typename Storage, bool any>
-    T* construct_trivial_into_storage(Storage storage, const void *src,
-                                      std::false_type deft_ctor,
-                                      std::true_type move_ctor,
-                                      std::integral_constant<bool,any> triv_copy,
-                                      std::false_type is_small) {
-      // Use construct_trivial() to construct T on the heap, then
-      // move it into storage.
-      void *spot = ::operator new(sizeof(T));
-      T *obj = detail::help::template construct_trivial<T>(
-        spot, src, deft_ctor, triv_copy
-      );
-      T *result = storage.construct(std::move(*obj));
-      obj->~T();
-      ::operator delete(spot);
-      return result;
-    }
-  }
-
-  template<typename T, typename Storage>
-  T* construct_trivial_into_storage(Storage storage, const void *src) {
-    using T1 = typename std::remove_const<T>::type;
-    return help::template construct_trivial_into_storage<T1>(
-      storage, src,
-      std::integral_constant<bool, std::is_default_constructible<T1>::value>(),
-      std::integral_constant<bool, std::is_move_constructible<T1>::value>(),
-      std::integral_constant<bool, std::is_trivially_copyable<T1>::value>(),
-      std::integral_constant<bool, sizeof(T1) <= UPCXXI_TRIVIAL_STACK_MAX_SIZE>()
-    );
-  }
-
   //////////////////////////////////////////////////////////////////////
   // detail::invoke_result<T, Args...>: abstract over std::result_of and
   // std::invoke_result.

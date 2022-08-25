@@ -968,7 +968,7 @@ namespace upcxx {
       
       template<typename Reader, typename Storage>
       static T* deserialize(Reader &r, Storage storage) {
-        return r.template read_trivial_empty_into(storage);
+        return r.template read_trivial_empty_into<T>(storage);
       }
 
       static constexpr bool skip_is_fast = true;

@@ -410,6 +410,8 @@ struct array_write_read_into {
   }
 };
 
+struct empty_type {};
+
 struct read_into_optional {
   // trivially serializable types
   upcxx::optional<int> a;
@@ -425,6 +427,8 @@ struct read_into_optional {
   // type that has asymmetric serialization
   upcxx::optional<asym_type> g1;
   upcxx::optional<int> g2;
+  // empty_type trivially serializable type
+  upcxx::optional<empty_type> h;
 
   read_into_optional() {}
   read_into_optional(char x, char y) {
@@ -436,6 +440,7 @@ struct read_into_optional {
     f.emplace(x+4, y+4);
     g1.emplace();
     g2.emplace(123);
+    h.emplace();
   }
 
   bool operator==(read_into_optional const &that) const {
@@ -458,6 +463,7 @@ struct read_into_optional {
       w.write(*x.e);
       w.write(*x.f);
       w.write(*x.g1);
+      w.write(*x.h);
     }
     template<typename Reader, typename Storage>
     static read_into_optional* deserialize(Reader &r, Storage storage) {
@@ -469,6 +475,7 @@ struct read_into_optional {
       r.template read_into<nonpod3>(result->e);
       r.template read_into<nonpod4>(result->f);
       r.template read_into<asym_type>(result->g2);
+      r.template read_into<empty_type>(result->h);
       return result;
     }
   };
