@@ -58,8 +58,21 @@ namespace upcxx {
       return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{spot});
     }
 
-    pointer deserialize_into(upcxx::optional<value_type> &spot) const noexcept {
-      using wrapper_t = detail::serialization_storage_wrapper<upcxx::optional<value_type>>;
+    // This overload allows any supported storage type to be passed to
+    // deserialize_into(). The storage type must have a specialization
+    // of detail::serialization_storage_wrapper defined.
+    template<typename UnwrappedStorage,
+             typename = typename std::enable_if<
+               // force pointers to use the void* overload above
+               !std::is_pointer<
+                 typename std::decay<UnwrappedStorage>::type
+               >::value,
+               void
+             >::type>
+    pointer deserialize_into(UnwrappedStorage &spot) const noexcept {
+      using wrapper_t = detail::serialization_storage_wrapper<
+        typename std::decay<UnwrappedStorage>::type
+      >;
       detail::serialization_reader r1(r_);
       return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{&spot});
     }
