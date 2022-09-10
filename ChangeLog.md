@@ -37,6 +37,7 @@ Notable issues resolved
 * Issue #554: UPC++ headers choke ROCm 5.x hipcc device-mode compilation
 * Issue #555: Error running HIP/ROCm examples
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
+* spec issue 199: Add serialization through `std::reference_wrapper`
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):

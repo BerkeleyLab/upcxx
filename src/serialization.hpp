@@ -1586,6 +1586,12 @@ namespace upcxx {
     // inherit skip
   };
 
+  // a std::reference_wrapper is serialized by serializing the referent
+  template<typename T>
+  struct is_trivially_serializable<std::reference_wrapper<T>>: std::false_type {};
+  template<typename T>
+  struct serialization<std::reference_wrapper<T>>: serialization_traits<typename std::remove_const<T>::type> {};
+
   // T[&,&&] volatile is not serializable
   template<typename T>
   struct serialization_traits<T volatile>: detail::serialization_not_supported {};
@@ -1599,6 +1605,10 @@ namespace upcxx {
   struct serialization_traits<T volatile&&>: detail::serialization_not_supported {};
   template<typename T>
   struct serialization<T volatile&&>: detail::serialization_not_supported {};
+  template<typename T>
+  struct serialization_traits<std::reference_wrapper<T volatile>>: detail::serialization_not_supported {};
+  template<typename T>
+  struct serialization<std::reference_wrapper<T volatile>>: detail::serialization_not_supported {};
 
   //////////////////////////////////////////////////////////////////////////////
 
