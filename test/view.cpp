@@ -167,7 +167,7 @@ struct big_nontrivial {
       w.write_sequence(x.data.begin(), x.data.end(), x.data.size());
     }
     template<typename Reader, typename Storage>
-    static big_nontrivial* deserialize(Reader &r, Storage &&storage) {
+    static big_nontrivial* deserialize(Reader &r, Storage storage) {
       auto result = storage.construct();
       r.template read_sequence_into<int>(result->data.data(),
                                          result->data.size());

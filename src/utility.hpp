@@ -220,7 +220,7 @@ namespace detail {
     T* construct_trivial_into_storage(Storage storage, const void *src,
                                       std::true_type triv_copy) {
       // Default construct a T, then memcpy into it.
-      T *ans = reinterpret_cast<T*>(storage.construct());
+      T *ans = storage.construct();
       detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
       #if UPCXXI_ISSUE400_WORKAROUND
         // See construct_trivial() for a detailed discussion of issue #400.
@@ -235,7 +235,7 @@ namespace detail {
       // Default construct a T, then memcpy into it.
       T *ans = storage.construct();
       detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
-      return detail::template launder<T>(reinterpret_cast<T*>(ans));
+      return detail::template launder<T>(ans);
     }
   }
 

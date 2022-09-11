@@ -1141,7 +1141,6 @@ namespace upcxx {
       template<typename Reader, typename Storage>
       static deserialized_type* deserialize(Reader &r, Storage storage) {
         T *rec = storage.construct();
-        //T *rec = ::new(raw) T;
         refs_tup_type refs_tup(rec->upcxxi_serialized_fields());
         
         // Deserialization happens in two phases: 1) destruct, 2) read.
@@ -1261,7 +1260,6 @@ namespace upcxx {
 
       template<typename Obj, typename Reader, typename Storage, typename ...Ptrs>
       static Obj* deserialize(Reader &r, Storage spot, Ptrs ...ptrs) {
-        //return ::new(spot) Obj(static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
         return spot.construct(static_cast<typename std::remove_pointer<Ptrs>::type&&>(*ptrs)...);
       }
       

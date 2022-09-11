@@ -133,7 +133,7 @@ struct nonpod4: nonpod_base {
   nonpod4(char h, char i): nonpod_base(h,i) {}
 };
 
-// same as nonpod4_old, but using old-style deserialize()
+// same as nonpod4, but using old-style deserialize()
 struct nonpod4_old: nonpod_base {
   nonpod4_old(char h, char i): nonpod_base(h,i) {}
 };
