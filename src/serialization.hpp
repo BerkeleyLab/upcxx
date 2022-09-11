@@ -122,6 +122,12 @@ namespace upcxx {
       operator void*() const {
         return nullptr;
       }
+      // Undocumented member function allows a type T's deserialize() to
+      // delegate to read_into<U>() on a different type. Used in
+      // serialization_view_element<T,false> in view.hpp.
+      void* unwrap(detail::internal_only) const {
+        return nullptr;
+      }
     };
 
     // This is for reading into raw memory. T here is the deserialized
@@ -138,6 +144,10 @@ namespace upcxx {
       operator void*() const {
         return ptr_;
       }
+      // see comment for serialization_storage_wrapper<void>::unwrap()
+      void* unwrap(detail::internal_only) const {
+        return ptr_;
+      }
       void* ptr_;
     };
 
@@ -150,16 +160,12 @@ namespace upcxx {
         opt_->emplace(std::forward<Args>(args)...);
         return &**opt_;
       }
+      // see comment for serialization_storage_wrapper<void>::unwrap()
+      upcxx::optional<T>& unwrap(detail::internal_only) const {
+        return *opt_;
+      }
       upcxx::optional<T> *opt_;
     };
-
-    // trait to check whether a type is a specialization of
-    // serialization_storage_wrapper
-    template<typename T>
-    struct is_serialization_storage_wrapper : std::false_type {};
-    template<typename Unwrapped>
-    struct is_serialization_storage_wrapper<serialization_storage_wrapper<Unwrapped>>
-      : std::true_type {};
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -746,48 +752,18 @@ namespace upcxx {
         return res;
       }
 
-      // This overload allows any supported storage type to be passed
-      // to read_into(). The storage type must have a specialization
-      // of detail::serialization_storage_wrapper defined.
-      template<typename T, typename UnwrappedStorage,
-               typename T1 = typename serialization_traits<T>::deserialized_type,
-               typename = typename std::enable_if<
-                 // force pointers to use the void* overload above
-                 !std::is_pointer<
-                   typename std::decay<UnwrappedStorage>::type
-                 >::value &&
-                 // force wrappers to use the overload below
-                 !is_serialization_storage_wrapper<
-                   typename std::decay<UnwrappedStorage>::type
-                 >::value,
-                 void
-               >::type>
-      T1* read_into(UnwrappedStorage &spot) {
+      template<typename T,
+               typename T1 = typename serialization_traits<T>::deserialized_type>
+      T1* read_into(upcxx::optional<T1> &spot) {
         UPCXXI_ASSERT_INIT();
         static_assert(detail::is_serializable_type_or_array<T>::value,
                      "Template argument of read_into must either be Serializable or an array of Serializable elements.");
 
-        using wrapper_t = detail::serialization_storage_wrapper<
-          typename std::decay<UnwrappedStorage>::type
-        >;
+        using wrapper_t =
+          detail::serialization_storage_wrapper<upcxx::optional<T1>>;
         return upcxx::template serialization_traits<T>::deserialize(
           *this, wrapper_t{&spot}
         );
-      }
-
-      // This overload allows deserialize(wrapper) to delegate to
-      // read_into() by passing the wrapper as the argument. This can
-      // be useful for asymmetric serialization. See deserialization
-      // of serialization_view_element<T,false> in view.hpp as an
-      // example.
-      template<typename T, typename Unwrapped,
-               typename T1 = typename serialization_traits<T>::deserialized_type>
-      T1* read_into(serialization_storage_wrapper<Unwrapped> wrapper) {
-        UPCXXI_ASSERT_INIT();
-        static_assert(detail::is_serializable_type_or_array<T>::value,
-                     "Template argument of read_into must either be Serializable or an array of Serializable elements.");
-
-        return upcxx::template serialization_traits<T>::deserialize(*this, wrapper);
       }
 
       void* unplace(std::size_t obj_size, std::size_t obj_align) {
