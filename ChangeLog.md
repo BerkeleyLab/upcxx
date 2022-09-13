@@ -13,7 +13,8 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 Infrastructure changes:
 
-* ...
+* Added initial/experimental support for RISC-V architecture. 
+  If you have an interest in this platform, please contact us!
 * The set of tests run by `make check` has been adjusted to improve coverage and balance
 
 Notable issues resolved
