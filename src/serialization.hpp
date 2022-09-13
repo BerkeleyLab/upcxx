@@ -411,7 +411,7 @@ namespace upcxx {
       template<typename T>
       void write_trivial(T const &x) {
         void *spot = this->place(storage_size_of<T>());
-        detail::template memcpy_aligned<alignof(T)>(spot, &x, sizeof(T));
+        detail::memcpy_aligned<alignof(T)>(spot, &x, sizeof(T));
       }
     };
 
@@ -462,7 +462,7 @@ namespace upcxx {
       std::size_t write_sequence_(Iter beg, Iter end, std::true_type trivial_and_contiguous) {
         std::size_t n = std::distance(beg, end);
         void *spot = this->place(storage_size_of<T>().arrayed(n));
-        detail::template memcpy_aligned<alignof(T)>(spot, &*beg, n*sizeof(T));
+        detail::memcpy_aligned<alignof(T)>(spot, &*beg, n*sizeof(T));
         return n;
       }
       
@@ -589,7 +589,7 @@ namespace upcxx {
         std::size_t size0 = size_;
         size0 = (size0 + alignof_T-1) & -alignof_T;
         
-        detail::template memcpy_aligned<alignof(T)>(
+        detail::memcpy_aligned<alignof(T)>(
             reinterpret_cast<void*>(base_ + size0), &*xs, n*sizeof(T)
           );
         
@@ -600,7 +600,7 @@ namespace upcxx {
       
       template<typename T, typename Iter>
       Iter write_elts_bounded_(Iter xs, std::size_t n, std::false_type trivial_and_contiguous) {
-        detail::template serialization_writer</*bounded=*/true> w1(reinterpret_cast<void*>(base_));
+        detail::serialization_writer</*bounded=*/true> w1(reinterpret_cast<void*>(base_));
         w1.size_ = size_;
         w1.align_ = align_;
         while(n--) {
@@ -783,27 +783,27 @@ namespace upcxx {
 
       template<typename T>
       T* read_trivial_into(serialization_storage_wrapper<T*> raw) {
-        return detail::template construct_trivial<T>(
+        return detail::construct_trivial<T>(
           raw.ptr_, this->unplace(storage_size_of<T>())
         );
       }
 
       template<typename T, typename Storage>
       T* read_trivial_into(Storage storage) {
-        return detail::template construct_trivial_into_storage<T>(
+        return detail::construct_trivial_into_storage<T>(
           storage, this->unplace(storage_size_of<T>())
         );
       }
 
       template<typename T>
       T* read_trivial_empty_into(serialization_storage_wrapper<T*> raw) {
-        return detail::template construct_default<T>(raw.ptr_);
+        return detail::construct_default<T>(raw.ptr_);
       }
 
       template<typename T, typename Storage>
       T* read_trivial_empty_into(Storage storage) {
         detail::raw_storage<T> tmp_storage;
-        T *obj = detail::template construct_default<T>(&tmp_storage);
+        T *obj = detail::construct_default<T>(&tmp_storage);
         T *result = storage.construct(std::move(*obj));
         tmp_storage.destruct();
         return result;
@@ -823,7 +823,7 @@ namespace upcxx {
       template<typename T, typename T1>
       T1* read_sequence_into_(void *raw, std::size_t n, std::true_type trivial_serz) {
         auto ss = storage_size_of<T1>().arrayed(n);
-        return detail::template construct_trivial<T1>(raw, this->unplace(ss), n);
+        return detail::construct_trivial<T1>(raw, this->unplace(ss), n);
       }
 
       template<typename T, typename T1>
@@ -998,7 +998,7 @@ namespace upcxx {
     }
     // Need to use "..." to accept a type since template instantiations can
     // contain commas not nested in parenthesis.
-    #define UPCXX_SERIALIZED_BASE(...) *::upcxx::detail::template serialized_fields_base_cast<__VA_ARGS__>(this, upcxxi_fields_not_values())
+    #define UPCXX_SERIALIZED_BASE(...) *::upcxx::detail::serialized_fields_base_cast<__VA_ARGS__>(this, upcxxi_fields_not_values())
 
     template<typename TupRefs,
              int i = 0,
@@ -1046,7 +1046,7 @@ namespace upcxx {
 
       static void deserialize_destruct(TupRefs refs) {
         Ti *spot = &std::template get<i>(refs);
-        detail::template destruct<Ti>(*spot);
+        detail::destruct<Ti>(*spot);
         
         serialization_fields_each<TupRefs, i+1, n>::deserialize_destruct(refs);
       }
@@ -1208,7 +1208,7 @@ namespace upcxx {
         typename std::aligned_storage<sizeof(Ti1), alignof(Ti1)>::type storage;
         Ti1 *val = r.template read_into<Ti>(&storage);
         Obj *ans = recurse_tail::template deserialize<Obj>(r, spot, ptrs..., val);
-        detail::template destruct<Ti1>(*val);
+        detail::destruct<Ti1>(*val);
         return ans;
       }
 
@@ -1700,7 +1700,7 @@ namespace upcxx {
         typename std::aligned_storage<sizeof(Ti1),alignof(Ti1)>::type storage;
         Ti1 *val = r.template read_into<Ti>(&storage);
         TupOut *ans = recurse_tail::template deserialize_each<TupOut>(r, spot, ptrs..., val);
-        detail::template destruct<Ti1>(*val);
+        detail::destruct<Ti1>(*val);
         return ans;
       }
 
@@ -2188,8 +2188,8 @@ namespace upcxx {
         typename BagOut::allocator_type a = r.template read<typename BagIn::allocator_type>();
         std::size_t n = r.template read_trivial<std::size_t>();
         BagOut *bag = storage.construct(std::move(a));
-        detail::template reserve_if_supported<BagOut>()(*bag, n);
-        r.template read_sequence_into_iterator<T0>(detail::template inserter<BagOut>()(*bag), n);
+        detail::reserve_if_supported<BagOut>()(*bag, n);
+        r.template read_sequence_into_iterator<T0>(detail::inserter<BagOut>()(*bag), n);
         return bag;
       }
 
@@ -2248,8 +2248,8 @@ namespace upcxx {
         typename BagOut::key_compare k = r.template read<typename BagIn::key_compare>();
         std::size_t n = r.template read_trivial<std::size_t>();
         BagOut *bag = storage.construct(std::move(k), std::move(a));
-        detail::template reserve_if_supported<BagOut>()(*bag, n);
-        r.template read_sequence_into_iterator<T0>(detail::template inserter<BagOut>()(*bag), n);
+        detail::reserve_if_supported<BagOut>()(*bag, n);
+        r.template read_sequence_into_iterator<T0>(detail::inserter<BagOut>()(*bag), n);
         return bag;
       }
 
@@ -2316,8 +2316,8 @@ namespace upcxx {
         typename BagOut::hasher h = r.template read<typename BagIn::hasher>();
         std::size_t n = r.template read_trivial<std::size_t>();
         BagOut *bag = storage.construct(n, std::move(h), std::move(k), std::move(a));
-        detail::template reserve_if_supported<BagOut>()(*bag, n);
-        r.template read_sequence_into_iterator<T0>(detail::template inserter<BagOut>()(*bag), n);
+        detail::reserve_if_supported<BagOut>()(*bag, n);
+        r.template read_sequence_into_iterator<T0>(detail::inserter<BagOut>()(*bag), n);
         return bag;
       }
 

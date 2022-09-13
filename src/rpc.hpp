@@ -529,7 +529,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::template rpc_internal<Cxs, Fn&&, Arg&&...>(
+    return detail::rpc_internal<Cxs, Fn&&, Arg&&...>(
         backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
         std::forward<Cxs>(cxs), 0
       );
@@ -549,7 +549,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::template rpc_internal<Cxs, Fn&&, Arg&&...>(
+    return detail::rpc_internal<Cxs, Fn&&, Arg&&...>(
         recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
         std::forward<Cxs>(cxs), 0
       );
@@ -570,7 +570,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::template rpc_internal<detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
+    return detail::rpc_internal<detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
       operation_cx::as_future(), 0
     );
@@ -590,7 +590,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::template rpc_internal<detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
+    return detail::rpc_internal<detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
       recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
       operation_cx::as_future(), 0
     );
