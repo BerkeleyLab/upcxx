@@ -209,7 +209,48 @@ namespace detail {
         std::integral_constant<bool, std::is_trivially_copyable<T>::value>()
       );
   }
-  
+
+  //////////////////////////////////////////////////////////////////////////////
+  // detail::construct_trivial_into_storage: Similar to construct_trivial,
+  // but constructs a T into a serialization_storage_wrapper. T must be
+  // DefaultConstructible.
+
+  namespace help {
+    template<typename T, typename Storage>
+    T* construct_trivial_into_storage(Storage storage, const void *src,
+                                      std::true_type triv_copy) {
+      // Default construct a T, then memcpy into it.
+      T *ans = storage.construct();
+      detail::memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
+      #if UPCXXI_ISSUE400_WORKAROUND
+        // See construct_trivial() for a detailed discussion of issue #400.
+        return detail::launder_unconstructed<T>(ans);
+      #else
+        return ans;
+      #endif
+    }
+    template<typename T, typename Storage>
+    T* construct_trivial_into_storage(Storage storage, const void *src,
+                                      std::false_type triv_copy) {
+      // Default construct a T, then memcpy into it.
+      T *ans = storage.construct();
+      detail::memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
+      return detail::launder<T>(ans);
+    }
+  }
+
+  template<typename T, typename Storage>
+  T* construct_trivial_into_storage(Storage storage, const void *src) {
+    using T1 = typename std::remove_const<T>::type;
+    static_assert(std::is_default_constructible<T1>::value,
+                  "Deserializing a TriviallySerializable type T into "
+                  "storage requires T to be DefaultConstructible");
+    return help::construct_trivial_into_storage<T1>(
+      storage, src,
+      std::integral_constant<bool, std::is_trivially_copyable<T1>::value>()
+    );
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // detail::destruct
 
@@ -451,6 +492,21 @@ namespace detail {
   
   template<int n>
   using make_index_sequence = typename help::make_index_sequence<n>::type;
+
+  //////////////////////////////////////////////////////////////////////
+
+  namespace help {
+    template<typename T, typename IS>
+    struct make_nary_tuple;
+
+    template<typename T, int ...s>
+    struct make_nary_tuple<T, index_sequence<s...>> {
+      using type = std::tuple<typename std::conditional<bool(s), T, T>::type...>;
+    };
+  }
+
+  template<typename T, int n>
+  using make_nary_tuple = typename help::make_nary_tuple<T, make_index_sequence<n>>::type;
 
   //////////////////////////////////////////////////////////////////////////////
   // add_lref_if_nonref: Add a lvalue-reference (&) to type T if T isn't already

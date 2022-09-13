@@ -378,10 +378,10 @@ namespace upcxx {
       r.template skip<std::tuple<typename detail::binding<B>::on_wire_type...>>();
     }
 
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *spot) {
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage storage) {
       // deserialized_bound_function handles all its own deserialization
-      return new(spot) deserialized_type(r);
+      return storage.construct(r);
     }
   };
 }

@@ -180,9 +180,9 @@ namespace upcxx {
         static void serialize(Writer &w, const serialized_raw_tuple &x) {
           w.write(x.tup);
         }
-        template<typename Reader>
-        static deserialized_raw_tuple<T...>* deserialize(Reader &r, void *spot) {
-          return new(spot) deserialized_raw_tuple<T...>{r};
+        template<typename Reader, typename Storage>
+        static deserialized_raw_tuple<T...>* deserialize(Reader &r, Storage storage) {
+          return storage.construct(r);
         }
       };
     };

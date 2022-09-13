@@ -9,7 +9,10 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
-* ...
+* New `upcxx::optional` template that provides the same interface as
+  C++17 `std::optional`, and new overloads of `[Reader]::read_into()`
+  and `deserializing_iterator<T>::deserialize_into()` that deserialize
+  into a `upcxx::optional`.
 
 Infrastructure changes:
 
