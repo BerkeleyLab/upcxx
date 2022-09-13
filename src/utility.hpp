@@ -221,7 +221,7 @@ namespace detail {
                                       std::true_type triv_copy) {
       // Default construct a T, then memcpy into it.
       T *ans = storage.construct();
-      detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
+      detail::memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
       #if UPCXXI_ISSUE400_WORKAROUND
         // See construct_trivial() for a detailed discussion of issue #400.
         return detail::launder_unconstructed<T>(ans);
@@ -234,8 +234,8 @@ namespace detail {
                                       std::false_type triv_copy) {
       // Default construct a T, then memcpy into it.
       T *ans = storage.construct();
-      detail::template memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
-      return detail::template launder<T>(ans);
+      detail::memcpy_aligned<alignof(T)>(ans, src, sizeof(T));
+      return detail::launder<T>(ans);
     }
   }
 
@@ -245,7 +245,7 @@ namespace detail {
     static_assert(std::is_default_constructible<T1>::value,
                   "Deserializing a TriviallySerializable type T into "
                   "storage requires T to be DefaultConstructible");
-    return help::template construct_trivial_into_storage<T1>(
+    return help::construct_trivial_into_storage<T1>(
       storage, src,
       std::integral_constant<bool, std::is_trivially_copyable<T1>::value>()
     );
