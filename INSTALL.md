@@ -420,7 +420,7 @@ cd <upcxx-source-path>
     --with-ofi-provider=<PROVIDER> \
     --with-ofi-spawner=pmi \
       --with-pmi-version=cray \
-      --with-pmi-runcmd='srun -n %N -- %C' \
+      --with-pmi-runcmd='<RUNCMD>' \
     --enable-issue557-workaround <SEE-BELOW> \
     <GPU_OPTIONS>    
 ```
@@ -433,9 +433,10 @@ There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
 "Slingshot-11".  They require different libfabric "providers", as indicated by
 the `<PROVIDER>` placeholder above:  
 
-  + `--with-ofi-provider='verbs;ofi_rxm'` for Slingshot-10.  
+  + `--with-ofi-provider=verbs` for Slingshot-10.  
     This is a Mellanox ConnectX-5 100Gbps NIC.  
-    Due to the presence of `;` in the value, please do not omit the quotes.
+    (Note: if using a GASNet-EX version older than the default, you may need to
+     use `'verbs;ofi_rxm'` instead, taking care to quote the semicolon.)
   + `--with-ofi-provider=cxi` for Slingshot-11.  
     This is an HPE 200Gbps NIC  
 
@@ -454,8 +455,11 @@ required.  If your system _does_ require this setting, then you will see a
 message at application run time directing you to use this option, or an
 environment-based alternative.
 
-If appropriate at your site, you may also wish to customize the command
-passed to `--with-pmi-runcmd=...`.
+You will also need to select the proper argument to `--with-pmi-runcmd=...`
+(the `<RUNCMD>` placeholder, above).
+
+  + If using the Slurm Workload Manager: `--with-pmi-runcmd='srun -n %N -- %C'`
+  + For most other cases: `--with-pmi-runcmd='aprun -n %N %C'`
 
 At the time of this writing we've only tested UPCR on HPE Cray EX systems with
 AMD CPUs.
