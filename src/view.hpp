@@ -73,7 +73,7 @@ namespace upcxx {
     }
 
     pointer deserialize_overwrite(value_type &obj) const noexcept {
-      detail::template destruct<value_type>(obj);
+      detail::destruct<value_type>(obj);
       return deserialize_into((void*) &obj);
     }
     

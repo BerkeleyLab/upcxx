@@ -31,16 +31,16 @@
   #include <vector>
 #endif
 
-#define UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, bad_func, good_func) \
-  UPCXX_ASSERT(std::is_trivially_destructible<U>::value,                \
-               bad_func " invoked on a pointer to a "                   \
-               "non-TriviallyDestructible type.\nSince " bad_func       \
-               " does not destruct the underlying object, this is an\n" \
-               "error if the pointer refers to a live object. If you "  \
-               "are certain that the\npointer does not refer to a "     \
-               "live object, cast the pointer to void* to bypass\n"     \
-               "this assertion. Otherwise, use " good_func              \
-               ", which does destruct\nthe underlying object.")
+#define UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, bad_func, good_func)  \
+  static_assert(std::is_trivially_destructible<U>::value,                \
+                bad_func " invoked on a pointer to a "                   \
+                "non-TriviallyDestructible type.\nSince " bad_func       \
+                " does not destruct the underlying object, this is an\n" \
+                "error if the pointer refers to a live object. If you "  \
+                "are certain that the\npointer does not refer to a "     \
+                "live object, cast the pointer to void* to bypass\n"     \
+                "this assertion. Otherwise, use " good_func              \
+                ", which does destruct\nthe underlying object.")
 
 namespace upcxx {
   namespace detail {
@@ -788,7 +788,7 @@ namespace upcxx {
       template<typename T, bool AssertSerializable = true>
       deserialized_type_t<T>* read_overwrite(deserialized_type_t<T> &obj) {
         using T1 = deserialized_type_t<T>;
-        detail::template destruct<T1>(obj);
+        detail::destruct<T1>(obj);
         return read_into<T, AssertSerializable, T1>((void*) &obj);
       }
 
