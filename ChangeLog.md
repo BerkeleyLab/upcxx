@@ -13,6 +13,9 @@ General features/enhancements: (see specification and programmer's guide for ful
   C++17 `std::optional`, and new overloads of `[Reader]::read_into()`
   and `deserializing_iterator<T>::deserialize_into()` that deserialize
   into a `upcxx::optional`.
+* New `[Reader]::read_overwrite()`, `[Reader]::read_sequence_overwrite()`,
+  and `deserializing_iterator<T>::deserialize_overwrite()` functions
+  that destruct target objects before deserializing into them.
 
 Infrastructure changes:
 
@@ -58,6 +61,11 @@ Breaking changes:
   deprecated with a runtime warning since 2020.10.0, is now prohibited with a fatal error.
   For details, see spec issue 169.
 * `experimental::relocation::rebuild_cache()` removed.
+* `[Reader]::read_into()`, `[Reader]::read_sequence_into()`, and
+  `deserializing_iterator<T>::deserialize_into()` on typed
+  (non-`void*`) pointers to non-TriviallyDestructible types are now
+  prohibited with a static assertion. Use `*_overwrite()` instead, or
+  insert an explicit cast to `void*`. See spec issue 195 for details.
 * ...
 
 ### 2022.03.31: Release 2022.3.0

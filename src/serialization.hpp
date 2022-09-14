@@ -862,6 +862,26 @@ namespace upcxx {
         return ans;
       }
 
+      template<typename T>
+      deserialized_type_t<T>* read_sequence_overwrite_(deserialized_type_t<T> *ptr,
+                                                       std::size_t n,
+                                                       std::true_type trivial_serz) {
+        using T1 = deserialized_type_t<T>;
+        auto ss = storage_size_of<T1>().arrayed(n);
+        return detail::template construct_trivial<T1>(ptr, this->unplace(ss), n);
+      }
+
+      template<typename T>
+      deserialized_type_t<T>* read_sequence_overwrite_(deserialized_type_t<T> *ptr,
+                                                       std::size_t n,
+                                                       std::false_type trivial_serz) {
+        using T1 = deserialized_type_t<T>;
+        for(std::size_t i=0; i != n; i++) {
+          T1 *elt = this->template read_overwrite<T>(ptr[i]);
+        }
+        return ptr;
+      }
+
     public:
       template<typename T,
                typename T1 = typename serialization_traits<T>::deserialized_type>
@@ -876,7 +896,7 @@ namespace upcxx {
                typename T1 = typename serialization_traits<T>::deserialized_type>
       T1* read_sequence_into(U *raw, std::size_t n) {
         UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, "read_sequence_into()",
-                                              "read_sequence_overwrite()");
+                                                "read_sequence_overwrite()");
         return read_sequence_into<T, T1>((void*) raw, n);
       }
 
@@ -884,11 +904,12 @@ namespace upcxx {
       deserialized_type_t<T>* read_sequence_overwrite(deserialized_type_t<T> *ptr,
                                                       std::size_t n) {
         UPCXXI_ASSERT_INIT();
-        using T1 = deserialized_type_t<T>;
-        for(std::size_t i=0; i != n; i++) {
-          T1 *elt = this->template read_overwrite<T>(ptr[i]);
-        }
-        return ptr;
+        return this->template read_sequence_overwrite_<T>(
+          ptr, n,
+          std::integral_constant<
+            bool, serialization_traits<T>::is_actually_trivially_serializable
+          >()
+        );
       }
 
       template<typename T, typename OutIter>
