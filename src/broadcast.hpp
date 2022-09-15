@@ -91,13 +91,13 @@ namespace upcxx {
     
     detail::digest id = const_cast<team*>(&tm)->next_collective_id(detail::internal_only());
 
-    broadcast_state *s = detail::template registered_state<broadcast_state>(id);
+    broadcast_state *s = detail::registered_state<broadcast_state>(id);
 
     if(tm.rank_me() == root) {
       backend::bcast_am_master<progress_level::user>(
         tm,
         detail::bind([=](T &&value) {
-            broadcast_state *s = detail::template registered_state<broadcast_state>(id);
+            broadcast_state *s = detail::registered_state<broadcast_state>(id);
             ::new(&s->value) T(std::move(value));
             s->contribute(id);
           },

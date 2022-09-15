@@ -381,7 +381,7 @@ namespace upcxx {
           intrank_t rank_d, void *buf_d, void const *buf_s, std::size_t buf_size,
           RemoteFn&&
         ) {
-        return detail::template rma_put<sync_lb>(
+        return detail::rma_put<sync_lb>(
           rank_d, buf_d, buf_s, buf_size,
           this->the_src_cb(), this->the_op_cb()
         );
@@ -514,7 +514,7 @@ namespace upcxx {
                  detail::cx_event_done::operation :
                  detail::cx_event_done::none);
 
-    detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
+    detail::rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
   }
   
@@ -588,7 +588,7 @@ namespace upcxx {
     typename traits_t::completions_returner_t
       returner(o->cx_state_here, completed);
 
-    detail::template rput_post_inject<object_t, traits_t>(o, sync_done);
+    detail::rput_post_inject<object_t, traits_t>(o, sync_done);
     return returner();
   }
 }
