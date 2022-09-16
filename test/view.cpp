@@ -159,8 +159,9 @@ check<S, D> check_asymmetric;
 
 // large type with nontrivial serialization
 struct big_nontrivial {
+  static int dtor_count, expected_dtor_count;
   std::array<int, 10000> data;
-  ~big_nontrivial() {}
+  ~big_nontrivial() { ++dtor_count; }
   struct upcxx_serialization {
     template<typename Writer>
     static void serialize(Writer &w, const big_nontrivial &x) {
@@ -175,6 +176,9 @@ struct big_nontrivial {
     }
   };
 };
+
+int big_nontrivial::dtor_count = 0;
+int big_nontrivial::expected_dtor_count = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 // runtime test
@@ -367,7 +371,21 @@ int main() {
         UPCXX_ASSERT_ALWAYS(
           z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
         );
-        delete z;
+        delete z; ++big_nontrivial::expected_dtor_count;
+      },
+      upcxx::make_view(bn, bn+1)).wait();
+
+    // test deserialize_into existing object cast to void*
+    bn->data.fill(upcxx::rank_me());
+    upcxx::rpc(
+      (upcxx::rank_me()+1)%upcxx::rank_n(),
+      [](upcxx::view<big_nontrivial> v) {
+        auto spot = new big_nontrivial;
+        big_nontrivial *z = v.begin().deserialize_into((void*) spot);
+        UPCXX_ASSERT_ALWAYS(
+          z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
+        );
+        delete z; ++big_nontrivial::expected_dtor_count;
       },
       upcxx::make_view(bn, bn+1)).wait();
 
@@ -381,14 +399,30 @@ int main() {
         UPCXX_ASSERT_ALWAYS(
           z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
         );
-        delete spot;
+        delete spot; ++big_nontrivial::expected_dtor_count;
       },
       upcxx::make_view(bn, bn+1)).wait();
 
-    delete bn;
+    // test deserialize_overwrite
+    bn->data.fill(upcxx::rank_me());
+    upcxx::rpc(
+      (upcxx::rank_me()+1)%upcxx::rank_n(),
+      [](upcxx::view<big_nontrivial> v) {
+        auto spot = new big_nontrivial;
+        big_nontrivial *z = v.begin().deserialize_overwrite(*spot); ++big_nontrivial::expected_dtor_count;
+        UPCXX_ASSERT_ALWAYS(
+          z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
+        );
+        delete z; ++big_nontrivial::expected_dtor_count;
+      },
+      upcxx::make_view(bn, bn+1)).wait();
+
+    delete bn; ++big_nontrivial::expected_dtor_count;
 
     // quiesce the world
     upcxx::barrier();
+
+    UPCXX_ASSERT_ALWAYS(big_nontrivial::dtor_count == big_nontrivial::expected_dtor_count);
 
     // flag worker to die
     worker_shutdown.store(true, std::memory_order_relaxed);

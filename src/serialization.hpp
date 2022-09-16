@@ -31,6 +31,17 @@
   #include <vector>
 #endif
 
+#define UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, bad_func, good_func) \
+  static_assert(std::is_trivially_destructible<U>::value,               \
+                bad_func " invoked on a pointer to a"                   \
+                " non-TriviallyDestructible type. Since " bad_func      \
+                " does not destruct the underlying object, this is an"  \
+                " error if the pointer refers to a live object. If you" \
+                " are certain that the pointer does not refer to a"     \
+                " live object, cast the pointer to void* to bypass"     \
+                " this assertion. Otherwise, use " good_func            \
+                ", which does destruct the underlying object.")
+
 namespace upcxx {
   namespace detail {
     constexpr std::uintptr_t serialization_align_max = 64;
@@ -752,6 +763,14 @@ namespace upcxx {
         return res;
       }
 
+      template<typename T, typename U, bool AssertSerializable = true,
+               typename T1 = typename serialization_traits<T>::deserialized_type>
+      T1* read_into(U *raw) {
+        UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, "read_into()",
+                                                "read_overwrite()");
+        return read_into<T, AssertSerializable, T1>((void*) raw);
+      }
+
       template<typename T,
                typename T1 = typename serialization_traits<T>::deserialized_type>
       T1* read_into(upcxx::optional<T1> &spot) {
@@ -764,6 +783,13 @@ namespace upcxx {
         return upcxx::template serialization_traits<T>::deserialize(
           *this, wrapper_t{&spot}
         );
+      }
+
+      template<typename T, bool AssertSerializable = true>
+      deserialized_type_t<T>* read_overwrite(deserialized_type_t<T> &obj) {
+        using T1 = deserialized_type_t<T>;
+        detail::destruct<T1>(obj);
+        return read_into<T, AssertSerializable, T1>((void*) &obj);
       }
 
       void* unplace(std::size_t obj_size, std::size_t obj_align) {
@@ -830,10 +856,30 @@ namespace upcxx {
       T1* read_sequence_into_(void *raw, std::size_t n, std::false_type trivial_serz) {
         T1 *ans = reinterpret_cast<T1*>(raw);
         for(std::size_t i=0; i != n; i++) {
-          T1 *elt = this->template read_into<T>(reinterpret_cast<T1*>(raw) + i);
+          T1 *elt = this->template read_into<T>((void*) (reinterpret_cast<T1*>(raw) + i));
           if(i == 0) ans = elt;
         }
         return ans;
+      }
+
+      template<typename T>
+      deserialized_type_t<T>* read_sequence_overwrite_(deserialized_type_t<T> *ptr,
+                                                       std::size_t n,
+                                                       std::true_type trivial_serz) {
+        using T1 = deserialized_type_t<T>;
+        auto ss = storage_size_of<T1>().arrayed(n);
+        return detail::template construct_trivial<T1>(ptr, this->unplace(ss), n);
+      }
+
+      template<typename T>
+      deserialized_type_t<T>* read_sequence_overwrite_(deserialized_type_t<T> *ptr,
+                                                       std::size_t n,
+                                                       std::false_type trivial_serz) {
+        using T1 = deserialized_type_t<T>;
+        for(std::size_t i=0; i != n; i++) {
+          T1 *elt = this->template read_overwrite<T>(ptr[i]);
+        }
+        return ptr;
       }
 
     public:
@@ -846,6 +892,26 @@ namespace upcxx {
           );
       }
       
+      template<typename T, typename U,
+               typename T1 = typename serialization_traits<T>::deserialized_type>
+      T1* read_sequence_into(U *raw, std::size_t n) {
+        UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, "read_sequence_into()",
+                                                "read_sequence_overwrite()");
+        return read_sequence_into<T, T1>((void*) raw, n);
+      }
+
+      template<typename T>
+      deserialized_type_t<T>* read_sequence_overwrite(deserialized_type_t<T> *ptr,
+                                                      std::size_t n) {
+        UPCXXI_ASSERT_INIT();
+        return this->template read_sequence_overwrite_<T>(
+          ptr, n,
+          std::integral_constant<
+            bool, serialization_traits<T>::is_actually_trivially_serializable
+          >()
+        );
+      }
+
       template<typename T, typename OutIter>
       void read_sequence_into_iterator(OutIter into, std::size_t n) {
         while(n--) {
@@ -1054,7 +1120,7 @@ namespace upcxx {
       template<typename Reader>
       static void deserialize_read(Reader &r, TupRefs refs) {
         Ti *spot = &std::template get<i>(refs);
-        r.template read_into<Ti>(spot);
+        r.template read_into<Ti>((void*) spot);
         
         serialization_fields_each<TupRefs, i+1, n>::deserialize_read(r, refs);
       }

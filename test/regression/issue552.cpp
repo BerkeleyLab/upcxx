@@ -62,7 +62,7 @@ struct bar {
     template<typename Reader>
     static bar* deserialize(Reader &r, void *spot) {
       auto result = new(spot) bar;
-      r.template read_into<std::string[2][3]>(result->data);
+      r.template read_overwrite<std::string[2][3]>(result->data);
       return result;
     }
   };

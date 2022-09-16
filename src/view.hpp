@@ -58,11 +58,23 @@ namespace upcxx {
       return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{spot});
     }
 
+    template<typename U>
+    pointer deserialize_into(U *spot) const noexcept {
+      UPCXXI_SERIALIZATION_CHECK_TRIVIAL_DTOR(U, "deserialize_into()",
+                                              "deserialize_overwrite()");
+      return deserialize_into((void*) spot);
+    }
+
     pointer deserialize_into(upcxx::optional<value_type> &spot) const noexcept {
       using wrapper_t =
         detail::serialization_storage_wrapper<upcxx::optional<value_type>>;
       detail::serialization_reader r1(r_);
       return detail::serialization_view_element<T>::deserialize(r1, wrapper_t{&spot});
+    }
+
+    pointer deserialize_overwrite(value_type &obj) const noexcept {
+      detail::destruct<value_type>(obj);
+      return deserialize_into((void*) &obj);
     }
     
     deserializing_iterator operator++(int) noexcept {

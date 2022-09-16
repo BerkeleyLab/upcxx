@@ -1,7 +1,8 @@
 #include <upcxx/upcxx.hpp>
 
-struct A { // non-Serializable
-  ~A() {}
+struct A { // Serializable
+  ~A() {} // nontrivial dtor
+  UPCXX_SERIALIZED_VALUES()
 };
 
 struct B {
@@ -13,7 +14,7 @@ struct B {
     template<typename Reader>
     static B* deserialize(Reader &r, void *spot) {
       B* result = new(spot) B;
-      r.template read_overwrite<A>(result->a);
+      r.template read_into<A>(&result->a); // no cast to void*
       return result;
     }
   };
