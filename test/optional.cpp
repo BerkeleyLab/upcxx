@@ -142,7 +142,7 @@ TEST(disengaged_ctor)
     assert (o3 == o1);
     assert (o2 == o3);
     assert (o3 == o2);
-};
+}
 
 
 TEST(value_ctor)
@@ -192,7 +192,7 @@ TEST(value_ctor)
       assert (oo2->s == sValueMoveConstructed);
       assert (v.s == sMovedFrom);
   }
-};
+}
 
 
 TEST(assignment)
@@ -209,7 +209,7 @@ TEST(assignment)
 
     oi = {};
     assert (!oi);
-};
+}
 
 
 template <class T>
@@ -270,7 +270,7 @@ TEST(moved_from_state)
   assert (!ok->moved);
   assert (oj);
   assert (oj->moved);
-};
+}
 
 
 TEST(copy_move_ctor_optional_int)
@@ -297,7 +297,7 @@ TEST(copy_move_ctor_optional_int)
   assert (ol == oi);
   assert (ol != oj);
   assert (*ol == 1);
-};
+}
 
 
 TEST(optional_optional)
@@ -335,7 +335,7 @@ TEST(optional_optional)
   auto ooi = upcxx::make_optional(oi);
   static_assert( std::is_same<upcxx::optional<upcxx::optional<int>>, decltype(ooi)>::value, "");
 
-};
+}
 
 TEST(example_guard)
 {
@@ -364,7 +364,7 @@ TEST(example_guard)
   oga = nullopt;                        // OK: make disengaged the optional Guard
   assert (!(oga));
   //FAILS: ogb = {};                          // ERROR: Guard is not Moveable
-};
+}
 
 
 void process(){}
@@ -436,7 +436,7 @@ TEST(example1)
   ////////////////////////////////////////////
   ok = nullopt;                         // if ok was engaged calls T's dtor
   oj = {};                           // assigns a temporary disengaged optional
-};
+}
 
 
 TEST(example_guard2)
@@ -446,7 +446,7 @@ TEST(example_guard2)
   int i = *c;                        // i becomes 4
   assert (i == 4);
   // FAILS: *c = i;                            // ERROR: cannot assign to const int&
-};
+}
 
 
 #if 0  // optional references are not allowed
@@ -466,7 +466,7 @@ TEST(example_ref)
   ora.emplace(i);                    // OK: contained reference now refers to object i
 
   ora = nullopt;                        // OK: ora becomes disengaged
-};
+}
 #endif
 
 
@@ -501,7 +501,7 @@ TEST(example_optional_arg)
     grd1 = nullopt;                                 // guard 1 released
 
   }                                              // guard 2 released (in dtor)
-};
+}
 
 
 std::tuple<Date, Date, Date> getStartMidEnd() { return std::tuple<Date, Date, Date>{Date{1}, Date{2}, Date{3}}; }
@@ -514,7 +514,7 @@ TEST(example_date)
 
   std::tie(start, mid, end) = getStartMidEnd();
   run(*start, *mid, *end);
-};
+}
 
 
 upcxx::optional<char> readNextChar(){ return{}; }
@@ -549,7 +549,7 @@ TEST(example_conceptual_model)
   unused(oi == nullopt);
   unused(oj == 0);
   unused(ok == 1);
-};
+}
 
 TEST(example_rationale)
 {
@@ -664,7 +664,7 @@ TEST(example_rationale)
   auto ooi = make_optional(oi);
   static_assert( std::is_same<optional<optional<int>>, decltype(ooi)>::value, "");
   }
-};
+}
 
 
 bool fun(std::string , upcxx::optional<int> oi = upcxx::nullopt)
@@ -679,7 +679,7 @@ TEST(example_converting_ctor)
   assert (true == fun("dog", 2));
   assert (false == fun("dog"));
   assert (false == fun("dog", nullopt)); // just to be explicit
-};
+}
 
 
 TEST(bad_comparison)
@@ -690,7 +690,7 @@ TEST(bad_comparison)
   b = (oi >= i);
   b = (oi == i);
   unused(b);
-};
+}
 
 
 //// NOT APPLICABLE ANYMORE
@@ -717,7 +717,7 @@ TEST(value_or)
   assert (os.value_or("BBB") == "AAA");
   os = {};
   assert (os.value_or("BBB") == "BBB");
-};
+}
 
 TEST(reset)
 {
@@ -732,7 +732,7 @@ TEST(reset)
   oir.reset();
   assert (!oir);
 #endif
-};
+}
 
 TEST(mixed_order)
 {
@@ -797,7 +797,7 @@ TEST(mixed_order)
   assert ( (1 >= o0));
   assert (!(0 >= o1));
   assert ( (1 >= o1));
-};
+}
 
 struct BadRelops
 {
@@ -831,7 +831,7 @@ TEST(bad_relops)
   assert (ra < b);
   assert (ra > b);
 #endif
-};
+}
 
 
 TEST(mixed_equality)
@@ -885,7 +885,7 @@ TEST(mixed_equality)
   assert (!( cat == oNil));
   assert (!(oNil ==  dog));
   assert (!(oNil ==  cat));
-};
+}
 
 TEST(const_propagation)
 {
@@ -906,7 +906,7 @@ TEST(const_propagation)
   optional<const int> cci{0};
   static_assert(std::is_same<decltype(*cci), const int&>::value, "WTF");
   assert (*cci == 0);
-};
+}
 
 
 #if 0  // this isn't required by the C++17 standard
@@ -950,7 +950,7 @@ TEST(safe_value)
   catch(...) {
     assert (false);
   }
-};
+}
 
 #if 0  // optional references are not allowed
 TEST(optional_ref)
@@ -979,7 +979,7 @@ TEST(optional_ref)
   *oj = 23;
   assert (&*oj == &j);
   assert (j == 23);
-};
+}
 
 TEST(optional_ref_const_propagation)
 {
@@ -993,7 +993,7 @@ TEST(optional_ref_const_propagation)
   static_assert(std::is_same<decltype(*ci), const int&>::value, "WTF");
 
   unused(r);
-};
+}
 
 TEST(optional_ref_assign)
 {
@@ -1032,7 +1032,7 @@ TEST(optional_ref_assign)
   assert (ori != orj);
   assert (j == 2);
   assert (i == 9);
-};
+}
 #endif
 
 TEST(optional_swap)
@@ -1044,7 +1044,7 @@ TEST(optional_swap)
   assert (*oj == 1);
   assert (!oi);
   static_assert(noexcept(swap(oi, oj)), "swap() is not noexcept");
-};
+}
 
 #if 0  // optional references are not allowed
 TEST(optional_ref_swap)
@@ -1061,7 +1061,7 @@ TEST(optional_ref_swap)
   swap(oi, oj);
   assert (&*oi == &j);
   assert (&*oj == &i);
-};
+}
 #endif
 
 TEST(optional_initialization)
@@ -1075,7 +1075,7 @@ TEST(optional_initialization)
     optional<string> ou{"STR"};
     optional<string> ov = string{"STR"};
 
-};
+}
 
 #include <unordered_set>
 
@@ -1105,7 +1105,7 @@ TEST(optional_hashing)
 
     set.insert({"Qa1#"});
     assert(set.find({"Qa1#"}) != set.end());
-};
+}
 
 
 // optional_ref_emulation
@@ -1145,7 +1145,7 @@ TEST(optional_ref_emulation)
 
   *ori = j;
   assert (*ori == 4);
-};
+}
 
 
 TEST(moved_on_value_or)
@@ -1178,7 +1178,7 @@ TEST(moved_on_value_or)
     assert (d2.i); // to silence compiler warning
   }
 # endif
-};
+}
 
 
 #if 0  // optional references are not allowed
@@ -1212,7 +1212,7 @@ TEST(optional_ref_hashing)
 
     set.insert({sCAT});
     assert(set.find({sCAT}) != set.end());
-};
+}
 #endif
 
 struct Combined
@@ -1249,7 +1249,7 @@ TEST(arrow_operator)
   assert (on);
   assert (on->m == 1);
   assert (on->n == 2);
-};
+}
 
 #if 0  // optional references are not allowed
 TEST(arrow_wit_optional_ref)
@@ -1285,7 +1285,7 @@ TEST(arrow_wit_optional_ref)
   assert (om);
   assert (om->m == 1);
   assert (om->n == 2);
-};
+}
 #endif
 
 TEST(no_dangling_reference_in_value)
@@ -1296,7 +1296,7 @@ TEST(no_dangling_reference_in_value)
   unused (oi.value());
   const optional<int> coi {3};
   unused (coi.value());
-};
+}
 
 struct CountedObject
 {
@@ -1331,7 +1331,7 @@ TEST(exception_safety)
     //
   }
   assert(CountedObject::_counter == 0);
-};
+}
 
 TEST(nested_optional)
 {
@@ -1348,7 +1348,7 @@ TEST(nested_optional)
    assert (o3);
    assert (*o3);
    assert (!**o3);
-};
+}
 
 TEST(three_ways_of_having_value)
 {
@@ -1381,7 +1381,7 @@ TEST(three_ways_of_having_value)
   assert (bool(rN) == rN.has_value());
   assert (bool(r1) == r1.has_value());
 #endif
-};
+}
 
 //// constexpr tests
 
