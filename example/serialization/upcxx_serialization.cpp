@@ -110,12 +110,12 @@ class vertex {
         }
 
         // Deserialize a vertex and its neighbor list from a byte stream
-        template<typename Reader>
-        static vertex* deserialize_vertex(Reader& reader, void* storage) {
+        template<typename Reader, typename Storage>
+        static vertex* deserialize_vertex(Reader& reader, Storage storage) {
             int id = reader.template read<int>();
             int n_neighbors = reader.template read<int>();
 
-            vertex *v = new(storage) vertex(id);
+            vertex *v = storage.construct(id);
             for (int n = 0; n < n_neighbors; n++) {
                 v->add_neighbor(reader.template read<int>());
             }
@@ -133,8 +133,8 @@ class vertex {
                 serialize_vertex(writer, object);
             }
 
-            template<typename Reader>
-            static vertex* deserialize(Reader& reader, void* storage) {
+            template<typename Reader, typename Storage>
+            static vertex* deserialize(Reader& reader, Storage storage) {
                 return deserialize_vertex(reader, storage);
             }
         };
@@ -154,8 +154,8 @@ struct serialization<vertex> {
             vertex::serialize_vertex(writer, object);
         }
 
-        template<typename Reader>
-        static vertex* deserialize(Reader& reader, void* storage) {
+        template<typename Reader, typename Storage>
+        static vertex* deserialize(Reader& reader, Storage storage) {
             return vertex::deserialize_vertex(reader, storage);
         }
 };
