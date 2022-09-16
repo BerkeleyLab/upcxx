@@ -117,6 +117,27 @@ public:
     }
     return b1 == e1 && b2 == e2;
   }
+
+  UnrolledList(const UnrolledList &rhs) : UnrolledList() {
+    for (auto it = rhs.begin(); it != rhs.end(); ++it) {
+      push_back(*it);
+    }
+  }
+  ~UnrolledList() {
+    while (first) {
+      Node *next = first->next;
+      delete first;
+      first = next;
+    }
+  }
+  UnrolledList& operator=(const UnrolledList &rhs) {
+    if (&rhs != this) {
+      UnrolledList copy = rhs;
+      std::swap(first, copy.first);
+      std::swap(size_, copy.size_);
+    }
+    return *this;
+  }
 };
 
 UnrolledList::Node* UnrolledList::get_last() {
@@ -167,7 +188,7 @@ int main() {
   fill(v1, rank, rank + 40);
   UPCXX_ASSERT_ALWAYS(u1 == v1);
 
-  for (int i = 0; i < 10 * NODE_CAPACITY; i++) {
+  for (int i = 0; i < 10 * static_cast<int>(NODE_CAPACITY); ++i) {
     UnrolledList u2;
     fill(u2, rank, rank + i);
     std::vector<int> v2;
