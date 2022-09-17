@@ -68,7 +68,8 @@ public:
     }
     iterator_impl operator++(int) const {
       iterator_impl result = *this;
-      return ++result;
+      ++*this;
+      return result;
     }
     value_type& operator*() const {
       return node->data[index];
@@ -180,10 +181,11 @@ void fill(Container &container, int start, int end) {
 int main() {
   upcxx::init();
   int rank = upcxx::rank_me();
+  int right = (upcxx::rank_me() + 1) % upcxx::rank_n();
 
   UnrolledList u1;
   fill(u1, rank, rank + 40);
-  std::cout << rank << ": " << u1 << std::endl;
+  upcxx::experimental::say() << rank << ": " << u1;
   std::vector<int> v1;
   fill(v1, rank, rank + 40);
   UPCXX_ASSERT_ALWAYS(u1 == v1);
@@ -199,10 +201,19 @@ int main() {
       upcxx::serialization_traits<UnrolledList>::deserialized_value(u2);
     UPCXX_ASSERT_ALWAYS(u3 == u2);
     UPCXX_ASSERT_ALWAYS(u3 == v2);
+
+    UnrolledList u4;
+    fill(u4, right, right + i);
+    upcxx::rpc(right, [](const UnrolledList &received, int j) {
+                        std::vector<int> expected;
+                        fill(expected, upcxx::rank_me(),
+                             upcxx::rank_me() + j);
+                        UPCXX_ASSERT_ALWAYS(received == expected);
+                      }, u4, i).wait();
   }
 
   upcxx::finalize();
   if (rank == 0) {
-    std::cout << "SUCCESS" << std::endl;
+    upcxx::experimental::say() << "SUCCESS";
   }
 }
