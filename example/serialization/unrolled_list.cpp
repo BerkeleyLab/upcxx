@@ -66,7 +66,7 @@ public:
       }
       return *this;
     }
-    iterator_impl operator++(int) const {
+    iterator_impl operator++(int) {
       iterator_impl result = *this;
       ++*this;
       return result;
@@ -185,7 +185,7 @@ int main() {
 
   UnrolledList u1;
   fill(u1, rank, rank + 40);
-  upcxx::experimental::say() << rank << ": " << u1;
+  upcxx::experimental::say() << u1;
   std::vector<int> v1;
   fill(v1, rank, rank + 40);
   UPCXX_ASSERT_ALWAYS(u1 == v1);
@@ -214,6 +214,6 @@ int main() {
 
   upcxx::finalize();
   if (rank == 0) {
-    upcxx::experimental::say() << "SUCCESS";
+    std::cout << "SUCCESS" << std::endl;
   }
 }
