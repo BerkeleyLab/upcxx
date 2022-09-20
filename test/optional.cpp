@@ -18,6 +18,10 @@
 # include <complex>
 # include "util.hpp"
 
+#if !UPCXXI_USE_STD_OPTIONAL
+// Issue 560: Only run this test if we're using our own optional
+// implementation. Skip running on vendor-supplied std::optional.
+
 static std::vector<std::pair<const char*, void (*)()>> all_tests;
 
 static void run_tests() {
@@ -1567,12 +1571,13 @@ struct VEC
     VEC(std::initializer_list<U> il, X&&...x) : v(il, std::forward<X>(x)...) {}
 };
 
-
+#endif // !UPCXXI_USE_STD_OPTIONAL
 
 int main() {
   upcxx::init();
   print_test_header();
 
+#if !UPCXXI_USE_STD_OPTIONAL
   if (upcxx::rank_me() == 0) {
     run_tests();
 
@@ -1583,7 +1588,6 @@ int main() {
 
     VEC v = {5, 6};
 
-#if !UPCXXI_USE_STD_OPTIONAL
     if (UPCXXI_OPTIONAL_HAS_CONSTEXPR_INIT_LIST)
       std::cout << "Optional has constexpr initializer_list" << std::endl;
     else
@@ -1593,9 +1597,11 @@ int main() {
       std::cout << "Optional has constexpr move accessors" << std::endl;
     else
       std::cout << "Optional doesn't have constexpr move accessors" << std::endl;
-#endif // !UPCXXI_USE_STD_OPTIONAL
   }
 
   print_test_success();
+#else
+  print_test_skipped("test only runs when upcxx::optional != std::optional");
+#endif // !UPCXXI_USE_STD_OPTIONAL
   upcxx::finalize();
 }
