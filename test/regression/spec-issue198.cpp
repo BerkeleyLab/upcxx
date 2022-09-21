@@ -49,6 +49,24 @@ struct container {
   }
 };
 
+// asymmetric non-movable type whose deserialized type is movable
+struct asym_nonmovable {
+  int value;
+  asym_nonmovable(int v) : value(v) {}
+  asym_nonmovable(const asym_nonmovable&) = delete;
+  asym_nonmovable& operator=(const asym_nonmovable&) = delete;
+  struct upcxx_serialization {
+    template<typename Writer>
+    static void serialize(Writer &w, const asym_nonmovable &a) {
+      w.write(a.value);
+    }
+    template<typename Reader, typename Storage>
+    static int* deserialize(Reader &r, Storage storage) {
+      return storage.construct(r.template read<int>());
+    }
+  };
+};
+
 int main() {
     init();
     int right = (rank_me() + 1) % rank_n();
@@ -77,6 +95,12 @@ int main() {
           UPCXX_ASSERT_ALWAYS(r2->value == rank_me());
         },
         make_view(&n1, &n1 + 1)).wait();
+
+    // test dist_object<T>::fetch() with non-movable T but movable
+    // deserialized_type_t<T>
+    dist_object<asym_nonmovable> dan1(world(), rank_me());
+    auto fut2 = dan1.fetch(right);
+    UPCXX_ASSERT_ALWAYS(fut2.wait() == right);
 
     print_test_success(true);
     finalize();
