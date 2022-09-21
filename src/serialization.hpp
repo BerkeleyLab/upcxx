@@ -1529,7 +1529,8 @@ namespace upcxx {
         // Guard against bludgeoning stack with massive static size.
         // ub::static_size will be massive (-1 or -2) for invalid or dynamic
         // cases so this unsigned comparison still works.
-        constexpr std::size_t static_storage_size = (decltype(ub)::static_size) < 512 ? decltype(ub)::static_size : 512;
+        constexpr std::size_t ub_static_size = decltype(ub)::static_size; // workaround issue 562
+        constexpr std::size_t static_storage_size = ub_static_size < 512 ? ub_static_size : 512;
 
         // Grab some stack. This will be used unless we have a valid bound that
         // exceeds 512, in which case we heap the bounded buffer. We only need
