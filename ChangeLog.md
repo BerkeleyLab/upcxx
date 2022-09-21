@@ -39,6 +39,7 @@ Notable issues resolved
 * Issue #553: CUDA 11.0.3 fails to recognize aggregate initialization in some contexts
 * Issue #554: UPC++ headers choke ROCm 5.x hipcc device-mode compilation
 * Issue #555: Error running HIP/ROCm examples
+* Issue #562: nvc++ 22.5 misparses serialization.hpp
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
 * spec issue 195: Semantics of `read_into()` and
   `read_sequence_into()` with respect to destruction
