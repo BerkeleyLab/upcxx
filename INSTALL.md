@@ -461,7 +461,7 @@ You will also need to select the proper argument to `--with-pmi-runcmd=...`
   + If using the Slurm Workload Manager: `--with-pmi-runcmd='srun -n %N -- %C'`
   + For most other cases: `--with-pmi-runcmd='aprun -n %N %C'`
 
-At the time of this writing we've only tested UPCR on HPE Cray EX systems with
+At the time of this writing we've only tested UPC++ on HPE Cray EX systems with
 AMD CPUs.
 
 The `--enable-issue557-workaround` flag activates a UPC++-level workaround for
