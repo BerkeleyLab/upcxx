@@ -409,25 +409,25 @@ Unlike the Cray XC, the HPE Cray EX is *not* treated as a cross-compilation
 target when building UPC++.  However, we strongly advise use of the vendor's
 wrapper compilers, `cc` and `CC`.  Additionally, the two NICs require distinct
 non-default settings.  The following shows our recommended configure command
-with some "<placeholders>" which are explained below.
+with some "<placeholders>" which are explained below.  Note that these assume
+use of the default GASNet-EX or a later version.  If using an earlier release of
+GASNet-EX, please consult documentation in a UPC++ release of similar age.
 
 ```bash
 module load libfabric cray-pmi
 cd <upcxx-source-path>
 ./configure --prefix=<upcxx-install-path> \
     --with-cc=cc --with-cxx=CC --with-mpi-cc=cc \
-    --with-default-network=ofi --disable-ibv \
     --with-ofi-provider=<PROVIDER> \
-    --with-ofi-spawner=pmi \
-      --with-pmi-version=cray \
-      --with-pmi-runcmd='<RUNCMD>' \
+    --with-pmi-runcmd='<RUNCMD>' \
     --enable-issue557-workaround <SEE-BELOW> \
     <GPU_OPTIONS>    
 ```
 
 The `libfabric` and `cray-pmi` environment modules may or may not be loaded by
 default at any given site.  Please ensure they are loaded (as shown above) or
-the configure or build steps may fail.
+the configure or build steps may fail.  Additionally, one may need an
+environment module (sometimes site-specific) for the GPU programming model.
 
 There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
 "Slingshot-11".  They require different libfabric "providers", as indicated by
@@ -435,8 +435,6 @@ the `<PROVIDER>` placeholder above:
 
   + `--with-ofi-provider=verbs` for Slingshot-10.  
     This is a Mellanox ConnectX-5 100Gbps NIC.  
-    (Note: if using a GASNet-EX version older than the default, you may need to
-     use `'verbs;ofi_rxm'` instead, taking care to quote the semicolon.)
   + `--with-ofi-provider=cxi` for Slingshot-11.  
     This is an HPE 200Gbps NIC  
 
@@ -459,7 +457,7 @@ You will also need to select the proper argument to `--with-pmi-runcmd=...`
 (the `<RUNCMD>` placeholder, above).
 
   + If using the Slurm Workload Manager: `--with-pmi-runcmd='srun -n %N -- %C'`
-  + For most other cases: `--with-pmi-runcmd='aprun -n %N %C'`
+  + For most other cases: `--with-pmi-runcmd='aprun --cc none -n %N %C'`
 
 At the time of this writing we've only tested UPC++ on HPE Cray EX systems with
 AMD CPUs.
