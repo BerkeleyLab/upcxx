@@ -420,7 +420,6 @@ cd <upcxx-source-path>
     --with-cc=cc --with-cxx=CC --with-mpi-cc=cc \
     --with-ofi-provider=<PROVIDER> \
     --with-pmi-runcmd='<RUNCMD>' \
-    --enable-issue557-workaround <SEE-BELOW> \
     <GPU_OPTIONS>    
 ```
 
@@ -461,14 +460,6 @@ You will also need to select the proper argument to `--with-pmi-runcmd=...`
 
 At the time of this writing we've only tested UPC++ on HPE Cray EX systems with
 AMD CPUs.
-
-The `--enable-issue557-workaround` flag activates a UPC++-level workaround for
-a libfabric defect that impacts the correctness of the native `cuda_device`
-memory kind with the ofi network on HPE Cray EX systems. This workaround is
-believed to be necessary when using `--enable-cuda` (NVIDIA GPUs) with the ofi
-network over either Slingshot-10 or -11 (for all versions of libfabric
-available as of this writing). It is currently recommended only for systems
-with NVIDIA GPUs. For up-to-date details, please consult issue #557.
 
 As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
 UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
@@ -652,15 +643,28 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 #### Known problems with GDR-accelerated memory kinds
 
 There is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
-causes crashes inside the IB Verbs network stack during small gets into device memory on some
-platforms. This problem can be worked-around by setting `MLX5_SCATTER_TO_CQE=0`, 
-but this setting has a global negative impact on RMA Get operations (even those
-not involving device memory) so should only be used on affected platforms.
-Details are here:
+causes crashes inside the IB Verbs network stack during `copy()` operations
+targeting small objects in a `cuda_device` segment with affinity to the calling
+process on some platforms. This problem can be worked-around by setting
+`MLX5_SCATTER_TO_CQE=0`, but this setting has a global negative impact on RMA
+Get operations (even those not involving device memory) so should only be used
+on affected platforms.  Details are here:
 
 * [bug 4151: IBVerbs SEGV on small Gets to device memory](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4151)
 
-In addition to the issues described above, the current implementation of 
+There is also a known bug in the libfabric "verbs provider" (recommended for
+use on Slingshot-10 networks) that causes crashes inside libfabric during
+`copy()` operations where the source objects reside in a `cuda_device` segment
+with affinity to the calling process.  This problem can be worked-around by
+setting `FI_VERBS_INLINE_SIZE=0`.  Because this setting disables a valuable
+performance optimization, it may increase the latency of all small RMA Puts,
+including those from host memory, as well as some RPCs.  Therefore, it is
+strongly recommended that you set this variable *only* if your system exhibits
+this issue.  Details are here:
+
+* [bug 4494: ofi/verbs SEGV for small Puts from CUDA memory](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4494)
+
+In addition to the two issues described above, the current implementation of
 GDR-accelerated memory kinds enforces a per-process limit of 32 active `cuda_device`
 opens over the lifetime of the process. This static limit can be raised at configure time
 via `configure --with-maxeps=N`, and is expected to become a more dynamic limit
