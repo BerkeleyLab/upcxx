@@ -1,5 +1,6 @@
 #include <string>
 #include <cstdio>
+#include <iostream>
 #include <fstream>
 #include <unistd.h>
 #include "upcxx/upcxx.hpp"
@@ -59,6 +60,10 @@ int main() {
     input_file.close();
     remove(filename.c_str());
   }
+
+  upcxx::barrier();
+  if (!upcxx::rank_me())
+    std::cout << "SUCCESS\n";
 
   upcxx::finalize();
   return 0;
