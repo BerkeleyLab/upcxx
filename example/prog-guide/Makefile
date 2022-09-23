@@ -37,6 +37,7 @@ EXAMPLES = \
   dmap-quiescence-test \
   dmap-test \
   hello-world \
+  local-team \
   non-contig-example \
   persona-example	\
   persona-example-rputs \
