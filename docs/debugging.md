@@ -8,7 +8,7 @@ sanity checks system-wide that can greatly accelerate narrowing down the
 problem. Just remember to switch back to production mode `UPCXX_CODEMODE=opt` (aka `upcxx -O`)
 for building performance tests!
 
-2. If your problem is a simple enough that a crash stack might help to solve it, 
+2. If your problem is simple enough that a crash stack might help to solve it, 
 set `export GASNET_BACKTRACE=1` at run-time (or equivalently, `upcxx-run -backtrace`) and you will get a backtrace from
 any rank crash.
 

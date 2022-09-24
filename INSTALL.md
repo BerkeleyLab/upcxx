@@ -144,7 +144,7 @@ use either).  The high-level steps are as follows:
      Verifies the correctness of the UPC\+\+ build prior to its installation
 4. `make install`  
      Installs the UPC\+\+ package to the user-specified location
-5. `make test_install` (optionally, but highly recommended)  
+5. `make test_install` (optional, but highly recommended)  
      Verifies the installed package
 6. Post-install recommendations
 
@@ -368,9 +368,9 @@ installation.
 
 ### Configuration: Cray XC
 
-By default, on a Cray XC logic in `configure` will automatically detect either
+By default, on a Cray XC the logic in `configure` will automatically detect either
 the SLURM or Cray ALPS job scheduler and will cross-configure for the
-appropriate one.  If this auto-detection fails, you may need to explicitly
+appropriate package.  If this auto-detection fails, you may need to explicitly
 pass the appropriate value for your system:
 
 * `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
@@ -415,7 +415,7 @@ target when building UPC++.  However, we strongly advise use of the vendor's
 wrapper compilers, `cc` and `CC`.  Additionally, the two NICs require distinct
 non-default settings.  The following shows our recommended configure command
 with some "<placeholders>" which are explained below.  Note that these assume
-use of the default GASNet-EX or a later version.  If using an earlier release of
+use of the default version of GASNet-EX.  If using an earlier release of
 GASNet-EX, please consult documentation in a UPC++ release of similar age.
 
 ```bash
