@@ -558,21 +558,27 @@ After running `configure`, return to
 #### System Requirements:
 
 UPC++ includes support for RMA communication operations on memory buffers
-resident in a CUDA-compatible NVIDIA GPU.  Specific requirements:
+resident in a CUDA-compatible NVIDIA GPU.  General requirements:
 
 * Modern NVIDIA-branded [CUDA-compatible GPU hardware](https://developer.nvidia.com/cuda-gpus)
 * NVIDIA CUDA toolkit v9.0 or later. Available for [download here](https://developer.nvidia.com/cuda-downloads).
 
 #### Additional System Requirements for GDR-accelerated memory kinds:
 
-This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory kinds
-on selected platforms using modern NVIDIA-branded GPUs and Mellanox-branded InfiniBand
-network hardware, when using the native ibv-conduit. Additional requirements:
+This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory
+kinds data transfers on selected platforms using modern NVIDIA-branded GPUs
+with Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
+This support requires one of the following native network conduit
+configurations, and the current/default version of GASNet-EX:
+
+* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
+* ofi-conduit on HPX Cray EX with HPE Slingshot-10 (verbs provider)
+
+Additional requirements:
 
 * Linux OS with x86\_64 or ppc64le CPU (not ARM)
-* Recent Mellanox-branded InfiniBand network hardware
 * GPUDirect RDMA drivers installed
-* ibv-conduit built from the current version of GASNet-EX (the default for this release)
 
 When using GDR-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
@@ -690,7 +696,7 @@ After running `configure`, return to
 #### System Requirements:
 
 UPC++ includes support for RMA communication operations on memory buffers
-resident in a ROCm/HIP-compatible AMD GPU.  Specific requirements:
+resident in a ROCm/HIP-compatible AMD GPU.  General requirements:
 
 * Modern AMD-branded HIP-compatible GPU hardware
 * AMD ROCm drivers version 4.5.0 or later (earlier versions of ROCm MIGHT also
@@ -698,14 +704,19 @@ resident in a ROCm/HIP-compatible AMD GPU.  Specific requirements:
 
 #### Additional System Requirements for ROCmRDMA-accelerated memory kinds:
 
-This version of UPC++ supports ROCmRDMA acceleration of memory kinds
-on selected platforms using modern AMD-branded GPUs and Mellanox-branded InfiniBand
-network hardware, when using the native ibv-conduit. Additional requirements:
+This version of UPC++ supports ROCmRDMA acceleration of memory
+kinds data transfers on selected platforms using modern AMD-branded GPUs.
+This support requires one of the following native network conduit
+configurations, and the current/default version of GASNet-EX:
+
+* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
+* ofi-conduit on HPX Cray EX with HPE Slingshot-10 (verbs provider)
+
+Additional Requirements:
 
 * Linux OS with x86\_64 or ppc64le CPU (not ARM)
-* Recent Mellanox-branded InfiniBand network hardware
 * ROCK AMD GPU kernel driver installed
-* ibv-conduit built from the current version of GASNet-EX (the default for this release)
 
 When using ROCmRDMA-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
