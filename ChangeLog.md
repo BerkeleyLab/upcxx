@@ -5,53 +5,85 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### 2022.XX.YY: PENDING
+### 2022.09.30: Release 2022.9.0
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
-* New `upcxx::optional` template that provides the same interface as
+* NEW: Memory kinds support for HPE Cray EX systems with AMD and NVIDIA GPUs
+  now leverages GPUDirect RDMA (GDR) and ROCmRDMA acceleration technology on
+  supported networks.  See [INSTALL.md](INSTALL.md) for full details.
+* `upcxx-run` verbosity levels have been adjusted, moving some of the spammier/non-scalable
+  output to verbosity level three (i.e., `upcxx-run -vvv`).
+* Fixed several compatibility issues with the ROCm/HIP SDK
+* Several robustness and performance improvements to CCS RPC support
+
+Serialization changes:
+
+* Added new `upcxx::optional` template that provides the same interface as
   C++17 `std::optional`, and new overloads of `[Reader]::read_into()`
   and `deserializing_iterator<T>::deserialize_into()` that deserialize
   into a `upcxx::optional`.
-* New `[Reader]::read_overwrite()`, `[Reader]::read_sequence_overwrite()`,
+* The signature for the user-defined `deserialize()` member-function template
+  used for custom class serialization has changed. This interface has been generalized to
+  support emplacement into managed storage, as well as construction in raw memory.
+  The old signature is now deprecated and may be removed in a future release. 
+* Serialization has been implemented for `std::reference_wrapper<T>`, which now
+  works analogously to serialization for other reference types.
+* Added new `[Reader]::read_overwrite()`, `[Reader]::read_sequence_overwrite()`,
   and `deserializing_iterator<T>::deserialize_overwrite()` functions
-  that destruct target objects before deserializing into them.
+  that work analogously to their `*_into()` counterparts, but additionally
+  destruct target objects before deserializing into them.
+* See [the specification](docs/spec.pdf) for further details.
 
 Infrastructure changes:
 
-* Added initial/experimental support for RISC-V architecture. 
+* Improved configure defaults have reduced the complexity of building
+  on an HPE Cray EX system.  See [INSTALL.md](INSTALL.md) for details.
+* Added initial/experimental support for the RISC-V architecture.
   If you have an interest in this platform, please contact us!
-* The set of tests run by `make check` has been adjusted to improve coverage and balance
+* The set of tests run by `make check` has been adjusted to improve coverage and balance.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #501: Poor failure behavior for tests with RANKS=1
 * issue #539: PG: dmap-quiescence-test hangs with one process
-* issue #549: UPC++ headers choke hipcc device-mode compilation
-* issue #550: ROCm/HIP headers break the GNU `__noinline__` attribute
 * issue #544: CCS: Segment verification not clearing previous `bad_verification` flag
 * issue #545: CCS: Allow `experimental::relo::debug*()` before `init()`
 * issue #546: CCS: Level 2 cache thread safety
+* issue #549: UPC++ headers choke hipcc device-mode compilation
+* issue #550: ROCm/HIP headers break the GNU `__noinline__` attribute
 * issue #551: CCS: Thread safety race in segment verification
+* issue #552: Compilation errors for `write` and `read_into` on a multidimensional array
+* issue #553: CUDA 11.0.3 fails to recognize aggregate initialization in some contexts
+* issue #554: UPC++ headers choke ROCm 5.x hipcc device-mode compilation
+* issue #555: Error running HIP/ROCm examples
 * issue #556: CCS: Fix race condition at segment verification exit
-* issue #552: Compilation errors for write and read_into on a multidimensional array
-* Issue #553: CUDA 11.0.3 fails to recognize aggregate initialization in some contexts
-* Issue #554: UPC++ headers choke ROCm 5.x hipcc device-mode compilation
-* Issue #555: Error running HIP/ROCm examples
-* Issue #562: nvc++ 22.5 misparses serialization.hpp
+* issue #562: nvc++ 22.5 misparses serialization.hpp
 * spec issue 185: Prohibit deprecated initiation of internal/none collectives in progress
-* spec issue 195: Semantics of `read_into()` and
-  `read_sequence_into()` with respect to destruction
+* spec issue 195: Semantics of `read_(sequence_)into()` with respect to destruction
+* spec issue 196: Managed storage for use with `deserialize_into()`
+* spec issue 197: Redesign Custom Serialization `deserialize()` for emplacement
+* spec issue 198: Requirement that deserialized types be MoveConstructible is too strong
 * spec issue 199: Add serialization through `std::reference_wrapper`
 
 Embeds a GASNet-EX library that addresses the following notable issues
   (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
 
-* ...
+  - Scaling improvements to startup costs (memory and time) in all conduits
+  - bug4083: incorrect GatherAll algorithm selection at large scale
+  - bug4434: RFE: runtime adjustment of ofi-conduit MaxMedium
+  - bug4432: OFI provider selection issues
+  - bug4448: smp-conduit incorrectly duplicates `GASNET_VERBOSEENV` output
+  - bug4450: GCC 12.x bogus dangling-pointer warning building UPC++ tests
+  - bug4451: GCC 12.x bogus use-after-free warning from UPC++ future library
+  - bug4454: Scaling issues in `gasneti_segmentLimit()`
+  - bug4490: startup hang for large `GASNET_MAX_SEGSIZE` and huge pages > 4MB
+  - bug4496: SEGV in `gasnete_coll_pf_tm_reduce_TreePutSeg` for reduce-to-all
+  - bug4509: Non-scalable reduction temporaries
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2022.3.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2022.9.0](docs/spec.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -61,13 +93,12 @@ Breaking changes:
   the restricted context (within a callback running inside progress), an action
   deprecated with a runtime warning since 2020.10.0, is now prohibited with a fatal error.
   For details, see spec issue 169.
-* `experimental::relocation::rebuild_cache()` removed.
+* `experimental::relocation::rebuild_cache()` has been removed.
 * `[Reader]::read_into()`, `[Reader]::read_sequence_into()`, and
   `deserializing_iterator<T>::deserialize_into()` on typed
   (non-`void*`) pointers to non-TriviallyDestructible types are now
   prohibited with a static assertion. Use `*_overwrite()` instead, or
   insert an explicit cast to `void*`. See spec issue 195 for details.
-* ...
 
 ### 2022.03.31: Release 2022.3.0
 
@@ -127,7 +158,7 @@ Notable issues resolved
 * issue #527: Raise PGI version floor to 19.3
 * issue #528: `cuda_device::destroy()` incorrectly perturbs CUDA Driver context stack
 * issue #534: Prune unnecessary system header includes from upcxx.hpp
-* issue #537: Numerical error in kokkos-based 3d heat conduction examples
+* issue #537: Numerical error in Kokkos-based 3d heat conduction examples
 * spec issue 173: Add `upcxx::local_team_position()`
 * spec issue 188: Add `cuda_device::device_n()`
 * spec issue 189: Add MoveAssignable to resource object types
@@ -146,7 +177,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
 * bug4366: intermittent exit-time assertion failures from debug memcheck
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2022.3.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2022.3.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2022.3.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -380,7 +411,7 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 
 Breaking changes:
 
-* When compiling for the default "seq" threading mode, inter-process
+* When compiling for the default "seq" threading mode, interprocess
   communication may only be initiated by the primordial thread, 
   and now additionally requires use of the master persona. 
   For details, see [docs/implementation-defined.md](docs/implementation-defined.md).
@@ -478,9 +509,9 @@ General features/enhancements: (see specification and programmer's guide for ful
 Improvements to RPC and Serialization:
 
 * Added support for serialization of reference types where the referent is Serializable.
-* RPC's which return future values experience one less heap allocation and
+* RPCs which return future values experience one less heap allocation and
   virtual dispatch in the runtime's critical path.
-* RPC's which return future values no longer copy the underlying data prior to serialization.
+* RPCs which return future values no longer copy the underlying data prior to serialization.
 * `dist_object<T>::fetch()` no longer copies the remote object prior to serialization.
 * Added `deserializing_iterator<T>::deserialize_into` to avoid copying large
   objects when iterating over a `view` of non-TriviallySerializable elements.
@@ -551,7 +582,7 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 Breaking changes:
 
 * Build-time `UPCXX_CODEMODE`/`-codemode` value "O3" has been renamed to "opt".
-  For backwards compat, the former is still accepted.
+  For backward compatibility, the former is still accepted.
 * `upcxx_memberof(_general)(gp, mem)` now produce a `global_ptr<T>` when `mem` 
   names an array whose element type is `T`.
 * `atomic_domain` construction now has user-level progress
@@ -583,7 +614,7 @@ Notable issues resolved
 Breaking changes:
 
 * Configure-time envvar `CROSS` has been renamed to `UPCXX_CROSS`.
-  For backwards compat, the former is still accepted when the latter is unset.
+  For backward compatibility, the former is still accepted when the latter is unset.
 * Construction of `upcxx::team_id` is no longer Trivial (was never guaranteed to be).
   It remains DefaultConstructible, TriviallyCopyable, StandardLayoutType, EqualityComparable
 
@@ -707,7 +738,7 @@ Notable issues resolved
 * issue #204: No support for `nvcc --compiler-bindir=...`
 * issue #210: `cuda_device::default_alignment()` not implemented
 * issue #223: `operator<<(std::ostream, global_ptr<T>)` does not match spec
-* issue #224: missing const qualifier on `dist_object<T>.fetch()`
+* issue #224: missing `const` qualifier on `dist_object<T>.fetch()`
 * issue #228: incorrect behavior for `upcxx -g -O`
 * issue #229: Teach `upcxx` wrapper to compile C language files
 * issue #234: Generalized operation completion for `barrier_async` and `broadcast`
@@ -730,7 +761,7 @@ Breaking changes:
 * Applications are recommended to replace calls to `std::getenv` with `upcxx::getenv_console`,
   to maximize portability to loosely coupled distributed systems.
 * envvar `UPCXX_GASNET_CONDUIT` has been renamed to `UPCXX_NETWORK`.
-  For backwards compat, the former is still accepted when the latter is unset.
+  For backward compatibility, the former is still accepted when the latter is unset.
 * `upcxx::allocate()` and `device_allocator<Device>::allocate()` have changed signature.
   The `alignment` parameter has moved from being a final defaulted
   template argument to being a final defaulted function argument.
@@ -789,7 +820,7 @@ The following features from that specification are not yet implemented:
 Breaking changes:
 
 * envvar `UPCXX_SEGMENT_MB` has been renamed to `UPCXX_SHARED_HEAP_SIZE`.
-  For backwards compat, the former is still accepted when the latter is unset.
+  For backward compatibility, the former is still accepted when the latter is unset.
 * The minimum-supported version of GNU g++ is now 6.4.0
     - This also applies to the stdlibc++ used by Clang or Intel compilers
 * The minimum-supported version of llvm/clang for Linux is now 4.0
@@ -865,7 +896,7 @@ This library release mostly conforms to the
 The following features from that specification are not yet implemented:
 
  * Teams: `team::split`, `team_id`, collectives over teams, passing
-       `team&` arguments to rpcs, constructing `dist_object` over teams.
+       `team&` arguments to RPCs, constructing `dist_object` over teams.
  * Vector broadcast `broadcast(T *buf, size_t count, ...)`
  * `barrier_async`
  * User-defined Serialization interface
@@ -884,7 +915,7 @@ New features/enhancements:
    status of UPC\+\+ operations in a handful of ways. For each event, the user
    is free to choose among: futures, promises, callbacks, delivery of remote
    procedure calls, and in some cases even blocking until the event has occurred.
- * Internal use of lock-free datastructures for `lpc` queues.
+ * Internal use of lock-free data structures for `lpc` queues.
  * Improvements to the `upcxx-run` command.
  * Improvements to internal assertion checking and diagnostics.
   
