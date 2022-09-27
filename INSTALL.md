@@ -476,6 +476,16 @@ with the most up-to-date information on this issue in general, can be found in
 the corresponding GASNet-EX report:
 [bug 4461](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4461).
 
+With the Slingshot-10 network, there are conditions (not yet characterized)
+under which RPCs may be corrupted in such a way that their reception results in
+a fatal error.  This can manifest with a fatal error containing the text "no
+associated AM handler function" or (in a debug build) an "Assertion failure"
+message with the expression `isreq == header->isreq`.  At the time this is
+written, there is a known workaround for this issue.  A description of the
+workaround, along with the most up-to-date information on this issue in
+general, can be found in the corresponding GASNet-EX report:
+[bug 4517](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4517).
+
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
