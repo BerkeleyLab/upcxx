@@ -469,6 +469,13 @@ UPC++ configure options needed to enable this support:
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 
+With the Slingshot-11 network, some users have seen application hangs due to
+what appears to be "lost" RPCs.  At the time this is written, there are two
+possible workarounds for this issue.  Descriptions of both workarounds, along
+with the most up-to-date information on this issue in general, can be found in
+the corresponding GASNet-EX report:
+[bug 4461](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4461).
+
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
