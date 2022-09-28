@@ -1,69 +1,101 @@
-#include <string>
 #include <cstdio>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <numeric>
+#include <string>
 #include <unistd.h>
 #include "upcxx/upcxx.hpp"
 
-#define N 100
+// Function to consume the data shared by the leader process in the node
+void process_data(size_t n, double *arr) {
+  UPCXX_ASSERT_ALWAYS(n);
 
-void process_data(size_t n, size_t *arr) {
-  UPCXX_ASSERT_ALWAYS(N == n);
+  double sum = 0.0;
   for (size_t i = 0; i < n; ++i)
-    UPCXX_ASSERT_ALWAYS(arr[i] == i);
+    sum += arr[i];
+
+  UPCXX_ASSERT_ALWAYS(sum == (n*n - n) / 2.0);
 }
 
 int main() {
   upcxx::init();
 
   // Create input file for snippet
-  std::string filename = std::string("input-file-")+std::to_string(getpid())+"-"+std::to_string(upcxx::rank_me());
+  std::string filename = std::string("input-file-")+std::to_string(getpid())+"-"+std::to_string(upcxx::rank_me())+".bin";
 
+  // If I'm the leader process in this node
   if (!upcxx::local_team().rank_me()) {
-    std::ofstream output_file(filename, std::ifstream::out);
+    // Create a binary file
+    std::ofstream output_file(filename, std::ios::binary);
 
-    output_file << N << ' ';
-    for (size_t i = 0; i < N; ++i)
-      output_file << i << ' ';
+    if (!output_file.is_open()) {
+      std::cerr << "Couldn't create the file.\n";
+      return 1;
+    }
+
+    constexpr size_t n = 100;
+
+    // How many elements am I going to write
+    output_file.write(reinterpret_cast<const char*>(&n), sizeof n);
+
+    double *arr = new double[n];
+
+    // [0.0 .. n-1]
+    std::iota(arr, arr + n, 0.0);
+
+    // Write entire array to the file
+    output_file.write(reinterpret_cast<const char*>(arr), sizeof arr * n);
 
     output_file.close();
+    delete[] arr;
   }
 
   //SNIPPET
-  std::ifstream input_file;
-  std::pair<size_t, upcxx::global_ptr<size_t>> data;
+  std::pair<size_t, upcxx::global_ptr<double> > data;
 
+  // If I'm the leader process in this node
   if (!upcxx::local_team().rank_me()) {
-    input_file.open(filename, std::ifstream::in);
+    // Open the file in binary mode
+    std::ifstream input_file(filename, std::ios::binary);
 
-    input_file >> data.first;
+    if (!input_file.is_open()) {
+      std::cerr << "No input file.\n";
+      return 1;
+    }
 
-    data.second = upcxx::new_array<size_t>(data.first);
+    // How many elements am I supposed to read
+    input_file.read(reinterpret_cast<char*>(&data.first), sizeof data.first);
 
-    for (size_t i = 0; i < data.first; ++i)
-      input_file >> data.second.local()[i];
+    // Allocate space in shared memory
+    data.second = upcxx::new_array<double>(data.first);
+
+    // Read the entire array of doubles from the file
+    input_file.read(reinterpret_cast<char*>(data.second.local()), sizeof data.second.local() * data.first);
+
+    // I no longer need the file
+    input_file.close();
+    remove(filename.c_str());
   }
 
-  data = broadcast(data, 0, upcxx::local_team()).wait();
+  // Leader makes data available to other processes in the local team
+  data = broadcast(data, 0, upcxx::local_team()).wait(); // Implicit barrier
 
   // Downcast global pointer
-  size_t *local = data.second.local();
+  double *local = data.second.local();
 
   // Work with local ptr
   process_data(data.first, local);
   //SNIPPET
 
+  // At this point, the node leader process can safely deallocate the shared memory
   upcxx::barrier(upcxx::local_team());
-
-  if (!upcxx::local_team().rank_me()) {
+  if (!upcxx::local_team().rank_me())
     upcxx::delete_array(data.second);
-    input_file.close();
-    remove(filename.c_str());
-  }
 
+  // For sanity, the leader of upcxx::world() prints SUCCESS if everyone reaches this point
   upcxx::barrier();
   if (!upcxx::rank_me())
-    std::cout << "SUCCESS\n";
+    std::cout << "SUCCESS" << std::endl;
 
   upcxx::finalize();
   return 0;
