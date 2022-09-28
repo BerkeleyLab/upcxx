@@ -36,7 +36,7 @@ int main() {
     constexpr size_t n = 100;
 
     // How many elements am I going to write
-    output_file.write(reinterpret_cast<const char*>(&n), sizeof n);
+    output_file.write(reinterpret_cast<const char*>(&n), sizeof(n));
 
     double *arr = new double[n];
 
@@ -44,7 +44,7 @@ int main() {
     std::iota(arr, arr + n, 0.0);
 
     // Write entire array to the file
-    output_file.write(reinterpret_cast<const char*>(arr), sizeof arr * n);
+    output_file.write(reinterpret_cast<const char*>(arr), sizeof(*arr)*n);
 
     output_file.close();
     delete[] arr;
@@ -64,13 +64,13 @@ int main() {
     }
 
     // How many elements am I supposed to read
-    input_file.read(reinterpret_cast<char*>(&data.first), sizeof data.first);
+    input_file.read(reinterpret_cast<char*>(&data.first), sizeof(data.first));
 
     // Allocate space in shared memory
     data.second = upcxx::new_array<double>(data.first);
 
     // Read the entire array of doubles from the file
-    input_file.read(reinterpret_cast<char*>(data.second.local()), sizeof data.second.local() * data.first);
+    input_file.read(reinterpret_cast<char*>(data.second.local()), sizeof(*data.second.local())*data.first);
 
     // I no longer need the file
     input_file.close();
