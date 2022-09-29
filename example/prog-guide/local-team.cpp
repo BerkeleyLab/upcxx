@@ -10,9 +10,7 @@
 void process_data(size_t n, double *arr) {
   UPCXX_ASSERT_ALWAYS(n);
 
-  double sum = 0.0;
-  for (size_t i = 0; i < n; ++i)
-    sum += arr[i];
+  double sum = std::accumulate(arr, arr + n, 0.0);
 
   UPCXX_ASSERT_ALWAYS(sum == (n*n - n) / 2.0);
 }
@@ -33,9 +31,9 @@ int main() {
       return 1;
     }
 
+    // Length of the array
     constexpr size_t n = 100;
 
-    // How many elements am I going to write
     output_file.write(reinterpret_cast<const char*>(&n), sizeof(n));
 
     double *arr = new double[n];
@@ -63,7 +61,7 @@ int main() {
       return 1;
     }
 
-    // How many elements am I supposed to read
+    // How many elements am I supposed to read?
     input_file.read(reinterpret_cast<char*>(&data.first), sizeof(data.first));
 
     // Allocate space in shared memory
@@ -92,7 +90,6 @@ int main() {
   if (!upcxx::local_team().rank_me())
     upcxx::delete_array(data.second);
 
-  // For sanity, the leader of upcxx::world() prints SUCCESS if everyone reaches this point
   upcxx::barrier();
   if (!upcxx::rank_me())
     std::cout << "SUCCESS" << std::endl;
