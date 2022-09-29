@@ -27,7 +27,7 @@ int main() {
     std::ofstream output_file(filename, std::ios::binary);
 
     if (!output_file.is_open()) {
-      std::cerr << "Couldn't create the file.\n";
+      std::cerr << "Couldn't create the file." << std::endl;
       return 1;
     }
 
@@ -57,7 +57,7 @@ int main() {
     std::ifstream input_file(filename, std::ios::binary);
 
     if (!input_file.is_open()) {
-      std::cerr << "No input file.\n";
+      std::cerr << "No input file." << std::endl;
       return 1;
     }
 
