@@ -28,6 +28,11 @@ The current release is known to work on the following configurations:
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
+    At the time of the 2022.9.0 release of UPC++, we have not tested Xcode 14
+    well and have not tested at all on macOS 13 "Ventura" (which is still in
+    public beta testing).  We welcome your reports of success or failure with
+    either.
+
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
@@ -74,7 +79,7 @@ The current release is known to work on the following configurations:
     configuration is not currently supported.  (smp and aries conduits).
 
 * HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
-  modules, plus its dependencies (smp, ofi and ucx conduits):
+  modules, plus its dependencies (smp and ofi conduits):
     - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
     - PrgEnv-cray with cce/12.0.0 (or later) loaded.
 
@@ -87,7 +92,7 @@ The current release is known to work on the following configurations:
 
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
-      Initial testing on this platform with both Xcode and Free Software
+      Testing on this platform with both Xcode and Free Software
       Foundation g++ show functionally complete and correct operation.  
       Nothing platform-specific has been implemented for the mix of
       "performance" and "efficiency" cores, meaning performance could be
@@ -262,7 +267,7 @@ make check
 
 This compiles all available tests for the default network and then runs them.
 One can override the default network by appending `NETWORKS=net1,net2`
-to this command, with network names (such as `smp`, `udp`, `ibv` or `aries`)
+to this command, with network names (such as `smp`, `udp`, `ibv`, `ofi` or `aries`)
 substituted for the `netN` placeholders.
 
 Setting of `NETWORKS` to restrict what is tested may be necessary, for
@@ -583,7 +588,7 @@ configurations, and the current/default version of GASNet-EX:
 
 * ibv-conduit with recent Mellanox-branded InfiniBand network hardware
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
-* ofi-conduit on HPX Cray EX with HPE Slingshot-10 (verbs provider)
+* ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
 
 Additional requirements:
 
@@ -616,8 +621,8 @@ cd <upcxx-source-path>
 This will detect whether the requirements for GDR acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's GDR support, please see
-[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
-in the GASNet memory_kinds distribution.
+[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/master/docs/memory_kinds.md)
+in the GASNet distribution.
 
 `configure --enable-cuda` expects to find the NVIDIA `nvcc` compiler wrapper in your `$PATH` and
 will attempt to extract the correct build settings for your system.  If this
@@ -646,8 +651,8 @@ UPC++ CUDA operation can be validated using the following programs in the source
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `cuda_device`
 * `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
-* `example/cuda_vecadd`: demonstration of using UPC++ `cuda_device` to orchestrate
-  communication for a program invoking CUDA computational kernels on the GPU.
+* `make cuda_vecadd` in `example/gpu_vecadd`: demonstration of using UPC++ `cuda_device` to
+  orchestrate communication for a program invoking CUDA computational kernels on the GPU.
 
 One can validate use of GDR acceleration in a given UPC++ executable with a command
 like the following:
@@ -721,7 +726,7 @@ configurations, and the current/default version of GASNet-EX:
 
 * ibv-conduit with recent Mellanox-branded InfiniBand network hardware
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
-* ofi-conduit on HPX Cray EX with HPE Slingshot-10 (verbs provider)
+* ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
 
 Additional Requirements:
 
@@ -754,8 +759,8 @@ cd <upcxx-source-path>
 This will detect whether the requirements for ROCmRDMA acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's ROCmRDMA support, please see
-[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
-in the GASNet memory_kinds distribution.
+[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/master/docs/memory_kinds.md)
+in the GASNet distribution.
 
 `configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
 in your `$PATH` and will attempt to infer the correct ROCm/HIP install location for
@@ -779,6 +784,8 @@ UPC++ ROCm/HIP operation can be validated using the following programs in the so
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `hip_device`
 * `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+* `make `hip_vecadd` in `example/gpu_vecadd`: demonstration of using UPC++ `hip_device` to
+   orchestrate communication for a program invoking HIP computational kernels on the GPU.
 
 One can validate use of ROCmRDMA acceleration in a given UPC++ executable with a command
 like the following:
