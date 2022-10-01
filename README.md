@@ -16,7 +16,7 @@ UPC++ has three main objectives:
   applications
  
 * Offer an easy on-ramp to PGAS programming through interoperability with other
-  existing parallel programming systems (e.g., MPI, OpenMP, CUDA)
+  existing parallel programming systems (e.g., MPI, OpenMP, CUDA, ROCm/HIP)
 
 # UPC++ Documentation
 
@@ -135,7 +135,7 @@ script will assume sensible defaults for these parameters based on the
 installation configuration. The following environment variables can be set to
 influence which backend `upcxx-meta` selects:
 
-* `UPCXX_NETWORK=<see below>`: The GASNet network backend to use
+* `UPCXX_NETWORK=<see below>`: The GASNet network backend ("conduit") to use
   for communication (the default and available values are system-dependent).
   Supported values include:
     * `aries` is the high-performance Cray XC network.

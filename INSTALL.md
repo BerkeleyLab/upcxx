@@ -784,7 +784,7 @@ UPC++ ROCm/HIP operation can be validated using the following programs in the so
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `hip_device`
 * `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
-* `make `hip_vecadd` in `example/gpu_vecadd`: demonstration of using UPC++ `hip_device` to
+* `make hip_vecadd` in `example/gpu_vecadd`: demonstration of using UPC++ `hip_device` to
    orchestrate communication for a program invoking HIP computational kernels on the GPU.
 
 One can validate use of ROCmRDMA acceleration in a given UPC++ executable with a command
