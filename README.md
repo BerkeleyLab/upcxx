@@ -99,7 +99,7 @@ For example, to build an application consisting of `my-app1.cpp` and
 meta="<upcxx-install-path>/bin/upcxx-meta"
 $($meta CXX) $($meta CPPFLAGS) $($meta CXXFLAGS) -c my-app1.cpp
 $($meta CXX) $($meta CPPFLAGS) $($meta CXXFLAGS) -c my-app2.cpp
-$($meta CXX) $($meta LDFLAGS) my-app1.o my-app2.o $($meta LIBS)
+$($meta CXX) $($meta LDFLAGS) -o my-app my-app1.o my-app2.o -lm $($meta LIBS)
 ```
 
 For an example of a Makefile which builds UPC++ applications, look at
