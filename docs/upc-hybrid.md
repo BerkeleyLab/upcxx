@@ -18,7 +18,7 @@ Both layers may be active simultaneously, and shared objects from either layer a
 valid shared objects in the other layer - however there are some important caveats. 
 In particular, the `upcxx::global_ptr` and UPC pointer-to-shared
 representations are NOT interchangeable. Passing of shared objects across layers should be
-accomplished by "down-casting" to a raw C pointer (ie `void *`) on a process with affinity
+accomplished by "down-casting" to a raw C pointer (i.e., `void *`) on a process with affinity
 to the shared object (eg in UPC this is done using a `(void*)` cast, in UPC++ use `global_ptr<T>::local()`).
 The raw pointer can then be passed across layers, and "up-cast" using the
 appropriate function (i.e. `upcxx::try_global_ptr()` or `bupc_inverse_cast()`).

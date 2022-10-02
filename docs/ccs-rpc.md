@@ -76,11 +76,11 @@ If the pointer is within the primary code segment, this mode performs the
 relocation by sending an offset to the target as in legacy mode. If the pointer
 is in another segment, the mechanism for relocation is dependent upon the
 verification state of the segment.  Unverified segments use an offset plus a
-hash to look up the segment's basis address.  Sets of verfied segments are
-guaranteed to be identical on all ranks and soare assigned deterministic
+hash to look up the segment's basis address.  Sets of verified segments are
+guaranteed to be identical on all ranks and so are assigned deterministic
 indexes for unique identification.  This allows a verified segment to be
 relocated using just the space of a single `uint64_t` without the need to send
-the segment's hash. The most significant bit indicates a multisegment
+the segment's hash. The most significant bit indicates a multi-segment
 relocation, the next 15 bits the segment index, and the bottom bits are the
 address offset from the basis pointer.
 
@@ -135,7 +135,7 @@ systems can report inconsistent file paths for a library, in which case this
 will fail.
 
 Duplicate code segments are also a problem for UPC++ acquiring unique hashes.
-This is a known occurrance with small libraries that return different
+This is a known occurrence with small libraries that return different
 constants.  Because the constants are located in a different code segment, the
 executable segment can be identical if the number of functions is the same.
 `-Wl,--build-id` can be used to provide UPC++ with unique hashes.
@@ -206,13 +206,13 @@ otherwise.
 
 #### `bool enforce_verification(bool)` 
 
-Not threadsafe. State read on RPC injection and `debug_write_*()` calls. If set
+Not thread-safe. State read on RPC injection and `debug_write_*()` calls. If set
 to true causes an error to be raised if attempting to tokenize a function
 pointer in an unverified segment.  Returns the previous verification state.
 
 #### `bool verification_enforced()`
 
-Not threadsafe. Returns `true` if segment verification is enabled.
+Not thread-safe. Returns `true` if segment verification is enabled.
 
 #### `void debug_write_ptr(R(*ptr)(Args...), int fd = 2, int color = 2)`
 
@@ -265,13 +265,13 @@ them:
 
 * `cache_segment(R(*ptr)(Args...))`: Manually promote segment into level 1
   cache.  Although caching happens automatically, this might be nice for
-  sensitive benchmarks to pre-premote the segment, caching would be triggered
-  by warmup runs, too.
+  sensitive benchmarks to pre-promote the segment, caching would be triggered
+  by warm-up runs, too.
 
 * Add a `par_recursive_mutex` to optimize `CODEMODE=seq`
 
 * Asymmetric verification. Verify a single segment within a team and pass
   `nullptr` for non-member ranks (world collective). This would allow for
-  appending segments to the indexed list for more space efficient multisegment
+  appending segments to the indexed list for more space efficient multi-segment
   relocations. A check of if the correct team is used for RPC might not be
   implemented as that would require additional complexity.

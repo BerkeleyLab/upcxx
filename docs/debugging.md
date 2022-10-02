@@ -15,7 +15,7 @@ any rank crash.
     If the problem is a hang (instead of a crash), you can generate an on-demand
     backtrace by setting `export GASNET_BACKTRACE_SIGNAL=USR1` at runtime,
     wait for the hang, and then send that signal to the rank processes you 
-    wish to backtrace, ie: `kill -USR1 <pid>`. Note this signal needs to be
+    wish to backtrace, i.e.: `kill -USR1 <pid>`. Note this signal needs to be
     sent to the actual worker process, which may be running remotely on some systems.
 
 3. Otherwise, if the problem occurs with a single rank, you can spawn

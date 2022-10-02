@@ -29,7 +29,7 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     This is either undefined (for the default "seq" threadmode) or defined to
     an unspecified non-zero integer value for the "par" threadmode.
     Recommended usage is `#if UPCXX_THREADMODE` to identify the need for
-    thread-safty constructs, such as locks.
+    thread-safety constructs, such as locks.
   * `UPCXX_CODEMODE`:
     This is either undefined (for the "debug" codemode) or defined to an
     unspecified non-zero integer value for the "opt" (production) codemode.
@@ -63,7 +63,7 @@ eager.
 The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw
 exceptions. The exceptions may be thrown on the initiating thread before or
 after serialization of the function arguments. In all other ways, a call
-throwing such an exception is effectively "cancelled" -- it will not lead to
+throwing such an exception is effectively "canceled" -- it will not lead to
 invocation of the function object at the target, nor will it deliver any event
 notifications (for example, a promise passed using an `as_promise()` completion
 will remain unchanged by the exceptional call).
@@ -115,7 +115,7 @@ alias for a GPU device type. The binding of that alias is determined as follows:
 
 The resulting memory kind can be queried via the `gpu_default_device::kind` constant.
 `upcxx::make_gpu_allocator()` defaults to returning a `device_allocator<gpu_default_device>`,
-but this can also be overriden on a callsite basis via template argument.
+but this can also be overridden on a call-site basis via template argument.
 
 The `upcxx::make_gpu_allocator<Device>(sz,device_id)` factory function defaults
 to `device_id = auto_device_id` which activates an implementation-defined
@@ -277,11 +277,11 @@ the final executable, as they are all sharing the same libupcxx.
 
 Types of communication that do not experience restriction:
 
-  * Sending lpc's via `upcxx::persona::lpc()` or `<completion>_cx::as_lpc()`
+  * Sending LPCs via `upcxx::persona::lpc()` or `<completion>_cx::as_lpc()`
     has no added restriction.
 
   * `upcxx::progress()` and `upcxx::future::wait()` have no added restriction.
-    Incoming rpc's are only processed if progress is called from the primordial
+    Incoming RPCs are only processed if progress is called from the primordial
     thread while it has the master persona.
 
   * Upcasting/downcasting shared heap memory (e.g. `global_ptr::local()`) is

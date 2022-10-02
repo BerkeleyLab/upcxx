@@ -320,7 +320,7 @@ configure time.
 One may optionally pass `NETWORK=net` (replacing `net` by a supported network
 name) to specify the default network (overriding `--with-default-network=...`
 specified at configure time, if any).  Output at the end of the `all` and
-`check` steps report the default to be used in the absence of an explict
+`check` steps report the default to be used in the absence of an explicit
 setting, and the available networks.
 
 #### 5. Testing the install UPC\+\+ package (optional)
@@ -351,7 +351,7 @@ scope of this document).
 Additionally, one may wish to set the environment variable `$UPCXX_INSTALL`
 to `<upcxx-install-path>`, as this is assumed by several UPC\+\+ examples.
 
-For systems using "environment modules" an example modulefile is provided
+For systems using "environment modules" an example module file is provided
 as `<upcxx-install-path>/share/modulefiles/upcxx/<upcxx-version>`.  This
 sets both `$PATH` and `$UPCXX_INSTALL` as recommended above.  Consult
 the documentation for the environment modules package on how to use this file.
