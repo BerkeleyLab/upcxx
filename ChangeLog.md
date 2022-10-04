@@ -5,6 +5,30 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
+### 20XX.YY.ZZ: PENDING
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
+* ...
+
+Infrastructure changes:
+
+* ...
+
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
+
+* ...
+
+This library release conforms to the
+[UPC++ v1.0 Specification, Revision 20XX.YY.0](docs/spec.pdf).
+All currently specified features are fully implemented.
+See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
+
+Breaking changes:
+
+* ...
+
 ### 2022.09.30: Release 2022.9.0
 
 General features/enhancements: (see specification and programmer's guide for full details)
@@ -33,7 +57,7 @@ Serialization changes:
   and `deserializing_iterator<T>::deserialize_overwrite()` functions
   that work analogously to their `*_into()` counterparts, but additionally
   destruct target objects before deserializing into them.
-* See [the specification](docs/spec.pdf) for further details.
+* See [the specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2022.9.0.pdf) for further details.
 
 Infrastructure changes:
 
@@ -83,7 +107,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
   - bug4509: Non-scalable reduction temporaries
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2022.9.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2022.9.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2022.9.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
