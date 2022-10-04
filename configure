@@ -1219,6 +1219,12 @@ EOF
 cat >| bin/upcxx-run <<EOF
 #!$BASH
 function die { echo -e "upcxx-run: ERROR: \$*" >&2; exit 1; }
+for arg in "\$@"; do
+  case \$arg in
+    -h|--help) exec \${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -h ;;
+    --) break ;;
+  esac
+done
 conduit=\$(\${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -info "\$@" | grep ^GASNetConduitName: | cut -d' ' -f2 | tr '[A-Z]' '[a-z]'; exit \${PIPESTATUS[0]})
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 codemode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-${UPCXX_DBGOPT% *}})
