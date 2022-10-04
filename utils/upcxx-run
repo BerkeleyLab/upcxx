@@ -148,8 +148,15 @@ def load_args():
                          help='Generate verbose output. Multiple applications increase verbosity.')
     _parser.add_argument('-E', dest='env_list', default=[], action='append', metavar='VAR1[,VAR2]',
                          help='Adds provided arguments to the list of environment variables to propagate to compute processes.')
+
+    # Deliberately undocumented due to potential for confusion about what it does:
     _parser.add_argument('-network', dest='network', type=str, default=None,
-                         help='Override network detection.')
+                         help=argparse.SUPPRESS) 
+
+    # Should come last after the options above:
+    _parser.add_argument('--', dest='sepdummy', default=False, action='store_true', 
+                         help='Optional separator between upcxx-run arguments and command to execute')
+
     cmd_arg_group = _parser.add_argument_group('command to execute')
     cmd_arg_group.add_argument('cmd', default=None, metavar='command', help='UPC++ executable')
     cmd_arg_group.add_argument('cmd_args', default=[], nargs=argparse.REMAINDER, metavar='...',
