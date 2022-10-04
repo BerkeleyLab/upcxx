@@ -60,70 +60,57 @@ cross-segment calls "magically" working, but was unspecified behavior.  This is
 now prohibited.  Conforming UPC++ programs must make all cross-segment calls
 using CCS Multi-Segment mode.
 
-### Legacy
+### Legacy RPC Relocation (`configure --disable-ccs-rpc`)
 
 Active if CCS support is disabled.  Relocates pointers as an offset from a
 basis address of a function pointer within `libupcxx`.  Executable segment
 mapping is disabled.  The CCS API interprets this as a single code segment one
 byte in size starting at the address of the internal sentinel function.  All
 function pointer relocations are performed as an offset from this address.
-Attempting to enable multi-segment relocation results in a compile-time error
-and attempting to enable segment verification results in a runtime error.
+Segment verification is not enabled and attempting an RPC that requires CCS may
+result in a segmentation fault.
 
-### Single Segment
+### CCS RPC Relocation (default, `configure --enable-ccs-rpc`)
 
-Default if CCS support is enabled.  Relocates pointers as an offset from a
-single basis address, that of the start of the code segment containing
-libupcxx.  Executable segment mapping is enabled, allowing for full use of the
-CCS API such as segment verification, which will check that all calls made with
-this mode correctly target only functions within this primary code segment.
+If the pointer is within the primary code segment, this mode performs the
+relocation by sending an offset to the target as in legacy mode. If the pointer
+is in another segment, the mechanism for relocation is dependent upon the
+verification state of the segment.  Unverified segments use an offset plus a
+hash to look up the segment's basis address.  Sets of verified segments are
+guaranteed to be identical on all ranks and so are assigned deterministic
+indexes for unique identification.  This allows a verified segment to be
+relocated using just the space of a single `uint64_t` without the need to send
+the segment's hash. The most significant bit indicates a multi-segment
+relocation, the next 15 bits the segment index, and the bottom bits are the
+address offset from the basis pointer.
 
-### Multi Segment
-
-Available if CCS support is enabled. Optionally enabled on a
-per-translation-unit basis by setting the preprocessor definition
-`UPCXX_CCS_RPC=1`, either on the command line with `-D` or by setting it with
-`#define` before including the UPC++ headers.  If executing an RPC on the
-primary code segment, shortcuts to use just an offset from the start of this
-segment.  Otherwise, performs a relocation by using a combination of a code
-segment identification hash and address offset.
+Each batch of `verify_all()` or `verify_segment()` newly verified segments are
+sorted and appended to a vector of segments that can be identified by index.
+Index zero indicates a segment that is relocated using a hash.
 
 ## Cache
 
-The meat of the segment mapping and caching takes place in the `segmap_cache`
-class.  The main components of this class are the level 1 cache, level 2 cache,
-and detailed segment map used for debugging and building the caches.
+Each UPC++ thread  maintains a cache of segments previously used by the CCS
+mechanism for faster subsequent lookup. An instance of `segmap_cache` is
+created in the `persona_tls` for this purpose. Due to the restrictions of
+`__thread` storage, the cache uses `std::array`s with a capacity defined by
+`UPCXXI_MAX_SEGCACHE_SIZE` of 20. This doesn't require a guard as a dynamically
+sized cache would. It is unlikely that a program will exceed this cache
+capacity, as the program would not only have to use at least 20 libraries but
+also make direct RPC calls to function pointers within them.  If the cache
+capacity is exceeded, an old entry is evicted.  
 
-The level 1 cache is intended to be used at thread level and is not thread safe
-to avoid the overhead of locking and atomic operations. An instance of
-`segmap_cache` is created in the `persona_tls` for this purpose.  Due to the
-restrictions on constructors and destructors of thread local storage, the level
-1 cache uses `std::array`s for storage. Two sorted arrays are used to enable
-binary searches of the level 1 cache in each direction. The capacity of this
-storage can be set with `UPCXX_MAX_L1_DLCACHE_SIZE`, which defaults to 20.
-This cache only contains segments that the program has actually used, so in
-order to exceed this threshold, the program would have to not only use at least
-20 libraries, but also make direct RPC calls to function pointers within them.
-In practice, even if that many libraries were loaded, most would likely not
-have function pointers invoked directly.  
-
-The level 2 cache is held as a process-wide static structure and is only used
-if the level 1 cache is full.  It contains all mapped segments. If there is a
-miss at level 1 cache and the level 1 cache is not full, lookup goes directly
-to the heavy-weight segment map that can be used to add the segment to the
-level 1 cache. While it would be possible to promote a level 2 segment to level
-2, rebuilding the level 2 cache is not thread safe and requires the user to
-call `rebuild_cache()`. The segment map, on the other hand, uses locks and can
-be rebuilt automatically if a library was loaded. Because hitting the uncached
-segment map would only happen once per thread per segment, there is negligible
-benefit to maintaining an additional cache promotion mechanism.
+There are two caches for unverified segment relocation. One is sorted for fast
+binary search lookup of function address to segment hash and basis pointer. The
+other is sorted for fast binary search lookup of segment hash to basis address.
+Entries are promoted and evicted from these caches together. A separate cache
+is used for lookup of verified segment index and basis pointer from a function
+address.  There is no need for a cache for the reverse direction.
 
 It is assumed that libraries are not unloaded, or at least not unloaded and the
-address space reused by another library.  The level 1 caches are not purged if
-a library is unloaded as `rebuild_cache()` only affects the level 2 cache and
-segment map and is unable to touch every thread's thread-local storage. In
-practice, `dlclose` usually doesn't actually unmap the library and this
-shouldn't be a limitation with any practical effect.
+address space reused by another library.  In practice, `dlclose` usually
+doesn't actually unmap the library and this shouldn't be a limitation with any
+practical effect.
 
 ## CCS Verification
 
@@ -132,28 +119,23 @@ detect UPC++ RPC function pointer relocation errors, such as invoking functions
 outside the primary segment in single segment mode or asymmetry in loaded
 libraries across processes.
 
-CCS verification is automatically enabled in debug mode and can be controlled
-by the `upcxx::experimental::relocation::enforce_verification(bool)` function.
-This verification can help a user to deterimine when multi-segment mode must be
-enabled.  If a segment verification error indicates an RPC was made to a
-segment outside the primary segment in single-segment mode, multi-segment
-mode can either by enabled with `UPCXX_CCS_RPC=1` either globally defined for
-each translation unit for which it is required. If enabling for individual
-translation units, this process can be repeated until all necessary usages are
-found and enabled.  Verification is enabled by default in debug mode.
-
-CCS verification also detecs  asymmetry in loaded libraries, such as if
-different processes loaded different versions of a library or if a library uses
-writable executable segments or TEXTRELs.  These sources of asymmetry may
-result in different hashes of the executable segments and/or different function
-offsets within the library, both of which prevent UPC++ from properly
-relocating function pointers. The library can be rebuilt with `-Wl,--build-id`
-to provide a consistent hash. Otherwise, UPC++ will fall back to trying to use
-the hash of the library's file path as an identifier.  Some systems can report
-inconsistent file paths for a library, in which case this will fail.
+CCS verification is automatically enabled on `init()` and enforcement of
+verification for RPCs can be controlled by the
+`upcxx::experimental::relocation::enforce_verification(bool)` function.  CCS
+verification detects asymmetry in loaded libraries, such as if different
+processes loaded different versions of a library or if a library uses writable
+executable segments or TEXTRELs.  It causes these errors to be detected by the
+sender rather than the receiver for easier debugging.  These sources of
+asymmetry may result in different hashes of the executable segments and/or
+different function offsets within the library, both of which prevent UPC++ from
+properly relocating function pointers. The library can be rebuilt with
+`-Wl,--build-id` to provide a consistent hash.  Otherwise, UPC++ will fall back
+to trying to use the hash of the library's file path as an identifier.  Some
+systems can report inconsistent file paths for a library, in which case this
+will fail.
 
 Duplicate code segments are also a problem for UPC++ acquiring unique hashes.
-This is a known occurrance with small libraries that return different
+This is a known occurrence with small libraries that return different
 constants.  Because the constants are located in a different code segment, the
 executable segment can be identical if the number of functions is the same.
 `-Wl,--build-id` can be used to provide UPC++ with unique hashes.
@@ -161,8 +143,12 @@ executable segment can be identical if the number of functions is the same.
 MacOS automatically builds all libraries with the equivalent of
 `-Wl,--build-id`.
 
-Disabling CCS verification may be necessary for advanced use cases such as
-intentional asymmetry and heterogeneity.
+It is possible to catch `upcxx::segment_verification_error` exceptions to then
+arrange for synchronizing and loading the necessary libraries before
+reverifying and continuing.
+
+Disabling CCS verification enforcement may be necessary for advanced use cases
+such as intentional asymmetry and heterogeneity.
 
 See [ccs-rpc-debugging.md](ccs-rpc-debugging.md) for practical examples of 
 debugging CCS RPCs.
@@ -192,18 +178,17 @@ enforcement is enabled.
 
 This namespace has a shorthand name of `upcxx::experimental::relo`.
 
-#### `void rebuild_cache()`
-
-Rebuilds the process's segment map and populates the level 2 cache.  Should be
-called after `dlopen`s to avoid expensive misses if the level 1 cache misses.
-
 #### `void verify_segment(R(*ptr)(Args...), entry_barrier eb = entry_barrier::user)`
 
 World collective function. Checks the segment is not a bad segment (RWX segment
 or containing TEXTRELs with an unknown file path). Runs a reduction on the
 segment hash to verify all processes have the same hash for the segment.  `ptr`
 must be a pointer to the same function on all processes.  Raises an error on
-failure.  Allows outgoing RPC verification.
+failure.  Allows outgoing RPC verification. Allows for more compact function
+pointer relocation.  
+
+UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
+otherwise.
 
 #### `void verify_all(entry_barrier eb = entry_barrier::user)`
 
@@ -213,17 +198,21 @@ symmetric among all processes but does not raise an error if there are
 failures.  Segments invalid for UPC++ RPCs can still be used indirectly within
 functions in valid segments.  Called automatically by `upcxx::init()`.  This
 function should be called after `dlopen` if UPC++ intends to RPC the functions
-contained withinthis library.
+contained within this library. Allows for more compact function pointer
+relocation.
+
+UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
+otherwise.
 
 #### `bool enforce_verification(bool)` 
 
-Not threadsafe. If set to true causes an error to be raised if attempting to
-tokenize a function pointer in an unverified segment.  Returns the previous
-verification state.
+Not thread-safe. State read on RPC injection and `debug_write_*()` calls. If set
+to true causes an error to be raised if attempting to tokenize a function
+pointer in an unverified segment.  Returns the previous verification state.
 
 #### `bool verification_enforced()`
 
-Not threadsafe. Returns `true` if segment verification is enabled.
+Not thread-safe. Returns `true` if segment verification is enabled.
 
 #### `void debug_write_ptr(R(*ptr)(Args...), int fd = 2, int color = 2)`
 
@@ -249,10 +238,13 @@ pointer. Prints to the `STDERR_FILENO` file descriptor by default. See
 
 As above, but writes to a `std::ostream`.
 
-## Macros
+#### `void debug_write_cache(int fd = 2)`
 
-* `UPCXX_CCS_RPC`: causes `global_fnptr` to use multi-segment tokens, allowing
-  RPCs to occur outside of the primary UPC++ code segment.
+Dumps a table containing the state of the current thread's cache.
+
+### `void debug_write_cache(std::ostream& out)`
+
+As above, but writes to a `std::ostream`
 
 ## Environment Variables
 
@@ -263,6 +255,9 @@ As above, but writes to a `std::ostream`.
   
 ## Potential Improvements
 
+Additional features which could be implemented if users express a desire for
+them:
+
 * Map the main executable file into memory and use `.symtab`/`.strtab` rather
   than `.dynsym`/`.dynstr`. This would enable symbol lookup for executables not
   linked with `-rdynamic`. Possibly build with `-rdynamic` by default in debug
@@ -270,11 +265,13 @@ As above, but writes to a `std::ostream`.
 
 * `cache_segment(R(*ptr)(Args...))`: Manually promote segment into level 1
   cache.  Although caching happens automatically, this might be nice for
-  sensitive benchmarks to pre-premote the segment, caching would be triggered
-  by warmup runs, too.
-
-* Allow specifying token type when calling `upcxx::rpc`: This would allow
-  selecting between single-segment and multi-segment relocation modes within a
-  translation unit and remove the need to set macros.
+  sensitive benchmarks to pre-promote the segment, caching would be triggered
+  by warm-up runs, too.
 
 * Add a `par_recursive_mutex` to optimize `CODEMODE=seq`
+
+* Asymmetric verification. Verify a single segment within a team and pass
+  `nullptr` for non-member ranks (world collective). This would allow for
+  appending segments to the indexed list for more space efficient multi-segment
+  relocations. A check of if the correct team is used for RPC might not be
+  implemented as that would require additional complexity.

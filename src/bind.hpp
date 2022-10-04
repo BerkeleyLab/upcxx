@@ -378,10 +378,10 @@ namespace upcxx {
       r.template skip<std::tuple<typename detail::binding<B>::on_wire_type...>>();
     }
 
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *spot) {
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage storage) {
       // deserialized_bound_function handles all its own deserialization
-      return new(spot) deserialized_type(r);
+      return storage.construct(r);
     }
   };
 }
@@ -431,7 +431,7 @@ namespace upcxx {
     };
   
     template<typename Fn, typename ...B>
-    typename detail::template bind1<Fn&&, B&&...>::return_type
+    typename detail::bind1<Fn&&, B&&...>::return_type
     bind(Fn &&fn, B &&...b) {
       return detail::bind1<Fn&&, B&&...>()(
         std::forward<Fn>(fn), std::forward<B>(b)...
@@ -439,7 +439,7 @@ namespace upcxx {
     }
 
     template<typename Fn, typename ...B>
-    typename detail::template bind1<const Fn&, const B&...>::return_type
+    typename detail::bind1<const Fn&, const B&...>::return_type
     bind_rvalue_as_lvalue(Fn &&fn, B &&...b) {
       return detail::bind1<const Fn&, const B&...>()(
         static_cast<const Fn&>(fn), static_cast<const B&>(b)...

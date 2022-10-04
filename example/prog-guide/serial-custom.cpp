@@ -42,12 +42,12 @@ class vertex {
                 }
             }
 
-            template<typename Reader>
-            static vertex* deserialize(Reader& reader, void* storage) {
+            template<typename Reader, typename Storage>
+            static vertex* deserialize(Reader& reader, Storage storage) {
                 int id = reader.template read<int>();
                 size_t n_neighbors = reader.template read<size_t>();
 
-                vertex *v = new(storage) vertex(id);
+                vertex *v = storage.construct(id);
                 for (size_t n = 0; n < n_neighbors; n++) {
                     v->add_neighbor(reader.template read<int>());
                 }

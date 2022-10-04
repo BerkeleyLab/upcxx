@@ -1,4 +1,4 @@
-MKFILE_PATH=$(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+MKFILE_PATH=$(patsubst %/,%,$(dir $(word $(words $(MAKEFILE_LIST)), $(MAKEFILE_LIST))))
 SOURCE_DIR:=$(MKFILE_PATH)
 UPCXX_BINDIR?=$(MKFILE_PATH)/../../build3/bin
 UPCXX_PYTHON?=python3
@@ -31,10 +31,10 @@ CCS_DLOPEN_LIB="libccs-dlopen-test-funcs.so"
 endif
 
 %.o: $(SOURCE_DIR)/%.cxx
-	$(UPCXX) -DUPCXX_CCS_RPC=1 -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $< -c -o $@
+	$(UPCXX) -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $< -c -o $@
 
 %-fpic.o: $(SOURCE_DIR)/%.cxx
-	$(UPCXX) -DUPCXX_CCS_RPC=1 -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $(FPIC_FLAG) $< -c -o $@
+	$(UPCXX) -DCCS_DLOPEN_LIB="$(CCS_DLOPEN_LIB)" $(FPIC_FLAG) $< -c -o $@
 
 libccs-%.so: %-fpic.o
 ifeq ($(UNAME_S),Darwin)
@@ -59,7 +59,11 @@ endif
 
 # Use CXX so libupcxx.a isn't linked in
 test-ccs-inlib: upcxx-inlib-fpic.o libccs-inlib.so
+ifeq ($(UNAME_S),Darwin)
 	$(CXX) $^ -o $@ $(RPATH_THIS_DIR)
+else
+	$(CXX) $^ -o $@ $(RPATH_THIS_DIR) -Wl,--rpath-link,.
+endif
 
 ## Static link with dlopen: libupcxx in executable
 test-ccs-static-dlopen: static.o
@@ -93,7 +97,7 @@ run-ccs-%: test-ccs-% libccs-dlopen-test-funcs.so
 # Not supported, yet
 # Requires fPIC
 python-fpic.o: $(SOURCE_DIR)/python.cxx
-	$(UPCXX) -DUPCXX_CCS_RPC=1 -DCCS_DLOPEN_LIB="libccs-dlopen-test-funcs.so" $(FPIC_FLAG) $(PYTHON_INCLUDES) $^ -c -o $@
+	$(UPCXX) -DCCS_DLOPEN_LIB="libccs-dlopen-test-funcs.so" $(FPIC_FLAG) $(PYTHON_INCLUDES) $^ -c -o $@
 
 upcxxpytest.so: python-fpic.o test-fpic.o libccs-dynamic-test-funcs.so libupcxx.so
 ifeq ($(UNAME_S),Darwin)

@@ -771,6 +771,7 @@ void UTIL_ATTRIB_NOINLINE test_copy_rpc_cuda() {
 
   #if defined(DEVICE) && !SKIP_COPY_DEVICE && !SKIP_COPY
    #if SPREAD_DEVICE
+    // Note: since 2022.3.0 this can be accomplished via upcxx::make_gpu_allocator()
     Device dev(upcxx::local_team().rank_me()%Device::device_n());
    #else
     Device dev(0);

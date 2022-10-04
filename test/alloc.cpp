@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
     if (heaparg>0) maxheap = heaparg * (1<<20);
     argv++; argc--;
   }
+  size_t max_write = 4096;
 
   if (!rank_me) {
     cout << "Running allocator test, max_requests=" << maxreq;
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
           byte val = VAL(sz,i);
           *lp = val;
           assert(*lp == val);
-          memset(lp, static_cast<int>(val), sz);
+          memset(lp, static_cast<int>(val), std::min(sz,max_write));
           upcxx::global_ptr<byte> cgp = upcxx::try_global_ptr(lp);
           if (!cgp) ERROR("try_global_ptr("<<lp<<") returned null");
           else if (cgp != gp) ERROR("cgp:[" << cgp << "] != gp:[" << gp << "]");
@@ -130,7 +131,7 @@ int main(int argc, char **argv) {
       upcxx::global_ptr<byte> gp = ptrs[i];
       byte *lp = gp.local();
       if (!lp) ERROR("gp.local() is null");
-      for (size_t j=0; j < sz; j++) {
+      for (size_t j=0; j < std::min(sz,max_write); j++) {
         if (lp[j] != val) {
           ERROR("data corruption detected at i=" <<i<< " j=" <<j);
           break;

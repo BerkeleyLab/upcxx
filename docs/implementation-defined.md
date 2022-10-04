@@ -29,7 +29,7 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     This is either undefined (for the default "seq" threadmode) or defined to
     an unspecified non-zero integer value for the "par" threadmode.
     Recommended usage is `#if UPCXX_THREADMODE` to identify the need for
-    thread-safty constructs, such as locks.
+    thread-safety constructs, such as locks.
   * `UPCXX_CODEMODE`:
     This is either undefined (for the "debug" codemode) or defined to an
     unspecified non-zero integer value for the "opt" (production) codemode.
@@ -63,7 +63,7 @@ eager.
 The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw
 exceptions. The exceptions may be thrown on the initiating thread before or
 after serialization of the function arguments. In all other ways, a call
-throwing such an exception is effectively "cancelled" -- it will not lead to
+throwing such an exception is effectively "canceled" -- it will not lead to
 invocation of the function object at the target, nor will it deliver any event
 notifications (for example, a promise passed using an `as_promise()` completion
 will remain unchanged by the exceptional call).
@@ -86,7 +86,7 @@ may be used to arrange for later collective synchronization of cross-segment
 function pointer relocation information using
 `upcxx::experimental::relo::verify_all()` or
 `upcxx::experimental::relo::verify_segment()` when libraries are `dlopen`ed
-asynchronously.  See [docs/ccs-rpc.md](docs/ccs-rpc.md) for more information
+asynchronously.  See [docs/ccs-rpc.md](ccs-rpc.md) for more information
 about the CCS RPC feature.
 
 ## Simplified Device Allocator Management
@@ -115,7 +115,7 @@ alias for a GPU device type. The binding of that alias is determined as follows:
 
 The resulting memory kind can be queried via the `gpu_default_device::kind` constant.
 `upcxx::make_gpu_allocator()` defaults to returning a `device_allocator<gpu_default_device>`,
-but this can also be overriden on a callsite basis via template argument.
+but this can also be overridden on a call-site basis via template argument.
 
 The `upcxx::make_gpu_allocator<Device>(sz,device_id)` factory function defaults
 to `device_id = auto_device_id` which activates an implementation-defined
@@ -171,8 +171,8 @@ Several unspecified, experimental features are implemented in the
 
     ```c++
     template<typename T, typename Cx=/*unspecified*/>
-    RType broadcast(T &&value, intrank_t root, const team &team=world(),
-                    Cx &&completions=operation_cx::as_future());
+    RType broadcast_nontrivial(T &&value, intrank_t root, const team &team=world(),
+                               Cx &&completions=operation_cx::as_future());
     ```
 
   * reduction of Serializable but non-TriviallySerializable values:
@@ -186,16 +186,13 @@ Several unspecified, experimental features are implemented in the
     constexpr /*unspecified*/ op_bit_or;
     constexpr /*unspecified*/ op_bit_xor;
 
-    template<typename T, typename Cx=/*unspecified*/>
-    RType broadcast(T &&value, intrank_t root, const team &team=world(),
-                    Cx &&completions=operation_cx::as_future());
     template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
-    RType reduce_one(T &&value, BinaryOp &&op, intrank_t root,
-                     const team &team = world(),
-                     Cx &&completions=operation_cx::as_future());
+    RType reduce_one_nontrivial(T &&value, BinaryOp &&op, intrank_t root,
+                                const team &team = world(),
+                                Cx &&completions=operation_cx::as_future());
     template <typename T, typename BinaryOp , typename Cx=/*unspecified*/>
-    RType reduce_all(T &&value, BinaryOp &&op, const team &team = world(),
-                     Cx &&completions=operation_cx::as_future());
+    RType reduce_all_nontrivial(T &&value, BinaryOp &&op, const team &team = world(),
+                                Cx &&completions=operation_cx::as_future());
     ```
 
   * utilities for reading environment variables:
@@ -280,11 +277,11 @@ the final executable, as they are all sharing the same libupcxx.
 
 Types of communication that do not experience restriction:
 
-  * Sending lpc's via `upcxx::persona::lpc()` or `<completion>_cx::as_lpc()`
+  * Sending LPCs via `upcxx::persona::lpc()` or `<completion>_cx::as_lpc()`
     has no added restriction.
 
   * `upcxx::progress()` and `upcxx::future::wait()` have no added restriction.
-    Incoming rpc's are only processed if progress is called from the primordial
+    Incoming RPCs are only processed if progress is called from the primordial
     thread while it has the master persona.
 
   * Upcasting/downcasting shared heap memory (e.g. `global_ptr::local()`) is

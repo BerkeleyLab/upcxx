@@ -18,7 +18,7 @@ Both layers may be active simultaneously, and shared objects from either layer a
 valid shared objects in the other layer - however there are some important caveats. 
 In particular, the `upcxx::global_ptr` and UPC pointer-to-shared
 representations are NOT interchangeable. Passing of shared objects across layers should be
-accomplished by "down-casting" to a raw C pointer (ie `void *`) on a process with affinity
+accomplished by "down-casting" to a raw C pointer (i.e., `void *`) on a process with affinity
 to the shared object (eg in UPC this is done using a `(void*)` cast, in UPC++ use `global_ptr<T>::local()`).
 The raw pointer can then be passed across layers, and "up-cast" using the
 appropriate function (i.e. `upcxx::try_global_ptr()` or `bupc_inverse_cast()`).
@@ -53,6 +53,8 @@ as there is currently no way to express a single atomic domain shared by both la
 * All object files linked into one executable must agree upon GASNet conduit, debug mode and thread-safety setting.
 * If `UPCXX_THREADMODE=par`, then must pass `upcc -uses-threads`.
   This in turn may require UPCR's `configure --enable-uses-threads`.
+* If using ibv-conduit (InfiniBand systems) one must pass `--disable-ibv-rcv-thread` 
+  (or optionally `--enable-ibv-rcv-thread`) to both configures.
 * The link command should use the UPCR link wrapper, and specify `upcc -link-with='upcxx <args>'`.
 * If the `main()` function appears outside UPC code, the link command should include `upcc -extern-main`.
 * Additional restrictions apply to `upcc -pthreads` mode, see "UPC++ with Berkeley UPC -pthreads mode" below.

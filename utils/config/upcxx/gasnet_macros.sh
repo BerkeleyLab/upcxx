@@ -51,6 +51,13 @@ _EOF
 }
 
 probe_macro GASNETT_NEVER_INLINE "GASNETT_NEVER_INLINE(/*fnname*/,/*declarator*/)" UPCXXI_ATTRIB_NOINLINE
+cat <<_EOF
+#if defined(HIP_INCLUDE_HIP_AMD_DETAIL_HOST_DEFINES_H) && defined(__noinline__)
+  /* issue 550: workaround ROCm HIP headers breaking the GNU __noinline__ attribute */
+  #undef  UPCXXI_ATTRIB_NOINLINE
+  #define UPCXXI_ATTRIB_NOINLINE
+#endif
+_EOF
 probe_macro GASNETT_NORETURN GASNETT_NORETURN UPCXXI_ATTRIB_NORETURN
 probe_macro GASNETT_PURE     GASNETT_PURE     UPCXXI_ATTRIB_PURE
 probe_macro GASNETT_CONST    GASNETT_CONST    UPCXXI_ATTRIB_CONST
@@ -83,6 +90,8 @@ if [[ $UPCXX_ASSERT = 0 ]]; then
 fi
 
 # probe platform identification macros
+# TODO: OS_CNL and OS_WSL have been renamed in recent GASNet and subsumed into OS_LINUX.
+# The two flavor variants can safely be removed after we require UPCXXI_GEX_RELEASE_VERSION >= 2022.9.0
 for feature in ARCH_X86_64 ARCH_POWERPC ARCH_AARCH64 ARCH_BIG_ENDIAN OS_LINUX OS_FREEBSD OS_NETBSD OS_OPENBSD OS_DARWIN OS_CNL OS_WSL ; do
   name="PLATFORM_$feature"
   probe_macro $name $name "UPCXXI_$name" 1

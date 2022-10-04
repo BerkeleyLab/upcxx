@@ -2,6 +2,7 @@
 #define _837545aa_e335_4355_b0ff_18d00c06c69a
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <unordered_map>
@@ -12,7 +13,7 @@
 #include <upcxx/digest.hpp>
 #include <upcxx/utility.hpp>
 
-#define UPCXXI_MAX_LEVEL1_SEGCACHE_SIZE 20
+#define UPCXXI_MAX_SEGCACHE_SIZE 20
 
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
   #if UPCXXI_PLATFORM_OS_LINUX || UPCXXI_PLATFORM_OS_CNL || UPCXXI_PLATFORM_OS_WSL
@@ -51,28 +52,10 @@ namespace detail {
   struct function_token_ms;
   struct function_token_invalid;
 
-/* The FunctionTokenType alias is used to select the FunctionToken type selected
- * by the user. Therefore, it is important for defaulted template parameters such as
- * `typename FunctionToken = FunctionTokenType` not to resolve into a concrete type
- * when building libupcxx, as this prevents selection by the user. Within compiled
- * libupcxx, specializations for both `function_token` and `function_token_ss` must
- * be available and selectable with this alias. To prevent erroneous usage of such
- * defaulted parameters within libupcxx, the FunctionTokenType is set to a
- * `function_token_invalid` class which has no definition to force compile errors so
- * corrections can be made to ensure the parameter is user-selectable.
- */
-#if !UPCXXI_BUILDING_LIBUPCXX
-  #if UPCXX_CCS_RPC
-    #if UPCXXI_FORCE_LEGACY_RELOCATIONS
-      #error Attempted to enable multi-segment relocations with libupcxx built with forced legacy relocations
-    #else
-      using FunctionTokenType = function_token;
-    #endif
-  #else
-    using FunctionTokenType = function_token_ss;
-  #endif
+#if UPCXXI_FORCE_LEGACY_RELOCATIONS
+  using FunctionTokenType = function_token_ss;
 #else
-  using FunctionTokenType = function_token_invalid;
+  using FunctionTokenType = function_token;
 #endif
 }
 namespace experimental {
@@ -99,12 +82,14 @@ namespace detail {
   enum class segment_flags : uint16_t
   {
     none = 0x0,
-    active = 0x1,
+    touched = 0x1,
     verified = 0x2,
     bad_verification = 0x4,
     bad_segment = 0x8,
     upcxx_binary = 0x10,
   };
+
+  std::string debug_prefix_string();
 
   template<typename Fp>
   static std::uintptr_t fnptr_to_uintptr(Fp fp) noexcept {
@@ -219,13 +204,19 @@ namespace detail {
 
   struct segment_info
   {
+    using flags_type = typename std::underlying_type<segment_flags>::type;
     std::uintptr_t start;
     std::uintptr_t end;
+    // Unique identification of this segment. May be the hash of the segment itself or
+    // the library hash with the segment number mixed in.
     segment_hash ident;
+    // Library hash if the library is built with a build-id
     segment_hash lib_hash;
+    // Segment number within the dynamic shared object
     uint16_t segnum;
-    uint16_t flags;
+    flags_type flags;
     const char* dlpi_name;
+    int16_t idx;
 #if UPCXXI_EXEFORMAT_ELF
     std::uintptr_t basis;
     // ElfW(Sym)*
@@ -233,6 +224,14 @@ namespace detail {
     const void* symtblend;
     const char* strtbl;
 #endif
+    inline void set_verified() {
+      flags |= static_cast<flags_type>(segment_flags::verified);
+      flags &= ~static_cast<flags_type>(segment_flags::bad_verification);
+    }
+    inline void set_bad_verification() {
+      flags |= static_cast<flags_type>(segment_flags::bad_verification);
+      flags &= ~static_cast<flags_type>(segment_flags::verified);
+    }
     inline friend bool operator==(const segment_info& lhs, const segment_info& rhs)
     {
       return std::tie(lhs.start, lhs.end, lhs.ident) ==
@@ -246,7 +245,8 @@ namespace detail {
   class segmap_cache
   {
   public:
-    static constexpr size_t max_level1_cache_size = UPCXXI_MAX_LEVEL1_SEGCACHE_SIZE;
+    static constexpr size_t max_cache_size = UPCXXI_MAX_SEGCACHE_SIZE;
+    using flags_type = typename std::underlying_type<segment_flags>::type;
   private:
     struct segment_lookup_ptr
     {
@@ -259,24 +259,28 @@ namespace detail {
       segment_hash ident;
       uintptr_t start;
     };
-    std::array<segment_lookup_ptr,max_level1_cache_size> l1_cache_ptr_; // sorted by address. address to token
-    std::array<segment_lookup_tkn,max_level1_cache_size> l1_cache_tkn_; // sorted by hash. token to address
-    static std::vector<segment_lookup_ptr> l2_cache_ptr_;
-    static std::unordered_map<segment_hash,uintptr_t> l2_cache_tkn_;
+    struct segment_lookup_idx
+    {
+      uintptr_t start;
+      uintptr_t end;
+      int16_t idx;
+    };
+    std::array<segment_lookup_ptr,max_cache_size> cache_ptr_; // sorted by address. address to token
+    std::array<segment_lookup_idx,max_cache_size> cache_idx_; // sorted by address. address to segment_vector index
+    std::array<segment_lookup_tkn,max_cache_size> cache_tkn_; // sorted by hash. token to address
+    static std::vector<segment_lookup_idx> segment_vector_;
 
     template<typename It>
     static std::tuple<bool, It> search(It start, It end, uintptr_t uptr);
   public:
-    using l1_cache_ptr_iterator = typename decltype(l1_cache_ptr_)::iterator;
-    using cl1_cache_ptr_iterator = typename decltype(l1_cache_ptr_)::const_iterator;
-    using l2_cache_ptr_iterator = typename decltype(l2_cache_ptr_)::iterator;
-    using cl2_cache_ptr_iterator = typename decltype(l2_cache_ptr_)::const_iterator;
-    using l1_cache_tkn_iterator = typename decltype(l1_cache_tkn_)::iterator;
-    using cl1_cache_tkn_iterator = typename decltype(l1_cache_tkn_)::const_iterator;
-    using l2_cache_tkn_iterator = typename decltype(l2_cache_tkn_)::iterator;
-    using cl2_cache_tkn_iterator = typename decltype(l2_cache_tkn_)::const_iterator;
+    using cache_ptr_iterator = typename decltype(cache_ptr_)::iterator;
+    using const_cache_ptr_iterator = typename decltype(cache_ptr_)::const_iterator;
+    using cache_tkn_iterator = typename decltype(cache_tkn_)::iterator;
+    using const_cache_tkn_iterator = typename decltype(cache_tkn_)::const_iterator;
+    using cache_idx_iterator = typename decltype(cache_idx_)::iterator;
+    using const_cache_idx_iterator = typename decltype(cache_idx_)::const_iterator;
     using segment_iterator = typename std::vector<segment_info>::iterator;
-    using csegment_iterator = typename std::vector<segment_info>::const_iterator;
+    using const_segment_iterator = typename std::vector<segment_info>::const_iterator;
 
     static constexpr const char success_start[] = "\033[92m";
     static constexpr const char failure_start[] = "\033[91m";
@@ -290,41 +294,47 @@ namespace detail {
     static constexpr size_t cwidth_indicator = 2;
     static constexpr size_t cwidth_hash = 2*segment_hash::size + padding;
     static constexpr size_t cwidth_segment = 12 + padding;
+    static constexpr size_t cwidth_idx = 5 + padding;
     static constexpr size_t cwidth_flags = 8 + padding;
     static constexpr size_t cwidth_pointer = 14 + padding;
-    static constexpr size_t cols = 6;
+    static constexpr size_t cols = 7;
 
-    inline const segment_info& primary() const noexcept { return primary_; }
+    static inline const segment_info& primary() noexcept { return primary_; }
+    static const segment_lookup_idx& lookup_at_idx(int16_t idx);
+    static segment_hash ident_at_idx(int16_t idx);
 
-    std::tuple<bool, cl1_cache_ptr_iterator> search_l1(uintptr_t uptr) const;
-    std::tuple<bool, cl2_cache_ptr_iterator> search_l2(uintptr_t uptr) const;
-    std::tuple<bool, segment_iterator>       search_all(uintptr_t uptr);
+    std::tuple<bool, const_cache_idx_iterator> search_idx_cache(uintptr_t uptr) const;
+    std::tuple<bool, const_cache_ptr_iterator> search_cache(uintptr_t uptr);
+    std::tuple<uintptr_t, uintptr_t, segment_hash, int16_t>   search_map(uintptr_t uptr);
 
-    std::tuple<bool, cl1_cache_tkn_iterator> search_l1(const segment_hash& ident) const;
-    uintptr_t                                search_l2(const segment_hash& ident) const;
-    std::tuple<bool, segment_iterator>       search_all(const segment_hash& ident);
+    std::tuple<bool, const_cache_tkn_iterator> search_cache(const segment_hash& ident) const;
+    std::tuple<bool, uintptr_t>   search_map(const segment_hash& ident);
 
     static std::vector<segment_info> build_segment_map();
     static void rebuild_segment_map();
-    static void rebuild_cache();
-    static void set_primary_segment(uintptr_t, entry_barrier);
 
-    static inline void check_verification(uintptr_t start, uintptr_t end, uintptr_t uptr);
-    inline bool l1_cache_full() const {
-      UPCXX_ASSERT(cache_occupancy_ <= max_level1_cache_size);
-      return cache_occupancy_ == max_level1_cache_size;
+    inline bool cache_full() const {
+      UPCXX_ASSERT(cache_occupancy_ <= max_cache_size);
+      return cache_occupancy_ == max_cache_size;
+    }
+
+    inline bool idx_cache_full() const {
+      UPCXX_ASSERT(idx_cache_occupancy_ <= max_cache_size);
+      return idx_cache_occupancy_ == max_cache_size;
     }
 
     template<typename R, typename... Args>
     static void debug_write_ptr(R(*)(Args...), std::ostream&, int color = 2);
-    static void debug_write_ptr(uintptr_t, std::ostream&, int color = 2);
-    static void debug_write_token(const function_token_ms& token, std::ostream&, int color = 2);
-    static void debug_write_table(std::ostream&, int color = 2, size_t max_namelen = 0, bool print_top = true, size_t found_index = (size_t)-1, bool buffer = true);
+    static void debug_write_ptr(uintptr_t, std::ostream&, int color = 2, const std::string& line_prefix = debug_prefix_string());
+    static void debug_write_token(const function_token_ms& token, std::ostream&, int color = 2, const std::string& line_prefix = debug_prefix_string());
+    static void debug_write_table(std::ostream&, int color = 2, size_t max_namelen = 0, bool print_top = true, size_t found_index = (size_t)-1, const std::string& line_prefix = debug_prefix_string());
+    void debug_write_cache(std::ostream&, const std::string& line_prefix = debug_prefix_string());
     template<typename R, typename... Args>
     static void debug_write_ptr(R(*)(Args...), int fd = 2, int color = 2);
     static void debug_write_ptr(uintptr_t, int fd = 2, int color = 2);
     static void debug_write_token(const function_token_ms& token, int fd = 2, int color = 2);
     static void debug_write_table(int fd = 2, int color = 2);
+    void debug_write_cache(int fd = 2);
     static const char* get_symbol(uintptr_t ptr);
 
     static void verify_segment(uintptr_t, entry_barrier eb);
@@ -332,11 +342,12 @@ namespace detail {
     static inline bool enforce_verification(bool v) noexcept { bool prev = enforce_verification_; enforce_verification_ = v; return prev; }
     static inline bool verification_enforced() noexcept { return enforce_verification_; }
     static bool should_debug_color(int,int);
+
   private:
     static std::recursive_mutex mutex_;
     static segment_info primary_;
     static bool enforce_verification_;
-    static std::unordered_map<uintptr_t,uint16_t> flag_map_;
+    static int16_t verified_segment_count_;
 
     static size_t find_max_namelen();
     typename std::vector<segment_info>::iterator try_inactive(uintptr_t);
@@ -351,10 +362,12 @@ namespace detail {
 
     static void fallback_primary_segment_sentinel();
 
-    static decltype(l2_cache_ptr_) build_cache_ptr();
-    static decltype(l2_cache_tkn_) build_cache_tkn();
-
+    static std::atomic_ullong epoch;
+    unsigned long long cache_epoch_;
     size_t cache_occupancy_;
+    size_t cache_evict_index_;
+    size_t idx_cache_occupancy_;
+    size_t idx_cache_evict_index_;
   };
 }} // namespace upcxx::detail
 

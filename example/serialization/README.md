@@ -37,8 +37,10 @@ description of each example is included below:
    using `UPCXX_SERIALIZED_VALUES` on nested STL and user-defined classes.
 7. [serialize_abstract_base.cpp](serialize_abstract_base.cpp): Demonstrates custom serialization
    on classes with abstract base classes.
+8. [unrolled_list.cpp](unrolled_list.cpp): Illustrates custom serialization for
+   an "unrolled linked list" data structure.
 
-You must have at least UPC++ version 2020.3.0 installed to compile these
+You must have at least UPC++ version 2022.9.0 installed to compile these
 examples. To build all code, make sure to first set the `UPCXX_INSTALL`
 variable. e.g. 
 

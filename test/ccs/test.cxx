@@ -35,11 +35,16 @@ void upcxx_test2()
   UPCXX_ASSERT_ALWAYS(fut2.result() == 2);
   UPCXX_ASSERT_ALWAYS(fut3.result() == 3);
   UPCXX_ASSERT_ALWAYS(fut4.result() == 4);
+  if (printrank)
+    upcxx::experimental::relocation::debug_write_cache();
   print_test_success();
 }
 
 void upcxx_test()
 {
+  // INTERNAL ONLY: Test that we can prefix the debug output if run before init()
+  std::cerr << upcxx::detail::debug_prefix_string() << "Test of pre-init debug prefix" << std::endl;
+
   upcxx::init();
   upcxx_test2();
   upcxx::finalize();

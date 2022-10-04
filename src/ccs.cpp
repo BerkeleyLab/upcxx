@@ -36,12 +36,28 @@
 #include <cxxabi.h>
 #endif
 
+#if UPCXXI_BACKEND_GASNET
+  #include <upcxx/backend/gasnet/runtime_internal.hpp>
+#endif
+
 #define ALIGN_UP(val,align)     (((val) + (align) - 1) & ~((align) -1))
 
 using upcxx::detail::fnv128;
 
 namespace upcxx {
 namespace detail {
+  std::string debug_prefix_string()
+  {
+    if (upcxx::initialized()) {
+      return std::string("[") + std::to_string(rank_me()) + "] ";
+    } else {
+#if UPCXXI_BACKEND_GASNET
+      return std::string("[") + gasnett_gethostname() + ":" + std::to_string(getpid()) + "] ";
+#else
+      return std::string("[") + std::to_string(getpid()) + "] ";
+#endif
+    }
+  }
 
   void write_helper(int fd, const char* buf, size_t size)
   {
@@ -291,14 +307,14 @@ namespace detail {
             segment_info seg{};
             seg.start = info->dlpi_addr + phdr.p_vaddr;
             seg.end = seg.start + phdr.p_memsz;
-#if GASNETT_SPEC_VERSION_MAJOR > 1 || GASNETT_SPEC_VERSION_MINOR >= 19
+         #if UPCXXI_GASNET_TOOLS_SPEC_VERSION >= 119
             if (phdr_num > 0)
               seg.dlpi_name = info->dlpi_name;
             else
               seg.dlpi_name = gasnett_exe_name();
-#else
+         #else
             seg.dlpi_name = info->dlpi_name;
-#endif
+         #endif
             seg.flags = flags;
             seg.segnum = std::numeric_limits<decltype(seg.segnum)>::max();
             if (phdr.p_flags & PF_W || has_textrel || has_build_id)
@@ -381,7 +397,7 @@ namespace detail {
              * might not be a problem. Instead, mark it as a bad segment, allowing the unrelocatable pointer
              * and bad segment address range to be printed together when this fatal situation is encountered.
              */
-            seg.flags |= (uint16_t) segment_flags::bad_segment;
+            seg.flags |= static_cast<flags_type>(segment_flags::bad_segment);
           }
         }
       }
@@ -393,8 +409,8 @@ namespace detail {
       for (size_t j = i+1; j < map.size(); ++j)
       {
         if (map[i].ident == map[j].ident) {
-          map[i].flags |= (uint16_t) segment_flags::bad_segment;
-          map[j].flags |= (uint16_t) segment_flags::bad_segment;
+          map[i].flags |= static_cast<flags_type>(segment_flags::bad_segment);
+          map[j].flags |= static_cast<flags_type>(segment_flags::bad_segment);
         }
       }
     }
@@ -464,9 +480,9 @@ namespace detail {
             intptr_t slide = _dyld_get_image_vmaddr_slide(i);
             uintptr_t lo = sc->vmaddr + slide;
             uintptr_t hi = lo + sc->vmsize;
-            uint16_t flags = 0;
+            flags_type flags = 0;
             if (upcxx_segment)
-              flags |= (uint16_t) segment_flags::upcxx_binary;
+              flags |= static_cast<flags_type>(segment_flags::upcxx_binary);
             if (uuid) {
               map.emplace_back(segment_info{lo, hi, {uuid,j}, {uuid}, static_cast<uint16_t>(j), flags, info->imageFilePath});
             } else {
@@ -488,8 +504,8 @@ namespace detail {
       for (size_t j = i+1; j < map.size(); ++j)
       {
         if (map[i].ident == map[j].ident) {
-          map[i].flags |= (uint16_t) segment_flags::bad_segment;
-          map[j].flags |= (uint16_t) segment_flags::bad_segment;
+          map[i].flags |= static_cast<flags_type>(segment_flags::bad_segment);
+          map[j].flags |= static_cast<flags_type>(segment_flags::bad_segment);
         }
       }
     }
@@ -524,20 +540,19 @@ namespace detail {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     auto newmap = build_segment_map();
-    constexpr uint16_t keepflags = (uint16_t) segment_flags::active |
-                                   (uint16_t) segment_flags::verified |
-                                   (uint16_t) segment_flags::bad_verification;
+    constexpr flags_type keepflags = static_cast<flags_type>(segment_flags::touched) |
+                                     static_cast<flags_type>(segment_flags::verified) |
+                                     static_cast<flags_type>(segment_flags::bad_verification);
     for (auto& nseg : newmap)
     {
       for (const auto& oseg : segmap)
       {
-        if (nseg.ident == oseg.ident)
+        if (nseg.ident == oseg.ident) {
           nseg.flags |= oseg.flags & keepflags;
+          nseg.idx = oseg.idx;
+        }
       }
     }
-    flag_map_.clear();
-    for (const auto& seg : newmap)
-      flag_map_[seg.start] = seg.flags;
     segmap = newmap;
   }
 
@@ -566,7 +581,7 @@ namespace detail {
     return max_namelen;
   }
 
-  inline void debug_symbol_header(uintptr_t uptr, std::ostream& ss, size_t table_width)
+  inline void debug_symbol_header(uintptr_t uptr, std::ostream& ss, size_t table_width, const std::string& line_prefix)
   {
     const char* dli_sname = segmap_cache::get_symbol(uptr);
     if (dli_sname)
@@ -579,7 +594,7 @@ namespace detail {
 #else
       const char* dname = dli_sname;
 #endif
-      ss << "[" << rank_me() << "] | Symbol: " << std::setfill(' ') << std::setw(table_width - 11) << std::left << dname << "|\n";
+      ss << line_prefix << "| Symbol: " << std::setfill(' ') << std::setw(table_width - 11) << std::left << dname << "|\n";
 #if UPCXXI_HAVE___CXA_DEMANGLE
       if (status == 0)
         free((void*)dname);
@@ -587,7 +602,7 @@ namespace detail {
     }
   }
 
-  inline void debug_ptr_header(uintptr_t uptr, std::ostream& ss, size_t table_width, int color)
+  inline void debug_ptr_header(uintptr_t uptr, std::ostream& ss, size_t table_width, int color, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -602,16 +617,17 @@ namespace detail {
         style_start = segmap_cache::bold;
         color_end = segmap_cache::ccolor_end;
       }
-      ss << "[" << rank_me() << "] | Pointer: " << color_start << style_start << std::setfill(' ') << std::setw(table_width-26) << std::left << reinterpret_cast<void*>(uptr) << color_end << "|\n" << std::right;
+      ss << line_prefix << "| Pointer: " << color_start << style_start << std::setfill(' ') << std::setw(table_width-26) << std::left << reinterpret_cast<void*>(uptr) << color_end << "|\n" << std::right;
     }
   }
 
-  inline void debug_table_write_hline(std::ostream& ss, size_t cwidth_name)
+  inline void debug_table_write_hline(std::ostream& ss, size_t cwidth_name, const std::string& line_prefix)
   {
-    ss << "[" << rank_me() << "] |";
+    ss << line_prefix << "|";
     ss << std::setw(cwidth_name+1) << std::right << std::setfill('-') << '|';
     ss << std::setw(segmap_cache::cwidth_hash+1) << '|';
     ss << std::setw(segmap_cache::cwidth_segment+1) << '|';
+    ss << std::setw(segmap_cache::cwidth_idx+1) << '|';
     ss << std::setw(segmap_cache::cwidth_flags+1) << '|';
     ss << std::setw(segmap_cache::cwidth_pointer+1) << '|';
     ss << std::setw(segmap_cache::cwidth_pointer+1) << '|';
@@ -625,7 +641,7 @@ namespace detail {
     write_helper(fd, ss.str().c_str(), ss.str().size());
   }
 
-  void segmap_cache::debug_write_table(std::ostream& ss, int color, size_t max_namelen, bool print_top, size_t found_index, bool buffer)
+  void segmap_cache::debug_write_table(std::ostream& ss, int color, size_t max_namelen, bool print_top, size_t found_index, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -636,36 +652,37 @@ namespace detail {
     if (max_namelen == 0)
       max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
-    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
+    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     if (print_top)
-      ss << "[" << rank_me() << "] " << std::setfill('-') << std::right << std::setw(table_width+1) << '\n';
-    ss << "[" << rank_me() << "] |" << std::setfill(' ') << std::left << std::setw(cwidth_name) << (std::string(" dlpi_name (rank_me: ") + std::to_string(rank_me()) + ")")
+      ss << line_prefix << std::setfill('-') << std::right << std::setw(table_width+1) << '\n';
+    ss << line_prefix << "|" << std::setfill(' ') << std::left << std::setw(cwidth_name) << " dlpi_name "
        << '|' << std::setw(cwidth_hash) << " hash "
        << '|' << std::setw(cwidth_segment) << " segment # "
+       << '|' << std::setw(cwidth_idx) << " index "
        << '|' << std::setw(cwidth_flags) << " flags "
        << '|' << std::setw(cwidth_pointer) << " start_addr "
        << '|' << std::setw(cwidth_pointer) << " end_addr " << "|\n";
-    debug_table_write_hline(ss,cwidth_name);
+    debug_table_write_hline(ss, cwidth_name, line_prefix);
     for (size_t i = 0; i < segmap.size(); ++i)
     {
       const auto& seg = segmap[i];
       if (bcolor) {
         color_start = "";
         style_start = "";
-        if ((segmap[i].flags & (uint16_t) segment_flags::bad_verification)
-            || (enforce_verification_ && !(seg.flags & (uint16_t) segment_flags::verified)))
+        if ((segmap[i].flags & static_cast<flags_type>(segment_flags::bad_verification))
+            || (enforce_verification_ && !(seg.flags & static_cast<flags_type>(segment_flags::verified))))
           color_start = "\033[93m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::bad_segment)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::bad_segment))
           color_start = "\033[91m";
         else if (i == found_index)
           color_start = success_start;
-        else if (segmap[i].flags & (uint16_t) segment_flags::verified)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::verified))
           color_start = "\033[96m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::active)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::touched))
           style_start = "\033[1m";
-        else if (segmap[i].flags & (uint16_t) segment_flags::upcxx_binary)
+        else if (segmap[i].flags & static_cast<flags_type>(segment_flags::upcxx_binary))
           color_start = "\033[94m";
         color_end = ccolor_end;
       }
@@ -673,7 +690,7 @@ namespace detail {
       if (i == found_index)
         mark = '*';
       size_t len = max_namelen - strlen(seg.dlpi_name) + 1;
-      ss << "[" << rank_me() << "] | " << style_start << color_start << mark << ' ' << seg.dlpi_name << std::setw(len) << ' ' << color_end << "| " << style_start << color_start;
+      ss << line_prefix << "| " << style_start << color_start << mark << ' ' << seg.dlpi_name << std::setw(len) << ' ' << color_end << "| " << style_start << color_start;
       ss << std::setfill('0') << std::hex;
       for (size_t j = 0; j < segment_hash::size; ++j)
         ss << std::setw(2) << static_cast<int>(seg.ident.hash[j]);
@@ -682,6 +699,12 @@ namespace detail {
         ss << style_start << color_start << "segment hash" << color_end;
       else
         ss << style_start << color_start << std::setw(cwidth_segment-padding) << seg.segnum << color_end;
+      ss << " | " << style_start << color_start << std::setw(cwidth_idx-padding);
+      if (seg.idx > 0)
+        ss << seg.idx;
+      else
+        ss << ' ';
+      ss << color_end;
       ss << " | " << style_start << color_start << std::setw(cwidth_flags-padding) << seg.flags << color_end;
       ss << std::setfill('0') << std::internal; 
       ss << " | " << style_start << color_start << std::setw(cwidth_pointer-padding) << reinterpret_cast<void*>(seg.start) << color_end;
@@ -689,7 +712,7 @@ namespace detail {
       ss << std::setfill(' ');
       ss << " |\n";
     }
-    ss << "[" << rank_me() << "] " << std::setfill('-') << std::setw(table_width) << '-' << '\n' << std::setfill(' ');
+    ss << line_prefix << std::setfill('-') << std::setw(table_width) << '-' << '\n' << std::setfill(' ');
   }
 
   void segmap_cache::debug_write_ptr(uintptr_t uptr, int fd, int color)
@@ -699,7 +722,7 @@ namespace detail {
     write_helper(fd, ss.str().c_str(), ss.str().size());
   }
 
-  void segmap_cache::debug_write_ptr(uintptr_t uptr, std::ostream& ss, int color)
+  void segmap_cache::debug_write_ptr(uintptr_t uptr, std::ostream& ss, int color, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -720,10 +743,10 @@ namespace detail {
       if (uptr >= seg.start && uptr < seg.end)
       {
         found_index = i;
-        if (seg.flags & (uint16_t) segment_flags::bad_segment) {
+        if (seg.flags & static_cast<flags_type>(segment_flags::bad_segment)) {
           bad_segment = true;
-        } else if ((seg.flags & (uint16_t) segment_flags::bad_verification) ||
-            (enforce_verification_ && !(seg.flags & (uint16_t) segment_flags::verified))) {
+        } else if ((seg.flags & static_cast<flags_type>(segment_flags::bad_verification)) ||
+            (enforce_verification_ && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))) {
           lookup_res = "BAD VERIFICATION";
           bad_verification = true;
         } else {
@@ -744,17 +767,17 @@ namespace detail {
 
     size_t max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
-    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
+    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
 
-    ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
+    ss << line_prefix << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char pointer_desc[] = "Lookup for pointer: ";
     ss << std::setfill(' ');
-    ss << "[" << rank_me() << "] | " << pointer_desc << color_start << style_start << std::setw(cwidth_pointer-padding+2) << std::hex << reinterpret_cast<void*>(uptr) << std::dec << " (" << lookup_res << ")" << color_end;
+    ss << line_prefix << "| " << pointer_desc << color_start << style_start << std::setw(cwidth_pointer-padding+2) << std::hex << reinterpret_cast<void*>(uptr) << std::dec << " (" << lookup_res << ")" << color_end;
     size_t sz = table_width - sizeof(pointer_desc) - cwidth_pointer - 4 /*" () "*/ - strlen(lookup_res) + 1;
     ss << std::setw(sz) << std::setfill(' ') << std::right << "|\n";
-    debug_symbol_header(uptr, ss, table_width);
-    ss << "[" << rank_me() << "] |" << std::setw(table_width) << std::setfill('-') << std::right << "|\n";
-    debug_write_table(ss, bcolor, max_namelen, false, found_index);
+    debug_symbol_header(uptr, ss, table_width, line_prefix);
+    ss << line_prefix << "|" << std::setw(table_width) << std::setfill('-') << std::right << "|\n";
+    debug_write_table(ss, bcolor, max_namelen, false, found_index, line_prefix);
   }
 
   void segmap_cache::debug_write_token(const function_token_ms& token, int fd, int color)
@@ -764,7 +787,7 @@ namespace detail {
     write_helper(fd, ss.str().c_str(), ss.str().size());
   }
 
-  void segmap_cache::debug_write_token(const function_token_ms& token, std::ostream& ss, int color)
+  void segmap_cache::debug_write_token(const function_token_ms& token, std::ostream& ss, int color, const std::string& line_prefix)
   {
     bool bcolor = !!color;
     if (color == 2)
@@ -801,10 +824,10 @@ namespace detail {
 
     size_t max_namelen = find_max_namelen();
     size_t cwidth_name = max_namelen + padding + cwidth_indicator;
-    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_flags+cwidth_pointer*2+cols+1;
-    ss << "[" << rank_me() << "] " << std::setw(table_width+1) << std::setfill('-') << '\n';
+    size_t table_width = cwidth_name+cwidth_hash+cwidth_segment+cwidth_idx+cwidth_flags+cwidth_pointer*2+cols+1;
+    ss << line_prefix << std::setw(table_width+1) << std::setfill('-') << '\n';
     const char token_desc[] = "Lookup for token: ";
-    ss << "[" << rank_me() << "] | " << token_desc << color_start << style_start;
+    ss << line_prefix << "| " << token_desc << color_start << style_start;
     std::stringstream ss2;
     ss2 << '{' << std::setfill('0') << std::hex;
     for (size_t j = 0; j < segment_hash::size; ++j)
@@ -812,16 +835,64 @@ namespace detail {
     ss2 << ", " << token.offset << "} (" << lookup_res << ')' << std::dec;
     ss << std::dec << std::setfill(' ');
     ss << std::left << std::setw(table_width-2-sizeof(token_desc)) << ss2.str() << std::right << color_end << "|\n";
-    debug_symbol_header(uptr, ss, table_width);
-    debug_ptr_header(uptr, ss, table_width, bcolor);
-    ss << "[" << rank_me() << "] |" << std::setfill('-') << std::setw(table_width) << "|\n";
-    debug_write_table(ss, bcolor, max_namelen, false, found_index);
+    debug_symbol_header(uptr, ss, table_width, line_prefix);
+    debug_ptr_header(uptr, ss, table_width, bcolor, line_prefix);
+    ss << line_prefix << "|" << std::setfill('-') << std::setw(table_width) << "|\n";
+    debug_write_table(ss, bcolor, max_namelen, false, found_index, line_prefix);
   }
+
+  void segmap_cache::debug_write_cache(std::ostream& os, const std::string& line_prefix)
+  {
+    constexpr size_t ptr_fields = 3;
+    constexpr size_t tkn_fields = 2;
+    constexpr size_t addr_width = sizeof(uintptr_t)*2+2;
+    constexpr size_t ptr_table_width = ptr_fields+1 + 2*ptr_fields + 2*segment_hash::size + 2*addr_width;
+    constexpr size_t tkn_table_width = tkn_fields+1 + 2*tkn_fields + 2*segment_hash::size + addr_width;
+    os << line_prefix << "Pointer Lookup Cache:\n";
+    os << line_prefix << "-" << std::setfill('-') << std::setw(ptr_table_width) << "-\n";
+    os << line_prefix << "| " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
+    os << std::setw(addr_width+3) << "end | " << std::setw(segment_hash::size*2+2) << "hash |" << '\n';
+    os << line_prefix << "|" << std::setfill('-') << std::setw(addr_width+3) << "|";
+    os << std::setw(addr_width+3) << "|" << std::setw(segment_hash::size*2+3) << "|" << '\n';
+    os << std::setfill(' ');
+    for (const auto& entry : cache_ptr_) {
+      os << line_prefix << "| " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
+      os << std::setw(addr_width) << reinterpret_cast<void*>(entry.end) << " | ";
+      std::stringstream hashstr;
+      hashstr << std::setfill('0') << std::hex;
+      for (size_t j = 0; j < segment_hash::size; ++j)
+        hashstr << std::setw(2) << static_cast<int>(entry.ident[j]);
+      os << std::setw(segment_hash::size*2) << hashstr.str() << " |" << '\n';
+    }
+    os << line_prefix << "-" << std::setfill('-') << std::setw(ptr_table_width) << "-\n" << line_prefix << "\n";
+    os << line_prefix << "Token Lookup Cache:\n";
+    os << line_prefix << "-" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
+    os << line_prefix << "| " << std::setfill(' ') << std::setw(addr_width+3) << "start | ";
+    os << std::setw(segment_hash::size*2+2) << "hash |" << '\n';
+    os << line_prefix << "|" << std::setfill('-') << std::setw(addr_width+3) << "|";
+    os << std::setw(segment_hash::size*2+3) << "|" << '\n';
+    os << std::setfill(' ');
+    for (const auto& entry : cache_tkn_) {
+      os << line_prefix << "| " << std::setw(addr_width) << reinterpret_cast<void*>(entry.start) << " | ";
+      std::stringstream hashstr;
+      hashstr << std::setfill('0') << std::hex;
+      for (size_t j = 0; j < segment_hash::size; ++j)
+        hashstr << std::setw(2) << static_cast<int>(entry.ident[j]);
+      os << std::setw(segment_hash::size*2) << hashstr.str() << " |" << '\n';
+    }
+    os << line_prefix << "-" << std::setfill('-') << std::setw(tkn_table_width) << "-\n";
+  }
+
+  void segmap_cache::debug_write_cache(int fd)
+  {
+    std::stringstream ss;
+    debug_write_cache(ss);
+    write_helper(fd, ss.str().c_str(), ss.str().size());
+  }
+
 
   typename std::vector<segment_info>::iterator segmap_cache::try_inactive(uintptr_t uptr)
   {
-    using std::begin;
-    using std::end;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto& segmap = segment_map();
     auto it = begin(segmap);
@@ -829,7 +900,7 @@ namespace detail {
     {
       if (uptr > it->start && uptr < it->end)
       {
-        if (it->flags & (uint16_t) segment_flags::bad_segment)
+        if (it->flags & static_cast<flags_type>(segment_flags::bad_segment))
         {
           std::stringstream ss;
           ss << "Attempted to activate a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
@@ -844,38 +915,55 @@ namespace detail {
     return it;
   }
 
+  /**
+   * segmap_cache::activate() promotes an entry from the segment map
+   * into the active cache.  It should be used when a sement is found
+   * in the map after a cache miss. `seg` is assumed to not already
+   * be cached.
+   */
   void segmap_cache::activate(segment_info& seg)
   {
-    using std::begin;
-    using std::end;
-    seg.flags |= (uint16_t) segment_flags::active;
-    size_t l1_size = max_level1_cache_size;
-    if (cache_occupancy_ < max_level1_cache_size)
-    {
-      l1_cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
-      l1_cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
-      ++cache_occupancy_;
-      l1_size = cache_occupancy_;
-      std::sort(begin(l1_cache_ptr_), begin(l1_cache_ptr_)+l1_size, [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
+    seg.flags |= static_cast<flags_type>(segment_flags::touched);
+    size_t size = max_cache_size;
+    if (seg.idx > 0) {
+      if (idx_cache_occupancy_ < max_cache_size) {
+        cache_idx_[idx_cache_occupancy_] = segment_lookup_idx{seg.start, seg.end, seg.idx};
+        ++idx_cache_occupancy_;
+      } else {
+        UPCXX_ASSERT(idx_cache_evict_index_ < max_cache_size);
+        cache_idx_[idx_cache_evict_index_] = segment_lookup_idx{seg.start, seg.end, seg.idx};
+        idx_cache_evict_index_ = (idx_cache_evict_index_+1) % max_cache_size;
+      }
+      std::sort(begin(cache_idx_), begin(cache_idx_)+idx_cache_occupancy_, [](const segment_lookup_idx& lhs, const segment_lookup_idx& rhs)
       {
         return lhs.start < rhs.start;
       });
-      std::sort(begin(l1_cache_tkn_), begin(l1_cache_tkn_)+l1_size, [](const segment_lookup_tkn& lhs, const segment_lookup_tkn& rhs)
+    } else {
+      if (cache_occupancy_ < max_cache_size)
+      {
+        cache_ptr_[cache_occupancy_] = segment_lookup_ptr{seg.start, seg.end, seg.ident};
+        cache_tkn_[cache_occupancy_] = segment_lookup_tkn{seg.ident, seg.start};
+        ++cache_occupancy_;
+        size = cache_occupancy_;
+      } else {
+        UPCXX_ASSERT(cache_evict_index_ < max_cache_size);
+        uintptr_t old_start = cache_tkn_[cache_evict_index_].start;
+        auto it = std::upper_bound(begin(cache_ptr_),end(cache_ptr_),old_start,[](uintptr_t p, const segmap_cache::segment_lookup_ptr& seg) {
+          return p <= seg.end;
+        });
+        UPCXX_ASSERT(it->start == old_start);
+        *it = {seg.start, seg.end, seg.ident};
+        cache_tkn_[cache_evict_index_] = {seg.ident, seg.start};
+        cache_evict_index_ = (cache_evict_index_ + 1) % max_cache_size;
+      }
+      std::sort(begin(cache_ptr_), begin(cache_ptr_)+size, [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
+      {
+        return lhs.start < rhs.start;
+      });
+      std::sort(begin(cache_tkn_), begin(cache_tkn_)+size, [](const segment_lookup_tkn& lhs, const segment_lookup_tkn& rhs)
       {
         return lhs.ident < rhs.ident;
       });
-    } else {
-#if UPCXXI_ASSERT_ENABLED
-      static bool emitted_warning = false;
-      if (!emitted_warning)
-      {
-        experimental::say() << "WARNING: Level 1 dynamic linking relocation cache exceeded capacity.\n";
-        emitted_warning = true;
-      }
-#endif
-      /*
-       * L2 cache is rebuilt with rebuild_cache(), as L2 cache is process-wide
-       */
     }
   }
 
@@ -885,7 +973,7 @@ namespace detail {
     auto& segmap = segment_map();
     for (const auto& seg : segmap)
     {
-      if (seg.flags & (uint16_t) segment_flags::upcxx_binary)
+      if (seg.flags & static_cast<flags_type>(segment_flags::upcxx_binary))
         return seg;
     }
     // No upcxx_binary flag found. Fall back to the segment
@@ -911,63 +999,6 @@ namespace detail {
       return {};
   };
 
-  void segmap_cache::set_primary_segment(uintptr_t uptr, upcxx::entry_barrier eb)
-  {
-    backend::quiesce(world(), eb);
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto& segmap = segment_map();
-    for (const auto& seg : segmap)
-    {
-      if (uptr >= seg.start && uptr < seg.end)
-      {
-        primary_ = seg;
-        segment_hash reduced = reduce_all(seg.ident, seghash_reduce).wait();
-        if (reduced == segment_hash{})
-          UPCXXI_FATAL_ERROR("Inconsistent segment hash while attempting to set primary segment.");
-        return;
-      }
-    }
-    UPCXXI_FATAL_ERROR("Unable to set primary UPC++ segment: Supplied pointer not in address range of an executable segment.");
-  }
-
-  void segmap_cache::rebuild_cache()
-  {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    rebuild_segment_map();
-    l2_cache_ptr_ = build_cache_ptr();
-    l2_cache_tkn_ = build_cache_tkn();
-  }
-
-  decltype(segmap_cache::l2_cache_ptr_) segmap_cache::build_cache_ptr()
-  {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto& segmap = segment_map();
-    decltype(segmap_cache::l2_cache_ptr_) ret{};
-
-    for (const auto& seg : segmap)
-      ret.emplace_back(segment_lookup_ptr{seg.start, seg.end, seg.ident});
-
-    using std::begin;
-    using std::end;
-    std::sort(begin(ret), end(ret), [](const segment_lookup_ptr& lhs, const segment_lookup_ptr& rhs)
-    {
-      return lhs.start < rhs.start;
-    });
-    return ret;
-  }
-
-  decltype(segmap_cache::l2_cache_tkn_) segmap_cache::build_cache_tkn()
-  {
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto& segmap = segment_map();
-    decltype(segmap_cache::l2_cache_tkn_) ret;
-
-    for (const auto& seg : segmap)
-      ret[seg.ident] = seg.start;
-
-    return ret;
-  }
-
   void segmap_cache::verify_segment(uintptr_t uptr, entry_barrier eb)
   {
     UPCXXI_ASSERT_INIT();
@@ -976,8 +1007,6 @@ namespace detail {
     UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
     backend::quiesce(world(), eb);
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    using std::begin;
-    using std::end;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     rebuild_segment_map();
     auto& segmap = segment_map();
@@ -986,7 +1015,7 @@ namespace detail {
     {
       if (uptr > it->start && uptr < it->end)
       {
-        if (it->flags & (uint16_t) segment_flags::bad_segment)
+        if (it->flags & static_cast<flags_type>(segment_flags::bad_segment))
         {
           std::stringstream ss;
           ss << "Attempted to use a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
@@ -1005,15 +1034,21 @@ namespace detail {
     segment_hash h{};
     if (it != end(segmap))
       h = it->ident;
-    segment_hash reduced = reduce_all(h, binop).wait();
+    segment_hash reduced = reduce_all(h, binop, world(), operation_cx_as_internal_future_t{{}}).wait();
     if (it != end(segmap)) {
       if (reduced != segment_hash{}) {
-        it->flags |= (uint16_t) segment_flags::verified;
+        if (it->flags & static_cast<flags_type>(segment_flags::verified))
+          return;
+        epoch++;
+        it->set_verified();
+        int16_t idx = verified_segment_count_;
+        it->idx = idx;
+        segment_vector_.push_back({it->start, it->end, idx});
+        verified_segment_count_++;
       } else {
-        it->flags |= (uint16_t) segment_flags::bad_verification;
+        it->set_bad_verification();
         throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
       }
-      flag_map_[it->start] = it->flags;
     } else {
       throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
     }
@@ -1031,12 +1066,12 @@ namespace detail {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     rebuild_segment_map();
     auto& segmap = segment_map();
-    size_t segment_count = broadcast(segmap.size(), 0).wait();
+    size_t segment_count = broadcast(segmap.size(), 0, world(), operation_cx_as_internal_future_t{{}}).wait();
     std::unique_ptr<segment_hash[]> hashlist(new segment_hash[segment_count]);
     if (rank_me() == 0)
       for (std::size_t i = 0; i < segment_count; ++i)
         new (&hashlist[i]) segment_hash(segmap[i].ident);
-    broadcast(hashlist.get(), segment_count, 0).wait();
+    broadcast(hashlist.get(), segment_count, 0, world(), operation_cx_as_internal_future_t{{}}).wait();
 
     std::unique_ptr<bool[]> checklist(new bool[segment_count]());
 
@@ -1049,28 +1084,67 @@ namespace detail {
       }
     }
 
-    reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_mul).wait();
+    reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_bit_and, world(), operation_cx_as_internal_future_t{{}}).wait();
 
     for (std::size_t i = 0; i < segment_count; ++i) {
       for (auto& seg : segmap) {
         if (seg.ident == hashlist[i])
         {
           if (checklist[i])
-            seg.flags |= static_cast<uint16_t>(segment_flags::verified);
+            seg.set_verified();
           else
-            seg.flags |= static_cast<uint16_t>(segment_flags::bad_verification);
+            seg.set_bad_verification();
           break;
         }
       }
     }
 
-    uint16_t found_flags = static_cast<uint16_t>(segment_flags::verified) | static_cast<uint16_t>(segment_flags::bad_verification);
-    flag_map_.clear();
+    constexpr flags_type found_flags = static_cast<flags_type>(segment_flags::verified) | static_cast<flags_type>(segment_flags::bad_verification);
     for (auto& seg : segmap) {
       if (!(seg.flags & found_flags))
-        seg.flags |= static_cast<uint16_t>(segment_flags::bad_verification);
-      flag_map_[seg.start] = seg.flags;
+        seg.set_bad_verification();
+#if UPCXXI_ASSERT_ENABLED
+      if (seg.start == primary().start && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))
+        UPCXXI_FATAL_ERROR("Primary segment verification failed");
+#endif
     }
+
+    struct segment_info_idx {
+      uintptr_t start;
+      uintptr_t end;
+      segment_hash ident;
+    };
+
+    std::vector<segment_info_idx> new_segments;
+    for (const auto& seg : segmap) {
+      if (seg.flags & static_cast<uint16_t>(segment_flags::verified)) {
+        bool found = false;
+        for (const auto& seg2 : segment_vector_) {
+          if (seg.start == seg2.start) {
+            found = true;
+            break;
+          }
+        }
+        if (!found)
+          new_segments.push_back({seg.start, seg.end, seg.ident});
+      }
+    }
+    // Sort ensures each hash gets assigned the same index across all processes, regardless of their position in segmap
+    std::sort(begin(new_segments), end(new_segments), [](const typename decltype(new_segments)::value_type& lhs, const typename decltype(new_segments)::value_type& rhs)
+    {
+      return lhs.ident < rhs.ident;
+    });
+    UPCXX_ASSERT(verified_segment_count_ + new_segments.size() > 0);
+    for (auto& seg : new_segments) {
+      auto idx = verified_segment_count_++;
+      segment_vector_.push_back({seg.start, seg.end, idx});
+      for (auto& seg2 : segmap) {
+        if (seg.start == seg2.start)
+          seg2.idx = idx;
+      }
+    }
+    if (new_segments.size() > 0)
+      epoch++;
 #endif
   }
 
@@ -1109,18 +1183,11 @@ namespace detail {
 
   void segmap_cache::fallback_primary_segment_sentinel() {}
 
-  std::unordered_map<uintptr_t,uint16_t> segmap_cache::flag_map_ = []() {
-    auto& segmap = segmap_cache::segment_map();
-    std::unordered_map<uintptr_t,uint16_t> ret;
-    for (const auto& seg : segmap)
-      ret[seg.start] = seg.flags;
-    return ret;
-  }();
-
   std::recursive_mutex segmap_cache::mutex_{};
   segment_info segmap_cache::primary_ = find_primary_upcxx_segment();
-  std::vector<segmap_cache::segment_lookup_ptr> segmap_cache::l2_cache_ptr_ = segmap_cache::build_cache_ptr();
-  std::unordered_map<segment_hash,uintptr_t> segmap_cache::l2_cache_tkn_ = segmap_cache::build_cache_tkn();
+  decltype(segmap_cache::segment_vector_) segmap_cache::segment_vector_{1};
+  int16_t segmap_cache::verified_segment_count_{1};
+  decltype(segmap_cache::epoch) segmap_cache::epoch{};
 
   bool segmap_cache::enforce_verification_{!!UPCXXI_ASSERT_ENABLED};
   constexpr const char segmap_cache::success_start[];
@@ -1133,13 +1200,14 @@ namespace detail {
   constexpr size_t segmap_cache::cwidth_indicator;
   constexpr size_t segmap_cache::cwidth_hash;
   constexpr size_t segmap_cache::cwidth_segment;
+  constexpr size_t segmap_cache::cwidth_idx;
   constexpr size_t segmap_cache::cwidth_flags;
   constexpr size_t segmap_cache::cwidth_pointer;
   constexpr size_t segmap_cache::cols;
 
-  void function_token_ss::debug_write(int fd, const segmap_cache& cache, int color) const
+  void function_token_ss::debug_write(int fd, int color) const
   {
-    uintptr_t uptr = cache.primary().start + offset;
+    uintptr_t uptr = segmap_cache::primary().start + offset;
     const char* dli_sname = segmap_cache::get_symbol(uptr);
 #if UPCXXI_HAVE___CXA_DEMANGLE
     const char* dname = nullptr;
@@ -1149,9 +1217,9 @@ namespace detail {
 #else
     const char* dname = dli_sname;
 #endif
-    int size = snprintf(nullptr, 0, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", cache.primary().start, cache.primary().end, offset, cache.primary().start, reinterpret_cast<void*>(uptr), dname);
+    int size = snprintf(nullptr, 0, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", segmap_cache::primary().start, segmap_cache::primary().end, offset, segmap_cache::primary().start, reinterpret_cast<void*>(uptr), dname);
     char *buffer = new char[size+1];
-    sprintf(buffer, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", cache.primary().start, cache.primary().end, offset, cache.primary().start, reinterpret_cast<void*>(uptr), dname);
+    sprintf(buffer, "function_token_ss [%" PRIxPTR " - %" PRIxPTR "]: {offset: %" PRIxPTR ", basis: %" PRIxPTR ", pointer: %p, symbol: %s}\n", segmap_cache::primary().start, segmap_cache::primary().end, offset, segmap_cache::primary().start, reinterpret_cast<void*>(uptr), dname);
     write_helper(fd, buffer, size);
     delete[] buffer;
 #if UPCXXI_HAVE___CXA_DEMANGLE
@@ -1167,7 +1235,7 @@ namespace detail {
   void function_token::debug_write(int fd, segmap_cache& cache, int color) const
   {
     if (active == function_token::identifier::single)
-      s.debug_write(fd,cache,color);
+      s.debug_write(fd,color);
     else
       m.debug_write(fd,cache,color);
   }

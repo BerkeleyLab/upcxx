@@ -151,41 +151,29 @@ namespace {
 namespace {
   // we statically allocate the top of the AM handler space, 
   // to improve interoperability with UPCR that uses the bottom
-  #define UPCXXI_NUM_AM_HANDLERS 15
+  #define UPCXXI_NUM_AM_HANDLERS 8
   #define UPCXXI_AM_INDEX_BASE   (256 - UPCXXI_NUM_AM_HANDLERS)
   enum {
     id_am_eager_restricted = UPCXXI_AM_INDEX_BASE,
-    id_am_eager_restricted_ss,
     id_am_eager_master,
-    id_am_eager_master_ss,
     id_am_eager_persona,
-    id_am_eager_persona_ss,
     id_am_bcast_master_eager,
-    id_am_bcast_master_eager_ss,
     id_am_long_master_packed_cmd,
-    id_am_long_master_packed_cmd_ss,
     id_am_long_master_payload_part,
-    id_am_long_master_payload_part_ss,
     id_am_long_master_cmd_part,
-    id_am_long_master_cmd_part_ss,
     id_am_reply_cb,
     _id_am_endpost
   };
   static_assert(UPCXXI_AM_INDEX_BASE >= GEX_AM_INDEX_BASE, "Incorrect UPCXXI_AM_INDEX_BASE");
   static_assert((int)_id_am_endpost - UPCXXI_AM_INDEX_BASE == UPCXXI_NUM_AM_HANDLERS, "Incorrect UPCXXI_NUM_AM_HANDLERS");
     
-  template<typename FunctionToken>
   void am_eager_restricted(gex_Token_t, void *buf, size_t buf_size, gex_AM_Arg_t buf_align);
-  template<typename FunctionToken>
   void am_eager_master(gex_Token_t, void *buf, size_t buf_size, gex_AM_Arg_t buf_align_and_level);
-  template<typename FunctionToken>
   void am_eager_persona(gex_Token_t, void *buf, size_t buf_size, gex_AM_Arg_t buf_align_and_level,
                         gex_AM_Arg_t persona_ptr_lo, gex_AM_Arg_t persona_ptr_hi);
 
-  template<typename FunctionToken>
   void am_bcast_master_eager(gex_Token_t, void *buf, size_t buf_size, gex_AM_Arg_t buf_align_and_level);
 
-  template<typename FunctionToken>
   void am_long_master_packed_cmd(gex_Token_t,
     void *payload, size_t payload_size,
     gex_AM_Arg_t reply_cb_lo, gex_AM_Arg_t reply_cb_hi,
@@ -195,7 +183,6 @@ namespace {
     gex_AM_Arg_t cmd8, gex_AM_Arg_t cmd9, gex_AM_Arg_t cmd10, gex_AM_Arg_t cmd11,
     gex_AM_Arg_t cmd12);
 
-  template<typename FunctionToken>
   void am_long_master_payload_part(gex_Token_t,
     void *payload_part, size_t payload_part_size,
     gex_AM_Arg_t nonce,
@@ -203,7 +190,6 @@ namespace {
     gex_AM_Arg_t cmd_align_level1,
     gex_AM_Arg_t reply_cb_lo, gex_AM_Arg_t reply_cb_hi);
 
-  template<typename FunctionToken>
   void am_long_master_cmd_part(gex_Token_t,
     void *cmd_part, size_t cmd_part_size,
     gex_AM_Arg_t nonce,
@@ -212,23 +198,21 @@ namespace {
     gex_AM_Arg_t cmd_part_offset);
   
   void am_reply_cb(gex_Token_t, gex_AM_Arg_t cb_lo, gex_AM_Arg_t cb_hi);
+  
+  #define AM_ENTRY(name, arg_n) \
+    {id_##name, (void(*)())name, GEX_FLAG_AM_MEDIUM | GEX_FLAG_AM_REQUEST, arg_n, nullptr, #name}
 
-  #define AM_ENTRY_TKN(name, arg_n) \
-    {id_##name, (void(*)())name<detail::function_token>, GEX_FLAG_AM_MEDIUM | GEX_FLAG_AM_REQUEST, arg_n, nullptr, #name}, \
-    {id_##name##_ss, (void(*)())name<detail::function_token_ss>, GEX_FLAG_AM_MEDIUM | GEX_FLAG_AM_REQUEST, arg_n, nullptr, #name "_ss"}
-
-  #define AM_LONG_ENTRY_TKN(name, arg_n) \
-    {id_##name, (void(*)())name<detail::function_token>, GEX_FLAG_AM_LONG | GEX_FLAG_AM_REQUEST, arg_n, nullptr, #name}, \
-    {id_##name##_ss, (void(*)())name<detail::function_token_ss>, GEX_FLAG_AM_LONG | GEX_FLAG_AM_REQUEST, arg_n, nullptr, #name "_ss"}
+  #define AM_LONG_ENTRY(name, arg_n) \
+    {id_##name, (void(*)())name, GEX_FLAG_AM_LONG | GEX_FLAG_AM_REQUEST, arg_n, nullptr, #name}
   
   gex_AM_Entry_t am_table[] = {
-    AM_ENTRY_TKN(am_eager_restricted, 1),
-    AM_ENTRY_TKN(am_eager_master, 1),
-    AM_ENTRY_TKN(am_eager_persona, 3),
-    AM_ENTRY_TKN(am_bcast_master_eager, 1),
-    AM_LONG_ENTRY_TKN(am_long_master_packed_cmd, 16),
-    AM_LONG_ENTRY_TKN(am_long_master_payload_part, 5),
-    AM_ENTRY_TKN(am_long_master_cmd_part, 4),
+    AM_ENTRY(am_eager_restricted, 1),
+    AM_ENTRY(am_eager_master, 1),
+    AM_ENTRY(am_eager_persona, 3),
+    AM_ENTRY(am_bcast_master_eager, 1),
+    AM_LONG_ENTRY(am_long_master_packed_cmd, 16),
+    AM_LONG_ENTRY(am_long_master_payload_part, 5),
+    AM_ENTRY(am_long_master_cmd_part, 4),
     {id_am_reply_cb, (void(*)())am_reply_cb, GEX_FLAG_AM_SHORT | GEX_FLAG_AM_REPLY, 2, nullptr, "id_am_reply_cb"}
   };
 }
@@ -878,8 +862,9 @@ void upcxx::init() {
   init_localheap_tables();
 
   // Automatically verify segments on init() in debug mode
-#if UPCXXI_ASSERT_ENABLED && !UPCXXI_FORCE_LEGACY_RELOCATIONS
-  detail::segmap_cache::verify_all(entry_barrier::none);
+#if !UPCXXI_FORCE_LEGACY_RELOCATIONS
+  if (os_env<bool>("UPCXX_CCS_AUTOVERIFY", true))
+    detail::segmap_cache::verify_all(entry_barrier::none);
 #endif
 
   noise.show();
@@ -1253,62 +1238,23 @@ void backend::quiesce(const team &tm, upcxx::entry_barrier eb) {
       // memory fencing is handled inside gex_Coll_BarrierNB + gex_Event_Test
       //std::atomic_thread_fence(std::memory_order_release);
       
+      UPCXX_ASSERT(!upcxx::in_progress()); // issue #412 / spec issue 169/185
+     
       gex_Event_t e = gex_Coll_BarrierNB( gasnet::handle_of(tm), 0);
 
-      bool const in_progress = upcxx::in_progress();
-      UPCXX_ASSERT(!(eb == entry_barrier::user && in_progress)); // issue #412
-     
-      if (in_progress) {
-        // issue 412: we are already inside (user) progress in the restricted context,
-        // thus user-level progress is a no-op. Ensure GASNet makes internal progress
-        // to complete this quiescence barrier.
-        gex_Event_Wait(e);
-      } else {
-        while(0 != gex_Event_Test(e)) {
+      while(0 != gex_Event_Test(e)) {
           UPCXXI_SPINLOOP_HINT();
           upcxx::progress(
             eb == entry_barrier::internal
               ? progress_level::internal
               : progress_level::user
           );
-        }
       }
       
       //std::atomic_thread_fence(std::memory_order_acquire);
     } break;
   default:
     UPCXXI_FATAL_ERROR("Invalid entry_barrier value = " << (int)eb);
-  }
-}
-
-GASNETT_COLD
-void backend::warn_collective_in_progress(const char *fnname, entry_barrier eb) {
-  UPCXXI_ASSERT_MASTER();
-  UPCXX_ASSERT(upcxx::in_progress());
-
-  static bool warn = os_env<bool>("UPCXX_WARN_COLLECTIVE_IN_PROGRESS", true);
-  if (warn) {
-    if (!upcxx::rank_me()) { // only output from proc0 to avoid spamminess 
-                             // (at a small risk of missing subteam calls that exclude proc0)
-      say("") << std::string(70, '/') << "\n"
-        "WARNING: The following collective UPC++ operation was initiated inside the "
-        "UPC++ restricted context (from a callback running inside user-level progress):\n\n"
-        "   " << fnname << "\n\n"
-        "Initiating a collective from inside progress is a deprecated behavior and may be prohibited in a forthcoming release.\n"
-        "Please contact the UPC++ maintainers at <upcxx@googlegroups.com> if this capability is important to your application!\n"
-        "This warning may be silenced by setting envvar: UPCXX_WARN_COLLECTIVE_IN_PROGRESS=0\n"
-        << std::string(70, '/') << "\n";
-    }
-    warn = false;
-  }
-
-  if (eb == entry_barrier::user) { // issue 412
-    upcxx::detail::fatal_error(
-     "Collective operations with user-level progress semantics are prohibited "
-     "from being initiated inside the restricted context (from a callback already running inside user-level progress).\n"
-     "Please refactor your code and/or request entry_barrier::internal or entry_barrier::none "
-     "(where available).", 
-     "User-progress collective initiated inside progress", fnname);
   }
 }
 
@@ -1567,29 +1513,8 @@ void *gasnet::prepare_npam_medium(
   return buf;
 }
 
-#define UPCXXI_MAKE_AM_IDS(name)       \
-template<typename FunctionToken>       \
-struct name ## _id;                    \
-                                       \
-template<>                             \
-struct name ##_id<detail::function_token>      \
-  : std::integral_constant<decltype(id_ ## name), id_ ## name> \
-{};                                    \
-                                       \
-template<>                             \
-struct name ## _id<detail::function_token_ss>  \
-  : std::integral_constant<decltype(id_ ## name ## _ss), id_ ## name ## _ss> \
-{};
 
-UPCXXI_MAKE_AM_IDS(am_eager_restricted);
-UPCXXI_MAKE_AM_IDS(am_eager_master);
-UPCXXI_MAKE_AM_IDS(am_eager_persona);
-UPCXXI_MAKE_AM_IDS(am_bcast_master_eager);
-UPCXXI_MAKE_AM_IDS(am_long_master_packed_cmd);
-UPCXXI_MAKE_AM_IDS(am_long_master_payload_part);
-UPCXXI_MAKE_AM_IDS(am_long_master_cmd_part);
 
-template<typename FunctionToken>
 void gasnet::send_am_eager_restricted(
     intrank_t recipient,
     void *buf,
@@ -1601,13 +1526,13 @@ void gasnet::send_am_eager_restricted(
   if (npam_nonce) {
     gex_AM_CommitRequestMedium1(
       reinterpret_cast<gex_AM_SrcDesc_t>(npam_nonce),
-      am_eager_restricted_id<FunctionToken>::value, buf_size,
+      id_am_eager_restricted, buf_size,
       buf_align
     );
   } else { // FPAM
     gex_AM_RequestMedium1(
       world_tm, recipient,
-      am_eager_restricted_id<FunctionToken>::value, buf, buf_size,
+      id_am_eager_restricted, buf, buf_size,
       GEX_EVENT_NOW, /*flags*/0,
       buf_align
     );
@@ -1616,23 +1541,6 @@ void gasnet::send_am_eager_restricted(
   after_gasnet();
 }
 
-template
-void gasnet::send_am_eager_restricted<detail::function_token>(
-    intrank_t recipient,
-    void *buf,
-    std::size_t buf_size,
-    std::size_t buf_align,
-    std::uintptr_t npam_nonce);
-
-template
-void gasnet::send_am_eager_restricted<detail::function_token_ss>(
-    intrank_t recipient,
-    void *buf,
-    std::size_t buf_size,
-    std::size_t buf_align,
-    std::uintptr_t npam_nonce);
-
-template<typename FunctionToken>
 void gasnet::send_am_eager_master(
     progress_level level,
     intrank_t recipient,
@@ -1646,13 +1554,13 @@ void gasnet::send_am_eager_master(
   if (npam_nonce) {
     gex_AM_CommitRequestMedium1(
       reinterpret_cast<gex_AM_SrcDesc_t>(npam_nonce),
-      am_eager_master_id<FunctionToken>::value, buf_size,
+      id_am_eager_master, buf_size,
       a0
     );
   } else { // FPAM
     gex_AM_RequestMedium1(
       world_tm, recipient,
-      am_eager_master_id<FunctionToken>::value, buf, buf_size,
+      id_am_eager_master, buf, buf_size,
       GEX_EVENT_NOW, /*flags*/0,
       a0
     );
@@ -1661,25 +1569,6 @@ void gasnet::send_am_eager_master(
   after_gasnet();
 }
 
-template
-void gasnet::send_am_eager_master<detail::function_token>(
-    progress_level level,
-    intrank_t recipient,
-    void *buf,
-    std::size_t buf_size,
-    std::size_t buf_align,
-    std::uintptr_t npam_nonce);
-
-template
-void gasnet::send_am_eager_master<detail::function_token_ss>(
-    progress_level level,
-    intrank_t recipient,
-    void *buf,
-    std::size_t buf_size,
-    std::size_t buf_align,
-    std::uintptr_t npam_nonce);
-
-template<typename FunctionToken>
 void gasnet::send_am_eager_persona(
     progress_level level,
     intrank_t recipient_rank,
@@ -1696,13 +1585,13 @@ void gasnet::send_am_eager_persona(
   if (npam_nonce) {
     gex_AM_CommitRequestMedium3(
       reinterpret_cast<gex_AM_SrcDesc_t>(npam_nonce),
-      am_eager_persona_id<FunctionToken>::value, buf_size,
+      id_am_eager_persona, buf_size,
       a0, a1, a2
     );
   } else { // FPAM
     gex_AM_RequestMedium3(
       world_tm, recipient_rank,
-      am_eager_persona_id<FunctionToken>::value, buf, buf_size,
+      id_am_eager_persona, buf, buf_size,
       GEX_EVENT_NOW, /*flags*/0,
       a0, a1, a2
     );
@@ -1710,26 +1599,6 @@ void gasnet::send_am_eager_persona(
   
   after_gasnet();
 }
-
-template
-void gasnet::send_am_eager_persona<detail::function_token>(
-    progress_level level,
-    intrank_t recipient_rank,
-    persona *recipient_persona,
-    void *buf,
-    std::size_t buf_size,
-    std::size_t buf_align,
-    std::uintptr_t npam_nonce);
-
-template
-void gasnet::send_am_eager_persona<detail::function_token_ss>(
-    progress_level level,
-    intrank_t recipient_rank,
-    persona *recipient_persona,
-    void *buf,
-    std::size_t buf_size,
-    std::size_t buf_align,
-    std::uintptr_t npam_nonce);
 
 namespace {
   template<typename Fn>
@@ -1757,7 +1626,6 @@ namespace {
   }
 }
 
-template<typename FunctionToken>
 void gasnet::send_am_rdzv(
     progress_level level,
     intrank_t rank_d,
@@ -1769,7 +1637,7 @@ void gasnet::send_am_rdzv(
   
   intrank_t rank_s = backend::rank_me;
   
-  backend::send_am_persona<progress_level::internal, detail::function_token_ss>(
+  backend::send_am_persona<progress_level::internal>(
     rank_d, persona_d,
     [=]() {
       if(backend::rank_is_local(rank_s)) {
@@ -1777,7 +1645,7 @@ void gasnet::send_am_rdzv(
         
         rpc_as_lpc *m = new rpc_as_lpc;
         m->payload = payload;
-        m->the_vtbl.execute_and_delete = command<FunctionToken, detail::lpc_base*>::get_executor(rpc_as_lpc::reader_of(m));
+        m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(rpc_as_lpc::reader_of(m));
         m->vtbl = &m->the_vtbl;
         m->is_rdzv = true;
         m->rdzv_rank_s = rank_s;
@@ -1797,11 +1665,11 @@ void gasnet::send_am_rdzv(
             auto &tls = detail::the_persona_tls;
             int rank_s = m->rdzv_rank_s;
             
-            m->the_vtbl.execute_and_delete = command<FunctionToken, detail::lpc_base*>::get_executor(rpc_as_lpc::reader_of(m));
+            m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(rpc_as_lpc::reader_of(m));
             tls.enqueue(*tls.get_top_persona(), level, m, /*known_active=*/std::true_type());
             
             // Notify source rank it can free buffer.
-            gasnet::send_am_restricted<detail::function_token_ss>( rank_s,
+            gasnet::send_am_restricted( rank_s,
               [=]() { gasnet::deallocate(buf_s, &gasnet::sheap_footprint_rdzv); }
             );
           }
@@ -1811,25 +1679,7 @@ void gasnet::send_am_rdzv(
   );
 }
 
-template
-void gasnet::send_am_rdzv<detail::function_token>(
-    progress_level level,
-    intrank_t recipient_jobrank,
-    persona *recipient_persona, // nullptr == master, or, if low-bit set then this is a persona** to be dereferenced remotely
-    void *buf_s,
-    size_t cmd_size,
-    size_t cmd_align);
-
-template
-void gasnet::send_am_rdzv<detail::function_token_ss>(
-    progress_level level,
-    intrank_t recipient_jobrank,
-    persona *recipient_persona, // nullptr == master, or, if low-bit set then this is a persona** to be dereferenced remotely
-    void *buf_s,
-    size_t cmd_size,
-    size_t cmd_align);
-
-template<typename FunctionToken>
+GASNETT_COLD
 void gasnet::bcast_am_master_eager(
     progress_level level,
     const upcxx::team &tm,
@@ -1860,7 +1710,7 @@ void gasnet::bcast_am_master_eager(
     payload->eager_subrank_ub = sub_ub;
     gex_AM_RequestMedium1(
       tm_gex, sub_lb,
-      am_bcast_master_eager_id<FunctionToken>::value, payload, cmd_size,
+      id_am_bcast_master_eager, payload, cmd_size,
       GEX_EVENT_NOW, /*flags*/0,
       cmd_align<<1 | (level == progress_level::user ? 1 : 0)
     );
@@ -1871,25 +1721,7 @@ void gasnet::bcast_am_master_eager(
   gasnet::after_gasnet();
 }
 
-template
 GASNETT_COLD
-void gasnet::bcast_am_master_eager<detail::function_token>(
-    progress_level level,
-    const upcxx::team &tm,
-    intrank_t rank_d_ub, // in range [0, 2*rank_n-1)
-    bcast_payload_header *payload,
-    size_t cmd_size, size_t cmd_align);
-
-template
-GASNETT_COLD
-void gasnet::bcast_am_master_eager<detail::function_token_ss>(
-    progress_level level,
-    const upcxx::team &tm,
-    intrank_t rank_d_ub, // in range [0, 2*rank_n-1)
-    bcast_payload_header *payload,
-    size_t cmd_size, size_t cmd_align);
-
-template<typename FunctionToken>
 void gasnet::bcast_am_master_rdzv(
     progress_level level,
     const upcxx::team &tm,
@@ -1957,7 +1789,7 @@ void gasnet::bcast_am_master_rdzv(
     intrank_t sub_lb = rank_d_mid - translate;
     intrank_t sub_ub = rank_d_ub - translate;
     
-    backend::send_am_master<progress_level::internal, detail::function_token_ss>(
+    backend::send_am_master<progress_level::internal>(
       backend::team_rank_to_world(tm, sub_lb),
       [=]() {
         if(backend::rank_is_local(wrank_sender)) {
@@ -1970,14 +1802,14 @@ void gasnet::bcast_am_master_rdzv(
           r.unplace(detail::storage_size_of<bcast_payload_header>());
           
           bcast_as_lpc *m = new bcast_as_lpc;
-          m->the_vtbl.execute_and_delete = command<FunctionToken, detail::lpc_base*>::get_executor(r);
+          m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(r);
           m->payload = payload_target;
           m->vtbl = &m->the_vtbl;
           m->is_rdzv = true;
           m->rdzv_rank_s = wrank_owner;
           m->rdzv_rank_s_local = true;
 
-          bcast_am_master_rdzv<FunctionToken>(
+          bcast_am_master_rdzv(
               level, payload_target->tm_id.here(), sub_ub,
               wrank_owner, payload_owner, payload_target,
               cmd_size, cmd_align
@@ -2002,10 +1834,10 @@ void gasnet::bcast_am_master_rdzv(
               {
                 detail::serialization_reader r(payload_here);
                 r.unplace(detail::storage_size_of<bcast_payload_header>());
-                m->the_vtbl.execute_and_delete = command<FunctionToken, detail::lpc_base*>::get_executor(r);
+                m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(r);
               }
               
-              bcast_am_master_rdzv<FunctionToken>(
+              bcast_am_master_rdzv(
                   level, payload_here->tm_id.here(), sub_ub,
                   backend::rank_me, payload_here, payload_here,
                   cmd_size, cmd_align
@@ -2015,7 +1847,7 @@ void gasnet::bcast_am_master_rdzv(
               tls.enqueue(*tls.get_top_persona(), level, m, /*known_active=*/std::true_type());
               
               // Notify source rank it can free buffer.
-              send_am_restricted<detail::function_token_ss>( wrank_owner,
+              send_am_restricted( wrank_owner,
                 [=]() {
                   if(0 == -1 + payload_owner->rdzv_refs.fetch_add(-1, std::memory_order_acq_rel))
                     gasnet::deallocate(payload_owner, &gasnet::sheap_footprint_rdzv);
@@ -2031,71 +1863,54 @@ void gasnet::bcast_am_master_rdzv(
   }
 }
 
-template
-GASNETT_COLD
-void gasnet::bcast_am_master_rdzv<detail::function_token>(
-    progress_level level,
-    const upcxx::team &tm,
-    intrank_t rank_d_ub, // in range [0, 2*rank_n-1)
-    intrank_t wrank_owner, // self or a local peer (in world)
-    bcast_payload_header *payload_owner, // in owner address space
-    bcast_payload_header *payload_sender, // in my address space
-    size_t cmd_size,
-    size_t cmd_align);
-
-template
-GASNETT_COLD
-void gasnet::bcast_am_master_rdzv<detail::function_token_ss>(
-    progress_level level,
-    const upcxx::team &tm,
-    intrank_t rank_d_ub, // in range [0, 2*rank_n-1)
-    intrank_t wrank_owner, // self or a local peer (in world)
-    bcast_payload_header *payload_owner, // in owner address space
-    bcast_payload_header *payload_sender, // in my address space
-    size_t cmd_size,
-    size_t cmd_align);
-
 namespace upcxx {
 namespace backend {
 namespace gasnet {
-  template<typename FunctionToken, bool restricted>
-  void rpc_as_lpc::cleanup_maybe_rdzv(detail::lpc_base *me1) {
-    rpc_as_lpc *me = static_cast<rpc_as_lpc*>(me1);
-
-    if(!me->is_rdzv) {
-      if(!restricted) std::free(me->payload);
-    }
-    else {
-      if(me->rdzv_rank_s_local) {
-        // Notify source rank it can free buffer.
-        void *buf_s = reinterpret_cast<void*>(
-            backend::globalize_memory_nonnull(me->rdzv_rank_s, me->payload)
-          );
-
-        send_am_restricted<detail::function_token_ss>( me->rdzv_rank_s,
-          [=]() { gasnet::deallocate(buf_s, &gasnet::sheap_footprint_rdzv); }
-        );
-
-        delete me;
+  namespace {
+    template<bool restricted>
+    void cleanup_rpc_as_lpc_maybe_rdzv(detail::lpc_base *me1) {
+      rpc_as_lpc *me = static_cast<rpc_as_lpc*>(me1);
+      
+      if(!me->is_rdzv) {
+        if(!restricted) std::free(me->payload);
       }
       else {
-        // rpc_as_lpc::build_rdzv_lz(use_sheap=false, ...)
-        UPCXX_ASSERT(!( // should not be in segment
-          shared_heap_base <= me->payload &&
-          (char*)me->payload < (char*)shared_heap_base + shared_heap_sz
-        ));
-        std::free(me->payload);
+        if(me->rdzv_rank_s_local) {
+          // Notify source rank it can free buffer.
+          void *buf_s = reinterpret_cast<void*>(
+              backend::globalize_memory_nonnull(me->rdzv_rank_s, me->payload)
+            );
+           
+          send_am_restricted( me->rdzv_rank_s,
+            [=]() { gasnet::deallocate(buf_s, &gasnet::sheap_footprint_rdzv); }
+          );
+          
+          delete me;
+        }
+        else {
+          // rpc_as_lpc::build_rdzv_lz(use_sheap=false, ...)
+          UPCXX_ASSERT(!( // should not be in segment
+            shared_heap_base <= me->payload &&
+            (char*)me->payload < (char*)shared_heap_base + shared_heap_sz
+          ));
+          std::free(me->payload); 
+        }
       }
     }
   }
-
-  template void rpc_as_lpc::cleanup_maybe_rdzv<detail::function_token, true>(detail::lpc_base *me1);
-  template void rpc_as_lpc::cleanup_maybe_rdzv<detail::function_token, false>(detail::lpc_base *me1);
-  template void rpc_as_lpc::cleanup_maybe_rdzv<detail::function_token_ss, true>(detail::lpc_base *me1);
-  template void rpc_as_lpc::cleanup_maybe_rdzv<detail::function_token_ss, false>(detail::lpc_base *me1);
   
-  template<typename FunctionToken>
-  void bcast_as_lpc::cleanup_maybe_rdzv(detail::lpc_base *me1) {
+  template<>
+  void rpc_as_lpc::cleanup</*never_rdzv=*/false, /*restricted=*/false>(detail::lpc_base *me) {
+    cleanup_rpc_as_lpc_maybe_rdzv<false>(me);
+  }
+  
+  template<>
+  void rpc_as_lpc::cleanup</*never_rdzv=*/false, /*restricted=*/true>(detail::lpc_base *me) {
+    cleanup_rpc_as_lpc_maybe_rdzv<true>(me);
+  }
+  
+  template<>
+  void bcast_as_lpc::cleanup</*never_rdzv=*/false>(detail::lpc_base *me1) {
     bcast_as_lpc *me = static_cast<bcast_as_lpc*>(me1);
     
     if(!me->is_rdzv) {
@@ -2113,7 +1928,7 @@ namespace gasnet {
               backend::globalize_memory_nonnull(me->rdzv_rank_s, hdr)
             );
           
-          send_am_restricted<detail::function_token_ss>( me->rdzv_rank_s,
+          send_am_restricted( me->rdzv_rank_s,
             [=]() { gasnet::deallocate(buf_s, &gasnet::sheap_footprint_rdzv); }
           );
         }
@@ -2132,14 +1947,9 @@ namespace gasnet {
       }
     }
   }
-
-  template void bcast_as_lpc::cleanup_maybe_rdzv<detail::function_token>(detail::lpc_base*);
-
-  template void bcast_as_lpc::cleanup_maybe_rdzv<detail::function_token_ss>(detail::lpc_base*);
-
 }}}
 
-template<typename FunctionToken, typename RpcAsLpc>
+template<typename RpcAsLpc>
 RpcAsLpc* rpc_as_lpc::build_eager(
     void *cmd_buf,
     std::size_t cmd_size,
@@ -2168,7 +1978,7 @@ RpcAsLpc* rpc_as_lpc::build_eager(
   m->is_rdzv = false;
   
   if(cmd_buf != nullptr)
-    m->the_vtbl.execute_and_delete = command<FunctionToken, detail::lpc_base*>::get_executor(RpcAsLpc::reader_of(m));
+    m->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(RpcAsLpc::reader_of(m));
   
   return m;
 }
@@ -2359,7 +2169,6 @@ void upcxx::detail::progress_internal() {
 // anonymous namespace
 
 namespace {
-  template<typename FunctionToken>
   void am_eager_restricted(
       gex_Token_t,
       void *buf, size_t buf_size,
@@ -2377,13 +2186,12 @@ namespace {
     gasnet::rpc_as_lpc dummy;
     dummy.payload = tmp;
     dummy.is_rdzv = false;
-    detail::command<FunctionToken, detail::lpc_base*>::get_executor(detail::serialization_reader(tmp))(&dummy);
+    command<detail::lpc_base*>::get_executor(detail::serialization_reader(tmp))(&dummy);
 
     if(tmp != buf)
       std::free(tmp);
   }
   
-  template<typename FunctionToken>
   void am_eager_master(
       gex_Token_t,
       void *buf, size_t buf_size,
@@ -2395,7 +2203,7 @@ namespace {
     size_t buf_align = buf_align_and_level>>1;
     bool level_user = buf_align_and_level & 1;
     
-    rpc_as_lpc *m = rpc_as_lpc::build_eager<FunctionToken>(buf, buf_size, buf_align);
+    rpc_as_lpc *m = rpc_as_lpc::build_eager(buf, buf_size, buf_align);
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
@@ -2407,7 +2215,6 @@ namespace {
     );
   }
   
-  template<typename FunctionToken>
   void am_eager_persona(
       gex_Token_t,
       void *buf, size_t buf_size,
@@ -2429,7 +2236,7 @@ namespace {
     
     per = per == nullptr ? &backend::master : per; 
     
-    rpc_as_lpc *m = rpc_as_lpc::build_eager<FunctionToken>(buf, buf_size, buf_align);
+    rpc_as_lpc *m = rpc_as_lpc::build_eager(buf, buf_size, buf_align);
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
@@ -2441,7 +2248,6 @@ namespace {
     );
   }
   
-  template<typename FunctionToken>
   void am_bcast_master_eager(
       gex_Token_t,
       void *buf, size_t buf_size,
@@ -2453,7 +2259,7 @@ namespace {
     bool level_user = buf_align_and_level & 1;
     progress_level level = level_user ? progress_level::user : progress_level::internal;
     
-    bcast_as_lpc *m = rpc_as_lpc::build_eager<FunctionToken, bcast_as_lpc>(buf, buf_size, buf_align);
+    bcast_as_lpc *m = rpc_as_lpc::build_eager<bcast_as_lpc>(buf, buf_size, buf_align);
     m->eager_refs = 2;
     
     detail::persona_tls &tls = detail::the_persona_tls;
@@ -2466,7 +2272,7 @@ namespace {
       [=]() {
         bcast_payload_header *payload = (bcast_payload_header*)m->payload;
         
-        gasnet::bcast_am_master_eager<FunctionToken>(level, payload->tm_id.here(), payload->eager_subrank_ub, payload, buf_size, buf_align);
+        gasnet::bcast_am_master_eager(level, payload->tm_id.here(), payload->eager_subrank_ub, payload, buf_size, buf_align);
         
         if(0 == --m->eager_refs)
           std::free(m->payload);
@@ -2485,7 +2291,7 @@ namespace {
   par_atomic<std::uint32_t> rma_put_then_am_nonce_bumper(0);
 }
 
-template<gasnet::rma_put_then_am_sync sync_lb, bool packed_protocol, typename FunctionToken>
+template<gasnet::rma_put_then_am_sync sync_lb, bool packed_protocol>
 gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
     intrank_t rank_d,
     void *buf_d, void const *buf_s, std::size_t buf_size,
@@ -2532,7 +2338,7 @@ gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
     
     gex_AM_RequestLong16(
       world_tm, rank_d,
-      am_long_master_packed_cmd_id<FunctionToken>::value,
+      id_am_long_master_packed_cmd,
       const_cast<void*>(buf_s), buf_size, buf_d,
       src_ph,
       /*flags*/0,
@@ -2555,7 +2361,7 @@ gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
     
     (void)gex_AM_RequestLong5(
       world_tm, rank_d,
-      am_long_master_payload_part_id<FunctionToken>::value,
+      id_am_long_master_payload_part,
       const_cast<void*>(buf_s), buf_size, buf_d,
       src_ph,
       /*flags*/0,
@@ -2573,7 +2379,7 @@ gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
       
       (void)gex_AM_RequestMedium4(
         world_tm, rank_d,
-        am_long_master_cmd_part_id<FunctionToken>::value,
+        id_am_long_master_cmd_part,
         (char*)am_cmd + part_offset, part_size,
         GEX_EVENT_NOW,
         /*flags*/0,
@@ -2596,32 +2402,26 @@ gasnet::rma_put_then_am_sync gasnet::rma_put_then_am_master_protocol(
 }
 
 // instantiate all cases of rma_put_then_am_master_protocol
-#define INSTANTIATE2(sync_lb, packed_protocol, fntkn) \
+#define INSTANTIATE(sync_lb, packed_protocol) \
   template \
   gasnet::rma_put_then_am_sync \
-  gasnet::rma_put_then_am_master_protocol<sync_lb, packed_protocol, fntkn>( \
+  gasnet::rma_put_then_am_master_protocol<sync_lb, packed_protocol>( \
       intrank_t rank_d, \
       void *buf_d, void const *buf_s, std::size_t buf_size, \
       progress_level am_level, void *am_cmd, std::size_t am_size, std::size_t am_align, \
       gasnet::handle_cb *src_cb, \
       gasnet::reply_cb *rem_cb \
     );
-#define INSTANTIATE1(sync_lb, packed_protocol) \
-INSTANTIATE2(sync_lb, packed_protocol, detail::function_token) \
-INSTANTIATE2(sync_lb, packed_protocol, detail::function_token_ss)
-#define INSTANTIATE(sync_lb) \
-INSTANTIATE1(sync_lb, true) \
-INSTANTIATE1(sync_lb, false)
 
-INSTANTIATE(gasnet::rma_put_then_am_sync::src_now)
-INSTANTIATE(gasnet::rma_put_then_am_sync::src_cb)
-INSTANTIATE(gasnet::rma_put_then_am_sync::src_ignore)
-#undef INSTANTIATE2
-#undef INSTANTIATE1
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_now, true)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_now, false)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_cb, true)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_cb, false)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_ignore, true)
+INSTANTIATE(gasnet::rma_put_then_am_sync::src_ignore, false)
 #undef INSTANTIATE
 
 namespace {
-  template<typename FunctionToken>
   void am_long_master_packed_cmd(
       gex_Token_t token,
       void *payload, size_t payload_size,
@@ -2638,7 +2438,7 @@ namespace {
     bool level_user = cmd_size_align15_level1 & 1;
     
     gex_AM_Arg_t buf[13] = {a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12};
-    rpc_as_lpc *m = rpc_as_lpc::build_eager<FunctionToken>((void*)buf, cmd_size, cmd_align);
+    rpc_as_lpc *m = rpc_as_lpc::build_eager((void*)buf, cmd_size, cmd_align);
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
@@ -2661,7 +2461,6 @@ namespace {
   par_mutex am_long_reassembly_lock;
   std::unordered_map<std::uint64_t, am_long_reassembly_state*> am_long_reassembly_table;
   
-  template<typename FunctionToken>
   void am_long_master_payload_part(
       gex_Token_t token,
       void *payload_part, size_t payload_part_size,
@@ -2686,7 +2485,7 @@ namespace {
     {
       auto got = am_long_reassembly_table.insert({key, nullptr});
       if(got.second) {
-        st = rpc_as_lpc::build_eager<FunctionToken, am_long_reassembly_state>(nullptr, cmd_size, cmd_align);
+        st = rpc_as_lpc::build_eager<am_long_reassembly_state>(nullptr, cmd_size, cmd_align);
         got.first->second = st;
       }
       else
@@ -2720,7 +2519,6 @@ namespace {
     }
   }
 
-  template<typename FunctionToken>
   void am_long_master_cmd_part(
       gex_Token_t token,
       void *cmd_part, size_t cmd_part_size,
@@ -2746,7 +2544,7 @@ namespace {
     {
       auto got = am_long_reassembly_table.insert({key, nullptr});
       if(got.second) {
-        st = rpc_as_lpc::build_eager<FunctionToken, am_long_reassembly_state>(nullptr, cmd_size, cmd_align);
+        st = rpc_as_lpc::build_eager<am_long_reassembly_state>(nullptr, cmd_size, cmd_align);
         got.first->second = st;
       }
       else
@@ -2762,7 +2560,7 @@ namespace {
     std::memcpy((char*)st->payload + cmd_part_offset, cmd_part, cmd_part_size);
 
     if(cmd_part_offset == 0)
-      st->the_vtbl.execute_and_delete = command<FunctionToken, detail::lpc_base*>::get_executor(am_long_reassembly_state::reader_of(st));
+      st->the_vtbl.execute_and_delete = command<detail::lpc_base*>::get_executor(am_long_reassembly_state::reader_of(st));
     
     int credits_after = cmd_part_size + st->credits.fetch_add(cmd_part_size, std::memory_order_acq_rel);
 

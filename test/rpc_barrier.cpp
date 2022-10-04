@@ -1,5 +1,6 @@
 #include <fstream>
 #include <cstdint>
+#include <cstdlib>
 #include <deque>
 
 #include <upcxx/upcxx.hpp>
@@ -11,8 +12,7 @@ using namespace std;
 
 // Barrier state bitmasks.
 uint64_t state_bits[2] = {0, 0};
-
-size_t payload_limit = size_t(-1); // unlimited
+size_t payload_limit;
 
 struct barrier_action {
   int epoch;
@@ -25,12 +25,9 @@ struct barrier_action {
   barrier_action(int epoch, intrank_t round):
     epoch{epoch},
     round{round},
-    extra(
-      std::min(payload_limit,
-       backend::gasnet::am_size_rdzv_cutover - 128 +
-        (0x9e3779b9u*uint32_t(100*epoch + round) >> (32-8))
-      ),
-      std::deque<char>(1,'x')
+    extra( 
+        (0x9e3779b9u*uint32_t(100*epoch + round)) % payload_limit,
+        std::deque<char>(1,'x')
     ) {
   }
   
@@ -44,6 +41,11 @@ struct barrier_action {
   }
 };
 
+// This is a correct but NON-PERFORMANT implementation of barrier using RPC
+// Applications should call upcxx::barrier() or upcxx::barrier_async() instead.
+// This code is a test of RPC correctness and not tuned for performance
+// (for example, the messages deliberately carry large/complex payloads for
+//  the purpose of validating the correctness of payload delivery).
 void rpc_barrier() {
   intrank_t rank_n = upcxx::rank_n();
   intrank_t rank_me = upcxx::rank_me();
@@ -84,7 +86,7 @@ void rpc_barrier() {
 
 bool got_right = false, got_left = false;
 
-int main() {
+int main(int argc, char **argv) {
   upcxx::init();
 
   print_test_header();
@@ -92,14 +94,15 @@ int main() {
   intrank_t rank_me = upcxx::rank_me();
   intrank_t rank_n = upcxx::rank_n();
 
-  if (os_env<bool>("UPCXX_OVERSUBSCRIBED",false)) payload_limit = 256;
+  payload_limit = 8192;
+  if (argc > 1) payload_limit = atoi(argv[1]);
+  else if (os_env<bool>("UPCXX_OVERSUBSCRIBED",false)) payload_limit = 256;
   
   for(int i=0; i < 10; i++) {
     rpc_barrier();
     
     if(i % rank_n == rank_me) {
-      cout << "Barrier "<<i<<"\n";
-      cout.flush();
+      say() << "Barrier "<<i;
     }
   }
   
@@ -113,8 +116,7 @@ int main() {
       right,
       source_cx::as_future() | operation_cx::as_future(),
       []() {
-        cout << upcxx::rank_me() << ": from left\n";
-        cout.flush();
+        say() << "from left";
         got_left = true;
         return 0xbeef;
       }
@@ -129,19 +131,13 @@ int main() {
   UPCXX_ASSERT_ALWAYS(got_left, "no left found before barrier");
   UPCXX_ASSERT_ALWAYS(!got_right, "right found before barrier");
   
-  if(rank_me == 0) {
-    cout << "Eyeball me! No 'rights' before this message, no 'lefts' after.\n";
-    cout.flush();
-  }
-
   got_left = false;
   
   rpc_barrier();
   
   {
     future<int> fut = upcxx::rpc(left, [=]() {
-      cout << upcxx::rank_me() << ": from right\n";
-      cout.flush();
+      say() << "from right";
       got_right = true;
       return rank_me;
     });

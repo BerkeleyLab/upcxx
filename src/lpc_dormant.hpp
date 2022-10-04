@@ -156,9 +156,9 @@ namespace upcxx {
     struct deserialized_raw_tuple {
       serialization_reader &r;
       template<typename ...U>
-      void read_into_tuple(std::tuple<U...> &dst) {
+      void read_into_raw_tuple(std::tuple<U...> *dst) {
         serialization_reader tmp{r};
-        tmp.read_into<std::tuple<T...>>(&dst);
+        tmp.read_into<std::tuple<T...>>((void*) dst);
       }
       template<typename ...U>
       void read_into_future_header_result(future_header_result<U...> &fhr) {
@@ -180,9 +180,9 @@ namespace upcxx {
         static void serialize(Writer &w, const serialized_raw_tuple &x) {
           w.write(x.tup);
         }
-        template<typename Reader>
-        static deserialized_raw_tuple<T...>* deserialize(Reader &r, void *spot) {
-          return new(spot) deserialized_raw_tuple<T...>{r};
+        template<typename Reader, typename Storage>
+        static deserialized_raw_tuple<T...>* deserialize(Reader &r, Storage storage) {
+          return storage.construct(r);
         }
       };
     };
@@ -213,7 +213,7 @@ namespace upcxx {
         if(deserialized == nullptr && next != nullptr) {
           // multiple completions; deserialize into a new tuple and
           // then copy from there for each completion
-          results.read_into_tuple(*static_cast<std::tuple<T...>*>(storage.raw()));
+          results.read_into_raw_tuple(static_cast<std::tuple<T...>*>(storage.raw()));
           deserialized = &storage.value();
         }
 
@@ -239,7 +239,7 @@ namespace upcxx {
           auto *p1 = static_cast<lpc_dormant_fn_base<T...>*>(p);
 
           if(deserialized == nullptr)
-            results.read_into_tuple(p1->results);
+            results.read_into_raw_tuple(&p1->results);
           else if(next == nullptr || !results_is_copyable)
             ::new(&p1->results) std::tuple<T...>(std::move(*deserialized));
           else

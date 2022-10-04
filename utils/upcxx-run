@@ -123,8 +123,9 @@ def heapsz_type(a):
     
 def load_args():
     global _parser
-    _parser = argparse.ArgumentParser(description='A portable parallel job launcher for UPC++ programs, v2022.3.0\n' + \
-                                                  'Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications')
+    _parser = argparse.ArgumentParser(description='A portable parallel job launcher for UPC++ programs, v2022.9.0\n \n' + \
+                                                  'Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications',
+                                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     _parser.add_argument('-n', '-np', dest='nranks', type=ranks_type, default=None, metavar='NUM',
                          help='Spawn NUM number of UPC++ processes. Required.')
     _parser.add_argument('-N', dest='nnodes', type=nodes_type, default=None, metavar='NUM',
@@ -147,8 +148,15 @@ def load_args():
                          help='Generate verbose output. Multiple applications increase verbosity.')
     _parser.add_argument('-E', dest='env_list', default=[], action='append', metavar='VAR1[,VAR2]',
                          help='Adds provided arguments to the list of environment variables to propagate to compute processes.')
+
+    # Deliberately undocumented due to potential for confusion about what it does:
     _parser.add_argument('-network', dest='network', type=str, default=None,
-                         help='Override network detection.')
+                         help=argparse.SUPPRESS) 
+
+    # Should come last after the options above:
+    _parser.add_argument('--', dest='sepdummy', default=False, action='store_true', 
+                         help='Optional separator between upcxx-run arguments and command to execute')
+
     cmd_arg_group = _parser.add_argument_group('command to execute')
     cmd_arg_group.add_argument('cmd', default=None, metavar='command', help='UPC++ executable')
     cmd_arg_group.add_argument('cmd_args', default=[], nargs=argparse.REMAINDER, metavar='...',
@@ -284,9 +292,12 @@ def main():
         return 0
         
     spawner = None
-    if args.verbose > 1:
-        os.environ['GASNET_VERBOSEENV'] = '1'
+    if args.verbose >= 1:
         os.environ['UPCXX_VERBOSE'] = '1'
+    if args.verbose >= 2:
+        os.environ['GASNET_VERBOSEENV'] = '1'
+    if args.verbose >= 3:
+        os.environ['GASNET_SPAWN_VERBOSE'] = '1'
 
     if args.verbose:
         print('UPCXX_RUN:', executable, 'is compiled with', conduit, 'conduit')
@@ -353,7 +364,7 @@ def main():
         if spawner_path:
             print_verbose('UPCXX_RUN: Found spawner "' + spawner_path + '"')
             spawner = [ spawner_path ]
-            if args.verbose > 2:
+            for _ in range(args.verbose - 1):
                 spawner += ['-v']
         else:
             print_error_and_abort('Could not find spawner "' + spawner + '"')

@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 
   bool done;
   do { // Loop while not all insert rpc_ff have completed.
+    upcxx::progress(); // process incoming work
     // On each rank, capture the counts of inserts injected and completed
     long local[2] = {n_inserts_injected, dmap.local_size()};
     // Globally count the number of inserts injected and completed by completing

@@ -28,16 +28,35 @@ ifneq ($(strip $(NVCCARCH)),)
   endif
 endif
 
+# Honor user's HIPCCARCH_FLAGS (if any), prepending it with --amdgpu-target= if necessary.
+ifneq ($(strip $(HIPCCARCH)),)
+  ifneq ($(strip $(HIPCCARCH_FLAGS)),)
+	$(warning Both HIPCCARCH and HIPCCARCH_FLAGS are set. Ignoring HIPCCARCH.)
+    HIPCCARCH = $(HIPCCARCH_FLAGS)
+  endif
+  ifneq ($(strip $(findstring --amdgpu-target,$(HIPCCARCH))),)
+    HIPCCARCH_FLAGS = $(HIPCCARCH)
+  else
+    HIPCCARCH_FLAGS:=--amdgpu-target=$(HIPCCARCH)
+  endif
+endif
+
 CXXFLAGS ?= -g # optional command-line override
 CUDAFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_CUDA=1
 HIPFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_HIP=1
 
 TARGETS = cuda_vecadd hip_vecadd
 OBJS = cuda_kernels.o hip_kernels.o
+default:
+	@echo "Please select one of the following three targets:"
+	@echo " - \`make cuda_vecadd\` makes an executable using CUDA kernels for NVIDIA GPUs"
+	@echo " - \`make hip_vecadd\`  makes an executable using ROCm/HIP kernels for AMD GPUs"
+	@echo " - \`make all\`         makes both executables"
+
 all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) $(OBJS)
-.PHONY: all clean
+.PHONY: all clean default
 
 %.o: %.cu kernels.hpp
 	$(NVCC) $(NVCCFLAGS) $(NVCCARCH_FLAGS) $(CUDAFLAGS) -c $<
@@ -46,7 +65,7 @@ cuda_vecadd: vecadd.cxx cuda_kernels.o
 	$(UPCXX) $(CUDAFLAGS) $^ -o $@
 
 %.o : %.cxx kernels.hpp
-	$(HIPCC) $(HIPCCFLAGS) $(HIPFLAGS) -c $<
+	$(HIPCC) $(HIPCCFLAGS) $(HIPCCARCH_FLAGS) $(HIPFLAGS) -c $<
 
 hip_vecadd: vecadd.cxx hip_kernels.o
 	$(UPCXX) $(HIPFLAGS) $^ -o $@

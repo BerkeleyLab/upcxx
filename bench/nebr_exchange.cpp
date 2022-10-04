@@ -346,17 +346,18 @@ auto make_row = [](int nebr_n, size_t buf_size, const char *via) {
 int main() {
   upcxx::init();
 
+  if (upcxx::rank_n() < 2) {
+    print_test_skipped("test requires two or more ranks");
+    upcxx::finalize();
+    return 0;
+  }
+
   buf_sizes = os_env<vector<size_t>>("sizes", vector<size_t>({1<<10}));
   nebr_nums = os_env<vector<int>>("nebrs", std::vector<int>({10}));
   nebr_stdev = os_env<double>("nebr_stdev", 10.0);
   wait_secs = os_env<double>("wait_secs", 1.0);
 
   setup_exchange_via_amlong();
-  
-  UPCXX_ASSERT_ALWAYS(
-    upcxx::rank_n() > 1,
-    "Must run with more than 1 rank."
-  );
   
   std::unordered_map<decltype(make_row(0,0,0)), measure> table;
   

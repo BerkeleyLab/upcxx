@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <sched.h>
 
 using namespace upcxx;
 using namespace std;
@@ -158,22 +159,26 @@ check<S, D> check_asymmetric;
 
 // large type with nontrivial serialization
 struct big_nontrivial {
+  static int dtor_count, expected_dtor_count;
   std::array<int, 10000> data;
-  ~big_nontrivial() {}
+  ~big_nontrivial() { ++dtor_count; }
   struct upcxx_serialization {
     template<typename Writer>
     static void serialize(Writer &w, const big_nontrivial &x) {
       w.write_sequence(x.data.begin(), x.data.end(), x.data.size());
     }
-    template<typename Reader>
-    static big_nontrivial* deserialize(Reader &r, void *spot) {
-      auto result = new(spot) big_nontrivial;
+    template<typename Reader, typename Storage>
+    static big_nontrivial* deserialize(Reader &r, Storage storage) {
+      auto result = storage.construct();
       r.template read_sequence_into<int>(result->data.data(),
                                          result->data.size());
       return result;
     }
   };
 };
+
+int big_nontrivial::dtor_count = 0;
+int big_nontrivial::expected_dtor_count = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 // runtime test
@@ -198,8 +203,14 @@ int main() {
       []() {
         persona_scope worker_scope{worker};
 
-        while(!worker_shutdown.load(memory_order_relaxed))
+        while(!worker_shutdown.load(memory_order_relaxed)) {
           upcxx::progress();
+          sched_yield();
+        }
+        // Lines below ensure the runtime is done using this thread.
+        // This avoids a subtle leak on internal resources seen in single-rank runs
+        upcxx::progress();
+        upcxx::discharge();
       }
     };
 
@@ -346,8 +357,9 @@ int main() {
       delete rpc_done2;
     }
 
-    // test deserialize_into
     big_nontrivial *bn = new big_nontrivial;
+
+    // test deserialize_into
     bn->data.fill(upcxx::rank_me());
     upcxx::rpc(
       (upcxx::rank_me()+1)%upcxx::rank_n(),
@@ -359,13 +371,58 @@ int main() {
         UPCXX_ASSERT_ALWAYS(
           z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
         );
-        delete z;
+        delete z; ++big_nontrivial::expected_dtor_count;
       },
       upcxx::make_view(bn, bn+1)).wait();
-    delete bn;
+
+    // test deserialize_into existing object cast to void*
+    bn->data.fill(upcxx::rank_me());
+    upcxx::rpc(
+      (upcxx::rank_me()+1)%upcxx::rank_n(),
+      [](upcxx::view<big_nontrivial> v) {
+        auto spot = new big_nontrivial;
+        big_nontrivial *z = v.begin().deserialize_into((void*) spot);
+        UPCXX_ASSERT_ALWAYS(
+          z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
+        );
+        delete z; ++big_nontrivial::expected_dtor_count;
+      },
+      upcxx::make_view(bn, bn+1)).wait();
+
+    // test deserialize_into optional
+    bn->data.fill(upcxx::rank_me());
+    upcxx::rpc(
+      (upcxx::rank_me()+1)%upcxx::rank_n(),
+      [](upcxx::view<big_nontrivial> v) {
+        auto spot = new upcxx::optional<big_nontrivial>;
+        big_nontrivial *z = v.begin().deserialize_into(*spot);
+        UPCXX_ASSERT_ALWAYS(
+          z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
+        );
+        delete spot; ++big_nontrivial::expected_dtor_count;
+      },
+      upcxx::make_view(bn, bn+1)).wait();
+
+    // test deserialize_overwrite
+    bn->data.fill(upcxx::rank_me());
+    upcxx::rpc(
+      (upcxx::rank_me()+1)%upcxx::rank_n(),
+      [](upcxx::view<big_nontrivial> v) {
+        auto spot = new big_nontrivial;
+        big_nontrivial *z = v.begin().deserialize_overwrite(*spot); ++big_nontrivial::expected_dtor_count;
+        UPCXX_ASSERT_ALWAYS(
+          z->data[z->data.size()/2] == (upcxx::rank_me()+upcxx::rank_n()-1)%upcxx::rank_n()
+        );
+        delete z; ++big_nontrivial::expected_dtor_count;
+      },
+      upcxx::make_view(bn, bn+1)).wait();
+
+    delete bn; ++big_nontrivial::expected_dtor_count;
 
     // quiesce the world
     upcxx::barrier();
+
+    UPCXX_ASSERT_ALWAYS(big_nontrivial::dtor_count == big_nontrivial::expected_dtor_count);
 
     // flag worker to die
     worker_shutdown.store(true, std::memory_order_relaxed);

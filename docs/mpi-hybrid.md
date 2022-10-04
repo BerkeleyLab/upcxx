@@ -104,10 +104,10 @@ multi-threaded calls to MPI *and* UPC++ operations that may invoke MPI).  If you
 MPI program needs full MPI thread safety (e.g., `MPI_THREAD_MULTIPLE`), there are
 two possible approaches:
 
-1. If your current UPC++ configuration is initting MPI for you, set
+1. If your current UPC++ configuration is initializing MPI for you, set
    `export GASNET_MPI_THREAD=MULTIPLE` to request it does so using the stronger
    thread-safety mode. Note this only has any effect if `upcxx::init` indeed
-   inits MPI and does so before any other `MPI_Init*` calls in the process.
+   initializes MPI and does so before any other `MPI_Init*` calls in the process.
    You can confirm the setting by running with `upcxx-run -vv`.
 
 2. Call `MPI_Init_thread()` explicitly before `upcxx::init()` with the desired
@@ -147,7 +147,7 @@ for your MPI distribution if this is not the case.
 #### udp-conduit for laptops and Ethernet networks
 
 When running hybrid applications on a single-node system (e.g., your laptop) or on
-Ethernet-based clusters, the recommended GASNet backend is udp-conduit (ie
+Ethernet-based clusters, the recommended GASNet backend is udp-conduit (i.e.,
 `UPCXX_NETWORK=udp` at app compile time). A few additional run-time
 settings are recommended for MPI integration, and
 then the job can be spawned using `upcxx-run`:

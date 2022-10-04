@@ -18,7 +18,7 @@ namespace detail {
   template<typename FnSig, typename FunctionToken = detail::FunctionTokenType>
   class global_fnptr;
 
-  template<typename FunctionToken, typename ...Arg>
+  template<typename ...Arg>
   class command; // defined in command.hpp
 
   template<typename Ret, typename ...Arg, typename FunctionToken>
@@ -32,12 +32,13 @@ namespace detail {
     using function_type = Ret(Arg...);
 
     friend struct std::hash<upcxx::detail::global_fnptr<Ret(Arg...),FunctionToken>>;
-    friend class detail::command<FunctionToken, Arg...>;
+    friend class detail::command<FunctionTokenType, Arg...>;
     friend struct serialization<global_fnptr>;
 
+    constexpr global_fnptr(const FunctionToken& ft, detail::internal_only) : u_(ft) {}
+    constexpr global_fnptr(FunctionToken&& ft, detail::internal_only) : u_(std::move(ft)) {}
+
   private:
-    constexpr global_fnptr(const FunctionToken& ft) : u_(ft) {}
-    constexpr global_fnptr(FunctionToken&& ft) : u_(std::move(ft)) {}
     FunctionToken u_;
 
   public:
@@ -108,30 +109,57 @@ namespace detail {
     };
   }
 
-  // Would the compiler be smart enough to optimize this if the serialization/deserialization were to occur
-  // in function_token, or would it encur an additional move?
   template<typename Fn>
   struct serialization<detail::global_fnptr<Fn,detail::function_token>> {
+
+    // The MSB is used to encode the function token type. Because non-legacy relocations use the start of the segment as the basis, the offset should never be negative.
+    static constexpr uintptr_t msb = 1ull << (std::numeric_limits<uintptr_t>::digits-1);
+    static constexpr int idx_shift = std::numeric_limits<uintptr_t>::digits - std::numeric_limits<uint16_t>::digits;
+    static constexpr uintptr_t upper_bits = static_cast<uintptr_t>(static_cast<uint16_t>(-1)) << idx_shift;
+    static constexpr uintptr_t lower_bits = ~upper_bits;
+    static constexpr uintptr_t idx_bits = upper_bits & ~msb;
 
     template<typename Writer>
     static void serialize(Writer& w, const detail::global_fnptr<Fn,detail::function_token>& gfnptr)
     {
-      auto token_ident = gfnptr.u_.token_ident();
-      w.write(token_ident);
-      if (token_ident == detail::function_token::identifier::single)
-        w.write(gfnptr.u_.template get<detail::function_token_ss>());
-      else
-        w.write(gfnptr.u_.template get<detail::function_token_ms>());
+      if (gfnptr.u_.token_ident() == detail::function_token::identifier::single) {
+        const auto& ss = gfnptr.u_.template get<detail::function_token_ss>();
+        UPCXX_ASSERT((ss.offset & msb) == 0);
+        w.write_trivial(ss.offset);
+      } else if (gfnptr.u_.token_ident() == detail::function_token::identifier::multi_idx) {
+        const auto& mx = gfnptr.u_.template get<detail::function_token_ms_idx>();
+        UPCXX_ASSERT(mx.offset < (1ull << idx_shift));
+        UPCXX_ASSERT(mx.idx > 0);
+        w.write_trivial(mx.offset | ((static_cast<uintptr_t>(mx.idx) << idx_shift)) | msb);
+      } else {
+        const auto& ms = gfnptr.u_.template get<detail::function_token_ms>();
+        UPCXX_ASSERT((ms.offset & upper_bits) == 0);
+        w.write_trivial(ms.offset | msb);
+        w.write_trivial(ms.ident);
+      }
     }
 
-    template<typename Reader>
-    static detail::global_fnptr<Fn,detail::function_token>* deserialize(Reader& r, void* storage)
+    template<typename Reader, typename Storage>
+    static detail::global_fnptr<Fn,detail::function_token>* deserialize(Reader& r, Storage storage)
     {
-      auto active = r.template read<detail::function_token::identifier>();
-      if (active == detail::function_token::identifier::single)
-        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{r.template read<detail::function_token_ss>()};
-      else
-        return ::new(storage) detail::global_fnptr<Fn,detail::function_token>{r.template read<detail::function_token_ms>()};
+      auto offset = r.template read_trivial<uintptr_t>();
+      if (!(offset & msb)) {
+        // issue 553: Workaround for CUDA 11.0.3 nvcc frontend bug where it fails to recognize the single-member aggregate initialization 
+        // if the `function_token_ss` is constructed in the same line
+        detail::function_token_ss ss{offset};
+        return storage.construct(std::move(ss), detail::internal_only{});
+      } else {
+        int16_t idx = (offset & idx_bits) >> idx_shift;
+        if (idx > 0)
+          return storage.construct(detail::function_token_ms_idx{offset & lower_bits, idx},
+                                   detail::internal_only{});
+        else
+          return storage.construct(
+            detail::function_token_ms{offset & lower_bits,
+                                      r.template read_trivial<detail::segment_hash>()},
+            detail::internal_only{}
+          );
+      }
     }
   };
 }

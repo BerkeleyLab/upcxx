@@ -39,7 +39,11 @@
 
 #ifndef UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
 // Old intel needs a suboptimal hack, see issue 485 and PR 357
-#define UPCXXI_ISSUE_485_SLOW_THE_ALWAYS (__INTEL_COMPILER && __INTEL_COMPILER < 1900)
+// issue 549: hipcc device compilation implements a subset of C++ that excludes dynamic initialization
+#define UPCXXI_ISSUE_485_SLOW_THE_ALWAYS ( \
+   (__INTEL_COMPILER && __INTEL_COMPILER < 1900) || \
+   __HIP_DEVICE_COMPILE__ \
+   )
 #endif
 
 namespace upcxx {
@@ -164,7 +168,7 @@ namespace upcxx {
     using future_header_nil = future_header_nil1<>;
     
     #if !UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
-    // The "always" future, not to be used by anything other than
+    // The fast "always" future, not to be used by anything other than
     // future_header_result<>::always(). Optimization for always-ready
     // empty futures.
     struct future_header_always2 final: future_header {
@@ -181,11 +185,11 @@ namespace upcxx {
 
     template<typename=void>
     struct future_header_always1 {
-      static constexpr future_header_always2 the_always{};
+      static constexpr future_header_always2 the_always_fast{};
     };
 
     template<typename VoidThanks>
-    constexpr future_header_always2 future_header_always1<VoidThanks>::the_always;
+    constexpr future_header_always2 future_header_always1<VoidThanks>::the_always_fast;
     #endif // !UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
 
     ////////////////////////////////////////////////////////////////////
@@ -482,17 +486,15 @@ namespace upcxx {
     struct future_header_result<> {
       UPCXXI_OPNEW_AS_STD
 
-      #if UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
-      static const future_header the_always;
-      #endif
+      static const future_header the_always_slow;
 
       static constexpr future_header* always() {
         #if UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
-          return const_cast<future_header*>(&the_always);
+          return const_cast<future_header*>(&the_always_slow);
         #else
           return const_cast<future_header*>(
             static_cast<const future_header*>(
-              &future_header_always1<>::the_always
+              &future_header_always1<>::the_always_fast
             )
           );
         #endif

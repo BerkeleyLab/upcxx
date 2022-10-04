@@ -53,9 +53,9 @@ class B : public A {
             writer.write(object.anotherstub);
         }
 
-        template<typename Reader>
-        static B* deserialize(Reader& reader, void* storage){
-            B *b = ::new (storage) B(); // placement new is required
+        template<typename Reader, typename Storage>
+        static B* deserialize(Reader& reader, Storage storage){
+            B *b = storage.construct(); // create B object in storage
             b->deserialize_helper(reader); // deserialize base state
             b->anotherstub = reader.template read<int>();
             return b;

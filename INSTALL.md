@@ -28,6 +28,11 @@ The current release is known to work on the following configurations:
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
+    At the time of the 2022.9.0 release of UPC++, we have not tested Xcode 14
+    well and have not tested at all on macOS 13 "Ventura" (which is still in
+    public beta testing).  We welcome your reports of success or failure with
+    either.
+
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
@@ -74,7 +79,7 @@ The current release is known to work on the following configurations:
     configuration is not currently supported.  (smp and aries conduits).
 
 * HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
-  modules, plus its dependencies (smp, ofi and ucx conduits):
+  modules, plus its dependencies (smp and ofi conduits):
     - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
     - PrgEnv-cray with cce/12.0.0 (or later) loaded.
 
@@ -87,7 +92,7 @@ The current release is known to work on the following configurations:
 
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
-      Initial testing on this platform with both Xcode and Free Software
+      Testing on this platform with both Xcode and Free Software
       Foundation g++ show functionally complete and correct operation.  
       Nothing platform-specific has been implemented for the mix of
       "performance" and "efficiency" cores, meaning performance could be
@@ -111,7 +116,7 @@ The current release is known to work on the following configurations:
 
 * Perl version 5.005 or newer
 
-* GNU Bash 3.2 or newer (must be installed, user's shell doesn't matter)
+* GNU Bash 3.2.57 or newer (must be installed, user's shell doesn't matter)
 
 * GNU Make 3.80 or newer
 
@@ -139,7 +144,7 @@ use either).  The high-level steps are as follows:
      Verifies the correctness of the UPC\+\+ build prior to its installation
 4. `make install`  
      Installs the UPC\+\+ package to the user-specified location
-5. `make test_install` (optionally, but highly recommended)  
+5. `make test_install` (optional, but highly recommended)  
      Verifies the installed package
 6. Post-install recommendations
 
@@ -175,7 +180,7 @@ in the following sections, below:
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
-* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
@@ -205,9 +210,9 @@ full path to the python interpreter will be used in the installed `upcxx-run`
 script, rather than a runtime search of `$PATH`.  Therefore, the interpreter
 specified must be available in a batch-job environment where applicable.
 
-Bash 3.2 or newer is required by UPC\+\+ scripts, including `configure`.  By
+Bash 3.2.57 or newer is required by UPC\+\+ scripts, including `configure`.  By
 default, `configure` will try `/bin/sh` and then the first instance of `bash`
-found in `$PATH`.  If neither of these is bash 3.2 (or newer), or if the one
+found in `$PATH`.  If neither of these is bash 3.2.57 (or newer), or if the one
 found is not appropriate to use (for instance not accessible on compute
 nodes), one can override the automated selection by invoking `configure` _via_
 the desired instance of `bash`:
@@ -262,7 +267,7 @@ make check
 
 This compiles all available tests for the default network and then runs them.
 One can override the default network by appending `NETWORKS=net1,net2`
-to this command, with network names (such as `smp`, `udp`, `ibv` or `aries`)
+to this command, with network names (such as `smp`, `udp`, `ibv`, `ofi` or `aries`)
 substituted for the `netN` placeholders.
 
 Setting of `NETWORKS` to restrict what is tested may be necessary, for
@@ -315,7 +320,7 @@ configure time.
 One may optionally pass `NETWORK=net` (replacing `net` by a supported network
 name) to specify the default network (overriding `--with-default-network=...`
 specified at configure time, if any).  Output at the end of the `all` and
-`check` steps report the default to be used in the absence of an explict
+`check` steps report the default to be used in the absence of an explicit
 setting, and the available networks.
 
 #### 5. Testing the install UPC\+\+ package (optional)
@@ -346,7 +351,7 @@ scope of this document).
 Additionally, one may wish to set the environment variable `$UPCXX_INSTALL`
 to `<upcxx-install-path>`, as this is assumed by several UPC\+\+ examples.
 
-For systems using "environment modules" an example modulefile is provided
+For systems using "environment modules" an example module file is provided
 as `<upcxx-install-path>/share/modulefiles/upcxx/<upcxx-version>`.  This
 sets both `$PATH` and `$UPCXX_INSTALL` as recommended above.  Consult
 the documentation for the environment modules package on how to use this file.
@@ -363,9 +368,9 @@ installation.
 
 ### Configuration: Cray XC
 
-By default, on a Cray XC logic in `configure` will automatically detect either
+By default, on a Cray XC the logic in `configure` will automatically detect either
 the SLURM or Cray ALPS job scheduler and will cross-configure for the
-appropriate one.  If this auto-detection fails, you may need to explicitly
+appropriate package.  If this auto-detection fails, you may need to explicitly
 pass the appropriate value for your system:
 
 * `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
@@ -400,58 +405,66 @@ After running `configure`, return to
 ### Configuration: HPE Cray EX
 
 This release of UPC++ includes initial support for the HPE Cray EX platform,
-including both the "Slingshot 10" and "Slingshot 11" network interface cards
+including both the "Slingshot-10" and "Slingshot-11" network interface cards
 (NICs) and GPUs from both Nvidia and AMD.  When built in a supported
 configuration, this release passes all of the UPC++ test suite.  However, the
 performance has not yet been tuned on this platform.
 
 Unlike the Cray XC, the HPE Cray EX is *not* treated as a cross-compilation
 target when building UPC++.  However, we strongly advise use of the vendor's
-wrapper compilers, `cc` and `CC`.  Additionally, we recommend use of the Slurm
-Workload Manager for job launch and the two NICs require distinct non-default
-settings.  The following shows our recommended configure command with some
-"<placeholders>" which are explained below.
+wrapper compilers, `cc` and `CC`.  Additionally, the two NICs require distinct
+non-default settings.  The following shows our recommended configure command
+with some "<placeholders>" which are explained below.  Note that these assume
+use of the default version of GASNet-EX.  If using an earlier release of
+GASNet-EX, please consult documentation in a UPC++ release of similar age.
 
 ```bash
 module load libfabric cray-pmi
 cd <upcxx-source-path>
 ./configure --prefix=<upcxx-install-path> \
     --with-cc=cc --with-cxx=CC --with-mpi-cc=cc \
-    --with-default-network=ofi --disable-ibv \
     --with-ofi-provider=<PROVIDER> \
-    --with-ofi-spawner=pmi \
-      --with-pmi-version=cray \
-      --with-pmi-runcmd='srun -n %N -- %C' \
+    --with-pmi-runcmd='<RUNCMD>' \
     <GPU_OPTIONS>    
 ```
 
 The `libfabric` and `cray-pmi` environment modules may or may not be loaded by
 default at any given site.  Please ensure they are loaded (as shown above) or
-the configure or build steps may fail.
+the configure or build steps may fail.  Additionally, one may need an
+environment module (sometimes site-specific) for the GPU programming model.
 
-There are two NICs options in an HPE Cray EX system, known as "Slingshot 10" and
-"Slingshot 11".  They require different libfabric "providers", as indicated by
+There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
+"Slingshot-11".  They require different libfabric "providers", as indicated by
 the `<PROVIDER>` placeholder above:  
 
-  + `--with-ofi-provider='verbs;ofi_rxm'` for Slingshot 10.  
+  + `--with-ofi-provider=verbs` for Slingshot-10.  
     This is a Mellanox ConnectX-5 100Gbps NIC.  
-    Due to the presence of `;` in the value, please do not omit the quotes.
-  + `--with-ofi-provider=cxi` for Slingshot 11.  
+  + `--with-ofi-provider=cxi` for Slingshot-11.  
     This is an HPE 200Gbps NIC  
 
 If you are uncertain of which NIC is used on a given system, please consult the
 site-specific documentation or ask the support staff for assistance.
+Another alternative is to pass `--with-ofi-provider=generic`, which requests
+provider adaptation be performed during runtime startup, at some cost in
+additional communication overhead. This option may be useful for systems
+with a mix of Slingshot-10 and Slingshot-11 nodes, although all processes in a
+job still need to be using matching hardware and software (including provider)
+at runtime.
 
 On _some_ systems with multiple Slingshot NICs, one will need to add
 `--with-host-detect=hostname`.  This option is recommended only when actually
 required.  If your system _does_ require this setting, then you will see a
-message at application runtime directing you to use this option, or an
+message at application run time directing you to use this option, or an
 environment-based alternative.
 
-If appropriate at your site, you may also wish to customize the command
-passed to `--with-pmi-runcmd=...`.
+You will also need to select the proper argument to `--with-pmi-runcmd=...`
+(the `<RUNCMD>` placeholder, above).
 
-Currently only AMD-based HPE Cray EX systems have been tested.
+  + If using the Slurm Workload Manager: `--with-pmi-runcmd='srun -n %N -- %C'`
+  + For most other cases: `--with-pmi-runcmd='aprun --cc none -n %N %C'`
+
+At the time of this writing we've only tested UPC++ on HPE Cray EX systems with
+AMD CPUs.
 
 As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
 UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
@@ -459,7 +472,24 @@ EX systems.  Please _also_ see the respective sections of this document for
 UPC++ configure options needed to enable this support:
 
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
-* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+
+With the Slingshot-11 network, some users have seen application hangs due to
+what appears to be "lost" RPCs.  At the time this is written, there are two
+possible workarounds for this issue.  Descriptions of both workarounds, along
+with the most up-to-date information on this issue in general, can be found in
+the corresponding GASNet-EX report:
+[bug 4461](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4461).
+
+With the Slingshot-10 network, there are conditions (not yet characterized)
+under which RPCs may be corrupted in such a way that their reception results in
+a fatal error.  This can manifest with a fatal error containing the text "no
+associated AM handler function" or (in a debug build) an "Assertion failure"
+message with the expression `isreq == header->isreq`.  At the time this is
+written, there is a known workaround for this issue.  A description of the
+workaround, along with the most up-to-date information on this issue in
+general, can be found in the corresponding GASNet-EX report:
+[bug 4517](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4517).
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
@@ -538,32 +568,32 @@ provide additional information.
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
-At the time of writing, UPC++ has beed tested with Developer Beta 7 of macOS 12
-"Monterey", and there are no known platform-specific issues.
-
-At the time of writing, UPC++ has been lightly tested with Apple's Xcode 13 and
-there are no known compiler-specific issues.
-
 ### Configuration: CUDA GPU support
 
 #### System Requirements:
 
 UPC++ includes support for RMA communication operations on memory buffers
-resident in a CUDA-compatible NVIDIA GPU.  Specific requirements:
+resident in a CUDA-compatible NVIDIA GPU.  General requirements:
 
 * Modern NVIDIA-branded [CUDA-compatible GPU hardware](https://developer.nvidia.com/cuda-gpus)
 * NVIDIA CUDA toolkit v9.0 or later. Available for [download here](https://developer.nvidia.com/cuda-downloads).
 
 #### Additional System Requirements for GDR-accelerated memory kinds:
 
-This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory kinds
-on selected platforms using modern NVIDIA-branded GPUs and Mellanox-branded InfiniBand
-network hardware, when using the native ibv-conduit. Additional requirements:
+This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory
+kinds data transfers on selected platforms using modern NVIDIA-branded GPUs
+with Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
+This support requires one of the following native network conduit
+configurations, and the current/default version of GASNet-EX:
+
+* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
+* ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
+
+Additional requirements:
 
 * Linux OS with x86\_64 or ppc64le CPU (not ARM)
-* Recent Mellanox-branded InfiniBand network hardware
 * GPUDirect RDMA drivers installed
-* ibv-conduit built from the current version of GASNet-EX (the default for this release)
 
 When using GDR-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
@@ -591,8 +621,8 @@ cd <upcxx-source-path>
 This will detect whether the requirements for GDR acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's GDR support, please see
-[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
-in the GASNet memory_kinds distribution.
+[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/master/docs/memory_kinds.md)
+in the GASNet distribution.
 
 `configure --enable-cuda` expects to find the NVIDIA `nvcc` compiler wrapper in your `$PATH` and
 will attempt to extract the correct build settings for your system.  If this
@@ -621,8 +651,8 @@ UPC++ CUDA operation can be validated using the following programs in the source
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `cuda_device`
 * `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
-* `example/cuda_vecadd`: demonstration of using UPC++ `cuda_device` to orchestrate
-  communication for a program invoking CUDA computational kernels on the GPU.
+* `make cuda_vecadd` in `example/gpu_vecadd`: demonstration of using UPC++ `cuda_device` to
+  orchestrate communication for a program invoking CUDA computational kernels on the GPU.
 
 One can validate use of GDR acceleration in a given UPC++ executable with a command
 like the following:
@@ -641,15 +671,28 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 #### Known problems with GDR-accelerated memory kinds
 
 There is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
-causes crashes inside the IB Verbs network stack during small gets into device memory on some
-platforms. This problem can be worked-around by setting `MLX5_SCATTER_TO_CQE=0`, 
-but this setting has a global negative impact on RMA Get operations (even those
-not involving device memory) so should only be used on affected platforms.
-Details are here:
+causes crashes inside the IB Verbs network stack during `copy()` operations
+targeting small objects in a `cuda_device` segment with affinity to the calling
+process on some platforms. This problem can be worked-around by setting
+`MLX5_SCATTER_TO_CQE=0`, but this setting has a global negative impact on RMA
+Get operations (even those not involving device memory) so should only be used
+on affected platforms.  Details are here:
 
 * [bug 4151: IBVerbs SEGV on small Gets to device memory](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4151)
 
-In addition to the issues described above, the current implementation of 
+There is also a known bug in the libfabric "verbs provider" (recommended for
+use on Slingshot-10 networks) that causes crashes inside libfabric during
+`copy()` operations where the source objects reside in a `cuda_device` segment
+with affinity to the calling process.  This problem can be worked-around by
+setting `FI_VERBS_INLINE_SIZE=0`.  Because this setting disables a valuable
+performance optimization, it may increase the latency of all small RMA Puts,
+including those from host memory, as well as some RPCs.  Therefore, it is
+strongly recommended that you set this variable *only* if your system exhibits
+this issue.  Details are here:
+
+* [bug 4494: ofi/verbs SEGV for small Puts from CUDA memory](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4494)
+
+In addition to the two issues described above, the current implementation of
 GDR-accelerated memory kinds enforces a per-process limit of 32 active `cuda_device`
 opens over the lifetime of the process. This static limit can be raised at configure time
 via `configure --with-maxeps=N`, and is expected to become a more dynamic limit
@@ -668,7 +711,7 @@ After running `configure`, return to
 #### System Requirements:
 
 UPC++ includes support for RMA communication operations on memory buffers
-resident in a ROCm/HIP-compatible AMD GPU.  Specific requirements:
+resident in a ROCm/HIP-compatible AMD GPU.  General requirements:
 
 * Modern AMD-branded HIP-compatible GPU hardware
 * AMD ROCm drivers version 4.5.0 or later (earlier versions of ROCm MIGHT also
@@ -676,14 +719,19 @@ resident in a ROCm/HIP-compatible AMD GPU.  Specific requirements:
 
 #### Additional System Requirements for ROCmRDMA-accelerated memory kinds:
 
-This version of UPC++ supports ROCmRDMA acceleration of memory kinds
-on selected platforms using modern AMD-branded GPUs and Mellanox-branded InfiniBand
-network hardware, when using the native ibv-conduit. Additional requirements:
+This version of UPC++ supports ROCmRDMA acceleration of memory
+kinds data transfers on selected platforms using modern AMD-branded GPUs.
+This support requires one of the following native network conduit
+configurations, and the current/default version of GASNet-EX:
+
+* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
+* ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
+
+Additional Requirements:
 
 * Linux OS with x86\_64 or ppc64le CPU (not ARM)
-* Recent Mellanox-branded InfiniBand network hardware
 * ROCK AMD GPU kernel driver installed
-* ibv-conduit built from the current version of GASNet-EX (the default for this release)
 
 When using ROCmRDMA-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
@@ -711,8 +759,8 @@ cd <upcxx-source-path>
 This will detect whether the requirements for ROCmRDMA acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's ROCmRDMA support, please see
-[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/gex-2020.11.0-memory_kinds/docs/memory_kinds.md)
-in the GASNet memory_kinds distribution.
+[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/master/docs/memory_kinds.md)
+in the GASNet distribution.
 
 `configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
 in your `$PATH` and will attempt to infer the correct ROCm/HIP install location for
@@ -736,6 +784,8 @@ UPC++ ROCm/HIP operation can be validated using the following programs in the so
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `hip_device`
 * `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+* `make hip_vecadd` in `example/gpu_vecadd`: demonstration of using UPC++ `hip_device` to
+   orchestrate communication for a program invoking HIP computational kernels on the GPU.
 
 One can validate use of ROCmRDMA acceleration in a given UPC++ executable with a command
 like the following:
@@ -801,7 +851,7 @@ options:
 * Options for control of (optional) CUDA support are documented in the section
   [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * Options for control of (optional) AMD ROCm/HIP GPU support are documented in the section
-  [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocm-hip-gpu-support)
+  [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 * Options not recognized by the UPC\+\+ `configure` script will be passed to
   the GASNet-EX `configure`.  For instance, `--with-mpirun-cmd=...` might be
   required to setup MPI-based launch of ibv-conduit applications.  Please read

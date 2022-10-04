@@ -13,20 +13,18 @@ using upcxx::detail::future_body_proxy_;
 template<typename ...T>
 using future_header_result = upcxx::detail::future_header_result<T...>;
 
-#if UPCXXI_ISSUE_485_SLOW_THE_ALWAYS
 // IMPORTANT NOTE: We rely on this to be constant initialized so that
 // functions like make_future() work correctly during dynamic
 // initialization. The initializers here must all be constant
 // expressions.
-const future_header future_header_result<>::the_always = {
+const future_header future_header_result<>::the_always_slow = {
   /*ref_n_*/-1,
   /*status_*/upcxx::detail::future_header::status_ready,
   /*sucs_head_*/nullptr,
   {/*result_*/const_cast<future_header*>(
-                &upcxx::detail::future_header_result<>::the_always
+                &upcxx::detail::future_header_result<>::the_always_slow
               )}
 };
-#endif
 
 #if UPCXXI_PROMISE_VTABLE_HACK
 const detail::promise_vtable detail::the_promise_vtable<>::vtbl{
@@ -157,6 +155,9 @@ void future_header::entered_ready_with_sucs(future_header *result, dependency_li
     }
     active_tail_ = nullptr;
   }
+
+  // Avoid dangling-pointer warning from GCC 12+
+  UPCXXI_ASSUME(active_tail_ != &active_head);
 }
 
 void future_header_dependent::enter_proxying(

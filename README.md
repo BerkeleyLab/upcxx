@@ -16,7 +16,7 @@ UPC++ has three main objectives:
   applications
  
 * Offer an easy on-ramp to PGAS programming through interoperability with other
-  existing parallel programming systems (e.g., MPI, OpenMP, CUDA)
+  existing parallel programming systems (e.g., MPI, OpenMP, CUDA, ROCm/HIP)
 
 # UPC++ Documentation
 
@@ -99,7 +99,7 @@ For example, to build an application consisting of `my-app1.cpp` and
 meta="<upcxx-install-path>/bin/upcxx-meta"
 $($meta CXX) $($meta CPPFLAGS) $($meta CXXFLAGS) -c my-app1.cpp
 $($meta CXX) $($meta CPPFLAGS) $($meta CXXFLAGS) -c my-app2.cpp
-$($meta CXX) $($meta LDFLAGS) my-app1.o my-app2.o $($meta LIBS)
+$($meta CXX) $($meta LDFLAGS) -o my-app my-app1.o my-app2.o -lm $($meta LIBS)
 ```
 
 For an example of a Makefile which builds UPC++ applications, look at
@@ -135,13 +135,13 @@ script will assume sensible defaults for these parameters based on the
 installation configuration. The following environment variables can be set to
 influence which backend `upcxx-meta` selects:
 
-* `UPCXX_NETWORK=<see below>`: The GASNet network backend to use
+* `UPCXX_NETWORK=<see below>`: The GASNet network backend ("conduit") to use
   for communication (the default and available values are system-dependent).
   Supported values include:
     * `aries` is the high-performance Cray XC network.
     * `ibv` is the high-performance InfiniBand network.
     * `smp` is the high-performance choice for single-node multi-core runs.
-    * `ofi` the experimental libfabric backend, recommended on HPE Cray EX and Intel Omni-Path systems.
+    * `ofi` the libfabric backend, recommended on HPE Cray EX and Intel Omni-Path systems.
     * `ucx` the experimental UCX backend for certain InfiniBand systems.
     * `udp` is a portable low-performance alternative for testing and debugging.
     * `mpi` is a portable low-performance alternative for testing and debugging. 
