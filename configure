@@ -1276,6 +1276,11 @@ EOF
 chmod a+rx bin/upcxx bin/upcxx-run bin/upcxx-meta
 
 #
+# Remove (potentially out-of-date) generated headers to ensure they are rebuilt
+#
+rm -Rf bld/upcxx.*/gen_include
+
+#
 # Remove any (potentially out-of-date) GASNet builds to ensure they are reconfigured
 #
 [[ -d bld/gasnet.opt   ]] && rm -Rf bld/gasnet.opt
