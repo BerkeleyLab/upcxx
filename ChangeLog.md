@@ -18,7 +18,7 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
-* ...
+* issue #565: `upcxx-run --help` fails in a build directory
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 20XX.YY.0](docs/spec.pdf).
