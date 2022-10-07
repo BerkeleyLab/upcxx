@@ -246,7 +246,6 @@ done
 UPCXX_VALGRIND=
 UPCXX_DISCONTIG=
 UPCXX_FORCE_LEGACY_RELOCATIONS=''
-UPCXX_ISSUE557_WORKAROUND=''
 
 unset gasnet_help
 
@@ -317,9 +316,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     -with-allow-compiler-mismatch)    UPCXX_ALLOW_COMPILER_MISMATCH=1;;
     -without-allow-compiler-mismatch) UPCXX_ALLOW_COMPILER_MISMATCH=0;;
-
-    -with-issue557-workaround)    UPCXX_ISSUE557_WORKAROUND=1;  export UPCXX_ISSUE557_WORKAROUND;; # NOT documented in usage
-    -without-issue557-workaround) UPCXX_ISSUE557_WORKAROUND=''; export UPCXX_ISSUE557_WORKAROUND;; # NOT documented in usage
 
     # Passed explicitly to GASNet's configure, potentially after some processing:
     -with-cc?(=*))              CC="$(get_arg_val $arg)";    export CC;;
@@ -1179,7 +1175,6 @@ export UPCXX_HIP_LIBFLAGS=$UPCXX_HIP_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
 export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 export UPCXX_FORCE_LEGACY_RELOCATIONS=$UPCXX_FORCE_LEGACY_RELOCATIONS
-export UPCXX_ISSUE557_WORKAROUND=$UPCXX_ISSUE557_WORKAROUND
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 
