@@ -9,6 +9,8 @@
 
 // Function to consume the data shared by the leader process in the node
 void process_data(size_t n, double *arr) {
+  UPCXX_ASSERT_ALWAYS(n);
+
   double sum = std::accumulate(arr, arr + n, 0.0);
 
   UPCXX_ASSERT_ALWAYS(sum == (n*n - n) / 2.0);
@@ -45,7 +47,7 @@ int main() {
   }
 
   //SNIPPET
-  size_t n;
+  size_t n = 0;
   upcxx::global_ptr<double> data;
 
   // If I'm the leader process in this node
