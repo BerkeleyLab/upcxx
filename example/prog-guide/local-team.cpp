@@ -50,8 +50,7 @@ int main() {
   size_t n = 0;
   upcxx::global_ptr<double> data;
 
-  // If I'm the leader process in this node
-  if (!upcxx::local_team().rank_me()) {
+  if (!upcxx::local_team().rank_me()) { // I'm the leader process in this node
     // Open the file in binary mode
     std::ifstream input_file(filename, std::ios::binary);
 
@@ -61,21 +60,19 @@ int main() {
     // How many elements am I supposed to read?
     input_file.read(reinterpret_cast<char*>(&n), sizeof(n));
 
-    // Allocate space in shared memory
-    data = upcxx::new_array<double>(n);
+    data = upcxx::new_array<double>(n); // Allocate space in shared memory
 
     // Read the entire array of doubles from the file
     input_file.read(reinterpret_cast<char*>(data.local()), sizeof(double)*n);
   }
 
-  // Leader makes data available to other processes in the local team
-  std::tie(n, data) = broadcast(std::make_tuple(n, data), 0, upcxx::local_team()).wait(); // Implicit barrier
+  // Leader broadcasts data to other processes in the local team (implicit barrier)
+  std::tie(n, data) = 
+    broadcast(std::make_tuple(n, data), 0, upcxx::local_team()).wait(); 
 
-  // Downcast global pointer
-  double *ldata = data.local();
+  double *ldata = data.local(); // Downcast global pointer
 
-  // Work with local ptr
-  process_data(n, ldata);
+  process_data(n, ldata); // Access shared data using local ptr
   //SNIPPET
 
   // At this point, the node leader process can safely deallocate the shared memory
