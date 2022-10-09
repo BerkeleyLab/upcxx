@@ -681,9 +681,11 @@ void upcxx::init() {
     oversubscribed = os_env<bool>("UPCXX_OVERSUBSCRIBED", oversubscribed_default);
 
     if(backend::verbose_noise)
-      noise.line()<<"CPUs Oversubscribed: "<<(oversubscribed
-        ? "yes \"upcxx::progress() may yield to OS)\""
-        : "no \"upcxx::progress() never yields to OS\"");
+      noise.line() << gasnett_cpu_count() 
+        << " CPUs " << (oversubscribed ? "ARE" : "ARE NOT")
+        << " Oversubscribed: "<<(oversubscribed
+        ? "upcxx::progress() may yield to OS"
+        : "upcxx::progress() never yields to OS");
 
     gasnet_set_waitmode(oversubscribed ? GASNET_WAIT_BLOCK : GASNET_WAIT_SPIN);
   }
