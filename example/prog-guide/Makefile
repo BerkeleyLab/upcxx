@@ -44,6 +44,7 @@ EXAMPLES = \
   rb1d \
   rb1d-rpc \
   rb1d-rpcinit \
+  reduce-complex-minloc \
   rput-rpc \
   serial-custom \
   serial-fields \
