@@ -871,7 +871,7 @@ void upcxx::init() {
 
   noise.show();
 
-  if(backend::verbose_noise) {
+  if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise)) {
     // output process identity information, for validating job layout matches user intent
     say(std::cerr,"") << "UPCXX: Process " 
         << setw(to_string(backend::rank_n-1).size()) << backend::rank_me << "/" << backend::rank_n
