@@ -9,7 +9,8 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
-* ...
+* Console output from `upcxx::init()` in verbose mode now compresses process
+  identification information to one line per `local_team`.
 
 Infrastructure changes:
 
