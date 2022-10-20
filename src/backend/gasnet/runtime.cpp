@@ -871,12 +871,22 @@ void upcxx::init() {
 
   noise.show();
 
-  if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise)) {
+  if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise) && peer_me == 0) {
     // output process identity information, for validating job layout matches user intent
-    say(std::cerr,"") << "UPCXX: Process " 
-        << setw(to_string(backend::rank_n-1).size()) << backend::rank_me << "/" << backend::rank_n
-        << " (local_team: " << setw(to_string(peer_n-1).size()) << peer_me << "/" << peer_n << ") on "
-        << gasnett_gethostname() << " (" << gasnett_cpu_count() << " processors)";
+    say s(std::cerr,"");
+    s << "UPCXX: Process ";
+    auto rankw = std::setw(to_string(backend::rank_n-1).size());
+    if (backend::nbrhd_set_size == backend::rank_n) { // All singleton local teams
+      s << rankw << backend::rank_me << "/" << backend::rank_n;
+    } else { // first process in each local_team reports
+      if (peer_n > 1) 
+        s << rankw << backend::rank_me << "-" << rankw << + std::left << (backend::rank_me+peer_n-1);
+      else            
+        s << rankw << " " << " " << rankw << backend::rank_me;
+      s << "/" << backend::rank_n;
+    }
+    s << " (local_team: " << peer_n << " rank" << (peer_n>1?"s)":") ")
+      << " on " << gasnett_gethostname() << " (" << gasnett_cpu_count() << " processors)";
   }
 
   //////////////////////////////////////////////////////////////////////////////
