@@ -60,7 +60,19 @@ install-hook: force
 
 all all-opt all-debug: force
 	@$(MAKE) -C $(BLDDIR) $@ || $(MAKE) failure TARGET=build
+	@$(MAKE) config-summary || $(MAKE) failure TARGET=build
 	@$(MAKE) all-hook || $(MAKE) failure TARGET=build
+
+# on-demand summary of GASNet configuration
+config-summary: force
+	@out=; \
+	 for d in $(UPCXX_DBGOPT); do \
+	   dir=$(BLDDIR)/gasnet.$$d; \
+	   if [[ -f $$dir/config-summary.txt ]] ; then \
+	     out=$$dir/config-summary.txt ; \
+	   fi; \
+	 done; \
+	 if [[ -f $$out ]] ; then cat $$out ; fi ; : "favor output of last summary (generally opt)"
 
 all-hook: force
 	@echo; \

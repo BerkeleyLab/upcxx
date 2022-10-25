@@ -91,6 +91,23 @@ list-networks: force
 ##
 .PHONY: do-gasnet-configure gasnet-single
 
+# config-summary.txt: stash each GASNet post-configure summary, for output after libupcxx build completes
+WARNING_SUMMARY=configure warning summary:
+do-config-summary: force
+	@if [[ -f $(GASNETDIR)/config.txt && ! -f $(GASNETDIR)/config-summary.txt ]] ; then \
+	   grep -B 1 -A 200 -e '^$(WARNING_SUMMARY)' -e '^GASNet configuration:' $(GASNETDIR)/config.txt | \
+	   $(PERL) -pe 's/^$(WARNING_SUMMARY)/GASNet $(WARNING_SUMMARY)/' > $(GASNETDIR)/config-summary.txt || exit 1; \
+         fi; 
+
+do-install-config-summary: force
+	@for f in $(GASNETDIR)/config-summary.txt ; do \
+	   if [[ -f $$f ]] ; then \
+	     ( set -x ; \
+	       cp $$f "$(DESTDIR)$(prefix)/$$f"; \
+	       chmod 644 "$(DESTDIR)$(prefix)/$$f" ) ; \
+	   fi; \
+	 done;
+
 #
 # On-demand configure of a GASNet build directory (opt or debug)
 # PARAMS: OPTLEV, DBGSYM, GASNET, UPCXX_CROSS
@@ -123,6 +140,7 @@ do-gasnet-configure: force
 	@if test \! -f "$(GASNET_CONFIG_FRAGMENT)"; then                              \
 	   $(MAKE) do-gasnet-mak UPCXX_FRAGMENTS="$(builddir)/$(GASNETDIR)";          \
 	 fi
+	@$(MAKE) do-config-summary
 
 #
 # On-demand compile of a single instance of libgasnet
@@ -178,8 +196,10 @@ do-gasnet-all-debug: do-gasnet-configure-debug
 	@$(MAKE) -C gasnet.debug all
 do-gasnet-install-opt: do-gasnet-all-opt
 	@$(MAKE) -C gasnet.opt install prefix=$(prefix)/gasnet.opt
+	@$(MAKE) do-install-config-summary GASNET_CODEMODE=opt
 do-gasnet-install-debug: do-gasnet-all-debug
 	@$(MAKE) -C gasnet.debug install prefix=$(prefix)/gasnet.debug
+	@$(MAKE) do-install-config-summary GASNET_CODEMODE=debug
 do-gasnet-clean-opt: force
 	@if [[ -d gasnet.opt ]]; then $(MAKE) -C gasnet.opt clean; fi
 do-gasnet-clean-debug: force
