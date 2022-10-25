@@ -92,15 +92,48 @@ list-networks: force
 .PHONY: do-gasnet-configure gasnet-single
 
 # config-summary.txt: stash each GASNet post-configure summary, for output after libupcxx build completes
+# config-details.txt: More detailed configuation info, for upcxx -info
 WARNING_SUMMARY=configure warning summary:
 do-config-summary: force
 	@if [[ -f $(GASNETDIR)/config.txt && ! -f $(GASNETDIR)/config-summary.txt ]] ; then \
 	   grep -B 1 -A 200 -e '^$(WARNING_SUMMARY)' -e '^GASNet configuration:' $(GASNETDIR)/config.txt | \
 	   $(PERL) -pe 's/^$(WARNING_SUMMARY)/GASNet $(WARNING_SUMMARY)/' > $(GASNETDIR)/config-summary.txt || exit 1; \
          fi; 
+	@details=$(GASNETDIR)/config-details.txt ; \
+	 if [[ ! -f $$details && -f $(GASNETDIR)/gasnet_config.h && $(upcxx_bld)/config.log ]] ; then \
+	   : > $$details || exit 0; \
+	   for key in \
+	     "CONFIG_CC" "CONFIG_CXX" \
+	     "UPCXX_BASH" "UPCXX_PYTHON" \
+	     "UPCXX_CUDA.*?" "UPCXX_HIP.*?" \
+	     "UPCXX_VALGRIND" "UPCXX_DISCONTIG" "UPCXX_FORCE_LEGACY_RELOCATIONS" "UPCXX_MPSC_QUEUE" \
+	     ; do \
+	     $(PERL) -ne 'if (m/^\s*export\s+('"$$key"')\s*=\s*(.*?)\s*$$/)' \
+	                -e '{ printf("\%-35s ","$$1:"); print (($$2 || "<null>")."\n"); }' \
+	        $(upcxx_bld)/Makefile >> $$details || exit 1; \
+	   done; \
+	   prepend="GASNet "; \
+	   for key in \
+	     "RELEASE_VERSION" "EX_SPEC_VERSION_MAJOR" "EX_SPEC_VERSION_MINOR" \
+	     "CONFIGURE_ARGS" "CONDUITS" \
+	     "" \
+	     "PLATFORM_COMPILER_IDSTR" "PLATFORM_CXX_IDSTR" "PLATFORM_MPI_CC_IDSTR" \
+	     "BUILD_ID" "SYSTEM_TUPLE" "SYSTEM_NAME" \
+	     ; do \
+	     if [[ -z "$$key" ]]; then prepend=""; continue; fi; \
+	     $(PERL) -ne 'if (m/^\s*#define\s+GASNETI_('"$$key"')\s+"?\s*(.+?)\s*"?\s*$$/)' \
+	               -e '{ printf("\%-35s ","'"$$prepend"'$$1:"); print "$$2\n"; exit 0 }' \
+	        $(GASNETDIR)/gasnet_config.h >> $(GASNETDIR)/config-details.txt || exit 1; \
+	   done; \
+	   echo >> $$details || exit 1; \
+	   echo -------------------------------------------------------------------- >> $$details || exit 1; \
+	   echo UPC++ configure output: >> $$details || exit 1; \
+	   echo >> $$details || exit 1; \
+	   $(PERL) -pe 'exit 0 if m/UPC\+\+ configuration complete/' < $(upcxx_bld)/config.log >> $$details || exit 1; \
+         fi; 
 
 do-install-config-summary: force
-	@for f in $(GASNETDIR)/config-summary.txt ; do \
+	@for f in $(GASNETDIR)/config-summary.txt $(GASNETDIR)/config-details.txt ; do \
 	   if [[ -f $$f ]] ; then \
 	     ( set -x ; \
 	       cp $$f "$(DESTDIR)$(prefix)/$$f"; \
