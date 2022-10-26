@@ -11,14 +11,19 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 * Console output from `upcxx::init()` in verbose mode now compresses process
   identification information to one line per `local_team`.
+* New `upcxx -info` option suppresses compilation and outputs detailed information
+  regarding the UPC++/GASNet-EX libraries and configuration in-use.
+* New `upcxx-info` convenience script is an alias for `upcxx -info`
 
 Infrastructure changes:
 
-* ...
+* UPC++ library build now outputs a GASNet-EX configuration summary near the end
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #519: libupcxx build should echo GASNet configure summary
+* issue #543: Add upcxx-info
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
 
