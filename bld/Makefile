@@ -335,11 +335,25 @@ source '$(top_srcdir)/utils/upcxx.sh' "$$@" \
    -threadmode=$(GASNET_THREADMODE)
 endef
 
+# Body of a upcxx-info wrapper in a build dir
+do-upcxx-info: force
+	@file='$(DST)/bin/upcxx-info';                    \
+	 mkdir -p "$(DST)/bin" || exit $$?;               \
+	 rm -f "$$file" || exit $$?;                      \
+	 echo "$$upcxx_info_body" > $$file || exit $$?;   \
+	 chmod 755 $$file
+.PHONY: do-upcxx-info
+define upcxx_info_body
+#!$(UPCXX_BASH)
+exec $${0%/*}/upcxx "$$@" -info
+endef
+
 # Don't let these templates polute the environment except when needed
 ifneq ($(DST),)
 export upcxx_meta_body
 export upcxx_run_body
 export upcxx_script_body
+export upcxx_info_body
 endif
 
 ##
@@ -527,7 +541,7 @@ do-libupcxx: force
 	@$(MAKE) -C $(UPCXX_DIR)/lib -f "$(builddir)/Makefile" do-libupcxx-deps
 	@$(MAKE) -C $(UPCXX_DIR)/lib -f "$(builddir)/Makefile" libupcxx.a upcxx_headers.d
 	@$(MAKE) DST=$(UPCXX_DIR) UPCXX_META_GASNET='$(builddir)/$(GASNETDIR)' \
-	         do-upcxx-meta do-upcxx-run do-upcxx-script
+	         do-upcxx-meta do-upcxx-run do-upcxx-script do-upcxx-info
 
 #
 # On-demand compile of a single instance of libupcxx and required libgasnet
