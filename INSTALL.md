@@ -646,6 +646,22 @@ argument to `nvcc` during application compilation to ensure it uses the same hos
 compiler as was passed to the UPC++ `configure` script.
 
 #### Validation of CUDA memory kinds support
+
+One can validate CUDA support in a given UPC++ install using the a command like the following:
+
+```bash
+$ upcxx-info | grep CUDA
+
+UPCXX_CUDA:                         1
+UPCXX_CUDA_NVCC:                    /path/to/cuda/bin/nvcc
+UPCXX_CUDA_CPPFLAGS:                ...CUDA include options...
+UPCXX_CUDA_LIBFLAGS:                ...CUDA library options...
+  GPUs with NVIDIA CUDA API (cuda-uva)               ON     (enabled)
+```
+
+Where the `UPCXX_CUDA: 1` indicates the UPC++ install is CUDA-aware, and in the last line
+`ON` indicates that GASNet-EX *may* include GDR acceleration support (actual availability
+also depends on network backend selection at application compile time).
    
 UPC++ CUDA operation can be validated using the following programs in the source tree:
 
@@ -780,6 +796,21 @@ compiler as was passed to the UPC++ `configure` script.
 
 #### Validation of ROCm/HIP memory kinds support
    
+One can validate HIP/ROCm support in a given UPC++ install using the a command like the following:
+
+```bash
+$ upcxx-info | grep HIP
+
+UPCXX_HIP:                          1
+UPCXX_HIP_CPPFLAGS:                 ...HIP include options...
+UPCXX_HIP_LIBFLAGS:                 ...HIP library options...
+  GPUs with AMD HIP API (hip)                        ON     (enabled)
+```
+
+Where the `UPCXX_HIP: 1` indicates the UPC++ install is HIP-aware, and in the last line
+`ON` indicates that GASNet-EX *may* include ROCmRDMA acceleration support (actual availability
+also depends on network backend selection at application compile time).
+
 UPC++ ROCm/HIP operation can be validated using the following programs in the source tree:
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `hip_device`
