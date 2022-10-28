@@ -894,4 +894,6 @@ options:
 In addition to these explicit configure options, there are several environment
 variables which can implicitly affect the configuration of GASNet-EX.  The most
 common of these are listed at the end of the output of `configure --help`.
+Since these influence the GASNet-EX `configure` script, they are used in the
+`make` or `make all` stages of the UPC++ build, not its `configure` stage.
 
