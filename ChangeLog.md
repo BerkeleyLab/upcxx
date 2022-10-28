@@ -23,6 +23,7 @@ Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #519: libupcxx build should echo GASNet configure summary
+* issue #530: Share gex_MK_t objects between endpoints
 * issue #543: Add upcxx-info
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
