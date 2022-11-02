@@ -37,6 +37,13 @@ namespace upcxx { namespace backend {
 
   template<typename Device>
   struct device_heap_state_base : public device_heap_state_generic {
+   private:
+    using cache_t = std::unordered_map<typename Device::id_type, std::pair<int, gex_MK_t>>;
+    static cache_t& MK_cache() {
+      static cache_t c;
+      return c;
+    }
+   public:
     // this class template factors device-independent code parameterized by Device
     using DevPtr = typename Device::template pointer<void>;
     static constexpr DevPtr nullp = Device::template null_pointer<void>();
@@ -56,7 +63,7 @@ namespace upcxx { namespace backend {
     }
 
     #if UPCXXI_GEX_MK_ANY
-      void create_endpoint(gex_MK_Create_args_t args, int heap_idx, const char *where) {
+      void create_endpoint(gex_MK_Create_args_t args, int heap_idx, std::string const &where) {
         UPCXX_ASSERT_ALWAYS(use_gex_mk);
         UPCXX_ASSERT_ALWAYS(ep == GEX_EP_INVALID && kind == GEX_MK_INVALID 
                          && segment == GEX_SEGMENT_INVALID, 
@@ -65,11 +72,20 @@ namespace upcxx { namespace backend {
         gex_TM_t TM0 = gasnet::handle_of(upcxx::world()); UPCXX_ASSERT(TM0 != GEX_TM_INVALID);
         gex_Client_t client = gex_TM_QueryClient(TM0);
 
-        int ok = gex_MK_Create(&this->kind, client, &args, 0);
-        UPCXX_ASSERT_ALWAYS(ok == GASNET_OK && this->kind != GEX_MK_INVALID,
-                            "gex_MK_Create failed for " << where);
+        auto lookup = MK_cache().find(this->device_id);
+        if (lookup != MK_cache().end()) { // issue 530: re-use existing gex_MK_t for GEX efficiency
+          auto &v = lookup->second;
+          this->kind = v.second;
+          UPCXX_ASSERT_ALWAYS(this->kind != GEX_MK_INVALID);
+          UPCXX_ASSERT_ALWAYS(++v.first > 1, "bogus MK ref count: " << v.first << " in create for " << where);
+        } else {
+          int ok = gex_MK_Create(&this->kind, client, &args, 0);
+          UPCXX_ASSERT_ALWAYS(ok == GASNET_OK && this->kind != GEX_MK_INVALID,
+                              "gex_MK_Create failed for " << where);
+          MK_cache()[this->device_id] = std::make_pair(1, this->kind);
+        }
 
-        ok = gex_EP_Create(&this->ep, client, GEX_EP_CAPABILITY_RMA, 0);
+        int ok = gex_EP_Create(&this->ep, client, GEX_EP_CAPABILITY_RMA, 0);
         UPCXX_ASSERT_ALWAYS(ok == GASNET_OK && this->ep != GEX_EP_INVALID,
                             "gex_EP_Create failed for heap_idx " << heap_idx << ", " << where);
 
@@ -92,7 +108,14 @@ namespace upcxx { namespace backend {
           if (this->segment != GEX_SEGMENT_INVALID) { // iff we created an allocator
             gex_Segment_Destroy(this->segment, 0);
           }
-          gex_MK_Destroy(this->kind, 0);
+          auto lookup = MK_cache().find(this->device_id);
+          UPCXX_ASSERT_ALWAYS(lookup != MK_cache().end(), "internal error in MK_cache: " << where);
+          auto &v = lookup->second;
+          UPCXX_ASSERT_ALWAYS(v.first >= 1, "bogus MK ref count: " << v.first << " in destroy for " << where);
+          if (--v.first == 0) { // last endpoint using this MK
+            gex_MK_Destroy(this->kind, 0);
+            MK_cache().erase(lookup);
+          }
         #endif
 
         this->segment = GEX_SEGMENT_INVALID;

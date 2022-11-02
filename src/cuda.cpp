@@ -199,7 +199,7 @@ cuda_device::cuda_device(id_type device_id):
         args.gex_flags = 0;
         args.gex_class = GEX_MK_CLASS_CUDA_UVA;
         args.gex_args.gex_class_cuda_uva.gex_CUdevice = device_id;
-        st->create_endpoint(args, heap_idx_, where.c_str());
+        st->create_endpoint(args, heap_idx_, where);
       }
       #endif
       
