@@ -961,6 +961,7 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
   esac
   # -lamdhip64 is required by some versions of HIP-over-CUDA, default to adding it
   export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lamdhip64}
+  [[ -z ${HIP_LIBS} ]] && HIP_LIBS=${UPCXX_HIP_LIBFLAGS}
 fi
 
 #
@@ -1086,6 +1087,8 @@ if [[ $UPCXX_CUDA -eq 1 ]]; then
     echo_and_die 'failed to link against CUDA Driver API'
   fi
   trap failure_and_die ERR  # restore error handler
+
+  [[ -z ${CUDA_LIBS} ]] && CUDA_LIBS=${UPCXX_CUDA_LIBFLAGS}
 fi
 
 #
@@ -1177,6 +1180,8 @@ export UPCXX_HIP_LIBFLAGS=$UPCXX_HIP_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
 export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 export UPCXX_FORCE_LEGACY_RELOCATIONS=$UPCXX_FORCE_LEGACY_RELOCATIONS
+export CUDA_LIBS=$CUDA_LIBS
+export HIP_LIBS=$HIP_LIBS
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 
