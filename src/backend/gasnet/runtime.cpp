@@ -866,7 +866,7 @@ void upcxx::init() {
   // Automatically verify segments on init() in debug mode
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
   if (os_env<bool>("UPCXX_CCS_AUTOVERIFY", true))
-    detail::segmap_cache::verify_all(entry_barrier::none);
+    detail::segmap_cache::verify_all();
 #endif
 
   noise.show();
