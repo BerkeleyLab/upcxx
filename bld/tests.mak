@@ -225,6 +225,7 @@ test_exclude_fail_par =
 # Note use of export to ensure shell can use these
 #
 export TEST_FLAGS_ISSUE138=-DMINIMAL
+export TEST_FLAGS_ISSUE469=-std=c++17
 
 TEST_FLAGS_MEMBEROF_PGI=--diag_suppress1427
 TEST_FLAGS_MEMBEROF_GNU=-Wno-invalid-offsetof
