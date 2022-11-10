@@ -14,6 +14,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 * New `upcxx -info` option suppresses compilation and outputs detailed information
   regarding the UPC++/GASNet-EX libraries and configuration in-use.
 * New `upcxx-info` convenience script is an alias for `upcxx -info`
+* `entry_barrier` arguments removed from `experimental::relo::verify_{segment,all}`
 
 Infrastructure changes:
 
@@ -25,6 +26,7 @@ Notable issues resolved
 * issue #519: libupcxx build should echo GASNet configure summary
 * issue #530: Share gex_MK_t objects between endpoints
 * issue #543: Add upcxx-info
+* issue #548: Fix undocumented dependency arc involving `experimental::relo::verify_{segment,all}`
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
 

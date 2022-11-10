@@ -337,8 +337,8 @@ namespace detail {
     void debug_write_cache(int fd = 2);
     static const char* get_symbol(uintptr_t ptr);
 
-    static void verify_segment(uintptr_t, entry_barrier eb);
-    static void verify_all(entry_barrier eb);
+    static void verify_segment(uintptr_t);
+    static void verify_all();
     static inline bool enforce_verification(bool v) noexcept { bool prev = enforce_verification_; enforce_verification_ = v; return prev; }
     static inline bool verification_enforced() noexcept { return enforce_verification_; }
     static bool should_debug_color(int,int);

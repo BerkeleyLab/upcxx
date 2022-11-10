@@ -418,22 +418,22 @@ namespace detail {
 namespace experimental {
 namespace relocation {
   template<typename R, typename... Args>
-  void verify_segment(R(*ptr)(Args...), entry_barrier eb = entry_barrier::user)
+  void verify_segment(R(*ptr)(Args...))
   {
     UPCXXI_ASSERT_INIT();
     UPCXXI_ASSERT_ALWAYS_MASTER();
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
-    detail::segmap_cache::verify_segment(detail::fnptr_to_uintptr(ptr), eb);
+    UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+    detail::segmap_cache::verify_segment(detail::fnptr_to_uintptr(ptr));
   }
 
-  inline void verify_all(entry_barrier eb = entry_barrier::user)
+  inline void verify_all()
   {
     UPCXXI_ASSERT_INIT();
     UPCXXI_ASSERT_ALWAYS_MASTER();
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
-    detail::segmap_cache::verify_all(eb);
+    UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+    detail::segmap_cache::verify_all();
   }
 
   inline bool enforce_verification(bool v)

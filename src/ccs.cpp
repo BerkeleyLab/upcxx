@@ -999,31 +999,35 @@ namespace detail {
       return {};
   };
 
-  void segmap_cache::verify_segment(uintptr_t uptr, entry_barrier eb)
+  void segmap_cache::verify_segment(uintptr_t uptr)
   {
     UPCXXI_ASSERT_INIT();
     UPCXXI_ASSERT_ALWAYS_MASTER();
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
-    backend::quiesce(world(), eb);
+    UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    rebuild_segment_map();
-    auto& segmap = segment_map();
-    auto it = begin(segmap);
-    for (; it != end(segmap); ++it)
+    segment_hash h{};
     {
-      if (uptr > it->start && uptr < it->end)
+      std::lock_guard<std::recursive_mutex> lock(mutex_);
+      rebuild_segment_map();
+      auto& segmap = segment_map();
+      auto it = begin(segmap);
+      for (; it != end(segmap); ++it)
       {
-        if (it->flags & static_cast<flags_type>(segment_flags::bad_segment))
+        if (uptr > it->start && uptr < it->end)
         {
-          std::stringstream ss;
-          ss << "Attempted to use a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
-          debug_write_ptr(uptr, ss);
-          UPCXXI_FATAL_ERROR(ss.str());
+          if (it->flags & static_cast<flags_type>(segment_flags::bad_segment))
+          {
+            std::stringstream ss;
+            ss << "Attempted to use a duplicate, RWX, or TEXTREL segment from library with unknown file path. See: docs/ccs-rpc.md.\n\n";
+            debug_write_ptr(uptr, ss);
+            UPCXXI_FATAL_ERROR(ss.str());
+          }
+          break;
         }
-        break;
       }
+      if (it != end(segmap))
+        h = it->ident;
     }
     auto binop = [](const segment_hash& lhs, const segment_hash& rhs) -> segment_hash {
       if (lhs == rhs)
@@ -1031,46 +1035,58 @@ namespace detail {
       else
         return {};
     };
-    segment_hash h{};
-    if (it != end(segmap))
-      h = it->ident;
     segment_hash reduced = reduce_all(h, binop, world(), operation_cx_as_internal_future_t{{}}).wait();
-    if (it != end(segmap)) {
-      if (reduced != segment_hash{}) {
-        if (it->flags & static_cast<flags_type>(segment_flags::verified))
-          return;
-        epoch++;
-        it->set_verified();
-        int16_t idx = verified_segment_count_;
-        it->idx = idx;
-        segment_vector_.push_back({it->start, it->end, idx});
-        verified_segment_count_++;
+    {
+      std::lock_guard<std::recursive_mutex> lock(mutex_);
+      auto& segmap = segment_map();
+      auto it = std::find_if(begin(segmap), end(segmap), [&](const segment_info& s)
+      {
+        return s.ident == h;
+      });
+      if (it != end(segmap)) {
+        if (reduced != segment_hash{}) {
+          if (it->flags & static_cast<flags_type>(segment_flags::verified))
+            return;
+          epoch++;
+          it->set_verified();
+          int16_t idx = verified_segment_count_;
+          it->idx = idx;
+          segment_vector_.push_back({it->start, it->end, idx});
+          verified_segment_count_++;
+        } else {
+          it->set_bad_verification();
+          throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
+        }
       } else {
-        it->set_bad_verification();
         throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
       }
-    } else {
-      throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
     }
 #endif
   }
 
-  void segmap_cache::verify_all(entry_barrier eb)
+  void segmap_cache::verify_all()
   {
     UPCXXI_ASSERT_INIT();
     UPCXXI_ASSERT_ALWAYS_MASTER();
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
-    backend::quiesce(world(), eb);
+    UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    std::size_t segment_count;
+    std::unique_ptr<segment_hash[]> hashlist;
     rebuild_segment_map();
-    auto& segmap = segment_map();
-    size_t segment_count = broadcast(segmap.size(), 0, world(), operation_cx_as_internal_future_t{{}}).wait();
-    std::unique_ptr<segment_hash[]> hashlist(new segment_hash[segment_count]);
+    // Operate on a local copy of the segment map in case the global map is rebuilt
+    // concurrently during segment information gathering
+    mutex_.lock();
+    auto segmap = segment_map();
+    mutex_.unlock();
+
+    segment_count = broadcast(segmap.size(), 0, world(), operation_cx_as_internal_future_t{{}}).wait();
+
+    hashlist = std::unique_ptr<segment_hash[]>(new segment_hash[segment_count]);
     if (rank_me() == 0)
       for (std::size_t i = 0; i < segment_count; ++i)
         new (&hashlist[i]) segment_hash(segmap[i].ident);
+
     broadcast(hashlist.get(), segment_count, 0, world(), operation_cx_as_internal_future_t{{}}).wait();
 
     std::unique_ptr<bool[]> checklist(new bool[segment_count]());
@@ -1086,65 +1102,70 @@ namespace detail {
 
     reduce_all(checklist.get(), checklist.get(), segment_count, op_fast_bit_and, world(), operation_cx_as_internal_future_t{{}}).wait();
 
-    for (std::size_t i = 0; i < segment_count; ++i) {
-      for (auto& seg : segmap) {
-        if (seg.ident == hashlist[i])
-        {
-          if (checklist[i])
-            seg.set_verified();
-          else
-            seg.set_bad_verification();
-          break;
-        }
-      }
-    }
-
-    constexpr flags_type found_flags = static_cast<flags_type>(segment_flags::verified) | static_cast<flags_type>(segment_flags::bad_verification);
-    for (auto& seg : segmap) {
-      if (!(seg.flags & found_flags))
-        seg.set_bad_verification();
-#if UPCXXI_ASSERT_ENABLED
-      if (seg.start == primary().start && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))
-        UPCXXI_FATAL_ERROR("Primary segment verification failed");
-#endif
-    }
-
-    struct segment_info_idx {
-      uintptr_t start;
-      uintptr_t end;
-      segment_hash ident;
-    };
-
-    std::vector<segment_info_idx> new_segments;
-    for (const auto& seg : segmap) {
-      if (seg.flags & static_cast<uint16_t>(segment_flags::verified)) {
-        bool found = false;
-        for (const auto& seg2 : segment_vector_) {
-          if (seg.start == seg2.start) {
-            found = true;
+    {
+      std::lock_guard<std::recursive_mutex> lock(mutex_);
+      // Update the current global segment map, which might have been updated since getting the local copy
+      auto& segmap = segment_map();
+      for (std::size_t i = 0; i < segment_count; ++i) {
+        for (auto& seg : segmap) {
+          if (seg.ident == hashlist[i])
+          {
+            if (checklist[i])
+              seg.set_verified();
+            else
+              seg.set_bad_verification();
             break;
           }
         }
-        if (!found)
-          new_segments.push_back({seg.start, seg.end, seg.ident});
       }
-    }
-    // Sort ensures each hash gets assigned the same index across all processes, regardless of their position in segmap
-    std::sort(begin(new_segments), end(new_segments), [](const typename decltype(new_segments)::value_type& lhs, const typename decltype(new_segments)::value_type& rhs)
-    {
-      return lhs.ident < rhs.ident;
-    });
-    UPCXX_ASSERT(verified_segment_count_ + new_segments.size() > 0);
-    for (auto& seg : new_segments) {
-      auto idx = verified_segment_count_++;
-      segment_vector_.push_back({seg.start, seg.end, idx});
-      for (auto& seg2 : segmap) {
-        if (seg.start == seg2.start)
-          seg2.idx = idx;
+
+      constexpr flags_type found_flags = static_cast<flags_type>(segment_flags::verified) | static_cast<flags_type>(segment_flags::bad_verification);
+      for (auto& seg : segmap) {
+        if (!(seg.flags & found_flags))
+          seg.set_bad_verification();
+#if UPCXXI_ASSERT_ENABLED
+        if (seg.start == primary().start && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))
+          UPCXXI_FATAL_ERROR("Primary segment verification failed");
+#endif
       }
+
+      struct segment_info_idx {
+        uintptr_t start;
+        uintptr_t end;
+        segment_hash ident;
+      };
+
+      std::vector<segment_info_idx> new_segments;
+      for (const auto& seg : segmap) {
+        if (seg.flags & static_cast<uint16_t>(segment_flags::verified)) {
+          bool found = false;
+          for (const auto& seg2 : segment_vector_) {
+            if (seg.start == seg2.start) {
+              found = true;
+              break;
+            }
+          }
+          if (!found)
+            new_segments.push_back({seg.start, seg.end, seg.ident});
+        }
+      }
+      // Sort ensures each hash gets assigned the same index across all processes, regardless of their position in segmap
+      std::sort(begin(new_segments), end(new_segments), [](const typename decltype(new_segments)::value_type& lhs, const typename decltype(new_segments)::value_type& rhs)
+      {
+        return lhs.ident < rhs.ident;
+      });
+      UPCXX_ASSERT(verified_segment_count_ + new_segments.size() > 0);
+      for (auto& seg : new_segments) {
+        auto idx = verified_segment_count_++;
+        segment_vector_.push_back({seg.start, seg.end, idx});
+        for (auto& seg2 : segmap) {
+          if (seg.start == seg2.start)
+            seg2.idx = idx;
+        }
+      }
+      if (new_segments.size() > 0)
+        epoch++;
     }
-    if (new_segments.size() > 0)
-      epoch++;
 #endif
   }
 

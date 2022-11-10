@@ -178,7 +178,7 @@ enforcement is enabled.
 
 This namespace has a shorthand name of `upcxx::experimental::relo`.
 
-#### `void verify_segment(R(*ptr)(Args...), entry_barrier eb = entry_barrier::user)`
+#### `void verify_segment(R(*ptr)(Args...))`
 
 World collective function. Checks the segment is not a bad segment (RWX segment
 or containing TEXTRELs with an unknown file path). Runs a reduction on the
@@ -187,10 +187,9 @@ must be a pointer to the same function on all processes.  Raises an error on
 failure.  Allows outgoing RPC verification. Allows for more compact function
 pointer relocation.  
 
-UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
-otherwise.
+UPC++ progress level: `internal`
 
-#### `void verify_all(entry_barrier eb = entry_barrier::user)`
+#### `void verify_all()`
 
 World collective function. All processes have their segment maps compared
 against rank 0 for verification. Marks segments as verified if they are
@@ -201,8 +200,7 @@ function should be called after `dlopen` if UPC++ intends to RPC the functions
 contained within this library. Allows for more compact function pointer
 relocation.
 
-UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
-otherwise.
+UPC++ progress level: `internal`
 
 #### `bool enforce_verification(bool)` 
 
