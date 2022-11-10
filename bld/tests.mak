@@ -177,6 +177,14 @@ export TEST_FLAGS_UTS_OMP_RANKS = $(UPCXX_OPENMP_FLAGS)
 export OMP_NUM_THREADS ?= 4
 endif
 
+# Conditionally exclude tests that require C++17:
+ifeq ($(strip $(UPCXX_HAVE_CXX17)),)
+test_exclude_all += \
+	test/regression/issue469.cpp
+else
+export TEST_FLAGS_ISSUE469=-std=c++17
+endif
+
 # Conditionally exclude based on UPCXX_CODEMODE
 ifeq ($(strip $(UPCXX_CODEMODE)),debug)
 # Opt-only tests (to exclude when CODEMODE=debug)
@@ -225,7 +233,6 @@ test_exclude_fail_par =
 # Note use of export to ensure shell can use these
 #
 export TEST_FLAGS_ISSUE138=-DMINIMAL
-export TEST_FLAGS_ISSUE469=-std=c++17
 
 TEST_FLAGS_MEMBEROF_PGI=--diag_suppress1427
 TEST_FLAGS_MEMBEROF_GNU=-Wno-invalid-offsetof
