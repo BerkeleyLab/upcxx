@@ -246,6 +246,8 @@ done
 UPCXX_VALGRIND=
 UPCXX_DISCONTIG=
 UPCXX_FORCE_LEGACY_RELOCATIONS=''
+UPCXX_HAVE_OPENMP=
+UPCXX_HAVE_CXX17=
 
 unset gasnet_help
 
@@ -380,6 +382,11 @@ while [[ $# -gt 0 ]]; do
     -with-mpsc-queue=*)
       UPCXX_MPSC_QUEUE="$(get_arg_val $arg)"; export UPCXX_MPSC_QUEUE
       ;;
+    # deliberately undocumented maintainer flags to control default dev-test set
+    -with-tests-cxx17)     UPCXX_HAVE_CXX17=1  ; export UPCXX_HAVE_CXX17 ;;
+    -without-tests-cxx17)  UPCXX_HAVE_CXX17=   ; export UPCXX_HAVE_CXX17 ;;
+    -with-tests-openmp)    UPCXX_HAVE_OPENMP=1 ; export UPCXX_HAVE_OPENMP ;;
+    -without-tests-openmp) UPCXX_HAVE_OPENMP=  ; export UPCXX_HAVE_OPENMP ;;
 
     *) # Anything we don't consume above will be passed to GASNet's configure
 
@@ -1182,6 +1189,12 @@ export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 export UPCXX_FORCE_LEGACY_RELOCATIONS=$UPCXX_FORCE_LEGACY_RELOCATIONS
 export CUDA_LIBS=$CUDA_LIBS
 export HIP_LIBS=$HIP_LIBS
+
+# These control use of optional dependencies in tests, and support command-line override:
+export UPCXX_HAVE_CXX17?=$UPCXX_HAVE_CXX17
+export UPCXX_HAVE_OPENMP?=$UPCXX_HAVE_OPENMP
+
+# This does all the actual work:
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 
