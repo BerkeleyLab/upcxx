@@ -125,6 +125,10 @@ Usage:
   --with-hip-home=...
         Install prefix of HIP developer tools 
         The default is determined by searching for 'hipcc' in $PATH.
+  --with-hip-libflags=...
+        Sets the linker flags needed to link HIP runtime libraries.
+        Overrides the value of $UPCXX_HIP_LIBFLAGS, if any.
+        The default is automatically determined.
 
   --enable-ccs-rpc
   --disable-ccs-rpc
