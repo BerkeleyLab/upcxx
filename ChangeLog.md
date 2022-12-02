@@ -57,6 +57,7 @@ Notable issues resolved
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
 * issue #572: Fix unintended user-level progress in `experimental::relo::verify_{segment,all}`
+* issue #573: CCS: Assertion failure in segmap_cache::lookup_at_idx for multi-threaded CCS
 * issue #575: Improve guide's broadcast example
 
 This library release conforms to the
@@ -67,6 +68,8 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 Breaking changes:
 
 * Calls to `{cuda,hip}_device::device_n()` are now prohibited before `upcxx::init()`
+* CCS: There is now a limit on verified segments, defaulting to 256, controlled by the
+  `UPCXX_CCS_MAX_SEGMENTS` environment variable.
 
 ### 2022.09.30: Release 2022.9.0
 
