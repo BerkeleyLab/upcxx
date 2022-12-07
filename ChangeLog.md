@@ -25,6 +25,7 @@ Notable issues resolved
 
 * issue #519: libupcxx build should echo GASNet configure summary
 * issue #530: Share gex_MK_t objects between endpoints
+* issue #531: Consider supporting HIP-over-CUDA
 * issue #543: Add upcxx-info
 * issue #548: Fix undocumented dependency arc involving `experimental::relo::verify_{segment,all}`
 * issue #565: `upcxx-run --help` fails in a build directory

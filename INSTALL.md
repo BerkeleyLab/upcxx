@@ -181,6 +181,7 @@ in the following sections, below:
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+* [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
@@ -747,7 +748,7 @@ configurations, and the current/default version of GASNet-EX:
 Additional Requirements:
 
 * Linux OS with x86\_64 or ppc64le CPU (not ARM)
-* ROCK AMD GPU kernel driver installed
+* AMD GPU kernel driver installed
 
 When using ROCmRDMA-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
@@ -844,6 +845,47 @@ in a future release.
 
 See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more details on 
 using the UPC++ GPU support.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
+### Configuration: HIP-over-CUDA GPU support
+
+#### System Requirements:
+
+AMD ROCm provides an implementation of HIP-over-CUDA allowing HIP code to target 
+NVIDIA-branded GPUs. UPC++ can interoperate with this translation layer, 
+allowing the use of `upcxx::hip_device` on NVIDIA GPU hardware. This enables RMA 
+communication on memory buffers resident in these GPUs just as if
+they were AMD GPUs (or if the code being compiled was written in CUDA). This is
+an experimental capability, but has been shown to work with the following
+configurations:
+
+* AMD ROCm version 5.1.0 and CUDA toolkit version 11.4.0
+* AMD ROCm version 5.3.2 and CUDA toolkit version 11.7.0
+
+as well as modern NVIDIA-branded [CUDA-compatible GPU hardware](https://developer.nvidia.com/cuda-gpus).
+
+Additional requirements for GPUDirect RDMA can be found in the section 
+[Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support).
+
+#### `configure` Command for Enabling HIP-over-CUDA GPU Support
+
+To activate the UPC++ support for HIP-over-CUDA, pass `--enable-hip` and 
+`--with-hip-platform=nvidia` to the `configure` script:
+
+```bash
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --enable-hip --with-hip-platform=nvidia
+```
+
+For issues with automatic detection of compiler location or build flags, 
+consult the relevant sections of  
+[Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support) and 
+[Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support).
+
+As mentioned in prior sections, both UPC++ and your UPC++ application must be 
+compiled using the same host compiler toolchain.
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
