@@ -526,6 +526,10 @@ void upcxx::init() {
   // Determine a bound on the max usable shared segment size
   size_t gasnet_max_segsize = gasnet_getMaxLocalSegmentSize();
   if (upcxxi_upc_is_linked()) {
+    if (!backend::rank_me && os_env<bool>("UPCXX_WARN_UPC", true)) {
+      say() << "WARNING: Integration with Berkeley UPC is now deprecated and may be removed in a future UPC++ release. "
+            << "This warning may be silenced by setting envvar: UPCXX_WARN_UPC=0";
+    }
     gasnet_max_segsize = gasnet_getMaxGlobalSegmentSize();
     size_t upc_segment_pad = 16*1024*1024; // TODO: replace this hack
     UPCXX_ASSERT_ALWAYS(gasnet_max_segsize > upc_segment_pad);

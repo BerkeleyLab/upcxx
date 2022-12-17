@@ -19,6 +19,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 Infrastructure changes:
 
 * UPC++ library build now outputs a GASNet-EX configuration summary near the end
+* Integration with Berkeley UPC is now deprecated and may be removed in a future release.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):

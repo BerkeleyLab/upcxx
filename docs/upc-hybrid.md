@@ -1,5 +1,7 @@
 # UPC++ Interoperability with Berkeley UPC #
 
+## WARNING: Integration with Berkeley UPC is now deprecated and may be removed in a future release
+
 UPC++ now has experimental support for interoperability with the 
 [Berkeley UPC Runtime](https://upc.lbl.gov) (a.k.a "UPCR"), 
 using any of the four UPC translators targeting that runtime.
