@@ -23,7 +23,7 @@ sys_info() {
         done
         echo -n -e "Configure environment:\n$SETTINGS"
         echo " "
-        $BASH --version |& head -2
+        $BASH --version 2>&1 | head -2
         echo " "
     ) fi
 }
