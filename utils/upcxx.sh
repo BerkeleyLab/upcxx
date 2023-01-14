@@ -241,6 +241,12 @@ elif [[ $doversion || $doinfo ]] ; then
   fi
   githash=`(cat $prefix/share/doc/upcxx/docs/version.git ) 2> /dev/null`
   gexhash=`(cat $prefix/gasnet.*/share/doc/GASNet/version.git | head -1 ) 2> /dev/null`
+  if [[ -z $gexhash ]] ; then
+    # version.git is missing (not a GASNet release tarball or git clone)
+    # at least report the package version
+    gexhash=`(grep -h RELEASE_VERSION $prefix/gasnet.*/config-details.txt | grep -i gasnet | cut -d: -f2 | head -1 ) 2> /dev/null`
+    gexhash=${gexhash:+gex-$(echo $gexhash)}
+  fi
   if [[ -n $gexhash ]] ; then
     gexhash=" / $gexhash"
   fi
