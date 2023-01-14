@@ -31,6 +31,7 @@ Notable issues resolved
 * issue #548: Fix undocumented dependency arc involving `experimental::relo::verify_{segment,all}`
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
+* issue #575: Improve guide's broadcast example
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 20XX.YY.0](docs/spec.pdf).
