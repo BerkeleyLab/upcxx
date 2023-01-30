@@ -782,10 +782,16 @@ in the GASNet distribution.
 `configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
 in your `$PATH` and will attempt to infer the correct ROCm/HIP install location for
 your system. If this automatic detection fails, then you may need to manually
-override the following option to `configure`:
+override the following options to `configure`:
 
 * `--with-hip-home=...`: the install prefix for the ROCm/HIP developer tools 
    Eg `--with-hip-home=/opt/rocm-4.5.0/hip`
+
+* `--with-hip-cppflags=...`: the pre-processor flags needed to find HIP runtime headers
+   Eg `--with-hip-cppflags='-I/opt/rocm-4.5.0/hip/include'`
+
+* `--with-hip-libflags=...`: the linker flags needed to link HIP runtime libraries
+   Eg `--with-hip-libflags='-L/opt/rocm-4.5.0/hip/include -lamdhip64'`
 
 Note that you must build UPC++ with the same host compiler toolchain as is used
 by `hipcc` when compiling any UPC++ ROCm programs. That is, both UPC++ and your
