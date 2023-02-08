@@ -47,7 +47,7 @@ namespace {
     };
     auto dev_free = [st](void *p) {
       auto with = cuda::context<1>(st->context);
-      CU_CHECK_ALWAYS(cuMemFree(reinterpret_cast<CUdeviceptr>(p)));
+      UPCXXI_CU_CHECK_ALWAYS(cuMemFree(reinterpret_cast<CUdeviceptr>(p)));
     };
     std::string where("device_allocator<cuda_device> constructor for ");
     if (st) where += "CUDA device " + std::to_string(st->device_id);
@@ -150,7 +150,7 @@ extern void detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void co
     cuda_heap_state *st_s = cuda_heap_state::get(heap_s);
 
     // device to device
-    CU_CHECK(cuMemcpyPeerAsync(
+    UPCXXI_CU_CHECK(cuMemcpyPeerAsync(
       reinterpret_cast<CUdeviceptr>(buf_d), st_d->context,
       reinterpret_cast<CUdeviceptr>(buf_s), st_s->context,
       size, st->stream
@@ -158,17 +158,17 @@ extern void detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void co
   }
   else if(!host_d) {
     // host to device
-    CU_CHECK(cuMemcpyHtoDAsync(reinterpret_cast<CUdeviceptr>(buf_d), buf_s, size, st->stream));
+    UPCXXI_CU_CHECK(cuMemcpyHtoDAsync(reinterpret_cast<CUdeviceptr>(buf_d), buf_s, size, st->stream));
   }
   else {
     UPCXX_ASSERT(!host_s);
     // device to host
-    CU_CHECK(cuMemcpyDtoHAsync(buf_d, reinterpret_cast<CUdeviceptr>(buf_s), size, st->stream));
+    UPCXXI_CU_CHECK(cuMemcpyDtoHAsync(buf_d, reinterpret_cast<CUdeviceptr>(buf_s), size, st->stream));
   }
 
   CUevent event;
-  CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
-  CU_CHECK(cuEventRecord(event, st->stream));
+  UPCXXI_CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
+  UPCXXI_CU_CHECK(cuEventRecord(event, st->stream));
   cb->event = (void*)event;
 
   persona *per = detail::the_persona_tls.get_top_persona();
@@ -183,7 +183,7 @@ int cuda_device::device_n() {
     if (cu_init(true) == CUDA_ERROR_NO_DEVICE) {
       return 0; // cuInit can give this error when no devices are visible
     }
-    CU_CHECK_ALWAYS_VERBOSE(cuDeviceGetCount(&dev_n));
+    UPCXXI_CU_CHECK_ALWAYS_VERBOSE(cuDeviceGetCount(&dev_n));
     return dev_n;
   #else
     return 0;
@@ -229,7 +229,7 @@ cuda_device::cuda_device(id_type device_id):
       }
       #endif
       
-      CU_CHECK_ALWAYS_VERBOSE(cuStreamCreate(&st->stream, CU_STREAM_NON_BLOCKING));
+      UPCXXI_CU_CHECK_ALWAYS_VERBOSE(cuStreamCreate(&st->stream, CU_STREAM_NON_BLOCKING));
       backend::heap_state::get(heap_idx_,true) = st;
     }
   #else
@@ -263,8 +263,8 @@ void cuda_device::destroy(upcxx::entry_barrier eb) {
       UPCXX_ASSERT(!st->alloc_base);
     }
 
-    CU_CHECK_ALWAYS(cuStreamDestroy(st->stream));
-    CU_CHECK_ALWAYS(cuDevicePrimaryCtxRelease(st->device_id));
+    UPCXXI_CU_CHECK_ALWAYS(cuStreamDestroy(st->stream));
+    UPCXXI_CU_CHECK_ALWAYS(cuDevicePrimaryCtxRelease(st->device_id));
     
     backend::heap_state::get(heap_idx_) = nullptr;
     backend::heap_state::free_index(heap_idx_);
@@ -295,7 +295,7 @@ void detail::device_allocator_core<cuda_device>::release() {
      
       if(st->segment_to_free) {
         auto with = cuda::context<1>(st->context);
-        CU_CHECK_ALWAYS(cuMemFree(reinterpret_cast<CUdeviceptr>(st->segment_to_free)));
+        UPCXXI_CU_CHECK_ALWAYS(cuMemFree(reinterpret_cast<CUdeviceptr>(st->segment_to_free)));
         st->segment_to_free = nullptr;
       }
       

@@ -2032,7 +2032,7 @@ namespace {
   #if UPCXXI_CUDA_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
       if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
-        CU_CHECK(cuEventDestroy((CUevent)cb->event));
+        UPCXXI_CU_CHECK(cuEventDestroy((CUevent)cb->event));
         per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
         cb->execute_and_delete();
       }
