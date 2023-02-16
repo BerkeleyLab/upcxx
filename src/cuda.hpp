@@ -46,6 +46,8 @@ namespace upcxx {
       return default_alignment_erased(sizeof(T), alignof(T), normal_alignment);
     }
 
+    static std::string kind_info();
+
     void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
 
     static constexpr bool use_gex_mk(detail::internal_only) {
@@ -57,6 +59,9 @@ namespace upcxx {
     }
 
   private:
+    std::string kind_info_dispatch() const override {
+      return kind_info();
+    }
     static constexpr int min_alignment = 16;
     static constexpr int normal_alignment = 256;
   };

@@ -182,9 +182,13 @@ class device {
   template<typename Device>
   static typename Device::id_type heap_idx_to_device_id(int heap_idx);
 
+  virtual std::string kind_info_dispatch() const = 0;
+
  public:
   memory_kind kind() const { return kind_; }
   /*virtual*/ bool is_active() const { return heap_idx_ >= 0; }
+
+  std::string kind_info() const { return this->kind_info_dispatch(); }
 
   virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
 

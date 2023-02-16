@@ -14,6 +14,17 @@ using upcxx::backend::hip_heap_state;
 namespace hip = detail::hip;
 
 namespace {
+
+  hipError_t hip_init(bool errors_return = false) {
+    static hipError_t res = []() { // first call
+      return hipInit(0);
+    }();
+    if_pf (res != hipSuccess && !errors_return) {
+      hip::hip_failed(res, __FILE__, __LINE__, "hipInit(0)", true);
+    }
+    return res;
+  }
+
   GASNETT_COLD
   detail::segment_allocator make_segment(int heap_idx, void *base, size_t size) {
     hip_heap_state *st = heap_idx <= 0 ? nullptr : hip_heap_state::get(heap_idx);
@@ -43,10 +54,21 @@ namespace {
   } // make_segment
 
 } // anon namespace
+#endif
 
 GASNETT_COLD
-static std::string get_hip_info() {
+std::string hip_device::kind_info() {
+  UPCXXI_ASSERT_INIT();
+#if UPCXXI_HIP_ENABLED
   std::stringstream ss;
+
+  hipError_t res = hip_init(true);
+  if (res != hipSuccess) {
+    ss << "hipInit() failed";
+    const char *errname = hipGetErrorName(res);
+    if (errname) ss << ": " << errname;
+    ss << "\n";
+  }
 
   int version = -1;
   if ( hipDriverGetVersion(&version) == hipSuccess && version >= 0) {
@@ -58,7 +80,8 @@ static std::string get_hip_info() {
   }
 
   int dev_n = -1;
-  if ( hipGetDeviceCount(&dev_n) == hipErrorNoDevice) dev_n = 0;
+  if (res == hipErrorNoDevice ||
+      hipGetDeviceCount(&dev_n) == hipErrorNoDevice) dev_n = 0;
   if ( dev_n >= 0) {
     ss << "Found " << dev_n << " HIP devices:\n";
     for (int d = 0; d < dev_n; d++) {
@@ -88,8 +111,12 @@ static std::string get_hip_info() {
   }
 
   return ss.str();
+#else
+  return "HIP support is disabled in this UPC++ install.";
+#endif
 }
 
+#if UPCXXI_HIP_ENABLED
 GASNETT_COLD
 void hip::hip_failed(hipError_t res, const char *file, int line, const char *expr, bool report_verbose) {
   const char *errname = hipGetErrorName(res);
@@ -100,7 +127,7 @@ void hip::hip_failed(hipError_t res, const char *file, int line, const char *exp
              << ": " << (errstr?errstr:"unknown");
 
   if (report_verbose) {
-    ss << "\n\nHIP info:\n" << get_hip_info();
+    ss << "\n\nHIP info:\n" << hip_device::kind_info();
   }
   
   detail::fatal_error(ss.str(), "HIP call failed", nullptr, file, line);
@@ -182,15 +209,13 @@ extern void detail::hip_copy_local(int heap_d, void *buf_d, int heap_s, void con
 #endif
 
 int hip_device::device_n() {
+  UPCXXI_ASSERT_INIT();
   #if UPCXXI_HIP_ENABLED
     int dev_n = -1;
-    hipError_t res = hipInit(0);
-    if (res == hipErrorNoDevice) {
+    if (hip_init(true) == hipErrorNoDevice) {
       return 0; // HIP-over-CUDA can give this error when no devices are visible
-    } else if (res != hipSuccess) {
-      UPCXXI_HIP_CHECK_ALWAYS_VERBOSE(hipInit(0));
     }
-    res = hipGetDeviceCount(&dev_n);
+    hipError_t res = hipGetDeviceCount(&dev_n);
     if (res == hipErrorNoDevice) {
       dev_n = 0;
     } else if (res != hipSuccess) {
@@ -215,7 +240,7 @@ hip_device::hip_device(id_type device_id):
     if (device_id != invalid_device_id) {
       heap_idx_ = backend::heap_state::alloc_index(use_gex_mk(detail::internal_only()));
 
-      UPCXXI_HIP_CHECK_ALWAYS_VERBOSE(hipInit(0));
+      hip_init();
       auto with = hip::context<2>(device_id);
 
       hip_heap_state *st = new hip_heap_state{};

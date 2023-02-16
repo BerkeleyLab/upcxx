@@ -14,6 +14,20 @@ using upcxx::backend::cuda_heap_state;
 namespace cuda = detail::cuda;
 
 namespace {
+  CUresult cu_init(bool errors_return = false) {
+    static CUresult res = []() { // first call
+      int dev_n = -1;
+      CUresult res = cuDeviceGetCount(&dev_n);
+      if (res == CUDA_ERROR_NOT_INITIALIZED) {
+        return cuInit(0);
+      } else return res;
+    }();
+    if_pf (res != CUDA_SUCCESS && !errors_return) {
+      cuda::cu_failed(res, __FILE__, __LINE__, "cuInit(0)", true);
+    }
+    return res;
+  }
+
   GASNETT_COLD
   detail::segment_allocator make_segment(int heap_idx, void *base, size_t size) {
     cuda_heap_state *st = heap_idx <= 0 ? nullptr : cuda_heap_state::get(heap_idx);
@@ -43,10 +57,22 @@ namespace {
   } // make_segment
 
 } // anon namespace
+#endif
 
 GASNETT_COLD
-static std::string get_cuda_info() {
+std::string cuda_device::kind_info() {
+  UPCXXI_ASSERT_INIT();
+#if UPCXXI_CUDA_ENABLED
   std::stringstream ss;
+
+  CUresult res = cu_init(true);
+  if (res != CUDA_SUCCESS) {
+    ss << "cuInit() failed";
+    const char *errname = nullptr;
+    cuGetErrorName(res, &errname);
+    if (errname) ss << ": " << errname;
+    ss << "\n";
+  }
 
   int version = -1;
   if ( cuDriverGetVersion(&version) == CUDA_SUCCESS && version >= 0) {
@@ -54,7 +80,9 @@ static std::string get_cuda_info() {
   }
 
   int dev_n = -1;
-  if ( cuDeviceGetCount(&dev_n) == CUDA_SUCCESS && dev_n >= 0) {
+  if (res == CUDA_ERROR_NO_DEVICE || 
+      cuDeviceGetCount(&dev_n) == CUDA_ERROR_NO_DEVICE) dev_n = 0;
+  if (dev_n >= 0) {
     ss << "Found " << dev_n << " CUDA devices:\n";
     for (int d = 0; d < dev_n; d++) {
       char name[255];
@@ -81,8 +109,12 @@ static std::string get_cuda_info() {
   }
 
   return ss.str();
+#else
+  return "CUDA support is disabled in this UPC++ install.";
+#endif
 }
 
+#if UPCXXI_CUDA_ENABLED
 GASNETT_COLD
 void cuda::cu_failed(CUresult res, const char *file, int line, const char *expr, bool report_verbose) {
   const char *errname="", *errstr="";
@@ -93,7 +125,7 @@ void cuda::cu_failed(CUresult res, const char *file, int line, const char *expr,
   ss << expr <<"\n  error="<<errname<<": "<<errstr;
 
   if (report_verbose) {
-    ss << "\n\nCUDA info:\n" << get_cuda_info();
+    ss << "\n\nCUDA info:\n" << cuda_device::kind_info();
   }
   
   detail::fatal_error(ss.str(), "CUDA call failed", nullptr, file, line);
@@ -145,17 +177,13 @@ extern void detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void co
 #endif
 
 int cuda_device::device_n() {
+  UPCXXI_ASSERT_INIT();
   #if UPCXXI_CUDA_ENABLED
     int dev_n = -1;
-    CUresult res = cuDeviceGetCount(&dev_n);
-    if (res == CUDA_ERROR_NOT_INITIALIZED) {
-       if (cuInit(0) == CUDA_ERROR_NO_DEVICE) { 
-         return 0; // cuInit can give this error when no devices are visible
-       } else CU_CHECK_ALWAYS_VERBOSE(cuInit(0));
-    } 
-    if (res != CUDA_SUCCESS) {
-      CU_CHECK_ALWAYS_VERBOSE(cuDeviceGetCount(&dev_n));
+    if (cu_init(true) == CUDA_ERROR_NO_DEVICE) {
+      return 0; // cuInit can give this error when no devices are visible
     }
+    CU_CHECK_ALWAYS_VERBOSE(cuDeviceGetCount(&dev_n));
     return dev_n;
   #else
     return 0;
@@ -174,12 +202,10 @@ cuda_device::cuda_device(id_type device_id):
   #if UPCXXI_CUDA_ENABLED
     if (device_id != invalid_device_id) {
       heap_idx_ = backend::heap_state::alloc_index(use_gex_mk(detail::internal_only()));
+
+      cu_init();
       CUcontext ctx;
       CUresult res = cuDevicePrimaryCtxRetain(&ctx, device_id);
-      if(res == CUDA_ERROR_NOT_INITIALIZED) {
-        CU_CHECK_ALWAYS_VERBOSE(cuInit(0));
-        res = cuDevicePrimaryCtxRetain(&ctx, device_id);
-      }
       if (res != CUDA_SUCCESS) {
         std::string callstr("cuDevicePrimaryCtxRetain() failed for device ");
         callstr += std::to_string(device_id);
