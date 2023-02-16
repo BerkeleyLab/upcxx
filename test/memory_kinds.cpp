@@ -14,6 +14,8 @@ volatile bool hip_enabled;
 
 std::vector<std::function<void()>> post_fini;
 
+#define HAVE_KIND_INFO (UPCXX_VERSION >= 20220905)
+
 template<typename Device>
 void run_test(typename Device::id_type id, std::size_t heap_size, const char *desc) {
 
@@ -46,6 +48,12 @@ void run_test(typename Device::id_type id, std::size_t heap_size, const char *de
     assert(di.device_id() == id_invalid);
     assert(!di2.is_active()); assert(!gdi2->is_active());
     assert(di2.device_id() == id_invalid);
+    #if HAVE_KIND_INFO
+      std::string kind_info = gdi->kind_info();
+      assert(kind_info.size() > 0);
+      std::string kind_info2 = di.kind_info();
+      assert(kind_info2.size() > 0);
+    #endif
 
     Allocator ai = Allocator();
     heap_allocator *gai = &ai;
@@ -330,6 +338,12 @@ int main() {
   assert(hip_device::default_alignment<double>() > 0);
   assert(hip_device::kind == memory_kind::hip_device);
   assert(hip_device::invalid_device_id != 0);
+  if (me&1) assert(hip_device::device_n() >= 0);
+  #if HAVE_KIND_INFO
+    auto hip_info = hip_device::kind_info();
+    if (!me) say() << "hip_device::kind_info():\n" << hip_info;
+    assert(hip_info.size() > 0);
+  #endif
   assert(hip_device::device_n() >= 0);
   #if UPCXX_KIND_HIP
     hip_enabled = true;
@@ -346,6 +360,12 @@ int main() {
   assert(cuda_device::default_alignment<double>() > 0);
   assert(cuda_device::kind == memory_kind::cuda_device);
   assert(cuda_device::invalid_device_id != 0);
+  if (me&1) assert(cuda_device::device_n() >= 0);
+  #if HAVE_KIND_INFO
+    auto cuda_info = cuda_device::kind_info();
+    if (!me) say() << "cuda_device::kind_info():\n" << cuda_info;
+    assert(cuda_info.size() > 0);
+  #endif
   assert(cuda_device::device_n() >= 0);
   #if UPCXX_KIND_CUDA
     cuda_enabled = true;
