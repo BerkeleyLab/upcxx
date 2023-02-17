@@ -40,5 +40,8 @@ namespace upcxx {
       }
     }
   }
+  inline std::ostream& operator<<(std::ostream &o, memory_kind k) {
+    return o << detail::to_string(k);
+  }
 }
 #endif

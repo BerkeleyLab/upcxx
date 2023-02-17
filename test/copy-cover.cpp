@@ -130,19 +130,17 @@ std::string bufdesc(any_ptr ptr) {
   int ranks = upcxx::rank_n();
   int rank = ptr.where();
   memory_kind kind = ptr.dynamic_kind();
-  std::string res("other ");
-  if (rank == me) res = "my "; 
-  else if (rank == (me+1)%ranks) res = "his ";
-  else if (rank == (me+2)%ranks) res = "her ";
-  if (kind == memory_kind::host) res += "host";
-  #if USE_CUDA
-  else if (kind == memory_kind::cuda_device) res += "cuda";
+  std::ostringstream oss;
+  if (rank == me) oss << "my "; 
+  else if (rank == (me+1)%ranks) oss << "his ";
+  else if (rank == (me+2)%ranks) oss << "her ";
+  else oss << "other ";
+  #if UPCXX_VERSION >= 20220907
+    oss << kind;
+  #else
+    oss << "MK:" << std::to_string((int)kind);
   #endif
-  #if USE_HIP
-  else if (kind == memory_kind::hip_device) res += "hip";
-  #endif
-  else res += "UNKNOWN";
-  return res;
+  return oss.str();
 }
 
 int main(int argc, char *argv[]) {

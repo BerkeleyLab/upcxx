@@ -17,7 +17,7 @@ std::vector<std::function<void()>> post_fini;
 #define HAVE_KIND_INFO (UPCXX_VERSION >= 20220905)
 
 template<typename Device>
-void run_test(typename Device::id_type id, std::size_t heap_size, const char *desc) {
+void run_test(typename Device::id_type id, std::size_t heap_size) {
 
   using Allocator = upcxx::device_allocator<Device>;
   assert_same<typename Allocator::device_type, Device>();
@@ -88,6 +88,11 @@ void run_test(typename Device::id_type id, std::size_t heap_size, const char *de
     }
   }
 
+  #if UPCXX_VERSION >= 20220907
+    auto desc = Device::kind;
+  #else
+    auto desc = std::string("MK:") + std::to_string((int)Device::kind);
+  #endif
   int n_dev = Device::device_n();
   assert(n_dev >= 0);
   say() << "Testing " << n_dev << " " << desc << " GPUs";
@@ -349,7 +354,7 @@ int main() {
     hip_enabled = true;
   #endif
   if (hip_enabled) { 
-    run_test<hip_device>(0, 2<<20, "HIP");
+    run_test<hip_device>(0, 2<<20);
   }
 
   // check that required device members exist with sane-looking values
@@ -371,7 +376,7 @@ int main() {
     cuda_enabled = true;
   #endif
   if (cuda_enabled) { 
-    run_test<cuda_device>(0, 2<<20, "CUDA");
+    run_test<cuda_device>(0, 2<<20);
   }
 
   {
