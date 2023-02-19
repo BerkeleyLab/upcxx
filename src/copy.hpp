@@ -4,6 +4,7 @@
 #include <upcxx/backend.hpp>
 #include <upcxx/cuda.hpp>
 #include <upcxx/hip.hpp>
+#include <upcxx/ze.hpp>
 #include <upcxx/completion.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/rput.hpp>
@@ -65,6 +66,12 @@ namespace upcxx {
           return;
         }
       #endif
+      #if UPCXXI_ZE_ENABLED
+        if (kind_d == memory_kind::ze_device || kind_s == memory_kind::ze_device) {
+          detail::ze_copy_local(heap_d,buf_d,heap_s,buf_s,size,cb);
+          return;
+        }
+      #endif
 
       UPCXXI_INVOKE_UB("Unrecognized device kinds in upcxx::copy() -- gptr corruption?");      
     }
@@ -80,6 +87,10 @@ namespace upcxx {
         #if UPCXXI_HIP_ENABLED
           case memory_kind::hip_device: 
                      return hip_device::use_gex_mk(detail::internal_only());
+        #endif
+        #if UPCXXI_ZE_ENABLED
+          case memory_kind::ze_device: 
+                     return ze_device::use_gex_mk(detail::internal_only());
         #endif
         default: // includes memory_kind::any
           UPCXXI_INVOKE_UB("Internal error, bad kind query: " << to_string(k));

@@ -143,7 +143,7 @@ test_requires_gpu_device = \
 	test/bad-segment-alloc.cpp \
 	test/regression/issue432.cpp \
 	example/prog-guide/h-d-remote.cpp
-ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)),)
+ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)$(UPCXX_ZE)),)
 test_exclude_all += $(test_requires_gpu_device)
 endif
 

@@ -1,0 +1,88 @@
+#ifndef _8b851191_7faf_4677_a1aa_3f070dfa7b91
+#define _8b851191_7faf_4677_a1aa_3f070dfa7b91
+
+#include <upcxx/backend_fwd.hpp>
+#include <upcxx/device_fwd.hpp>
+#include <upcxx/device_allocator.hpp>
+#include <upcxx/global_ptr.hpp>
+#include <upcxx/memory_kind.hpp>
+
+#include <cstdint>
+
+#if UPCXXI_ZE_ENABLED
+  // feature macro: ONLY changes when a new spec is officially released that alters ZE feature
+  #define UPCXX_KIND_ZE 202303L
+#else
+  #undef UPCXX_KIND_ZE
+#endif
+
+namespace upcxx {
+
+  class ze_device final : public gpu_device {
+    friend struct detail::device_allocator_core<ze_device>;
+    friend class device_allocator<ze_device>;
+    
+  public:
+    using gpu_device::id_type;
+    using gpu_device::pointer; 
+    using gpu_device::null_pointer;
+    using gpu_device::invalid_device_id;
+    using gpu_device::auto_device_id;
+    using gpu_device::device_id;
+    
+    static constexpr memory_kind kind = memory_kind::ze_device;
+
+    ze_device() : gpu_device(detail::internal_only(), invalid_device_id,
+                               memory_kind::ze_device) {}
+    ze_device(id_type device_id);
+    ze_device(ze_device const&) = delete;
+    ze_device(ze_device&& other) : gpu_device(std::move(other)) {}
+    ze_device& operator=(ze_device&& other) = default;
+
+    static id_type device_n();
+
+    template<typename T>
+    static constexpr std::size_t default_alignment() {
+      return default_alignment_erased(sizeof(T), alignof(T), normal_alignment);
+    }
+    
+    static std::string kind_info();
+
+    void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
+
+    static constexpr bool use_gex_mk(detail::internal_only) {
+      #if UPCXXI_GEX_MK_ZE
+        return true;
+      #else
+        return false;
+      #endif
+    }
+
+  private:
+    std::string kind_info_dispatch() const override {
+      return kind_info();
+    }
+    static constexpr int min_alignment = 16;
+    static constexpr int normal_alignment = 256;
+  };
+
+  namespace detail {
+    template<>
+    struct device_allocator_core<ze_device>: device_allocator_base {
+
+      device_allocator_core() {}
+      device_allocator_core(ze_device &dev, void *base, std::size_t size);
+      device_allocator_core(device_allocator_core&&) = default;
+      device_allocator_core& operator=(device_allocator_core&&) = default;
+      ~device_allocator_core() { release(); }
+      void release();
+    };
+
+    #if UPCXXI_ZE_ENABLED
+      extern void ze_copy_local(int heap_d, void *buf_d, int heap_s, void const *buf_s, 
+                                  std::size_t size, backend::device_cb *cb);
+    #endif
+
+  } // namespace detail
+}
+#endif
