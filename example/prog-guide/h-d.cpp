@@ -18,7 +18,8 @@ int main() {
 
   std::size_t segsize = 4*1024*1024; // 4 MiB
   auto gpu_alloc = upcxx::make_gpu_allocator<cuda_device>(segsize); // alloc GPU segment 
-  UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active());
+  UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active(),
+                      "Failed to open GPU:\n" << cuda_device::kind_info());
 
   // alloc some arrays of 1024 doubles on GPU and host
   global_ptr<double,memory_kind::cuda_device> gpu_array = gpu_alloc.allocate<double>(1024);

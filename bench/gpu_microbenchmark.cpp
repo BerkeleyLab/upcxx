@@ -636,7 +636,12 @@ int do_main(int argc, char **argv) {
      #if UPCXX_VERSION >= 20210905
        // use GPU auto-assignment, which spreads local_team members across available physical GPUs
        auto gpu_alloc = upcxx::make_gpu_allocator<Device>(max_msg_size); // alloc GPU segment 
-       UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active());
+       #if UPCXX_VERSION >= 20220905
+         auto kind_info = Device::kind_info();
+       #else
+         std::string kind_info{};
+       #endif
+       UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active(), "Failed to open GPU:\n" << kind_info);
        auto& cleanup = gpu_alloc;
        string my_gpu_desc = DeviceStr + ":" + to_string(gpu_alloc.device_id()) + "/" + to_string(Device::device_n());
      #else // pre 2022.3.0 API

@@ -15,6 +15,7 @@ General features/enhancements: (see specification and programmer's guide for ful
   regarding the UPC++/GASNet-EX libraries and configuration in-use.
 * New `upcxx-info` convenience script is an alias for `upcxx -info`
 * `entry_barrier` arguments removed from `experimental::relo::verify_{segment,all}`
+* New `gpu_device::kind_info()` query for GPU hardware configuration
 
 Infrastructure changes:
 
@@ -41,7 +42,7 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 
 Breaking changes:
 
-* ...
+* Calls to `{cuda,hip}_device::device_n()` are now prohibited before `upcxx::init()`
 
 ### 2022.09.30: Release 2022.9.0
 
