@@ -25,6 +25,15 @@
   #error requested USE_HIP but this UPC++ install does not have HIP support
 #endif
 
+#ifndef USE_ZE
+  #if UPCXX_KIND_ZE 
+    #define USE_ZE 1
+  #endif
+#endif
+#if USE_ZE && !UPCXX_KIND_ZE
+  #error requested USE_ZE but this UPC++ install does not have ZE support
+#endif
+
 #ifndef HEAPS_PER_KIND
 #define HEAPS_PER_KIND 2
 #endif
@@ -36,6 +45,7 @@ constexpr unsigned allocs_per_heap = ALLOCS_PER_HEAP;
 
 int dev_n_cuda = 0;
 int dev_n_hip = 0;
+int dev_n_ze = 0;
 
 using namespace upcxx;
 
@@ -182,22 +192,28 @@ int main(int argc, char *argv[]) {
       }
     #endif
 
+    // open the devices, allocate and distribute device buffers, appending to ptrs:
     #if USE_CUDA
-      // open the devices, allocate and distribute device buffers, appending to ptrs:
       DeviceState<cuda_device> devstate_cuda;
       dev_n_cuda = devstate_cuda.device_n_min();
       if (dev_n_cuda) devstate_cuda.create(maxelems, ptrs);
     #endif
 
     #if USE_HIP
-      // open the devices, allocate and distribute device buffers, appending to ptrs:
       DeviceState<hip_device> devstate_hip;
       dev_n_hip = devstate_hip.device_n_min();
       if (dev_n_hip) devstate_hip.create(maxelems, ptrs);
     #endif
 
+    #if USE_ZE
+      DeviceState<ze_device> devstate_ze;
+      dev_n_ze = devstate_ze.device_n_min();
+      if (dev_n_ze) devstate_ze.create(maxelems, ptrs);
+    #endif
+
     say()<<"Running with "<<dev_n_cuda<<" CUDA GPUs, "
-                          <<dev_n_hip<<" HIP GPUs";
+                          <<dev_n_hip <<" HIP GPUs, "
+                          <<dev_n_ze  <<" ZE GPUs";
 
     const int bufcnt = ptrs.size();
 
@@ -430,6 +446,9 @@ int main(int argc, char *argv[]) {
     #endif
     #if USE_HIP
       if (dev_n_hip)  devstate_hip.destroy();
+    #endif
+    #if USE_ZE
+      if (dev_n_ze)  devstate_ze.destroy();
     #endif
   }
     

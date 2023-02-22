@@ -11,6 +11,7 @@ using namespace upcxx;
 
 volatile bool cuda_enabled;
 volatile bool hip_enabled;
+volatile bool ze_enabled;
 
 std::vector<std::function<void()>> post_fini;
 
@@ -377,6 +378,28 @@ int main() {
   #endif
   if (cuda_enabled) { 
     run_test<cuda_device>(0, 2<<20);
+  }
+
+  // check that required device members exist with sane-looking values
+  // note these should be defined even when ZE kind is disabled
+  assert_same<ze_device::id_type, int>();
+  assert_same<ze_device::pointer<double>, double *>();
+  assert(ze_device::null_pointer<double>() == nullptr);
+  assert(ze_device::default_alignment<double>() > 0);
+  assert(ze_device::kind == memory_kind::ze_device);
+  assert(ze_device::invalid_device_id != 0);
+  if (me&1) assert(ze_device::device_n() >= 0);
+  #if HAVE_KIND_INFO
+    auto ze_info = ze_device::kind_info();
+    if (!me) say() << "ze_device::kind_info():\n" << ze_info;
+    assert(ze_info.size() > 0);
+  #endif
+  assert(ze_device::device_n() >= 0);
+  #if UPCXX_KIND_ZE
+    ze_enabled = true;
+  #endif
+  if (ze_enabled) { 
+    run_test<ze_device>(0, 2<<20);
   }
 
   {
