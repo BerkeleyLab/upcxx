@@ -82,12 +82,13 @@ The current release is known to work on the following configurations:
   modules, plus its dependencies (smp and ofi conduits):
     - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
     - PrgEnv-cray with cce/12.0.0 (or later) loaded.
+    - PrgEnv-amd with amd/4.2.0 (or later) loaded.
+    - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
+    - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
+    - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
 
-    PrgEnv-nvidia, PrgEnv-amd and PrgEnv-intel are not yet officially
-    supported.  In the first two cases (nvidia and amd) this is due to
-    insufficient duration of testing.  However, there are currently no known
-    issues with either.  The UPC++ team has had no access to PrgEnv-intel on
-    this platform.  If you choose to use any of these compiler families, we
+    PrgEnv-intel is not yet officially supported, due to a lack of access
+    by the UPC++ team.  If you choose to use PrgEnv-intel, then we would
     welcome your reports of success or failure.
 
 * NOT officially supported:  
