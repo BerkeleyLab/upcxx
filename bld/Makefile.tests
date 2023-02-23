@@ -506,7 +506,7 @@ do-run-tests: force
 	   date >> $$output;                                            \
 	   if [[ $$exitcode != 0 ]] ||                                  \
 	      ( tail -n +$$firstout $$output | grep -q ERROR ) ; then   \
-	     tail -n +$$firstout $$output | grep -e "Test result:" -e ERROR -e 'Caught a signal ' -e 'Caught a fatal signal' ; \
+	     tail -n +$$firstout $$output | grep -e "Test result:" -e ERROR -e 'Caught a signal ' -e 'Caught a fatal signal' -e ': command not found' -e 'No such file or directory' ; \
 	     comment= ; \
 	     case $$exitcode in 124) comment=": probable timeout" ;; esac ; \
 	     echo "FAILED (exitcode=$$exitcode)$$comment"; : $$((++failed));     \
