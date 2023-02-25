@@ -395,6 +395,35 @@ int main() {
     assert(ze_info.size() > 0);
   #endif
   assert(ze_device::device_n() >= 0);
+
+  // test ze_device-specific accessors
+  std::unordered_map<ze_device::device_handle_t, ze_device::id_type> device_to_id;
+  std::unordered_map<ze_device::driver_handle_t, ze_device::context_handle_t> driver_to_context;
+  for (ze_device::id_type id = 0; id < ze_device::device_n(); id++) {
+    ze_device::device_handle_t zeDevice = ze_device::device_id_to_device_handle(id);
+    ze_device::driver_handle_t zeDriver = ze_device::device_id_to_driver_handle(id);
+    assert(zeDevice && zeDriver);
+    assert(device_to_id.count(zeDevice) == 0);
+    device_to_id[zeDevice] = id;
+    ze_device::id_type qid = ze_device::device_handle_to_device_id(zeDevice);
+    assert(qid == id);
+    ze_device::context_handle_t zeContext = ze_device::get_driver_context(zeDriver);
+    assert(zeContext);
+    if (driver_to_context.count(zeDriver) > 0) {
+      assert(driver_to_context[zeDriver] == zeContext);
+    } else {
+      driver_to_context[zeDriver] = zeContext;
+    }
+    ze_device::set_driver_context(zeContext, zeDriver);
+    assert(zeContext == ze_device::get_driver_context(zeDriver));
+    ze_device::set_driver_context(zeContext, zeDevice);
+    assert(zeContext == ze_device::get_driver_context(zeDevice));
+    if (id == 0) {
+      assert(zeContext == ze_device::get_driver_context());
+      ze_device::set_driver_context(zeContext);
+      assert(zeContext == ze_device::get_driver_context());
+    }
+  }
   #if UPCXX_KIND_ZE
     ze_enabled = true;
   #endif
