@@ -16,6 +16,13 @@
   #undef UPCXX_KIND_ZE
 #endif
 
+extern "C" {
+  // these incomplete types mirror those used in Level Zero handle types
+  struct _ze_driver_handle_t;
+  struct _ze_device_handle_t;
+  struct _ze_context_handle_t;
+}
+
 namespace upcxx {
 
   class ze_device final : public gpu_device {
@@ -29,6 +36,11 @@ namespace upcxx {
     using gpu_device::invalid_device_id;
     using gpu_device::auto_device_id;
     using gpu_device::device_id;
+    
+    // opaque types mirroring the Level Zero types of similar name
+    typedef struct ::_ze_context_handle_t *context_handle_t;
+    typedef struct ::_ze_driver_handle_t  *driver_handle_t;
+    typedef struct ::_ze_device_handle_t  *device_handle_t;
     
     static constexpr memory_kind kind = memory_kind::ze_device;
 
@@ -57,6 +69,19 @@ namespace upcxx {
         return false;
       #endif
     }
+
+    // device_id mapping to/from Level Zero ze_{device,driver}_handle_t
+    static device_handle_t device_id_to_device_handle(id_type device_id);
+    static driver_handle_t device_id_to_driver_handle(id_type device_id);
+    static id_type         device_handle_to_device_id(device_handle_t device_handle);
+
+    // Level Zero Driver Context (ze_context_handle_t) control:
+    static context_handle_t get_driver_context(driver_handle_t driver_handle);
+    static context_handle_t get_driver_context(device_handle_t device_handle = nullptr);
+    static void             set_driver_context(context_handle_t context_handle, 
+                                               driver_handle_t driver_handle);
+    static void             set_driver_context(context_handle_t context_handle, 
+                                               device_handle_t device_handle = nullptr);
 
   private:
     std::string kind_info_dispatch() const override {

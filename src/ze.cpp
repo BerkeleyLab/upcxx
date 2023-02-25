@@ -5,6 +5,10 @@
 namespace detail = upcxx::detail;
 using upcxx::ze_device;
 using upcxx::gpu_device;
+using id_type =          ze_device::id_type;
+using device_handle_t =  ze_device::device_handle_t;
+using driver_handle_t =  ze_device::driver_handle_t;
+using context_handle_t = ze_device::context_handle_t;
 
 using std::size_t;
 using std::uint64_t;
@@ -43,7 +47,7 @@ namespace {
     using result_type = decltype(fn(0,0,0));
 
     ze_init();
-    ze_device::id_type device_id = 0;
+    id_type device_id = 0;
 
     uint32_t driverCount = 0;
     UPCXXI_ZE_CHECK_ALWAYS( zeDriverGet(&driverCount, NULL) );
@@ -363,6 +367,125 @@ int ze_device::device_n() {
   #endif
 }
 
+device_handle_t ze_device::device_id_to_device_handle(id_type device_id) {
+  UPCXXI_ASSERT_INIT();
+  UPCXX_ASSERT(device_id >= 0 && device_id < ze_device::device_n());
+  #if UPCXXI_ZE_ENABLED
+     return enumerate_ze_devices(
+        [=](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) {
+          if (id == device_id) return zeDevice;
+          else return ze_device_handle_t{};
+        });
+  #else
+    return nullptr; // unreachable
+  #endif
+}
+
+driver_handle_t ze_device::device_id_to_driver_handle(id_type device_id) {
+  UPCXXI_ASSERT_INIT();
+  UPCXX_ASSERT(device_id >= 0 && device_id < ze_device::device_n());
+  #if UPCXXI_ZE_ENABLED
+     return enumerate_ze_devices(
+        [=](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) {
+          if (id == device_id) return zeDriver;
+          else return ze_driver_handle_t{};
+        });
+  #else
+    return nullptr; // unreachable
+  #endif
+}
+
+id_type ze_device::device_handle_to_device_id(device_handle_t device_handle) {
+  UPCXXI_ASSERT_INIT();
+  #if UPCXXI_ZE_ENABLED
+    id_type result = invalid_device_id;
+    enumerate_ze_devices(
+        [&](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) {
+          if (device_handle == zeDevice) result = id;
+        });    
+    return result;
+  #else
+    return invalid_device_id;
+  #endif
+}
+
+namespace {
+  detail::par_mutex driver_to_context_lock;
+  std::unordered_map<driver_handle_t, context_handle_t> driver_to_context_map;
+}
+
+GASNETT_COLD
+void ze_device::set_driver_context(context_handle_t context_handle, driver_handle_t driver_handle) {
+  UPCXXI_ASSERT_INIT();
+  UPCXX_ASSERT_ALWAYS(context_handle);
+  UPCXX_ASSERT_ALWAYS(driver_handle);
+  #if UPCXXI_ZE_ENABLED
+    std::lock_guard<detail::par_mutex> g(driver_to_context_lock);
+    auto it = driver_to_context_map.find(driver_handle);
+    if (it == driver_to_context_map.end()) { // initial insertion
+      driver_to_context_map[driver_handle] = context_handle;
+    } else if (it->second != context_handle) {
+      UPCXXI_FATAL_ERROR(
+        "ze_device::set_driver_context() attempted to set a new ZE context for a ZE driver whose context was already established");
+    }
+  #endif
+}
+
+GASNETT_COLD
+void ze_device::set_driver_context(context_handle_t context_handle, device_handle_t device_handle) {
+  UPCXXI_ASSERT_INIT();
+  UPCXX_ASSERT_ALWAYS(context_handle);
+  #if UPCXXI_ZE_ENABLED
+    if (!device_handle) device_handle = device_id_to_device_handle(0);
+    driver_handle_t driver_handle = enumerate_ze_devices(
+        [=](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) {
+          if (zeDevice == device_handle) return zeDriver;
+          else return ze_driver_handle_t{};
+        });
+    UPCXX_ASSERT_ALWAYS(driver_handle, "device handle not found");
+    return ze_device::set_driver_context(context_handle, driver_handle);
+  #endif
+}
+
+GASNETT_COLD
+context_handle_t ze_device::get_driver_context(driver_handle_t driver_handle) {
+  UPCXXI_ASSERT_INIT();
+  UPCXX_ASSERT_ALWAYS(driver_handle);
+  #if UPCXXI_ZE_ENABLED
+    auto it = driver_to_context_map.find(driver_handle);
+    if (it != driver_to_context_map.end()) { // return existing context
+      return it->second;
+    } else { // first time we've seen this driver, need to create context now
+      ze_context_handle_t zeContext;
+      ze_context_desc_t cDesc = { ZE_STRUCTURE_TYPE_CONTEXT_DESC };
+      UPCXXI_ZE_CHECK_ALWAYS_VERBOSE( 
+        zeContextCreate(driver_handle, &cDesc, &zeContext) );
+
+      driver_to_context_map[driver_handle] = zeContext; // insert
+      return zeContext;
+    }
+  #else
+    return nullptr;
+  #endif
+}
+
+GASNETT_COLD
+context_handle_t ze_device::get_driver_context(device_handle_t device_handle) {
+  UPCXXI_ASSERT_INIT();
+  #if UPCXXI_ZE_ENABLED
+    if (!device_handle) device_handle = device_id_to_device_handle(0);
+    driver_handle_t driver_handle = enumerate_ze_devices(
+        [=](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) {
+          if (zeDevice == device_handle) return zeDriver;
+          else return ze_driver_handle_t{};
+        });
+    UPCXX_ASSERT_ALWAYS(driver_handle, "device handle not found");
+    return ze_device::get_driver_context(driver_handle);
+  #else
+    return nullptr;
+  #endif
+}
+
 GASNETT_COLD
 ze_device::ze_device(id_type device_id):
   gpu_device(detail::internal_only(), device_id, memory_kind::ze_device) {
@@ -379,20 +502,11 @@ ze_device::ze_device(id_type device_id):
       auto st = enumerate_ze_devices(
         [device_id,this](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) -> ze_heap_state* {
           if (id == device_id) {
-            // ZETODO: Allow accept context from client
-            // ZETODO: Create at most one context per driver
-            ze_context_handle_t zeContext;
-            ze_context_desc_t cDesc = { ZE_STRUCTURE_TYPE_CONTEXT_DESC };
-            UPCXXI_ZE_CHECK_ALWAYS_VERBOSE( zeContextCreate(zeDriver, &cDesc, &zeContext) );
-
-
             auto st = new ze_heap_state{};
             st->device_base = this;
             st->zeDriver   = zeDriver;
-            st->zeContext  = zeContext;
             st->zeDevice   = zeDevice;
             st->device_id = device_id;
-
             return st;
           } else return nullptr;
         });
@@ -401,6 +515,7 @@ ze_device::ze_device(id_type device_id):
         UPCXXI_FATAL_ERROR("Invalid ZE device ID: " << device_id <<
                            "\n\nZE info:\n" << ze_device::kind_info());
       } 
+      st->zeContext = get_driver_context(st->zeDriver);
 
       uint32_t numCmdQueueGroups = 0;
       UPCXXI_ZE_CHECK_ALWAYS_VERBOSE(
@@ -509,9 +624,6 @@ void ze_device::destroy(upcxx::entry_barrier eb) {
     UPCXXI_ZE_CHECK_ALWAYS(
       zeCommandQueueDestroy(st->zeCmdQueue));
 
-    // ZETODO:
-    UPCXXI_ZE_CHECK_ALWAYS(zeContextDestroy(st->zeContext));
-    
     backend::heap_state::get(heap_idx_) = nullptr;
     backend::heap_state::free_index(heap_idx_);
     delete st;
