@@ -28,10 +28,8 @@ The current release is known to work on the following configurations:
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
-    At the time of the 2022.9.0 release of UPC++, we have not tested Xcode 14
-    well and have not tested at all on macOS 13 "Ventura" (which is still in
-    public beta testing).  We welcome your reports of success or failure with
-    either.
+    At the time of the 2023.3.0 release of UPC++, we have not yet tested on
+    macOS 13 "Ventura".  We welcome reports of success or failure on macOS 13.
 
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
@@ -101,14 +99,16 @@ The current release is known to work on the following configurations:
       At this time we consider it premature to list this platform as
       "supported", and the `configure` script will issue a warning.
     - Vendor-specific `clang++` or `g++` variants.  
-      At least Arm Ltd., Intel and AMD provide compilers based on their own
+      At least Arm Ltd. and AMD provide compilers based on their own
       modifications to Clang/LLVM.  Similarly, at least Arm Ltd. and IBM
       provide forks of `g++`.  
       To the best of our limited current knowledge, these all behave as their
       respective "upstream" compilers, with no additional compiler-specific
       issues.  
       At this time we do not consider these compilers to be officially
-      supported due to insufficient periodic automated testing.  
+      supported due to insufficient periodic automated testing (with the
+      exception of AMD's compilers via PrgEnv-amd and PrgEnv-aocc on the
+      HPE Cray EX platform).
       The presence or absence of a warning from `configure` varies.
 
 ### Miscellaneous software requirements:
