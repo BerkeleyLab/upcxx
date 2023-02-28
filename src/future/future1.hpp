@@ -359,6 +359,18 @@ namespace upcxx {
       
       return static_cast<future1&&>(*this).template result<i>();
     }
+
+    template<int i=-1>
+    auto wait_internal(detail::internal_only)
+      -> result_return_select_type<i, results_type>
+    {
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_internal()", "future::wait_reference()",
+                                            result_return_select_type<i, results_type>);
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_internal()");
+      
+      return wait([]() { upcxx::progress(progress_level::internal); });
+    }
+
     
     #ifdef UPCXXI_BACKEND
     template<typename Fn=detail::future_wait_upcxx_progress_user>
