@@ -185,7 +185,6 @@ int main() {
     delete p;
   }
   
-  auto nop = [](){};
   #define THEM(member)\
     static_assert(std::is_same<void, decltype(make_future().member)>::value, "Uh-oh");\
     (void)make_future().member;\
@@ -196,7 +195,7 @@ int main() {
     static_assert(std::is_same<tuple<int,int,float,int>, decltype(when_all(ans0, ans1, make_future(3.14f), ans2).member)>::value, "Uh-oh");\
     (void)when_all(ans0,ans1,3.14f,ans2).member;
   THEM(result())
-  THEM(wait(nop))
+  THEM(wait())
   #undef THEM
 
   #define THEM(member)\
@@ -214,18 +213,18 @@ int main() {
     static_assert(std::is_same<int&&, decltype(std::declval<future<int&&>>().member)>::value, "Uh-oh");\
     static_assert(std::is_same<int const&&, decltype(std::declval<future<int const&&>>().member)>::value, "Uh-oh");
   THEM(result_reference())
-  THEM(wait_reference(nop))
+  THEM(wait_reference())
   #undef THEM
   
   static_assert(std::is_same<float, decltype(make_future(true,1,3.14f).result<2>())>::value, "Uh-oh");
   static_assert(std::is_same<float const&, decltype(std::declval<future<bool,float> const&>().result_reference<1>())>::value, "Uh-oh");
   static_assert(std::is_same<float const&, decltype(make_future(true,3.14f).result_reference<1>())>::value, "Uh-oh");
   static_assert(std::is_same<float &&, decltype(detail::make_fast_future(true,3.14f).result_reference<1>())>::value, "Uh-oh");
-  static_assert(std::is_same<float, decltype(make_future(true,1,3.14f).wait<2>(nop))>::value, "Uh-oh");
-  static_assert(std::is_same<float const&, decltype(std::declval<future<bool,int,float> const&>().wait_reference<2>(nop))>::value, "Uh-oh");
+  static_assert(std::is_same<float, decltype(make_future(true,1,3.14f).wait<2>())>::value, "Uh-oh");
+  static_assert(std::is_same<float const&, decltype(std::declval<future<bool,int,float> const&>().wait_reference<2>())>::value, "Uh-oh");
   
   static_assert(std::is_same<tuple<bool,int>,decltype(make_future(true,1).result_tuple())>::value, "uh-oh");
-  static_assert(std::is_same<tuple<bool,int>,decltype(make_future(true,1).wait_tuple(nop))>::value, "uh-oh");
+  static_assert(std::is_same<tuple<bool,int>,decltype(make_future(true,1).wait_tuple())>::value, "uh-oh");
   
   UPCXX_ASSERT_ALWAYS(ans2.ready(), "Answer is not ready");
   cout << "fib("<<(2*ans1.result())<<") = "<<ans2.result()<<'\n';

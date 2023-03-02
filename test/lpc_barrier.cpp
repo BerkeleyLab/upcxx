@@ -99,7 +99,7 @@ void thread_main() {
       return 0xbeef;
     });
     
-    fut.wait(thread_progress);
+    fut.wait();
     UPCXX_ASSERT_ALWAYS(fut.result() == 0xbeef, "lpc returned wrong value = "<<fut.result());
   }
 
@@ -125,7 +125,7 @@ void thread_main() {
       return me;
     });
     
-    fut.wait(thread_progress);
+    fut.wait();
     UPCXX_ASSERT_ALWAYS(fut.result() == thread_me, "lpc returned wrong value");
   }
 
