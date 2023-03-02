@@ -139,7 +139,6 @@ namespace {
 
   bool oversubscribed;
   
-  auto do_internal_progress = []() { upcxx::progress(progress_level::internal); };
   auto operation_cx_as_internal_future =
     upcxx::detail::operation_cx_as_internal_future_t{{}};
 
@@ -1065,7 +1064,7 @@ void upcxx::finalize() {
         },
         /*root=*/0, upcxx::world(),
         operation_cx_as_internal_future
-      ).wait(do_internal_progress);
+      ).wait_internal(upcxx::detail::internal_only{});
   };
   
   if(backend::verbose_noise) {

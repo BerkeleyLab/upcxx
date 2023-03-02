@@ -53,6 +53,18 @@ namespace upcxx {
           upcxx::progress();
         }
       };
+      struct future_wait_upcxx_progress_internal {
+        void operator()() const {
+          upcxx::progress(progress_level::internal);
+        }
+      };
+    #else
+      struct future_wait_upcxx_progress_user {
+        void operator()() const {}
+      };
+      struct future_wait_upcxx_progress_internal {
+        void operator()() const {}
+      };
     #endif
 
     #ifndef UPCXXI_BACKEND
@@ -326,100 +338,94 @@ namespace upcxx {
       } while (0)
     #endif
 
-    #ifdef UPCXXI_BACKEND
-    template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
-    auto wait(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
-    #else
-    template<int i=-1, typename Fn>
-    auto wait(Fn &&progress) const&
-    #endif
+    template<int i=-1>
+    auto wait() const&
       -> result_return_select_type<i, results_type> {
       UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait()", "future::wait_reference()",
                                             result_return_select_type<i, results_type>);
       UPCXXI_ASSERT_INIT_NAMED("future<...>::wait()");
      
-      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
-      return this->template result<i>();
+      return this->result<i>();
     }
     
-    #ifdef UPCXXI_BACKEND
-    template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
-    auto wait(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
-    #else
-    template<int i=-1, typename Fn>
-    auto wait(Fn &&progress) &&
-    #endif
+    template<int i=-1>
+    auto wait() &&
       -> result_return_select_type<i, results_type> {
       UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait()", "future::wait_reference()",
                                             result_return_select_type<i, results_type>);
       UPCXXI_ASSERT_INIT_NAMED("future<...>::wait()");
+     
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
-      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
+      return std::move(*this).template result<i>();
+    }
+
+    template<int i=-1>
+    auto wait_internal(detail::internal_only) const&
+      -> result_return_select_type<i, results_type>
+    {
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_internal()", "future::wait_reference()",
+                                            result_return_select_type<i, results_type>);
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_internal()");
+
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_internal{});
       
-      return static_cast<future1&&>(*this).template result<i>();
+      return result<i>();
+    }
+
+    template<int i=-1>
+    auto wait_internal(detail::internal_only) &&
+      -> result_return_select_type<i, results_type>
+    {
+      UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_internal()", "future::wait_reference()",
+                                            result_return_select_type<i, results_type>);
+      UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_internal()");
+
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_internal{});
+      
+      return std::move(*this).template result<i>();
     }
     
-    #ifdef UPCXXI_BACKEND
-    template<typename Fn=detail::future_wait_upcxx_progress_user>
-    results_type wait_tuple(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
-    #else
-    template<typename Fn>
-    results_type wait_tuple(Fn &&progress) const&
-    #endif
+    inline results_type wait_tuple() const&
     {
       UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
       UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
       return this->result_tuple();
     }
 
-    #ifdef UPCXXI_BACKEND
-    template<typename Fn=detail::future_wait_upcxx_progress_user>
-    results_type wait_tuple(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
-    #else
-    template<typename Fn>
-    results_type wait_tuple(Fn &&progress) &&
-    #endif
+    inline results_type wait_tuple() &&
     {
       UPCXXI_STATIC_ASSERT_VALUE_RETURN_SIZE("future::wait_tuple()", "future::wait_reference()", results_type);
       UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_tuple()");
 
-      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
-      return static_cast<future1&&>(*this).result_tuple();
+      return std::move(*this).template result_tuple();
     }
     
-    #ifdef UPCXXI_BACKEND
-    template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
-    auto wait_reference(Fn &&progress = detail::future_wait_upcxx_progress_user{}) const&
-    #else
-    template<int i=-1, typename Fn>
-    auto wait_reference(Fn &&progress) const&
-    #endif
+    template<int i=-1>
+    auto wait_reference() const&
       -> result_return_select_type<i, clref_results_refs_or_vals_type> {
       UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
-      return this->template result_reference<i>();
+      return this->result_reference<i>();
     }
 
-    #ifdef UPCXXI_BACKEND
-    template<int i=-1, typename Fn=detail::future_wait_upcxx_progress_user>
-    auto wait_reference(Fn &&progress = detail::future_wait_upcxx_progress_user{}) &&
-    #else
-    template<int i=-1, typename Fn>
-    auto wait_reference(Fn &&progress) &&
-    #endif
+    template<int i=-1>
+    auto wait_reference() &&
       -> result_return_select_type<i, rref_results_refs_or_vals_type> {
       UPCXXI_ASSERT_INIT_NAMED("future<...>::wait_reference()");
       
-      UPCXXI_PROGRESS_UNTIL(impl_.ready(), progress);
+      UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
-      return static_cast<future1&&>(*this).template result_reference<i>();
+      return std::move(*this).template result_reference<i>();
     }
   };
   } // namespace detail
