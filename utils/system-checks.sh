@@ -326,6 +326,23 @@ check_intel_compiler() {
    esac
 }
 
+check_pgi_compiler() {
+    local bash_re='(([1-9][0-9]?)([0-9][0-9])([0-9][0-9]))' # 5 or 6 decimal digits
+    if ! cpp_extract_expr CXX '__pgnu_vsn' "$bash_re"; then
+        echo "WARNING: failed to probe '$CXX' for underlying GNUC/libstdc++ version." \
+             "Validation of libstdc++ version has been skipped."
+        return 0
+    fi
+    if  (( ${UPCXX_REMATCH[1]} <
+           (MIN_GNU_MAJOR*10000 + MIN_GNU_MINOR*100 + MIN_GNU_PATCH) )); then
+        ver_string="${UPCXX_REMATCH[2]}.${UPCXX_REMATCH[3]#0}.${UPCXX_REMATCH[4]#0}"
+        echo "ERROR: UPC++ with PGI and NVHPC compilers requires use of g++ version $MIN_GNU_STRING or" \
+             "newer, but version $ver_string was detected."
+        return 1
+    fi
+    return 0
+}
+
 # Determine if compiler families match
 check_family_match() {
     if ! cpp_extract_pp_expr CXX PLATFORM_COMPILER_FAMILYNAME '[A-Z]+'; then
@@ -621,6 +638,9 @@ platform_sanity_checks() {
                if ! egrep ' +(21\.9|21\.1[0-9]|2[2-9]\.[0-9]+|[3-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                   unset COMPILER_GOOD
                fi
+            fi
+            if (( ! COMPILER_BAD )); then
+               check_pgi_compiler || exit 1
             fi
         elif echo "$CXXVERS" | egrep 'IBM XL'  > /dev/null ; then
             COMPILER_BAD=1
