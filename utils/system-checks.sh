@@ -702,6 +702,13 @@ platform_sanity_checks() {
                if ! egrep 'roc-(4\.[2-9]|[5-9]\.|[1-9][0-9]\.)' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                   unset COMPILER_GOOD
                fi
+            elif egrep 'AOCC_(1\.|2\.[0-2])' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # AOCC older than 2.3 has not been validated
+               unset COMPILER_GOOD
+            elif grep 'AOCC\.LLVM\.1' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # AOCC 1.x is known bad
+               unset COMPILER_GOOD
+               COMPILER_BAD=1
             fi
         elif test ppc64le = "$ARCH" && echo "$CXXVERS" | egrep 'clang version ([5-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
 	    # Issue #236: ppc64le/clang support floor is 5.x. clang-4.x/ppc has correctness issues and is deliberately left "unvalidated"
@@ -763,7 +770,8 @@ platform_sanity_checks() {
         read -r -d '' RECOMMEND<<'EOF'
 We recommend one of the following C++ compilers (or any later versions where no end-of-range is given):
            Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.3 through 20.4 (inclusive),
-                              NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2
+                              NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2,
+                              AMD AOCC 2.3.0
            Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 19.3 through 20.4 (inclusive),
                               NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0

@@ -38,6 +38,7 @@ The current release is known to work on the following configurations:
     - Intel oneAPI compilers 2021.1.2 or newer (with libstdc++ from g++ 6.4.0 or newer)
     - PGI C++ 19.3 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
     - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
+    - AMD AOCC compilers 2.3.0 or newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
@@ -99,16 +100,13 @@ The current release is known to work on the following configurations:
       At this time we consider it premature to list this platform as
       "supported", and the `configure` script will issue a warning.
     - Vendor-specific `clang++` or `g++` variants.  
-      At least Arm Ltd. and AMD provide compilers based on their own
-      modifications to Clang/LLVM.  Similarly, at least Arm Ltd. and IBM
-      provide forks of `g++`.  
+      At least Arm Ltd. provides compilers based on their own modifications to
+      Clang/LLVM.  Similarly, at least Arm Ltd. and IBM provide forks of `g++`.  
       To the best of our limited current knowledge, these all behave as their
       respective "upstream" compilers, with no additional compiler-specific
       issues.  
       At this time we do not consider these compilers to be officially
-      supported due to insufficient periodic automated testing (with the
-      exception of AMD's compilers via PrgEnv-amd and PrgEnv-aocc on the
-      HPE Cray EX platform).
+      supported due to insufficient periodic automated testing.  
       The presence or absence of a warning from `configure` varies.
 
 ### Miscellaneous software requirements:
