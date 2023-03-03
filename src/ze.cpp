@@ -131,15 +131,37 @@ std::string ze_device::kind_info() {
   
   if (dev_n > 0) {
     ze_driver_handle_t lastDriver{}; 
+    int driver_n = 0;
     enumerate_ze_devices(
     [&](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) {
        if (zeDriver != lastDriver) {
+         lastDriver = zeDriver;
+         ss << "ZE Driver " << driver_n++ << ":\n";
+
          ze_api_version_t version{}; // Runtime version reported by driver
          if ( zeDriverGetApiVersion(zeDriver, &version) == ZE_RESULT_SUCCESS && (int)version > 0) {
-           ss << "ZE Driver version: " << ZE_MAJOR_VERSION(version)
-                                << "." << ZE_MINOR_VERSION(version) << '\n';
+           ss << "  API version: " << ZE_MAJOR_VERSION(version)
+                           << "." << ZE_MINOR_VERSION(version) << '\n';
          }
-         lastDriver = zeDriver;
+         ze_driver_properties_t driver_prop{ ZE_STRUCTURE_TYPE_DRIVER_PROPERTIES };
+         if ( zeDriverGetProperties(zeDriver, &driver_prop) == ZE_RESULT_SUCCESS && 
+              (int)driver_prop.driverVersion > 0) {
+           ss << "  Driver version: 0x" << std::hex << driver_prop.driverVersion << std::dec << '\n';
+         }
+
+         uint32_t driverExtCnt = 0;
+         if ( zeDriverGetExtensionProperties(zeDriver, &driverExtCnt, nullptr) == ZE_RESULT_SUCCESS && 
+              driverExtCnt > 0) {
+           std::vector<ze_driver_extension_properties_t> driverExtProp(driverExtCnt);
+           if ( zeDriverGetExtensionProperties(zeDriver, &driverExtCnt, driverExtProp.data()) == ZE_RESULT_SUCCESS) {
+             ss << "  Driver extensions: ";
+             for (auto &prop : driverExtProp) {
+               ss << prop.name << ' ';
+             }
+             ss << '\n';
+           }
+         }
+
        }
        ss << "  ZE device " << id << ":\n";
        ze_device_properties_t prop{ ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
