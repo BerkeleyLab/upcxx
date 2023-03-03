@@ -9,6 +9,15 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* NEW: Experimental memory kinds support for Intel GPUs 
+  using oneAPI Level Zero, see [INSTALL.md](INSTALL.md).
+    - New `configure --enable-ze` flag activates new `upcxx::ze_device` class
+    - This memory kind implementation is currently reference-only and is
+      believed to be functionally correct, but has not been tuned for performance.
+    - `upcxx::copy()` operations on `ze_device` memory are currently staged through
+      host memory and do not yet leverage network-direct RDMA.
+    - `ze_device` includes new experimental member functions designed to streamline
+      interoperability with other portions of the oneAPI software ecosystem.
 * Console output from `upcxx::init()` in verbose mode now compresses process
   identification information to one line per `local_team`.
 * New `upcxx -info` option suppresses compilation and outputs detailed information
