@@ -1,10 +1,12 @@
 #include <upcxx/ze.hpp>
 #include <upcxx/ze_internal.hpp>
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
+#include <upcxx/os_env.hpp>
 
 namespace detail = upcxx::detail;
 using upcxx::ze_device;
 using upcxx::gpu_device;
+using upcxx::experimental::os_env;
 using id_type =          ze_device::id_type;
 using device_handle_t =  ze_device::device_handle_t;
 using driver_handle_t =  ze_device::driver_handle_t;
@@ -27,6 +29,11 @@ namespace {
       ze::ze_failed(res, __FILE__, __LINE__, "zeInit(0)", true);
     }
     return res;
+  }
+
+  bool ze_all_devices() { // deliberately undocumented experimental feature
+    static bool result = os_env<bool>("UPCXX_ZE_ALL_DEVICES", false);
+    return result;
   }
 
 // ================================================================
@@ -61,7 +68,7 @@ namespace {
       for (auto device : devices) {
         ze_device_properties_t deviceProperties = { ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
         UPCXXI_ZE_CHECK_ALWAYS( zeDeviceGetProperties(device, &deviceProperties) );
-        if (deviceProperties.type != ZE_DEVICE_TYPE_GPU) continue;
+        if (deviceProperties.type != ZE_DEVICE_TYPE_GPU && !ze_all_devices()) continue;
 
         auto r = ( fn(device_id, device, driver) , or_void() );
         if (!(r == decltype(r)())) return (result_type)r;
