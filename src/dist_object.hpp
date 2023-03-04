@@ -4,6 +4,7 @@
 #include <upcxx/bind.hpp>
 #include <upcxx/digest.hpp>
 #include <upcxx/future.hpp>
+#include <upcxx/optional.hpp>
 #include <upcxx/rpc.hpp>
 #include <upcxx/utility.hpp>
 #include <upcxx/team.hpp>
@@ -88,77 +89,101 @@ namespace std {
 ////////////////////////////////////////////////////////////////////////
 
 namespace upcxx {
+  struct inactive_t{
+    explicit inactive_t() = default;
+  };
+  constexpr inactive_t inactive{};
+
   template<typename T>
   class dist_object {
-    const upcxx::team * const tm_;
+    const upcxx::team *tm_;
     detail::digest id_;
-    T value_;
+    upcxx::optional<T> value_;
+
+    struct init_list_param {};
     
   public:
+    dist_object():
+      tm_(nullptr),
+      id_(detail::tombstone) {
+    }
+
+    template<typename ...U>
+    dist_object(upcxx::inactive_t, U &&...arg):
+      tm_(nullptr),
+      id_(detail::tombstone),
+      value_(upcxx::in_place, std::forward<U>(arg)...) {
+    }
+
     template<typename ...U>
     dist_object(const upcxx::team &tm, U &&...arg):
       tm_(&tm),
-      value_(std::forward<U>(arg)...) {
-      UPCXXI_ASSERT_INIT();
-      UPCXXI_ASSERT_MASTER();
-      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
-      
-      id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
-      
-      backend::fulfill_during<progress_level::user>(
-          detail::registered_promise<dist_object<T>&>(id_)->incref(1),
-          std::tuple<dist_object<T>&>(*this),
-          backend::master
-        );
+      value_(upcxx::in_place, std::forward<U>(arg)...) {
+      create_();
     }
     
     dist_object(T value, const upcxx::team &tm):
       tm_(&tm),
-      value_(std::move(value)) {
-      UPCXXI_ASSERT_INIT();
-      UPCXXI_ASSERT_MASTER();
-      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
-
-      id_ = const_cast<upcxx::team*>(&tm)->next_collective_id(detail::internal_only());
-      UPCXX_ASSERT(id_ != detail::tombstone);
-      
-      backend::fulfill_during<progress_level::user>(
-          detail::registered_promise<dist_object<T>&>(id_)->incref(1),
-          std::tuple<dist_object<T>&>(*this),
-          backend::master
-        );
+      value_(upcxx::in_place, std::move(value)) {
+      create_();
     }
     
     dist_object(T value):
       dist_object(upcxx::world(), std::move(value)) {
     }
+
+    // This overload is to avoid ambiguity in cases like:
+    //   dist_object<std::unordered_map<int,int>>({})
+    // Without this overload, the call could resolve to either the
+    // dist_object(T) ctor, with a default constructed unordered_map
+    // as the argument, or to dist_object(dist_object&&), with a
+    // default constructed dist_object as the argument. See
+    // example/prog-guide/dmap.hpp for an actual use case.
+    dist_object(std::initializer_list<init_list_param>):
+      dist_object(T{}) {
+    }
     
     dist_object(dist_object const&) = delete;
 
-    dist_object(dist_object &&that) noexcept:
-      tm_(that.tm_),
-      id_(that.id_),
-      value_(std::move(that.value_)) {
-      
+    dist_object(dist_object &&that) noexcept: dist_object() {
+      *this = std::move(that);
+    }
+
+    dist_object& operator=(dist_object &&that) noexcept {
+      if (&that == this) return *this; // see issue 547
+
       UPCXXI_ASSERT_INIT();
       UPCXXI_ASSERT_MASTER();
-      UPCXXI_ASSERT_NOT_TOMB(that.id_);
+      // only allow assignment moves onto "dead" object
+      UPCXX_ASSERT(
+        !this->is_active(),
+        "Move assignment is only allowed on an inactive dist_object"
+      );
 
+      this->tm_ = that.tm_;
+      this->id_ = that.id_;
+      this->value_ = std::move(that.value_);
+      // revert `that` to non-constructed state
+      that.tm_ = nullptr;
       that.id_ = detail::tombstone;
 
-      // Moving is painful for us because the original constructor (of that)
-      // created a promise, set its result to point to that, and then
-      // deferred its fulfillment until user progress. We hackishly overwrite
-      // the promise/future's result with our new address. Whether or not the
-      // deferred fulfillment has happened doesn't matter, but will determine
-      // whether the app observes the same future taking different values at
-      // different times (definitely not usual for futures).
-      static_cast<detail::future_header_promise<dist_object<T>&>*>(detail::registry[id_])
-        ->base_header_result.reconstruct_results(std::tuple<dist_object<T>&>(*this));
+      if (this->is_active()) {
+        // Moving is painful for us because the original constructor (of that)
+        // created a promise, set its result to point to that, and then
+        // deferred its fulfillment until user progress. We hackishly overwrite
+        // the promise/future's result with our new address. Whether or not the
+        // deferred fulfillment has happened doesn't matter, but will determine
+        // whether the app observes the same future taking different values at
+        // different times (definitely not usual for futures).
+        static_cast<detail::future_header_promise<dist_object<T>&>*>(detail::registry[id_])
+          ->base_header_result.reconstruct_results(std::tuple<dist_object<T>&>(*this));
+      }
+
+      return *this;
     }
     
     ~dist_object() {
-      if (backend::init_count > 0) UPCXXI_ASSERT_MASTER();
+      if (is_active() && backend::init_count > 0) UPCXXI_ASSERT_MASTER();
 
       if(id_ != detail::tombstone) {
         auto it = detail::registry.find(id_);
@@ -166,9 +191,36 @@ namespace upcxx {
         detail::registry.erase(it);
       }
     }
+
+    void activate(const upcxx::team &tm) {
+      UPCXX_ASSERT(
+        !is_active(),
+        "dist_object<T>::activate() called on an already active object"
+      );
+      UPCXX_ASSERT(
+        has_value(),
+        "dist_object<T>::activate() called on an object that has no value"
+      );
+      tm_ = &tm;
+      create_();
+    }
+
+    bool is_active() const { return id_ != detail::tombstone; }
+    bool has_value() const { return value_.has_value(); }
+
+    template<typename ...Args>
+    T& emplace(Args&&... args) {
+      return value_.emplace(std::forward<Args>(args)...);
+    }
     
-    T* operator->() const { return const_cast<T*>(&value_); }
-    T& operator*() const { return const_cast<T&>(value_); }
+    T* operator->() const {
+      UPCXX_ASSERT(has_value());
+      return const_cast<T*>(&*value_);
+    }
+    T& operator*() const {
+      UPCXX_ASSERT(has_value());
+      return const_cast<T&>(*value_);
+    }
     
     upcxx::team& team() { return *const_cast<upcxx::team*>(tm_); }
     const upcxx::team& team() const { return *tm_; }
@@ -191,6 +243,23 @@ namespace upcxx {
                           return *o;
                         }, *this);
     }
+
+  private:
+    void create_() {
+      UPCXXI_ASSERT_INIT();
+      UPCXXI_ASSERT_MASTER();
+      UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+      UPCXX_ASSERT(tm_);
+
+      id_ = const_cast<upcxx::team*>(tm_)->next_collective_id(detail::internal_only());
+      UPCXX_ASSERT(id_ != detail::tombstone);
+
+      backend::fulfill_during<progress_level::user>(
+          detail::registered_promise<dist_object<T>&>(id_)->incref(1),
+          std::tuple<dist_object<T>&>(*this),
+          backend::master
+        );
+    }
   };
 }
 
@@ -208,6 +277,7 @@ namespace upcxx {
     static constexpr bool immediate = false;
     
     static dist_id<T> on_wire(dist_object<T> const &o) {
+      UPCXX_ASSERT(o.is_active());
       return o.id();
     }
     
