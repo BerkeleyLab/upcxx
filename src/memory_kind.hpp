@@ -23,13 +23,16 @@ namespace upcxx {
     hip_device=2,
     ze_device=3,
     any = 4 // should remain last
-    // backend::validate_global_ptr() relies on the following invariants
+    // detail::is_valid_memory_kind() relies on the following invariants
     // for the values of this enum, to enable concise/efficient validation:
     // 1. memory_kind::any is the largest value, and 
     // 2. the valid values form a "dense", 0-based set of unique values
   };
 
   namespace detail {
+    inline bool is_valid_memory_kind(memory_kind mk) {
+      return (std::uint8_t)mk <= (std::uint8_t)memory_kind::any;
+    }
     inline std::string to_string(memory_kind kind) {
       switch (kind) {
         case memory_kind::host:        return "host";

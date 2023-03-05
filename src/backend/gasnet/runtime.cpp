@@ -1410,7 +1410,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
       error = true; break;
     }
 
-    if_pf ( dynamic_kind >= memory_kind::any // invalid garbage
+    if_pf ( !detail::is_valid_memory_kind(dynamic_kind) || dynamic_kind == memory_kind::any // invalid garbage
          || (Kind != memory_kind::any && dynamic_kind != Kind) // static type mismatch
          || ((dynamic_kind == memory_kind::host) != (heap_idx == 0)) // dynamic_type/heap_idx mismatch
       ) {
