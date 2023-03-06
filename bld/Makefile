@@ -105,7 +105,7 @@ do-config-summary: force
 	   for key in \
 	     "CONFIG_CC" "CONFIG_CXX" \
 	     "UPCXX_BASH" "UPCXX_PYTHON" \
-	     "UPCXX_CUDA.*?" "UPCXX_HIP.*?" \
+	     "UPCXX_CUDA.*?" "UPCXX_HIP.*?" "UPCXX_ZE.*?" \
 	     "UPCXX_VALGRIND" "UPCXX_DISCONTIG" "UPCXX_FORCE_LEGACY_RELOCATIONS" "UPCXX_MPSC_QUEUE" \
 	     ; do \
 	     $(PERL) -ne 'if (m/^\s*export\s+('"$$key"')\s*=\s*(.*?)\s*$$/)' \
@@ -279,6 +279,9 @@ RUNTIME_LIBS = $(GASNET_LIBS)
 ifeq ($(UPCXX_HIP),1)
 RUNTIME_LIBS += $(UPCXX_HIP_LIBFLAGS)
 endif
+ifeq ($(UPCXX_ZE),1)
+RUNTIME_LIBS += $(UPCXX_ZE_LIBFLAGS)
+endif
 ifeq ($(UPCXX_CUDA),1)
 RUNTIME_LIBS += $(UPCXX_CUDA_LIBFLAGS)
 endif
@@ -378,6 +381,9 @@ UPCXX_DEFINES += -DUPCXXI_CUDA_ENABLED=1 $(UPCXX_CUDA_CPPFLAGS)
 endif
 ifeq ($(UPCXX_HIP),1)
 UPCXX_DEFINES += -DUPCXXI_HIP_ENABLED=1 $(UPCXX_HIP_CPPFLAGS)
+endif
+ifeq ($(UPCXX_ZE),1)
+UPCXX_DEFINES += -DUPCXXI_ZE_ENABLED=1 $(UPCXX_ZE_CPPFLAGS)
 endif
 
 # For git cloned source trees, embed git-describe output in runtime.o

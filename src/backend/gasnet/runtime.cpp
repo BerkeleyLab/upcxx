@@ -6,6 +6,7 @@
 #include <upcxx/concurrency.hpp>
 #include <upcxx/cuda_internal.hpp>
 #include <upcxx/hip_internal.hpp>
+#include <upcxx/ze_internal.hpp>
 #include <upcxx/os_env.hpp>
 #include <upcxx/reduce.hpp>
 #include <upcxx/team.hpp>
@@ -1409,7 +1410,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
       error = true; break;
     }
 
-    if_pf ( dynamic_kind >= memory_kind::any // invalid garbage
+    if_pf ( !detail::is_valid_memory_kind(dynamic_kind) || dynamic_kind == memory_kind::any // invalid garbage
          || (Kind != memory_kind::any && dynamic_kind != Kind) // static type mismatch
          || ((dynamic_kind == memory_kind::host) != (heap_idx == 0)) // dynamic_type/heap_idx mismatch
       ) {
@@ -2032,7 +2033,7 @@ namespace {
   #if UPCXXI_CUDA_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
       if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
-        CU_CHECK(cuEventDestroy((CUevent)cb->event));
+        UPCXXI_CU_CHECK(cuEventDestroy((CUevent)cb->event));
         per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
         cb->execute_and_delete();
       }
@@ -2049,6 +2050,27 @@ namespace {
       }
       else
         break;
+    }
+  #endif
+  #if UPCXXI_ZE_ENABLED
+    while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).ze.cbs.peek()) {
+      ze_fence_handle_t hFence = (ze_fence_handle_t)(cb->event);
+      ze_result_t fenceQueryResult;
+      if ((fenceQueryResult = zeFenceQueryStatus(hFence)) == ZE_RESULT_NOT_READY) break;
+      UPCXXI_ZE_CHECK(fenceQueryResult);
+
+      ze_command_list_handle_t hCommandList = (ze_command_list_handle_t)(cb->extra);
+      // reset objects for next use
+      UPCXXI_ZE_CHECK( zeCommandListReset(hCommandList) );
+      UPCXXI_ZE_CHECK( zeFenceReset(hFence) );
+      // push onto device free list
+      auto st = (backend::ze_heap_state *)cb->hs;
+      { std::lock_guard<detail::par_mutex> g(st->lock);
+        st->cmdFreeList.emplace(hCommandList, hFence);
+      }
+
+      per->UPCXXI_INTERNAL_ONLY(device_state_).ze.cbs.dequeue();
+      cb->execute_and_delete();
     }
   #endif
   }

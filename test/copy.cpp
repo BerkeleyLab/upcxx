@@ -33,6 +33,63 @@
           CHECK(cuCtxSynchronize() == CUDA_SUCCESS); /* issue #241 */ \
           CHECK(cudaDeviceSynchronize() == cudaSuccess); \
     } while(0)
+#elif UPCXX_KIND_ZE
+  #define DEVICE ze_device
+  #include <level_zero/ze_api.h>
+  using upcxx::ze_device;
+  constexpr int max_dev_n = 32;
+  int dev_n;
+  int cur_dev = -1;
+  int group_ordinal = 0;
+  std::vector<ze_device_handle_t> zeDev;
+  std::vector<ze_context_handle_t> zeCtx;
+  std::vector<ze_command_queue_handle_t> zeQueue;
+  std::vector<ze_command_list_handle_t> zeCmd;
+
+  void DEVICE_INIT() {
+    CHECK(zeInit(0) == ZE_RESULT_SUCCESS);
+    const int dev_n = ze_device::device_n();
+    zeDev.reserve(dev_n);
+    zeCtx.reserve(dev_n);
+    zeQueue.reserve(dev_n);
+    zeCmd.reserve(dev_n);
+    for (int d = 0; d < dev_n; d++) {
+      zeDev[d] = ze_device::device_id_to_device_handle(d);
+      zeCtx[d] = ze_device::get_driver_context(zeDev[d]);
+      ze_command_queue_desc_t cmdQueueDesc = {ZE_STRUCTURE_TYPE_COMMAND_QUEUE_DESC};
+      cmdQueueDesc.ordinal = group_ordinal;
+      cmdQueueDesc.index = 0;
+      // makes zeCommandQueueExecuteCommandLists block for completion:
+      cmdQueueDesc.mode = ZE_COMMAND_QUEUE_MODE_SYNCHRONOUS;
+      CHECK(ZE_RESULT_SUCCESS == 
+        zeCommandQueueCreate(zeCtx[d], zeDev[d], &cmdQueueDesc, &zeQueue[d]));
+      ze_command_list_desc_t commandListDesc = { ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC };
+      commandListDesc.commandQueueGroupOrdinal = group_ordinal;
+      CHECK(ZE_RESULT_SUCCESS ==
+        zeCommandListCreate(zeCtx[d], zeDev[d], &commandListDesc, &zeCmd[d]));
+    }
+  }
+  void ze_copy(void *dst, void *src, size_t sz) {
+    // this is a bare-minimum fully blocking copy, 
+    // and should not be considered a good example.
+    CHECK(ZE_RESULT_SUCCESS ==
+      zeCommandListAppendMemoryCopy(zeCmd[cur_dev], dst, src, sz, nullptr, 0, nullptr));
+    CHECK(ZE_RESULT_SUCCESS ==
+      zeCommandListClose(zeCmd[cur_dev]));
+    CHECK(ZE_RESULT_SUCCESS ==
+      zeCommandQueueExecuteCommandLists(zeQueue[cur_dev], 1, &zeCmd[cur_dev], nullptr)); 
+    CHECK(ZE_RESULT_SUCCESS ==
+      zeCommandListReset(zeCmd[cur_dev]));
+  }
+  #define DEVICE_SET(id)   (cur_dev = (id))
+  #define DEVICE_MEMCPY_D2H(dst, src, sz) ze_copy(dst, src, sz)
+  #define DEVICE_MEMCPY_H2D(dst, src, sz) ze_copy(dst, src, sz)
+  #define DEVICE_SYNC() do { \
+    for (int d = 0; d < dev_n; d++) { \
+      CHECK(ZE_RESULT_SUCCESS == \
+        zeCommandQueueSynchronize(zeQueue[d],  std::numeric_limits<uint64_t>::max())); \
+    } \
+  } while(0)
 #else
   constexpr int max_dev_n = 0; // set to num GPU/process
   constexpr int dev_n = 0;

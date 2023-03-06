@@ -9,7 +9,9 @@ using namespace std;
 using namespace upcxx;
 
 #ifndef DEVICE
-  #if UPCXX_KIND_HIP
+  #if UPCXX_KIND_ZE
+    #define DEVICE ze_device
+  #elif UPCXX_KIND_HIP
     #define DEVICE hip_device
   #elif UPCXX_KIND_CUDA
     #define DEVICE cuda_device
@@ -610,6 +612,10 @@ int do_main(int argc, char **argv) {
        }
        if (!run_uni && !run_bi) {
          run_uni = run_bi = true;
+       }
+       if (upcxx::rank_n() == 1) {
+         std::cerr << "WARNING: Single-rank job, bi-directional tests disabled\n" << std::flush;
+         run_bi = false;
        }
        if (!run_put && !run_get) {
          run_put = run_get = true;

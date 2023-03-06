@@ -81,6 +81,19 @@ GASNETT_IDENT(UPCXXI_IdentString_GASNetVersion, "$UPCXXGASNetVersion: "
   GASNETT_IDENT(UPCXXI_IdentString_HIPGASNet, "$UPCXXHIPGASNet: 0 $");
 #endif
 
+#if UPCXXI_ZE_ENABLED
+  #include <upcxx/ze.hpp>
+  GASNETT_IDENT(UPCXXI_IdentString_KindZE, "$UPCXXKindZE: " _STRINGIFY(UPCXX_KIND_ZE) " $");
+  GASNETT_IDENT(UPCXXI_IdentString_ZEEnabled, "$UPCXXZEEnabled: 1 $");
+#else
+  GASNETT_IDENT(UPCXXI_IdentString_ZEEnabled, "$UPCXXZEEnabled: 0 $");
+#endif
+#if UPCXXI_GEX_MK_ZE
+  GASNETT_IDENT(UPCXXI_IdentString_ZEGASNet, "$UPCXXZEGASNet: 1 $");
+#else
+  GASNETT_IDENT(UPCXXI_IdentString_ZEGASNet, "$UPCXXZEGASNet: 0 $");
+#endif
+
 #if UPCXXI_FORCE_LEGACY_RELOCATIONS
   GASNETT_IDENT(UPCXXI_IdentString_CCSEnabled, "$UPCXXCCSEnabled: 0 $");
 #else

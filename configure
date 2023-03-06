@@ -138,6 +138,21 @@ Usage:
         Additionally requires a working CUDA installation (details in INSTALL.md).
         The default of --with-hip-platform=amd selects native AMD GPU hardware.
 
+  --enable-ze
+  --disable-ze
+        Enable or disable UPC++ Memory Kinds over Intel Level Zero.
+  --with-ze-home=...
+        Install prefix of Level Zero developer tools 
+        The default is determined by searching for 'ocloc' in $PATH.
+  --with-ze-cppflags=...
+        Sets the pre-processor flags needed to find Level Zero runtime headers.
+        Overrides the value of $UPCXX_ZE_CPPFLAGS, if any.
+        The default is automatically determined.
+  --with-ze-libflags=...
+        Sets the linker flags needed to link ze runtime libraries.
+        Overrides the value of $UPCXX_ZE_LIBFLAGS, if any.
+        The default is automatically determined.
+
   --enable-ccs-rpc
   --disable-ccs-rpc
         Enable or disable support for Cross Code Segment (CCS) RPC and
@@ -248,7 +263,9 @@ fi
 UPCXX_CONFIG_ENVVARS=( CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS LIBS\
                        GASNET GASNET_CONDUIT GASNET_CONFIGURE_ARGS UPCXX_CROSS \
                        GMAKE UPCXX_PYTHON \
-                       UPCXX_CUDA{,_NVCC,_CPPFLAGS,_LIBFLAGS} )
+                       UPCXX_CUDA{,_NVCC,_CPPFLAGS,_LIBFLAGS} \
+                       HIP_HOME UPCXX_HIP{,_CPPFLAGS,_LIBFLAGS} \
+                       ZE_HOME UPCXX_ZE{,_CPPFLAGS,_LIBFLAGS} )
 for var in ${UPCXX_CONFIG_ENVVARS[*]} ; do
     eval ORIG_$var=\'${!var}\'
 done
@@ -347,11 +364,17 @@ while [[ $# -gt 0 ]]; do
     -with-cuda-cppflags?(=*))   UPCXX_CUDA_CPPFLAGS="$(get_arg_val $arg)"; export UPCXX_CUDA_CPPFLAGS;;
     -with-cuda-libflags?(=*))   UPCXX_CUDA_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_CUDA_LIBFLAGS;;
 
-    -with-hip)               UPCXX_HIP=1; export UPCXX_HIP;;
+    -with-hip)                 UPCXX_HIP=1; export UPCXX_HIP;;
     -without-hip)              unset UPCXX_HIP;;
     -with-hip-home?(=*))       HIP_HOME="$(get_arg_val $arg)"; export HIP_HOME;;
     -with-hip-cppflags?(=*))   UPCXX_HIP_CPPFLAGS="$(get_arg_val $arg)"; export UPCXX_HIP_CPPFLAGS;;
     -with-hip-libflags?(=*))   UPCXX_HIP_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_HIP_LIBFLAGS;;
+
+    -with-ze)                  UPCXX_ZE=1; export UPCXX_ZE;;
+    -without-ze)               unset UPCXX_ZE;;
+    -with-ze-home?(=*))        ZE_HOME="$(get_arg_val $arg)"; export ZE_HOME;;
+    -with-ze-cppflags?(=*))    UPCXX_ZE_CPPFLAGS="$(get_arg_val $arg)"; export UPCXX_ZE_CPPFLAGS;;
+    -with-ze-libflags?(=*))    UPCXX_ZE_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_ZE_LIBFLAGS;;
 
     -with-ccs-rpc)              UPCXX_FORCE_LEGACY_RELOCATIONS=''; export UPCXX_FORCE_LEGACY_RELOCATIONS;;
     -without-ccs-rpc)           UPCXX_FORCE_LEGACY_RELOCATIONS=1; export UPCXX_FORCE_LEGACY_RELOCATIONS;;
@@ -994,6 +1017,42 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
 fi
 
 #
+# ZE setup
+#
+if [[ $UPCXX_ZE -eq 1 ]]; then
+  # PREpend to allow user to disable if needed
+  GASNET_CONFIGURE_ARGS="--enable-kind-ze ${GASNET_CONFIGURE_ARGS}"
+
+  ZE_HEADER="include/level_zero/ze_api.h"
+  zecmd="ocloc"
+  if [[ -z $ZE_HOME ]] && type -p $zecmd >/dev/null ; then # try probing zecmd
+    ZE_HOME="$(dirname $(dirname $(type -p $zecmd)))"
+  fi
+  if [[ -z $ZE_HOME ]] && [[ -d /usr/include ]] ; then
+    ZE_HOME=/usr # last resort, check system include dir
+  fi
+  if [[ -z $ZE_HOME ]] || ! [[ -f $ZE_HOME/$ZE_HEADER ]] ; then
+    echo_and_die 'Failed to find Intel Level Zero developer tools, please pass --with-ze-home=/ze/install/prefix'
+  else
+    GASNET_CONFIGURE_ARGS+=" --with-ze-home='$ZE_HOME'"
+  fi
+  if [[ -z ${UPCXX_ZE_LIBFLAGS} ]] ; then
+    ZE_LIB=ze_loader
+    for dir in lib lib64 lib/x86_64-linux-gnu ; do # TODO: improve this search
+      if [[ -f $ZE_HOME/$dir/lib${ZE_LIB}.so || -f $ZE_HOME/$dir/lib${ZE_LIB}.a ]] ; then
+        UPCXX_ZE_LIBFLAGS="-L${ZE_HOME}/$dir -l$ZE_LIB"
+      fi
+    done
+    if [[ -z ${UPCXX_ZE_LIBFLAGS} ]] ; then
+      echo_and_die 'Failed to find Intel Level Zero library, please pass --with-ze-libflags="-L/ze/install/prefix/lib -l'$ZE_LIB'"'
+    fi
+  fi
+
+  [[ -z ${UPCXX_ZE_CPPFLAGS} ]] && UPCXX_ZE_CPPFLAGS="-I${ZE_HOME}/include"
+  [[ -z ${ZE_LIBS} ]] && ZE_LIBS=${UPCXX_ZE_LIBFLAGS}
+fi
+
+#
 # CUDA/nvcc setup
 # TODO: error reporting could be improved substantially.
 # In particular, we discard (nearly?) all failure output from nvcc
@@ -1206,11 +1265,15 @@ export UPCXX_CUDA_LIBFLAGS=$UPCXX_CUDA_LIBFLAGS
 export UPCXX_HIP=$UPCXX_HIP
 export UPCXX_HIP_CPPFLAGS=$UPCXX_HIP_CPPFLAGS
 export UPCXX_HIP_LIBFLAGS=$UPCXX_HIP_LIBFLAGS
+export UPCXX_ZE=$UPCXX_ZE
+export UPCXX_ZE_CPPFLAGS=$UPCXX_ZE_CPPFLAGS
+export UPCXX_ZE_LIBFLAGS=$UPCXX_ZE_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
 export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 export UPCXX_FORCE_LEGACY_RELOCATIONS=$UPCXX_FORCE_LEGACY_RELOCATIONS
 export CUDA_LIBS=$CUDA_LIBS
 export HIP_LIBS=$HIP_LIBS
+export ZE_LIBS=$ZE_LIBS
 
 # These control use of optional dependencies in tests, and support command-line override:
 export UPCXX_HAVE_CXX17?=$UPCXX_HAVE_CXX17

@@ -4,6 +4,7 @@
 #include <upcxx/device_allocator.hpp>
 #include <upcxx/cuda.hpp>
 #include <upcxx/hip.hpp>
+#include <upcxx/ze.hpp>
 #include <upcxx/team.hpp>
 
 namespace upcxx {
@@ -12,8 +13,14 @@ namespace upcxx {
   using gpu_default_device = cuda_device;
 #elif UPCXX_GPU_DEFAULT_DEVICE_HIP  // per-TU user override
   using gpu_default_device = hip_device;
+#elif UPCXX_GPU_DEFAULT_DEVICE_ZE  // per-TU user override
+  using gpu_default_device = ze_device;
 #elif UPCXXI_HIP_ENABLED
+  // HIP higher priority than CUDA so that when user has configured HIP-over-CUDA support
+  // (which also requires CUDA) we default to HIP which is more likely what they want
   using gpu_default_device = hip_device;
+#elif UPCXXI_ZE_ENABLED
+  using gpu_default_device = ze_device;
 #elif UPCXXI_CUDA_ENABLED
   using gpu_default_device = cuda_device;
 #else // no GPU support

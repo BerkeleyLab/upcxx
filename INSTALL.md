@@ -183,6 +183,7 @@ in the following sections, below:
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 * [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
+* [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
@@ -469,12 +470,13 @@ At the time of this writing we've only tested UPC++ on HPE Cray EX systems with
 AMD CPUs.
 
 As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
-UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
-EX systems.  Please _also_ see the respective sections of this document for
-UPC++ configure options needed to enable this support:
+UPC++ release supports GPUs using Nvidia CUDA, AMD ROCm/HIP, and Intel oneAPI
+in HPE Cray EX systems.  Please _also_ see the respective sections of this
+document for UPC++ configure options needed to enable this support:
 
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+* [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
 
 With the Slingshot-11 network, some users have seen application hangs due to
 what appears to be "lost" RPCs.  At the time this is written, there are two
@@ -897,6 +899,94 @@ compiled using the same host compiler toolchain.
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
+### Configuration: Intel oneAPI GPU support
+
+UPC++ includes initial EXPERIMENTAL support for RMA communication operations on
+memory buffers resident in a oneAPI-compatible Intel GPU, using the 
+oneAPI Level-Zero (ZE) interface.
+
+**Intel GPU memory kind support in this release is believed to be functionally correct,
+  but has not been tuned for performance. `upcxx::copy()` operations on `ze_device` 
+  memory are currently staged through host memory and do not yet leverage network-direct RDMA.**
+
+#### System Requirements:
+
+* Modern Intel-branded oneAPI-compatible GPU hardware with appropriate kernel drivers
+* Intel Level-Zero development headers (`level-zero-dev` package)
+
+The full Intel oneAPI Toolkits are *NOT* required to build UPC++ and use
+`ze_device`, but are likely required by applications that want to use the
+GPU for computation.
+
+#### `configure` Command for Enabling Intel oneAPI GPU Support
+
+To activate the UPC++ support for Intel oneAPI Level-Zero,
+pass `--enable-ze` to the `configure` script:
+
+```bash
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --enable-ze
+```
+
+`configure --enable-ze` attempts to automatically detect the install prefix of
+the Level-Zero developer tools and related compilation options for your system.
+If this automatic detection fails, then you may need to manually
+override one or more of the following options to `configure`:
+
+* `--with-ze-home=...`: the install prefix for the Level Zero developer tools 
+   Eg `--with-ze-home=/usr/local/pkg/intel/level-zero/1.9.4 `
+
+* `--with-ze-cppflags=...`: the pre-processor flags needed to find Level Zero headers
+   Eg `--with-ze-cppflags='-I/usr/local/pkg/intel/level-zero/1.9.4/include'`
+
+* `--with-ze-libflags=...`: the linker flags needed to link Level Zero runtime libraries
+   Eg `--with-ze-libflags='-L/usr/local/pkg/intel/level-zero/1.9.4/lib64 -lze_loader'`
+
+Note that you must build UPC++ with the same host compiler toolchain used for
+compiling objects linked to any UPC++ oneAPI programs. That is, both UPC++ and your
+UPC++ application must be compiled using the same host compiler toolchain.
+
+#### Validation of oneAPI memory kinds support
+   
+One can validate `ze_device` support in a given UPC++ install using a command like the following:
+
+```bash
+$ upcxx-info | grep ZE
+
+UPCXX_ZE:                          1
+UPCXX_ZE_CPPFLAGS:                 ...ZE include options...
+UPCXX_ZE_LIBFLAGS:                 ...ZE library options...
+```
+
+Where the `UPCXX_ZE: 1` indicates the UPC++ install is ZE-aware.
+
+UPC++ `ze_device` operation can be validated using the following programs in the source tree:
+
+* `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `ze_device`
+* `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+
+One can validate a given UPC++ executable includes `ze_device` support with a command
+like the following:
+
+```bash
+$ upcxx-run -i a.out | grep ZE
+UPCXXKindZE: 202303L
+UPCXXZEEnabled: 1
+UPCXXZEGASNet: 0
+```
+
+Where the `UPCXXZEEnabled: 1` line indicates the presence of `ze_device`
+support in UPC++, and `UPCXXZEGASNet: 0` indicates the lack of hardware
+acceleration for `ze_device` transfers in the current GASNet release.
+
+#### Use of UPC++ memory kinds
+
+See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more details on 
+using the UPC++ GPU support.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
 ## Advanced Configuration
 
 The `configure` script tries to pick sensible defaults for the platform it is
@@ -932,6 +1022,8 @@ options:
   [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * Options for control of (optional) AMD ROCm/HIP GPU support are documented in the section
   [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+* Options for control of (optional) Intel oneAPI GPU support are documented in the section
+  [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
 * Options not recognized by the UPC\+\+ `configure` script will be passed to
   the GASNet-EX `configure`.  For instance, `--with-mpirun-cmd=...` might be
   required to setup MPI-based launch of ibv-conduit applications.  Please read

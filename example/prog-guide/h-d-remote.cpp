@@ -3,8 +3,8 @@
 #if UPCXX_VERSION < 20210905
 #error This test requires UPC++ 2021.9.5 or newer
 #endif
-#if !(UPCXX_KIND_CUDA || UPCXX_KIND_HIP)
-#error "This example requires UPC++ to be built with either CUDA or HIP support."
+#if !(UPCXX_KIND_CUDA || UPCXX_KIND_HIP || UPCXX_KIND_ZE)
+#error "This example requires UPC++ to be built with GPU Memory Kinds support."
 #endif
 using namespace std;
 using namespace upcxx; 

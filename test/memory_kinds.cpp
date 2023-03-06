@@ -11,13 +11,14 @@ using namespace upcxx;
 
 volatile bool cuda_enabled;
 volatile bool hip_enabled;
+volatile bool ze_enabled;
 
 std::vector<std::function<void()>> post_fini;
 
 #define HAVE_KIND_INFO (UPCXX_VERSION >= 20220905)
 
 template<typename Device>
-void run_test(typename Device::id_type id, std::size_t heap_size, const char *desc) {
+void run_test(typename Device::id_type id, std::size_t heap_size) {
 
   using Allocator = upcxx::device_allocator<Device>;
   assert_same<typename Allocator::device_type, Device>();
@@ -88,6 +89,11 @@ void run_test(typename Device::id_type id, std::size_t heap_size, const char *de
     }
   }
 
+  #if UPCXX_VERSION >= 20220907
+    auto desc = Device::kind;
+  #else
+    auto desc = std::string("MK:") + std::to_string((int)Device::kind);
+  #endif
   int n_dev = Device::device_n();
   assert(n_dev >= 0);
   say() << "Testing " << n_dev << " " << desc << " GPUs";
@@ -349,7 +355,7 @@ int main() {
     hip_enabled = true;
   #endif
   if (hip_enabled) { 
-    run_test<hip_device>(0, 2<<20, "HIP");
+    run_test<hip_device>(0, 2<<20);
   }
 
   // check that required device members exist with sane-looking values
@@ -371,7 +377,58 @@ int main() {
     cuda_enabled = true;
   #endif
   if (cuda_enabled) { 
-    run_test<cuda_device>(0, 2<<20, "CUDA");
+    run_test<cuda_device>(0, 2<<20);
+  }
+
+  // check that required device members exist with sane-looking values
+  // note these should be defined even when ZE kind is disabled
+  assert_same<ze_device::id_type, int>();
+  assert_same<ze_device::pointer<double>, double *>();
+  assert(ze_device::null_pointer<double>() == nullptr);
+  assert(ze_device::default_alignment<double>() > 0);
+  assert(ze_device::kind == memory_kind::ze_device);
+  assert(ze_device::invalid_device_id != 0);
+  if (me&1) assert(ze_device::device_n() >= 0);
+  #if HAVE_KIND_INFO
+    auto ze_info = ze_device::kind_info();
+    if (!me) say() << "ze_device::kind_info():\n" << ze_info;
+    assert(ze_info.size() > 0);
+  #endif
+  assert(ze_device::device_n() >= 0);
+
+  // test ze_device-specific accessors
+  std::unordered_map<ze_device::device_handle_t, ze_device::id_type> device_to_id;
+  std::unordered_map<ze_device::driver_handle_t, ze_device::context_handle_t> driver_to_context;
+  for (ze_device::id_type id = 0; id < ze_device::device_n(); id++) {
+    ze_device::device_handle_t zeDevice = ze_device::device_id_to_device_handle(id);
+    ze_device::driver_handle_t zeDriver = ze_device::device_id_to_driver_handle(id);
+    assert(zeDevice && zeDriver);
+    assert(device_to_id.count(zeDevice) == 0);
+    device_to_id[zeDevice] = id;
+    ze_device::id_type qid = ze_device::device_handle_to_device_id(zeDevice);
+    assert(qid == id);
+    ze_device::context_handle_t zeContext = ze_device::get_driver_context(zeDriver);
+    assert(zeContext);
+    if (driver_to_context.count(zeDriver) > 0) {
+      assert(driver_to_context[zeDriver] == zeContext);
+    } else {
+      driver_to_context[zeDriver] = zeContext;
+    }
+    ze_device::set_driver_context(zeContext, zeDriver);
+    assert(zeContext == ze_device::get_driver_context(zeDriver));
+    ze_device::set_driver_context(zeContext, zeDevice);
+    assert(zeContext == ze_device::get_driver_context(zeDevice));
+    if (id == 0) {
+      assert(zeContext == ze_device::get_driver_context());
+      ze_device::set_driver_context(zeContext);
+      assert(zeContext == ze_device::get_driver_context());
+    }
+  }
+  #if UPCXX_KIND_ZE
+    ze_enabled = true;
+  #endif
+  if (ze_enabled) { 
+    run_test<ze_device>(0, 2<<20);
   }
 
   {
