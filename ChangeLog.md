@@ -18,6 +18,7 @@ General features/enhancements: (see specification and programmer's guide for ful
       host memory and do not yet leverage network-direct RDMA.
     - `ze_device` includes new experimental member functions designed to streamline
       interoperability with other portions of the oneAPI software ecosystem.
+* New `device_allocator::segment_{size,used}()` queries for device segment status
 * Console output from `upcxx::init()` in verbose mode now compresses process
   identification information to one line per `local_team`.
 * New `upcxx -info` option suppresses compilation and outputs detailed information
