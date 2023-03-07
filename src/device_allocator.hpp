@@ -196,12 +196,13 @@ namespace upcxx {
       UPCXXI_ASSERT_INIT();
       UPCXX_ASSERT(this->is_active(), "device_allocator::allocate() invoked on an inactive device.");
       UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
-      lock_.lock();
-      void *ptr = this->seg_.allocate(
+      void *ptr = nullptr;
+      { std::lock_guard<detail::par_mutex> g(lock_);
+        ptr = this->seg_.allocate(
           n*sizeof(T),
           std::max<std::size_t>(align, Device::min_alignment)
         );
-      lock_.unlock();
+      }
       
       if(ptr == nullptr)
         return global_ptr<T,Device::kind>(nullptr);
@@ -223,9 +224,8 @@ namespace upcxx {
         UPCXX_ASSERT(p.UPCXXI_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
                      p.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me());
         UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
-        lock_.lock();
+        std::lock_guard<detail::par_mutex> g(lock_);
         this->seg_.deallocate(p.UPCXXI_INTERNAL_ONLY(raw_ptr_));
-        lock_.unlock();
       }
     }
     template<typename T>
