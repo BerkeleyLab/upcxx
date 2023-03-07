@@ -57,6 +57,10 @@ namespace detail {
     bool in_segment(void *p) const {
       return reinterpret_cast<std::uintptr_t>(p) - seg_base_ < endpost_.begin;
     }
+
+    std::int64_t segment_size() const {
+      return (std::int64_t)endpost_.begin;
+    }
     
     void* allocate(std::size_t size, std::size_t align);
     void deallocate(void *p);

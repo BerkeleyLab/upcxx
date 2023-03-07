@@ -84,6 +84,7 @@ namespace upcxx {
     virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
 
     virtual bool is_active() const = 0;
+    virtual std::int64_t segment_size() const = 0;
     
     template<typename T>
     UPCXXI_NODISCARD
@@ -188,6 +189,12 @@ namespace upcxx {
     }
 
     bool is_active() const override { return detail::device_allocator_base::is_active(); }
+
+    std::int64_t segment_size() const override { 
+      if (!is_active()) return 0;
+      std::lock_guard<detail::par_mutex> g(const_cast<device_allocator*>(this)->lock_);
+      return this->seg_.segment_size();
+    }
 
     template<typename T>
     UPCXXI_NODISCARD

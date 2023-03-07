@@ -49,6 +49,8 @@ int main() {
     assert(mysz > 0);
     dap = new device_allocator<Device>(dev, mysz);
     assert(dap);
+    assert(dap->segment_size() == mysz);
+    assert(static_cast<heap_allocator*>(dap)->segment_size() == mysz);
   } catch (std::bad_alloc const &e) {
     say() << "ERROR: Caught unexpected exception: \n" << e.what();
   }
@@ -57,6 +59,7 @@ int main() {
   assert(dap->is_active()); assert(dev.is_active());
   dev.destroy();
   assert(!dap->is_active()); assert(!dev.is_active());
+  assert(dap->segment_size() == 0);
   delete dap;
   
   print_test_success();
