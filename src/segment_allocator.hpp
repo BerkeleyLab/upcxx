@@ -62,6 +62,14 @@ namespace detail {
       return (std::int64_t)endpost_.begin;
     }
     
+    std::int64_t segment_free() const {
+      std::int64_t free_space = 0;
+      for (auto &p : holes_by_size_) {
+        free_space += p.first.first;
+      }
+      return free_space;
+    }
+    
     void* allocate(std::size_t size, std::size_t align);
     void deallocate(void *p);
   };

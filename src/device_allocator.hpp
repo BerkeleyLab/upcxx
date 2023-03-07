@@ -85,6 +85,7 @@ namespace upcxx {
 
     virtual bool is_active() const = 0;
     virtual std::int64_t segment_size() const = 0;
+    virtual std::int64_t segment_used() const = 0;
     
     template<typename T>
     UPCXXI_NODISCARD
@@ -194,6 +195,12 @@ namespace upcxx {
       if (!is_active()) return 0;
       std::lock_guard<detail::par_mutex> g(const_cast<device_allocator*>(this)->lock_);
       return this->seg_.segment_size();
+    }
+
+    std::int64_t segment_used() const override { 
+      if (!is_active()) return 0;
+      std::lock_guard<detail::par_mutex> g(const_cast<device_allocator*>(this)->lock_);
+      return this->seg_.segment_size() - this->seg_.segment_free();
     }
 
     template<typename T>

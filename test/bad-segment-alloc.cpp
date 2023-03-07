@@ -51,6 +51,37 @@ int main() {
     assert(dap);
     assert(dap->segment_size() == mysz);
     assert(static_cast<heap_allocator*>(dap)->segment_size() == mysz);
+    assert(dap->segment_used() == 0);
+    assert(static_cast<heap_allocator*>(dap)->segment_used() == 0);
+    int64_t used = 0;
+    for (int i = 0; i < 100; i++) {
+      auto gp = dap->allocate<double>(1);
+      assert(gp);
+      int64_t now_used = dap->segment_used();
+      assert(now_used > used);
+      assert(now_used <= mysz);
+
+      // test some UNSPECIFIED behaviors of the allocator
+      auto gp2 = dap->allocate<double>(1);
+      assert(gp2);
+      int64_t now_used2 = dap->segment_used();
+      assert(now_used2 > now_used);
+      assert(now_used2 <= mysz);
+      dap->deallocate(gp2);
+      int64_t now_used3 = dap->segment_used();
+      assert(now_used3 >= now_used); // may be > due to block merging with existing allocations
+
+      auto gp3 = dap->allocate<double>(1);
+      assert(gp3);
+      int64_t now_used4 = dap->segment_used();
+      assert(now_used4 == now_used2);
+      assert(now_used4 <= mysz);
+      dap->deallocate(gp3);
+      int64_t now_used5 = dap->segment_used();
+      assert(now_used5 == now_used3); // merging should not happen in this case
+
+      used = now_used5;
+    }
   } catch (std::bad_alloc const &e) {
     say() << "ERROR: Caught unexpected exception: \n" << e.what();
   }
@@ -60,6 +91,7 @@ int main() {
   dev.destroy();
   assert(!dap->is_active()); assert(!dev.is_active());
   assert(dap->segment_size() == 0);
+  assert(dap->segment_used() == 0);
   delete dap;
   
   print_test_success();
