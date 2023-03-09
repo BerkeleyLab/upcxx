@@ -33,6 +33,7 @@ Infrastructure changes:
     - AMD compilers via PrgEnv-amd and PrgEnv-aocc
     - Nvidia compilers via PrgEnv-nvidia and PrgEnv-nvhpc
     - See [INSTALL.md](INSTALL.md) for details such as minimum versions.
+* AMD "AOCC" compilers 2.3+ are now supported on Linux/x86\_64 hosts.
 * UPC++ library build now outputs a GASNet-EX configuration summary near the end
 * Integration with Berkeley UPC is now deprecated and may be removed in a future release.
 
