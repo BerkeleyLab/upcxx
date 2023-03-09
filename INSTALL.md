@@ -792,7 +792,7 @@ override the following options to `configure`:
    Eg `--with-hip-cppflags='-I/opt/rocm-4.5.0/hip/include'`
 
 * `--with-hip-libflags=...`: the linker flags needed to link HIP runtime libraries
-   Eg `--with-hip-libflags='-L/opt/rocm-4.5.0/hip/include -lamdhip64'`
+   Eg `--with-hip-libflags='-L/opt/rocm-4.5.0/hip/lib -lamdhip64'`
 
 Note that you must build UPC++ with the same host compiler toolchain as is used
 by `hipcc` when compiling any UPC++ ROCm programs. That is, both UPC++ and your
