@@ -84,6 +84,8 @@ namespace upcxx {
     virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
 
     virtual bool is_active() const = 0;
+    virtual std::int64_t segment_size() const = 0;
+    virtual std::int64_t segment_used() const = 0;
     
     template<typename T>
     UPCXXI_NODISCARD
@@ -189,6 +191,18 @@ namespace upcxx {
 
     bool is_active() const override { return detail::device_allocator_base::is_active(); }
 
+    std::int64_t segment_size() const override { 
+      if (!is_active()) return 0;
+      std::lock_guard<detail::par_mutex> g(const_cast<device_allocator*>(this)->lock_);
+      return this->seg_.segment_size();
+    }
+
+    std::int64_t segment_used() const override { 
+      if (!is_active()) return 0;
+      std::lock_guard<detail::par_mutex> g(const_cast<device_allocator*>(this)->lock_);
+      return this->seg_.segment_size() - this->seg_.segment_free();
+    }
+
     template<typename T>
     UPCXXI_NODISCARD
     global_ptr<T,Device::kind> allocate(std::size_t n=1,
@@ -196,12 +210,13 @@ namespace upcxx {
       UPCXXI_ASSERT_INIT();
       UPCXX_ASSERT(this->is_active(), "device_allocator::allocate() invoked on an inactive device.");
       UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
-      lock_.lock();
-      void *ptr = this->seg_.allocate(
+      void *ptr = nullptr;
+      { std::lock_guard<detail::par_mutex> g(lock_);
+        ptr = this->seg_.allocate(
           n*sizeof(T),
           std::max<std::size_t>(align, Device::min_alignment)
         );
-      lock_.unlock();
+      }
       
       if(ptr == nullptr)
         return global_ptr<T,Device::kind>(nullptr);
@@ -223,9 +238,8 @@ namespace upcxx {
         UPCXX_ASSERT(p.UPCXXI_INTERNAL_ONLY(heap_idx_) == this->heap_idx_ &&
                      p.UPCXXI_INTERNAL_ONLY(rank_) == upcxx::rank_me());
         UPCXXI_ASSERT_MASTER_HELD_IFSEQ();
-        lock_.lock();
+        std::lock_guard<detail::par_mutex> g(lock_);
         this->seg_.deallocate(p.UPCXXI_INTERNAL_ONLY(raw_ptr_));
-        lock_.unlock();
       }
     }
     template<typename T>

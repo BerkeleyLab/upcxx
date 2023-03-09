@@ -679,7 +679,7 @@ support entirely).
 
 ### Devices and Heaps
 
-Devices like `cuda_device` and `hip_device` are classes that exist mostly to
+Devices like `{cuda,hip,ze}_device` exist mostly to
 provide a user-facing API (static contants, typedefs, a few standard methods,
 etc), but the objects themselves contain very little state -- basically just a
 `device_id` (which also serves as active bit) and a `heap_idx`.
