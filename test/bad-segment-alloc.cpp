@@ -45,9 +45,9 @@ int main() {
   try {
     if (!me) say("") << "Now asking for something reasonable...";
     barrier();
-    size_t mysz = 1<<20; 
+    int64_t mysz = 1<<20; 
     assert(mysz > 0);
-    dap = new device_allocator<Device>(dev, mysz);
+    dap = new device_allocator<Device>(dev, (size_t)mysz);
     assert(dap);
     assert(dap->segment_size() == mysz);
     assert(static_cast<heap_allocator*>(dap)->segment_size() == mysz);
