@@ -408,7 +408,7 @@ ALL_TESTS = $(foreach test, $(notdir $(test_progs_seq) $(test_progs_par)), \
 # Split the tests-clean rule to avoid over-long command lines (issue #406)
 do-tests-clean: force
 	@echo 'Removing tests for $(CONDUIT).'
-	@rm -f $(call ALL_TESTS,$(CONDUIT))
+	@rm -Rf $(call ALL_TESTS,$(CONDUIT))
 # Note $(CONDUITS) may be empty for `(dev-)tests-clean` after `clean`
 tests-clean: force
 	@list='$(CONDUITS)'; \
