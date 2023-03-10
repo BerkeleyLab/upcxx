@@ -26,6 +26,13 @@ General features/enhancements: (see specification and programmer's guide for ful
 * New `upcxx-info` convenience script is an alias for `upcxx -info`
 * `entry_barrier` arguments removed from `experimental::relo::verify_{segment,all}`
 * New `gpu_device::kind_info()` query for GPU hardware configuration
+* Enhancements to `dist_object`.
+    - Allow a `dist_object` to be constructed in an inactive state
+      before UPC++ initialization, with or without an underlying
+      value.
+    - Add queries of whether a `dist_object` holds a value or is active.
+    - Enable emplacement of the underlying value of a `dist_object`.
+    - Enable an inactive `dist_object` to be activated.
 
 Infrastructure changes:
 
@@ -45,6 +52,7 @@ Notable issues resolved
 * issue #531: Consider supporting HIP-over-CUDA
 * issue #532: Support --enable-hip on PGI/NVHPC
 * issue #543: Add upcxx-info
+* issue #547: MoveAssignment operators and self-assignment
 * issue #548: Fix undocumented dependency arc involving `experimental::relo::verify_{segment,all}`
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
