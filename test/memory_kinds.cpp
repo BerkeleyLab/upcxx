@@ -107,8 +107,10 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   // deliberately create three heaps on the same device
   // managed via pointer for precision testing of destruction
   Device *d0 = new Device(id);
+  *d0 = std::move(*d0); // issue 547: self move
   gpu_device *gd0 = d0;
   Allocator *a0 = new Allocator(*d0, heap_size);
+  *a0 = std::move(*a0); // issue 547: self move
   heap_allocator *ga0 = a0;
   assert(d0->is_active()); assert(gd0->is_active()); 
   assert(a0->is_active()); assert(ga0->is_active()); 

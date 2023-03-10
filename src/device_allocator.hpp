@@ -29,6 +29,7 @@ namespace upcxx {
         *this = std::move(other);
       }
       device_allocator_base& operator=(device_allocator_base&& other) {
+        if (&other == this) return *this; // see issue 547
         UPCXX_ASSERT(
           !is_active(),
           "Move assignment is only allowed an an inactive device allocator"
@@ -157,6 +158,7 @@ namespace upcxx {
     }
 
     device_allocator& operator=(device_allocator &&that) {
+      if (&that == this) return *this; // see issue 547
       // base class move assign
       heap_allocator::operator=(std::move(that));
       detail::device_allocator_core<Device>::operator=(

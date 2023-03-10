@@ -141,6 +141,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(obj5.is_active());
     upcxx::dist_object<int> obj6;
     obj6 = std::move(obj5);
+    obj6 = std::move(obj6); // issue 547: self move
     UPCXX_ASSERT_ALWAYS(!obj5.is_active());
     UPCXX_ASSERT_ALWAYS(obj6.is_active());
     UPCXX_ASSERT_ALWAYS(obj6.has_value());

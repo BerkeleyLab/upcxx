@@ -207,6 +207,7 @@ void test_all_ops(const team &tm, global_ptr<T> target_counter, const upcxx::ato
 template <typename T>
 void test_team_t(const upcxx::team &tm, std::vector<atomic_op> ops) {
   upcxx::atomic_domain<T> ad_all( ops, tm);
+  ad_all = std::move(ad_all); // issue 547: self move
 
   // get the global pointer to the target counter
   global_ptr<T> target_counter =

@@ -360,6 +360,7 @@ namespace upcxx {
       }
 
       atomic_domain &operator=(atomic_domain &&that) {
+        if (&that == this) return *this; // see issue 547
         UPCXXI_ASSERT_MASTER();
         // only allow assignment moves onto "dead" object
         UPCXX_ASSERT(!this->is_active(),
