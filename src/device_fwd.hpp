@@ -179,6 +179,7 @@ class device {
     *this = std::move(other);
   }
   device& operator=(device&& other) {
+    if (&other == this) return *this; // see issue 547
     UPCXX_ASSERT(heap_idx_ == -1,
                  "Move assignment is only allowed an an inactive device");
     UPCXX_ASSERT(kind_ == other.kind_);
@@ -241,6 +242,7 @@ class gpu_device : public detail::device {
     other.device_id_ = invalid_device_id;
   }
   gpu_device& operator=(gpu_device&& other) {
+    if (&other == this) return *this; // see issue 547
     device::operator=(std::move(other));
     device_id_ = other.device_id_;
     other.device_id_ = invalid_device_id;

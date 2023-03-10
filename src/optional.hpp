@@ -373,17 +373,19 @@ public:
 
 
   template <class... Args>
-  void emplace(Args&&... args)
+  T& emplace(Args&&... args)
   {
     clear();
     initialize(std::forward<Args>(args)...);
+    return contained_val();
   }
 
   template <class U, class... Args>
-  void emplace(std::initializer_list<U> il, Args&&... args)
+  T& emplace(std::initializer_list<U> il, Args&&... args)
   {
     clear();
     initialize<U, Args...>(il, std::forward<Args>(args)...);
+    return contained_val();
   }
 
   // 20.5.4.4, Swap

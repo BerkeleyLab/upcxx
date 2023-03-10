@@ -46,6 +46,8 @@ team::team(team &&that): team() {
 
 GASNETT_COLD
 team& team::operator=(team &&that) {
+  if (&that == this) return *this; // see issue 547
+
   UPCXXI_ASSERT_INIT();
   UPCXXI_ASSERT_MASTER();
   UPCXX_ASSERT(&that != &world(),

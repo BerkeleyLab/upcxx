@@ -143,6 +143,7 @@ int main() {
 
     // world split #1
     team tm1 = upcxx::world().split(rng(), upcxx::rank_me());
+    tm1 = std::move(tm1); // issue 547: self move
     test_team(tm1);
     
     // world split #2
