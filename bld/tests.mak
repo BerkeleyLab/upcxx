@@ -246,6 +246,9 @@ TEST_FLAGS_MEMBEROF_GNU=-Wno-invalid-offsetof
 TEST_FLAGS_MEMBEROF_Clang=-Wno-invalid-offsetof
 export TEST_FLAGS_MEMBEROF=$(TEST_FLAGS_MEMBEROF_$(GASNET_CXX_FAMILY))
 
+TEST_FLAGS_ISSUE547_Clang=-Wno-self-move
+export TEST_FLAGS_ISSUE547=$(TEST_FLAGS_ISSUE547_$(GASNET_CXX_FAMILY))
+
 ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
