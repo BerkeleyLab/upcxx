@@ -35,17 +35,22 @@ say_ &&say(const char *_discard="", say_ &&s=say_()) { return std::move(s); }
 #endif
 
 // Default GPU device, used by several tests
-#ifndef DEVICE
-  #if UPCXX_KIND_ZE
-    #define DEVICE ze_device
-  #elif UPCXX_KIND_HIP
-    #define DEVICE hip_device
-  #elif UPCXX_KIND_CUDA
-    #define DEVICE cuda_device
-  #endif
-#endif
-#ifdef DEVICE
+// DEVICE is defined iff configured with a available device kind,
+// and can be overridden on the command-line to force a particular kind
+#ifdef DEVICE // user override
   using Device = upcxx::DEVICE;
+#else
+  #if UPCXX_SPEC_VERSION < 20220300 // old: CUDA was the only kind
+    #if UPCXX_KIND_CUDA
+      #define DEVICE cuda_device
+    #endif
+    using Device = upcxx::cuda_device;
+  #else // modern - leverage gpu_default_device
+    #if UPCXX_KIND_CUDA || UPCXX_KIND_HIP || UPCXX_KIND_ZE
+      #define DEVICE gpu_default_device
+    #endif
+    using Device = upcxx::gpu_default_device;
+  #endif
 #endif
 
 template<typename=void>

@@ -124,8 +124,7 @@ struct match_const<T, false> {
 // this test always compiles statically with a device to detect compile-time bugs, 
 // even in builds where no device is runtime-enabled (tracked by gpu_enabled)
 bool gpu_enabled;
-using Device = upcxx::gpu_default_device;
-upcxx::gpu_heap_allocator *gpu_alloc;
+upcxx::device_allocator<Device> gpu_alloc;
 
 namespace perverse {
   namespace std { // check for insufficiently qualified macro use of ::std
@@ -218,7 +217,7 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
   // test memory kinds
   upcxx::global_ptr<T,Device::kind> gpu_o;
   if (gpu_enabled) {
-    gpu_o = gpu_alloc->allocate<T>(1);
+    gpu_o = gpu_alloc.allocate<T>(1);
   }
   if (gpu_enabled) { // deliberately separated to discourage optimizations that might hide static errors for non-CUDA
     upcxx::global_ptr<char_t,Device::kind> gpu_f0 = upcxx_memberof(gpu_o, f0);
@@ -237,7 +236,7 @@ struct calc { static void _(upcxx::global_ptr<T> gp_o) {
     assert(gd0 == d0 && gd1 == d1 && gd2 == d2); // not guaranteed by C++, but true for all known impls
     upcxx::barrier();
      
-    gpu_alloc->deallocate(gpu_o);
+    gpu_alloc.deallocate(gpu_o);
   }
   #endif
 
@@ -331,7 +330,7 @@ void check_general(bool has_virtual) {
   // test memory kinds
   upcxx::global_ptr<T,Device::kind> gpu_o;
   if (gpu_enabled) {
-    if (!upcxx::rank_me()) gpu_o = gpu_alloc->allocate<T>(1);
+    if (!upcxx::rank_me()) gpu_o = gpu_alloc.allocate<T>(1);
     gpu_o = upcxx::broadcast(gpu_o, 0).wait();
   }
   if (gpu_enabled) { // deliberately separated to discourage optimizations that might hide static errors for non-CUDA
@@ -360,7 +359,7 @@ void check_general(bool has_virtual) {
     assert(gd0 == d0 && gd1 == d1 && gd2 == d2); // not guaranteed by C++, but true for all known impls
     upcxx::barrier();
      
-    if (!upcxx::rank_me()) gpu_alloc->deallocate(gpu_o);
+    if (!upcxx::rank_me()) gpu_alloc.deallocate(gpu_o);
   }
   #endif
 }
@@ -410,8 +409,8 @@ int main() {
   upcxx::init();
   print_test_header();
 
-  gpu_alloc = new upcxx::gpu_heap_allocator( upcxx::make_gpu_allocator(2UL<<20) );
-  gpu_enabled = gpu_alloc->is_active(); // check if we found a GPU
+  gpu_alloc = upcxx::make_gpu_allocator<Device>(2UL<<20);
+  gpu_enabled = gpu_alloc.is_active(); // check if we found a GPU
 
   T(A); 
   check<A>();
@@ -426,8 +425,7 @@ int main() {
   check_general<V>(true);
   check_general<const V>(true);
 
-  gpu_alloc->destroy();
-  delete gpu_alloc;
+  gpu_alloc.destroy();
 
   print_test_success();
   upcxx::finalize();
