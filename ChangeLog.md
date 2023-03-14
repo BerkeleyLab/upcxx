@@ -33,6 +33,8 @@ General features/enhancements: (see specification and programmer's guide for ful
     - Add queries of whether a `dist_object` holds a value or is active.
     - Enable emplacement of the underlying value of a `dist_object`.
     - Enable an inactive `dist_object` to be activated.
+* `local_team` members are now officially guaranteed to have consecutive rank
+   indexes in `world()`
 
 Infrastructure changes:
 
