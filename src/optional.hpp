@@ -87,7 +87,7 @@ template <class T> inline constexpr typename std::remove_reference<T>::type&& co
 }
 
 
-#if UPCXXI_ASSERT_ENABLED
+#if !UPCXXI_ASSERT_ENABLED
 # define UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(CHECK, EXPR) (EXPR)
 #else
 // This is used in a constexpr context, so we need to ensure that the
