@@ -7,6 +7,8 @@
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 #include <upcxx/device_internal.hpp>
 
+#include <stack>
+
 #if UPCXXI_CUDA_ENABLED
   #include <cuda.h>
 
@@ -78,6 +80,9 @@
     struct device_heap_state<cuda_device> : public device_heap_state_base<cuda_device> {
         CUcontext context;
         CUstream stream;
+
+        detail::par_mutex lock;
+        std::stack<CUevent> eventFreeList;
     };
     using cuda_heap_state = device_heap_state<cuda_device>;
   }} // namespace

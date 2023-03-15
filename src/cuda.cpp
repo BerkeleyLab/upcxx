@@ -167,9 +167,20 @@ extern void detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void co
   }
 
   CUevent event;
-  UPCXXI_CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
+  st->lock.lock();
+  if (!st->eventFreeList.empty()) { // reuse when possible to avoid high construction overheads
+    event = st->eventFreeList.top();
+    st->eventFreeList.pop();
+    st->lock.unlock();
+  } else {
+    st->lock.unlock();
+
+    // Create an event object
+    UPCXXI_CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
+  }
   UPCXXI_CU_CHECK(cuEventRecord(event, st->stream));
   cb->event = (void*)event;
+  cb->hs = st;
 
   persona *per = detail::the_persona_tls.get_top_persona();
   per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.enqueue(cb);
@@ -261,6 +272,15 @@ void cuda_device::destroy(upcxx::entry_barrier eb) {
       auto alloc = static_cast<detail::device_allocator_core<cuda_device>*>(st->alloc_base);
       alloc->release();
       UPCXX_ASSERT(!st->alloc_base);
+    }
+
+    { std::lock_guard<detail::par_mutex> g(st->lock);
+      while (!st->eventFreeList.empty()) { // drain the free list
+        CUevent hEvent = st->eventFreeList.top();
+        st->eventFreeList.pop();
+
+        UPCXXI_CU_CHECK(cuEventDestroy(hEvent));
+      }
     }
 
     UPCXXI_CU_CHECK_ALWAYS(cuStreamDestroy(st->stream));

@@ -110,9 +110,11 @@ namespace backend {
   struct device_cb {
     detail::intru_queue_intruder<device_cb> intruder;
     void *event;
+    #if UPCXXI_CUDA_ENABLED || UPCXXI_ZE_ENABLED
+      heap_state *hs;
+    #endif
     #if UPCXXI_ZE_ENABLED
       void *extra;
-      heap_state *hs;
     #endif
     virtual void execute_and_delete() = 0;
   };
