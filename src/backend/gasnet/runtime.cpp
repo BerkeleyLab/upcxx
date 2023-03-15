@@ -2087,8 +2087,14 @@ namespace {
   #endif
   #if UPCXXI_HIP_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.peek()) {
-      if(hipEventQuery((hipEvent_t)cb->event) == hipSuccess) {
-        UPCXXI_HIP_CHECK(hipEventDestroy((hipEvent_t)cb->event));
+      hipEvent_t hEvent = (hipEvent_t)cb->event;
+      if(hipEventQuery(hEvent) == hipSuccess) {
+        // push onto device free list
+        auto st = (backend::hip_heap_state *)cb->hs;
+        { std::lock_guard<detail::par_mutex> g(st->lock);
+          st->eventFreeList.push(hEvent);
+        }
+
         per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.dequeue();
         cb->execute_and_delete();
       }
