@@ -309,3 +309,26 @@ upcxx::master_persona().lpc_ff([=]() {
 });
 ```
 
+## Job layouts and local_team ##
+
+UPC++ specifies that processes who are members of `upcxx::local_team()` have
+the ability to obtain valid "raw" C++ pointers (i.e. `T*`) referencing
+shared objects allocated by team members (specifically, `global_ptr::is_local()`
+is guaranteed to return true for such objects). In practice, this generally means
+these processes must be co-located on the same compute node, defined as a
+set of CPU resources sharing an OS image and coherent physical memory domain.
+
+UPC++ computes `upcxx::local_team()` membership at startup by examining the
+job layout of processes across physical nodes. By default, UPC++ attempts to
+maximize the size of each local team to encompass all processes co-resident
+on the same compute node (this strategy can be adjusted via GASNet environment
+variables, but the default is strongly recommended). 
+
+The algorithm used to construct `upcxx::local_team()` membership additionally
+ensures the following invariant: 
+
+  * **Processes within a single local team always have consecutive rank indexes in `upcxx::world()`**. 
+  * More formally, for all `I` in `[0, local_team().rank_n() - 1)`, `local_team()[I+1] == local_team()[I] + 1`
+
+This invariant is not currently required by the UPC++ specification, but it is 
+maintained by all versions of the LBNL UPC++ v1.0 implementation.
