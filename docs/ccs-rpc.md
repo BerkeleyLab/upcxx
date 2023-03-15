@@ -84,6 +84,10 @@ the segment's hash. The most significant bit indicates a multi-segment
 relocation, the next 15 bits the segment index, and the bottom bits are the
 address offset from the basis pointer.
 
+Verified segment number to offset conversion uses a fixed-size array with a
+size defined by the `UPCXX_CCS_MAX_SEGMENTS` environment variable, defaulting
+to 256 segments.
+
 Each batch of `verify_all()` or `verify_segment()` newly verified segments are
 sorted and appended to a vector of segments that can be identified by index.
 Index zero indicates a segment that is relocated using a hash.
@@ -250,6 +254,9 @@ As above, but writes to a `std::ostream`
   "yes" or "true" forces color on, "no" or "false" forces color off, and if
   unset `isatty` is used automatically color output if the output is a
   terminal.
+
+* `UPCXX_CCS_MAX_SEGMENTS`: Controls the limit on verified executable segments.
+  Default: 256.
   
 ## Potential Improvements
 

@@ -1049,10 +1049,10 @@ namespace detail {
             return;
           epoch++;
           it->set_verified();
-          int16_t idx = verified_segment_count_;
+          int16_t idx = verified_segment_count_++;
+          UPCXX_ASSERT_ALWAYS(idx <= max_segments_, "Segment limit exceeded. Current limit: " << max_segments_ << ". Increase UPCXX_CCS_MAX_SEGMENTS to at least " << idx << ".");
           it->idx = idx;
-          segment_vector_.push_back({it->start, it->end, idx});
-          verified_segment_count_++;
+          indexed_segment_starts_[idx].store(it->start, std::memory_order_relaxed);
         } else {
           it->set_bad_verification();
           throw segment_verification_error("verify_segment() failed: Segment not found on all ranks.");
@@ -1139,8 +1139,8 @@ namespace detail {
       for (const auto& seg : segmap) {
         if (seg.flags & static_cast<uint16_t>(segment_flags::verified)) {
           bool found = false;
-          for (const auto& seg2 : segment_vector_) {
-            if (seg.start == seg2.start) {
+          for (size_t i = 1; i <= static_cast<std::size_t>(verified_segment_count_); ++i) {
+            if (seg.start == indexed_segment_starts_[i]) {
               found = true;
               break;
             }
@@ -1154,10 +1154,12 @@ namespace detail {
       {
         return lhs.ident < rhs.ident;
       });
-      UPCXX_ASSERT(verified_segment_count_ + new_segments.size() > 0);
+      int16_t required_segments = verified_segment_count_ + new_segments.size();
+      UPCXX_ASSERT_ALWAYS(required_segments <= max_segments_, "Segment limit exceeded. Current limit: " << max_segments_ << ". Increase UPCXX_CCS_MAX_SEGMENTS to at least " << required_segments << ".");
+      UPCXX_ASSERT(required_segments > 0);
       for (auto& seg : new_segments) {
         auto idx = verified_segment_count_++;
-        segment_vector_.push_back({seg.start, seg.end, idx});
+        indexed_segment_starts_[idx].store(seg.start, std::memory_order_relaxed);
         for (auto& seg2 : segmap) {
           if (seg.start == seg2.start)
             seg2.idx = idx;
@@ -1206,7 +1208,8 @@ namespace detail {
 
   std::recursive_mutex segmap_cache::mutex_{};
   segment_info segmap_cache::primary_ = find_primary_upcxx_segment();
-  decltype(segmap_cache::segment_vector_) segmap_cache::segment_vector_{1};
+  decltype(segmap_cache::indexed_segment_starts_) segmap_cache::indexed_segment_starts_{nullptr};
+  decltype(segmap_cache::max_segments_) segmap_cache::max_segments_{};
   int16_t segmap_cache::verified_segment_count_{1};
   decltype(segmap_cache::epoch) segmap_cache::epoch{};
 

@@ -44,6 +44,8 @@ namespace upcxx {
   enum class entry_barrier;
   class team;
   inline team& world();
+  void init();
+  void finalize();
 namespace detail {
   struct segment_hash;
 
@@ -268,7 +270,8 @@ namespace detail {
     std::array<segment_lookup_ptr,max_cache_size> cache_ptr_; // sorted by address. address to token
     std::array<segment_lookup_idx,max_cache_size> cache_idx_; // sorted by address. address to segment_vector index
     std::array<segment_lookup_tkn,max_cache_size> cache_tkn_; // sorted by hash. token to address
-    static std::vector<segment_lookup_idx> segment_vector_;
+    static std::atomic<std::uintptr_t>* indexed_segment_starts_; // set in init()
+    static int16_t max_segments_; // set in init()
 
     template<typename It>
     static std::tuple<bool, It> search(It start, It end, uintptr_t uptr);
@@ -300,7 +303,7 @@ namespace detail {
     static constexpr size_t cols = 7;
 
     static inline const segment_info& primary() noexcept { return primary_; }
-    static const segment_lookup_idx& lookup_at_idx(int16_t idx);
+    static std::uintptr_t lookup_at_idx(int16_t idx);
     static segment_hash ident_at_idx(int16_t idx);
 
     std::tuple<bool, const_cache_idx_iterator> search_idx_cache(uintptr_t uptr) const;
@@ -368,6 +371,9 @@ namespace detail {
     size_t cache_evict_index_;
     size_t idx_cache_occupancy_;
     size_t idx_cache_evict_index_;
+
+    friend void upcxx::init();
+    friend void upcxx::finalize();
   };
 }} // namespace upcxx::detail
 

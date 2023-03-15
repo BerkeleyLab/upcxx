@@ -1,6 +1,8 @@
 #include <upcxx/upcxx.hpp>
 #include "../util.hpp"
 #include <dlfcn.h>
+#include <thread>
+#include <atomic>
 
 #define STR(s) #s
 #define XSTR(s) STR(s)
@@ -16,6 +18,20 @@ void upcxx_test2()
   if (printrank)
     upcxx::experimental::relocation::debug_write_segment_table();
   print_test_header();
+#if UPCXX_THREADMODE
+  std::atomic<bool> done2;
+  std::thread t([&]() {
+    auto fut = upcxx::rpc(0, dynamic_linked_function);
+    fut.wait();
+    done2.store(true,std::memory_order_relaxed);
+  });
+  std::this_thread::sleep_for(std::chrono::seconds{1});
+  do {
+    upcxx::progress();
+  } while (!done2.load(std::memory_order_acquire));
+  t.join();
+  upcxx::barrier();
+#endif
   void* handle = dlopen(XSTR(CCS_DLOPEN_LIB), RTLD_NOW);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
