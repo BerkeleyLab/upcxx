@@ -402,27 +402,32 @@ public:
   explicit constexpr operator bool() const noexcept { return initialized(); }
   constexpr bool has_value() const noexcept { return initialized(); }
 
-  constexpr T const* operator ->() const {
+  constexpr T const* operator ->() const noexcept {
     return UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(initialized(), dataptr());
   }
 
 # if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
 
-  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T* operator ->() {
+  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T* operator ->() noexcept {
     UPCXX_ASSERT(initialized());
     return dataptr();
   }
 
-  constexpr T const& operator *() const& {
+  constexpr T const& operator *() const& noexcept {
     return UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(initialized(), contained_val());
   }
 
-  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T& operator *() & {
+  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T& operator *() & noexcept {
     UPCXX_ASSERT(initialized());
     return contained_val();
   }
 
-  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T&& operator *() && {
+  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR T&& operator *() && noexcept {
+    UPCXX_ASSERT(initialized());
+    return constexpr_move(contained_val());
+  }
+
+  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR const T&& operator *() const&& noexcept {
     UPCXX_ASSERT(initialized());
     return constexpr_move(contained_val());
   }
@@ -440,18 +445,23 @@ public:
 	return std::move(contained_val());
   }
 
+  UPCXXI_OPTIONAL_MUTABLE_CONSTEXPR const T&& value() const&& {
+    if (!initialized()) throw bad_optional_access();
+	return std::move(contained_val());
+  }
+
 # else
 
-  T* operator ->() {
+  T* operator ->() noexcept {
     UPCXX_ASSERT(initialized());
     return dataptr();
   }
 
-  constexpr T const& operator *() const {
+  constexpr T const& operator *() const noexcept {
     return UPCXXI_TR2_OPTIONAL_ASSERTED_EXPRESSION(initialized(), contained_val());
   }
 
-  T& operator *() {
+  T& operator *() noexcept {
     UPCXX_ASSERT(initialized());
     return contained_val();
   }
@@ -512,32 +522,32 @@ class optional<T&&>
 
 
 // 20.5.8, Relational operators
-template <class T> constexpr bool operator==(const optional<T>& x, const optional<T>& y)
+template <class T, class U> constexpr bool operator==(const optional<T>& x, const optional<U>& y)
 {
   return bool(x) != bool(y) ? false : bool(x) == false ? true : *x == *y;
 }
 
-template <class T> constexpr bool operator!=(const optional<T>& x, const optional<T>& y)
+template <class T, class U> constexpr bool operator!=(const optional<T>& x, const optional<U>& y)
 {
   return !(x == y);
 }
 
-template <class T> constexpr bool operator<(const optional<T>& x, const optional<T>& y)
+template <class T, class U> constexpr bool operator<(const optional<T>& x, const optional<U>& y)
 {
   return (!y) ? false : (!x) ? true : *x < *y;
 }
 
-template <class T> constexpr bool operator>(const optional<T>& x, const optional<T>& y)
+template <class T, class U> constexpr bool operator>(const optional<T>& x, const optional<U>& y)
 {
   return (y < x);
 }
 
-template <class T> constexpr bool operator<=(const optional<T>& x, const optional<T>& y)
+template <class T, class U> constexpr bool operator<=(const optional<T>& x, const optional<U>& y)
 {
   return !(y < x);
 }
 
-template <class T> constexpr bool operator>=(const optional<T>& x, const optional<T>& y)
+template <class T, class U> constexpr bool operator>=(const optional<T>& x, const optional<U>& y)
 {
   return !(x < y);
 }
@@ -606,186 +616,63 @@ template <class T> constexpr bool operator>=(nullopt_t, const optional<T>& x) no
 
 
 
-// 20.5.10, Comparison with T
-template <class T> constexpr bool operator==(const optional<T>& x, const T& v)
+// 20.5.10, Comparison with U
+template <class T, class U> constexpr bool operator==(const optional<T>& x, const U& v)
 {
   return bool(x) ? *x == v : false;
 }
 
-template <class T> constexpr bool operator==(const T& v, const optional<T>& x)
+template <class T, class U> constexpr bool operator==(const T& v, const optional<U>& x)
 {
   return bool(x) ? v == *x : false;
 }
 
-template <class T> constexpr bool operator!=(const optional<T>& x, const T& v)
+template <class T, class U> constexpr bool operator!=(const optional<T>& x, const U& v)
 {
   return bool(x) ? *x != v : true;
 }
 
-template <class T> constexpr bool operator!=(const T& v, const optional<T>& x)
+template <class T, class U> constexpr bool operator!=(const T& v, const optional<U>& x)
 {
   return bool(x) ? v != *x : true;
 }
 
-template <class T> constexpr bool operator<(const optional<T>& x, const T& v)
+template <class T, class U> constexpr bool operator<(const optional<T>& x, const U& v)
 {
   return bool(x) ? *x < v : true;
 }
 
-template <class T> constexpr bool operator>(const T& v, const optional<T>& x)
+template <class T, class U> constexpr bool operator>(const T& v, const optional<U>& x)
 {
   return bool(x) ? v > *x : true;
 }
 
-template <class T> constexpr bool operator>(const optional<T>& x, const T& v)
+template <class T, class U> constexpr bool operator>(const optional<T>& x, const U& v)
 {
   return bool(x) ? *x > v : false;
 }
 
-template <class T> constexpr bool operator<(const T& v, const optional<T>& x)
+template <class T, class U> constexpr bool operator<(const T& v, const optional<U>& x)
 {
   return bool(x) ? v < *x : false;
 }
 
-template <class T> constexpr bool operator>=(const optional<T>& x, const T& v)
+template <class T, class U> constexpr bool operator>=(const optional<T>& x, const U& v)
 {
   return bool(x) ? *x >= v : false;
 }
 
-template <class T> constexpr bool operator<=(const T& v, const optional<T>& x)
+template <class T, class U> constexpr bool operator<=(const T& v, const optional<U>& x)
 {
   return bool(x) ? v <= *x : false;
 }
 
-template <class T> constexpr bool operator<=(const optional<T>& x, const T& v)
+template <class T, class U> constexpr bool operator<=(const optional<T>& x, const U& v)
 {
   return bool(x) ? *x <= v : true;
 }
 
-template <class T> constexpr bool operator>=(const T& v, const optional<T>& x)
-{
-  return bool(x) ? v >= *x : true;
-}
-
-
-// Comparison of optional<T&> with T
-template <class T> constexpr bool operator==(const optional<T&>& x, const T& v)
-{
-  return bool(x) ? *x == v : false;
-}
-
-template <class T> constexpr bool operator==(const T& v, const optional<T&>& x)
-{
-  return bool(x) ? v == *x : false;
-}
-
-template <class T> constexpr bool operator!=(const optional<T&>& x, const T& v)
-{
-  return bool(x) ? *x != v : true;
-}
-
-template <class T> constexpr bool operator!=(const T& v, const optional<T&>& x)
-{
-  return bool(x) ? v != *x : true;
-}
-
-template <class T> constexpr bool operator<(const optional<T&>& x, const T& v)
-{
-  return bool(x) ? *x < v : true;
-}
-
-template <class T> constexpr bool operator>(const T& v, const optional<T&>& x)
-{
-  return bool(x) ? v > *x : true;
-}
-
-template <class T> constexpr bool operator>(const optional<T&>& x, const T& v)
-{
-  return bool(x) ? *x > v : false;
-}
-
-template <class T> constexpr bool operator<(const T& v, const optional<T&>& x)
-{
-  return bool(x) ? v < *x : false;
-}
-
-template <class T> constexpr bool operator>=(const optional<T&>& x, const T& v)
-{
-  return bool(x) ? *x >= v : false;
-}
-
-template <class T> constexpr bool operator<=(const T& v, const optional<T&>& x)
-{
-  return bool(x) ? v <= *x : false;
-}
-
-template <class T> constexpr bool operator<=(const optional<T&>& x, const T& v)
-{
-  return bool(x) ? *x <= v : true;
-}
-
-template <class T> constexpr bool operator>=(const T& v, const optional<T&>& x)
-{
-  return bool(x) ? v >= *x : true;
-}
-
-// Comparison of optional<T const&> with T
-template <class T> constexpr bool operator==(const optional<const T&>& x, const T& v)
-{
-  return bool(x) ? *x == v : false;
-}
-
-template <class T> constexpr bool operator==(const T& v, const optional<const T&>& x)
-{
-  return bool(x) ? v == *x : false;
-}
-
-template <class T> constexpr bool operator!=(const optional<const T&>& x, const T& v)
-{
-  return bool(x) ? *x != v : true;
-}
-
-template <class T> constexpr bool operator!=(const T& v, const optional<const T&>& x)
-{
-  return bool(x) ? v != *x : true;
-}
-
-template <class T> constexpr bool operator<(const optional<const T&>& x, const T& v)
-{
-  return bool(x) ? *x < v : true;
-}
-
-template <class T> constexpr bool operator>(const T& v, const optional<const T&>& x)
-{
-  return bool(x) ? v > *x : true;
-}
-
-template <class T> constexpr bool operator>(const optional<const T&>& x, const T& v)
-{
-  return bool(x) ? *x > v : false;
-}
-
-template <class T> constexpr bool operator<(const T& v, const optional<const T&>& x)
-{
-  return bool(x) ? v < *x : false;
-}
-
-template <class T> constexpr bool operator>=(const optional<const T&>& x, const T& v)
-{
-  return bool(x) ? *x >= v : false;
-}
-
-template <class T> constexpr bool operator<=(const T& v, const optional<const T&>& x)
-{
-  return bool(x) ? v <= *x : false;
-}
-
-template <class T> constexpr bool operator<=(const optional<const T&>& x, const T& v)
-{
-  return bool(x) ? *x <= v : true;
-}
-
-template <class T> constexpr bool operator>=(const T& v, const optional<const T&>& x)
+template <class T, class U> constexpr bool operator>=(const T& v, const optional<U>& x)
 {
   return bool(x) ? v >= *x : true;
 }
@@ -833,17 +720,6 @@ namespace std
   {
     typedef typename hash<T>::result_type result_type;
     typedef upcxx::optional<T> argument_type;
-
-    constexpr result_type operator()(argument_type const& arg) const {
-      return arg ? std::hash<T>{}(*arg) : result_type{};
-    }
-  };
-
-  template <typename T>
-  struct hash<upcxx::optional<T&>>
-  {
-    typedef typename hash<T>::result_type result_type;
-    typedef upcxx::optional<T&> argument_type;
 
     constexpr result_type operator()(argument_type const& arg) const {
       return arg ? std::hash<T>{}(*arg) : result_type{};

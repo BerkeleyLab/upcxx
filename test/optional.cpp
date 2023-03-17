@@ -1571,6 +1571,41 @@ struct VEC
     VEC(std::initializer_list<U> il, X&&...x) : v(il, std::forward<X>(x)...) {}
 };
 
+// additional compliance tests (issue 589)
+TEST(issue_589) {
+  // comparisons between T and U
+  upcxx::optional<int> o1{3};
+  upcxx::optional<double> o2{4.1};
+  UPCXX_ASSERT_ALWAYS(o1 < o2);
+  UPCXX_ASSERT_ALWAYS(o1 <= o2);
+  UPCXX_ASSERT_ALWAYS(o1 != o2);
+  UPCXX_ASSERT_ALWAYS(!(o1 == o2));
+  UPCXX_ASSERT_ALWAYS(!(o1 >= o2));
+  UPCXX_ASSERT_ALWAYS(!(o1 > o2));
+  UPCXX_ASSERT_ALWAYS(o1 < *o2);
+  UPCXX_ASSERT_ALWAYS(o1 <= *o2);
+  UPCXX_ASSERT_ALWAYS(o1 != *o2);
+  UPCXX_ASSERT_ALWAYS(!(o1 == *o2));
+  UPCXX_ASSERT_ALWAYS(!(o1 >= *o2));
+  UPCXX_ASSERT_ALWAYS(!(o1 > *o2));
+  UPCXX_ASSERT_ALWAYS(*o1 < o2);
+  UPCXX_ASSERT_ALWAYS(*o1 <= o2);
+  UPCXX_ASSERT_ALWAYS(*o1 != o2);
+  UPCXX_ASSERT_ALWAYS(!(*o1 == o2));
+  UPCXX_ASSERT_ALWAYS(!(*o1 >= o2));
+  UPCXX_ASSERT_ALWAYS(!(*o1 > o2));
+# if UPCXXI_OPTIONAL_HAS_MOVE_ACCESSORS == 1
+  // const&& overload of operator* and value()
+  using coirv = const upcxx::optional<int>&&;
+  static_assert(std::is_same<decltype(static_cast<coirv>(o1).operator*()),
+                             const int&&>::value,
+                "internal error");
+  static_assert(std::is_same<decltype(static_cast<coirv>(o1).value()),
+                             const int&&>::value,
+                "internal error");
+#endif
+}
+
 #endif // !UPCXXI_USE_STD_OPTIONAL
 
 int main() {
