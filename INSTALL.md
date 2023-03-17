@@ -420,7 +420,7 @@ use of the default version of GASNet-EX.  If using an earlier release of
 GASNet-EX, please consult documentation in a UPC++ release of similar age.
 
 ```bash
-module load libfabric cray-pmi
+module load libfabric cray-pmi <GPU_MODULES>
 cd <upcxx-source-path>
 ./configure --prefix=<upcxx-install-path> \
     --with-cc=cc --with-cxx=CC --with-mpi-cc=cc \
@@ -431,8 +431,16 @@ cd <upcxx-source-path>
 
 The `libfabric` and `cray-pmi` environment modules may or may not be loaded by
 default at any given site.  Please ensure they are loaded (as shown above) or
-the configure or build steps may fail.  Additionally, one may need an
-environment module (sometimes site-specific) for the GPU programming model.
+the configure or build steps may fail.
+
+As denoted by the <GPU_MODULES> placeholder, one or more environment modules
+may be needed for GPU support.  Example module names (to help locate the
+appropriate information in site-specific documentation) include `cudatoolkit`,
+`rocm` and `intel_compute_runtime`, though variations on these names exist.
+In some cases one may also need a device-specific module, often with a name
+starting with `craype-accel-`, to avoid link errors or warnings on every
+compile.  Be advised that some sites may bundle the programming model and
+device modules into a single module.
 
 There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
 "Slingshot-11".  They require different libfabric "providers", as indicated by
