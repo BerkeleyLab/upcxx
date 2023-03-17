@@ -61,6 +61,7 @@ Notable issues resolved
 * issue #572: Fix unintended user-level progress in `experimental::relo::verify_{segment,all}`
 * issue #573: CCS: Assertion failure in segmap_cache::lookup_at_idx for multi-threaded CCS
 * issue #575: Improve guide's broadcast example
+* issue #587: upcxx::optional constexpr operators lack assertions
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 20XX.YY.0](docs/spec.pdf).
