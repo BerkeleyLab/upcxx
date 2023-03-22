@@ -132,11 +132,12 @@ executable segments or TEXTRELs.  It causes these errors to be detected by the
 sender rather than the receiver for easier debugging.  These sources of
 asymmetry may result in different hashes of the executable segments and/or
 different function offsets within the library, both of which prevent UPC++ from
-properly relocating function pointers. The library can be rebuilt with
-`-Wl,--build-id` to provide a consistent hash.  Otherwise, UPC++ will fall back
-to trying to use the hash of the library's file path as an identifier.  Some
-systems can report inconsistent file paths for a library, in which case this
-will fail.
+properly relocating function pointers.  However, setting breakpoints may modify
+code segments legitimately, resulting in asymmetry. The library can be rebuilt
+with `-Wl,--build-id` to provide a consistent hash.  For segments with writable
+code segments or TEXTRELs, UPC++ will fall back to trying to use the hash of
+the library's file path as an identifier.  Some systems can report inconsistent
+file paths for a library, in which case this will fail.
 
 Duplicate code segments are also a problem for UPC++ acquiring unique hashes.
 This is a known occurrence with small libraries that return different

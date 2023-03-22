@@ -44,6 +44,21 @@ calls) that serial debuggers generally won't correctly follow and handle. Hence
 the general recommendation to debug multi-rank jobs by attaching your favorite
 debugger to already-running rank processes.
 
+### Segment verification errors
+
+Setting breakpoints may modify program code segments, breaking code segment
+symmetry between processes and potentially interfering with the Cross Code
+Segment (CCS) verification process. If this occurs, it will result in segment
+verification errors. The solution to this problem is to link with
+`-Wl,--build-id`, which embeds a unique identifier in executables/libraries at
+link time. CCS will use this identifier in place of hashing the code segment
+at run time. To allow breakpoints to work with CCS, this link flag should be
+enabled for the main executable and any dynamic libraries called directly via
+RPC (those requiring CCS). Dynamic libraries only invoked indirectly by RPC,
+such as those wrapped in a lambda or called by a function linked in the main
+program, do not require CCS or this link flag to debug. macOS enables
+`-Wl,--build-id` by default.
+
 ## Using Valgrind with UPC++
 
 UPC++ has some *limited* support for interoperating with the 
