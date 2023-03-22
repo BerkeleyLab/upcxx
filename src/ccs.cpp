@@ -1125,7 +1125,7 @@ namespace detail {
           seg.set_bad_verification();
 #if UPCXXI_ASSERT_ENABLED
         if (seg.start == primary().start && !(seg.flags & static_cast<flags_type>(segment_flags::verified)))
-          UPCXXI_FATAL_ERROR("Primary segment verification failed");
+          UPCXXI_FATAL_ERROR("Primary segment verification failed. If setting breakpoints, please see debugging.md.");
 #endif
       }
 
