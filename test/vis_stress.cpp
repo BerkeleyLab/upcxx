@@ -2,6 +2,7 @@
 #include "util.hpp"
 
 #include <new>
+#include <memory>
 
 using upcxx::dist_object;
 using upcxx::global_ptr;
@@ -109,11 +110,12 @@ void test_case(Ops ops) {
   global_ptr<Uint> nebr_ptr = dptr.fetch(nebr).wait();
 
   // allocate array of len+1 in case len==0, extra element never used
-  Uint src_data[len+1];
+  std::unique_ptr<Uint[]> src_data(new Uint[len+1]);
+
   for(int i=0; i < len; i++)
     src_data[i] = nebr*nebr + i;
   
-  ops.template put<Uint,len>((Uint const*)src_data, nebr_ptr);
+  ops.template put<Uint,len>(src_data.get(), nebr_ptr);
   
   upcxx::barrier();
 
@@ -122,8 +124,8 @@ void test_case(Ops ops) {
 
   #if 1 // enable gets
     // allocate array of len+1 in case len==0, extra element never used
-    Uint got_data[len+1];
-    ops.template get<Uint,len>(nebr_ptr, got_data);
+    std::unique_ptr<Uint[]> got_data(new Uint[len+1]);
+    ops.template get<Uint,len>(nebr_ptr, got_data.get());
 
     for(int i=0; i < len; i++)
       UPCXX_ASSERT_ALWAYS(got_data[i] == src_data[i]);
