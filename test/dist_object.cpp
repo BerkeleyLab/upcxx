@@ -34,6 +34,9 @@ bool got_ff = false;
 dist_object<non_default_constructible> global_obj1;
 dist_object<non_default_constructible> global_obj2{upcxx::inactive, -2};
 
+dist_id<int> global_id1;
+dist_id<int> global_id2;
+
 int main() {
   // dist_object construction before init (and destruction after finalize)
   dist_object<non_default_constructible> preinit_obj1;
@@ -59,6 +62,13 @@ int main() {
   UPCXX_ASSERT_ALWAYS(global_obj2->x == -2);
   UPCXX_ASSERT_ALWAYS(preinit_obj1->x == -5);
   UPCXX_ASSERT_ALWAYS(preinit_obj2->x == -3);
+
+  dist_id<int> preinit_id1;
+  dist_id<int> preinit_id2;
+  UPCXX_ASSERT_ALWAYS(global_id1 == global_id2);
+  UPCXX_ASSERT_ALWAYS(global_id1 == dist_id<int>());
+  UPCXX_ASSERT_ALWAYS(preinit_id1 == preinit_id2);
+  UPCXX_ASSERT_ALWAYS(preinit_id1 == global_id1);
 
   upcxx::init();
 
