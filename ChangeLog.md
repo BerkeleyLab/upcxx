@@ -5,36 +5,41 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### 20XX.YY.ZZ: PENDING
+### 2023.03.31: Release 2023.3.0
 
-General features/enhancements: (see specification and programmer's guide for full details)
+Improvements to GPU memory kinds:
 
-* NEW: Experimental memory kinds support for Intel GPUs 
-  using oneAPI Level Zero, see [INSTALL.md](INSTALL.md).
-    - New `configure --enable-ze` flag activates new `upcxx::ze_device` class
+* NEW: Experimental support for Intel GPUs using oneAPI Level Zero, 
+  see [INSTALL.md](INSTALL.md) for details.
+    - `configure --enable-ze` flag activates new `ze_device` memory kind
     - This memory kind implementation is currently reference-only and is
       believed to be functionally correct, but has not been tuned for performance.
-    - `upcxx::copy()` operations on `ze_device` memory are currently staged through
+    - `copy()` operations on `ze_device` memory are currently staged through
       host memory and do not yet leverage network-direct RDMA.
     - `ze_device` includes new experimental member functions designed to streamline
       interoperability with other portions of the oneAPI software ecosystem.
 * New `device_allocator::segment_{size,used}()` queries for device segment status
-* Console output from `upcxx::init()` in verbose mode now compresses process
-  identification information to one line per `local_team`.
+* New `*_device::kind_info()` query for GPU hardware configuration
+* New experimental support for `hip_device` using HIP-over-CUDA on Nvidia GPUs.
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
+* Enhancements to `dist_object`:
+    - Allow `dist_object<T>` to be constructed non-collectively in an inactive state,
+      including before UPC++ initialization, with or without a `T` value.
+    - Add queries of whether a `dist_object` holds a value or is active.
+    - Enable emplacement of a new `T` value into an existing `dist_object<T>`.
+    - Enable an inactive `dist_object` to be activated.
+    - `dist_object<T>` is now MoveAssignable when `T` is MoveConstructible
+      and MoveAssignable.
 * New `upcxx -info` option suppresses compilation and outputs detailed information
   regarding the UPC++/GASNet-EX libraries and configuration in-use.
 * New `upcxx-info` convenience script is an alias for `upcxx -info`
-* `entry_barrier` arguments removed from `experimental::relo::verify_{segment,all}`
-* New `gpu_device::kind_info()` query for GPU hardware configuration
-* Enhancements to `dist_object`.
-    - Allow a `dist_object` to be constructed in an inactive state
-      before UPC++ initialization, with or without an underlying
-      value.
-    - Add queries of whether a `dist_object` holds a value or is active.
-    - Enable emplacement of the underlying value of a `dist_object`.
-    - Enable an inactive `dist_object` to be activated.
 * `local_team` members are now officially guaranteed to have consecutive rank
-   indexes in `world()`
+   indexes in `world()`.
+* Console output from `upcxx::init()` in verbose mode now compresses process
+  identification information to one line per `local_team`.
+* `entry_barrier` arguments removed from `experimental::relo::verify_{segment,all}`
 
 Infrastructure changes:
 
@@ -43,36 +48,58 @@ Infrastructure changes:
     - Nvidia compilers via PrgEnv-nvidia and PrgEnv-nvhpc
     - See [INSTALL.md](INSTALL.md) for details such as minimum versions.
 * AMD "AOCC" compilers 2.3+ are now supported on Linux/x86\_64 hosts.
-* UPC++ library build now outputs a GASNet-EX configuration summary near the end
+* UPC++ library build now outputs a GASNet-EX configuration summary near the end.
 * Integration with Berkeley UPC is now deprecated and may be removed in a future release.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #348: libstdc++ enforcement for PGI and NVHPC compilers
 * issue #519: libupcxx build should echo GASNet configure summary
-* issue #530: Share gex_MK_t objects between endpoints
+* issue #530: Share `gex_MK_t` objects between endpoints
 * issue #531: Consider supporting HIP-over-CUDA
-* issue #532: Support --enable-hip on PGI/NVHPC
-* issue #543: Add upcxx-info
+* issue #532: Support `--enable-hip` on PGI/NVHPC
+* issue #543: Add `upcxx-info`
 * issue #547: MoveAssignment operators and self-assignment
 * issue #548: Fix undocumented dependency arc involving `experimental::relo::verify_{segment,all}`
+* issue #564: Improve guide's local-team example
 * issue #565: `upcxx-run --help` fails in a build directory
 * issue #566: re-configure in a dirty build tree often does not apply new settings
 * issue #572: Fix unintended user-level progress in `experimental::relo::verify_{segment,all}`
-* issue #573: CCS: Assertion failure in segmap_cache::lookup_at_idx for multi-threaded CCS
+* issue #573: Assertion failure in `segmap_cache::lookup_at_idx` for multi-threaded CCS
+* issue #574: Document `local_team`-is-always-contiguous-in-world behavior 
 * issue #575: Improve guide's broadcast example
-* issue #587: upcxx::optional constexpr operators lack assertions
+* issue #584: Confusing behavior if `timeout` is present on front-end but not on compute node
+* issue #587: `upcxx::optional` `constexpr` operators lack assertions
+* spec issue 192: Move semantics for distributed objects
+
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
+
+  - New opt-in work-around for bug 4461 (failure of the Slingshot-11 cxi
+    provider under certain AM traffic patterns) replaces a less effective
+    workaround introduced in GASNet-EX 2022.9.0.
+  - bug4157: ibv XRC deadlock under certain loads
+  - bug4179: ofi: failures specific to verbs provider
+  - bug4427: ofi-conduit failures with `RDMADISSEM` barrier
+  - bug4507: ofi "message too long" errors on enormous RMA
+  - bug4517: ofi/verbs 'no associated AM handler function' errors with libfabric 1.11 or older
+  - bug4527: Erroneous/confusing startup warning with psm2 provider
+  - bug4567: broken support for psm2 provider in libfabric < 1.10
+  - bug4596: smp-conduit lacks multi-process `GASNET_FREEZE` support
+  - bug4597: ofi-conduit + ssh-spawner `GASNET_FREEZE` support is unusable
+  - bug4606: current `aprun` not recognized by gasnetrun
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 20XX.YY.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2023.3.0](docs/spec.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 Breaking changes:
 
 * Calls to `{cuda,hip}_device::device_n()` are now prohibited before `upcxx::init()`
-* CCS: There is now a limit on verified segments, defaulting to 256, controlled by the
-  `UPCXX_CCS_MAX_SEGMENTS` environment variable.
+* There is now a runtime limit on verified code segments, defaulting to 256, 
+  controlled by the `UPCXX_CCS_MAX_SEGMENTS` environment variable.
 
 ### 2022.09.30: Release 2022.9.0
 
