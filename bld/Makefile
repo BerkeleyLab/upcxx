@@ -85,6 +85,21 @@ list-networks: force
 	 fi
 .PHONY: list-networks
 
+## Print the default network either determined my UPC++'s configure or from the results of GASNet's
+echo-default-network: force
+	@if [[ -n '$(UPCXX_CONFIGURE_NETWORK)' ]]; then                       \
+	   echo $(UPCXX_CONFIGURE_NETWORK);                                   \
+	 else                                                                 \
+	   $(MAKE) -C $(upcxx_bld) gasnet-configure &> /dev/null || exit $$?; \
+	   eval $$($(MAKE) -C $(upcxx_bld) echovar VARNAME=CONDUITS);         \
+	   if [[ $$? != 0 || -z $$CONDUITS ]]; then                           \
+	     echo "ERROR: failed to find a supported network" >&2;            \
+	     exit 1;                                                          \
+	   fi;                                                                \
+	   carray=( $$CONDUITS );                                             \
+	   echo $${carray[ $${#carray[@]} -1 ]}; : last array element;        \
+	 fi
+.PHONY: echo-default-network
 
 ##
 ## Targets for lazy/incremental execution of GASNet configure and compile steps
