@@ -28,8 +28,8 @@ The current release is known to work on the following configurations:
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
-    At the time of the 2023.3.0 release of UPC++, we have not yet tested on
-    macOS 13 "Ventura".  We welcome reports of success or failure on macOS 13.
+    At the time of the 2023.3.0 release of UPC++, we have tested only very lightly
+    on macOS 13 "Ventura".  We welcome reports of success or failure on macOS 13.
 
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
