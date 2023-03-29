@@ -211,7 +211,7 @@ upcxx Wrapper Options:
   -info           Print full configuration info
 
  UPC++ library configuration:
-  -network={ibv|aries|smp|udp|mpi}
+  -network={ibv|aries|ofi|ucx|smp|udp|mpi}
                    Use the indicated GASNet network backend for communication.
 		   The default and availability of backends is system-dependent.
   -codemode={opt|debug}
