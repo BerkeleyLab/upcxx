@@ -568,7 +568,7 @@ the case that it isn't otherwise.
 ### RPC: Commands
 
 The on-the-wire serialized format for rpc's is managed by "src/command.hpp". 
-The format is a function pointer called the "executor" (enocded by 
+The format is a function pointer called the "executor" (encoded by 
 `global_fnptr` to assist with process translation) follwed by the serialized 
 function object. The executor knows the type of the function object and is 
 responsible for invoking its deserialization and executing it. To illustrate, 
@@ -579,9 +579,9 @@ off the executor fnptr then passes the reader (now advanced by one fnptr) into
 that executor.
 
 But of course things aren't that simple. The `detail::command<Arg...>` class
-(which acts like a namespace but isnt since namespaced can't be templated) is 
+(which acts like a namespace but isn't since namespaced can't be templated) is 
 templated on `Arg...`, which are the types of the receive side arguments used 
-by the runtime for housekeeping purposes. The new signuture for executors is
+by the runtime for housekeeping purposes. The new signature for executors is
 `void(*)(Arg...)`, so clearly the reader must somehow be derivable from the
 args. Let's look at how we construct commands:
 
@@ -680,7 +680,7 @@ support entirely).
 ### Devices and Heaps
 
 Devices like `{cuda,hip,ze}_device` exist mostly to
-provide a user-facing API (static contants, typedefs, a few standard methods,
+provide a user-facing API (static constants, typedefs, a few standard methods,
 etc), but the objects themselves contain very little state -- basically just a
 `device_id` (which also serves as active bit) and a `heap_idx`.
 

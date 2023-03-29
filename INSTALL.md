@@ -657,7 +657,7 @@ compiler as was passed to the UPC++ `configure` script.
 
 #### Validation of CUDA memory kinds support
 
-One can validate CUDA support in a given UPC++ install using the a command like the following:
+One can validate CUDA support in a given UPC++ install using a command like the following:
 
 ```bash
 $ upcxx-info | grep CUDA
@@ -812,7 +812,7 @@ compiler as was passed to the UPC++ `configure` script.
 
 #### Validation of ROCm/HIP memory kinds support
    
-One can validate HIP/ROCm support in a given UPC++ install using the a command like the following:
+One can validate HIP/ROCm support in a given UPC++ install using a command like the following:
 
 ```bash
 $ upcxx-info | grep HIP
