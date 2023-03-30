@@ -18,6 +18,7 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #596: Failure of in-build-tree utils when configured without a default network
 * ...
 
 This library release conforms to the
