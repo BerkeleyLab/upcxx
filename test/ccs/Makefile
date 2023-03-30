@@ -14,6 +14,7 @@ CXX=$(CONFIG_CXX)
 SHARED_FLAG=-shared
 STATIC_FLAG=-static
 DL_LIB=-ldl
+PTHREAD_LIB=-lpthread
 FPIC_FLAG=-fPIC
 WHOLE_ARCHIVE_FLAG?=-Wl,--whole-archive
 NO_WHOLE_ARCHIVE_FLAG?=-Wl,--no-whole-archive
@@ -83,7 +84,7 @@ else
 endif
 
 test-ccs-dynamic-dynupcxx: dynamic-fpic.o test-fpic.o libccs-dynamic-test-funcs.so libupcxx.so
-	$(CXX) $^ -o $@ $(DL_LIB) $(RPATH_THIS_DIR) $(RPATH_LIBUPCXX_SO_LIBDIR)
+	$(CXX) $^ -o $@ $(DL_LIB) $(PTHREAD_LIB) $(RPATH_THIS_DIR) $(RPATH_LIBUPCXX_SO_LIBDIR)
 
 ## Test asymmetric library loading exceptions
 test-ccs-asymmetric%: asymmetric%.o

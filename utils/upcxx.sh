@@ -48,6 +48,8 @@ if [[ "$UPCXX_META" != 'BUILDDIR' ]]; then
     error UPCXX_META=$UPCXX_META not found
   fi
   prefix="${UPCXX_META%/*/*}" # strip the last two components in the path
+  # in builddir need to strip one additional component
+  prefix="${prefix%/upcxx.assert*.optlev*.dbgsym*.gasnet_*.*}"
   if ! test -d "$prefix" ; then
     error install prefix $prefix not found
   fi
@@ -60,6 +62,7 @@ export UPCXX_CODEMODE
 
 dolink=1
 doversion=
+doinfo=
 dodebug=
 purgeoption=
 doopt=
@@ -103,6 +106,9 @@ for ((i = 1 ; i <= $# ; i++)); do
     -v|-vv) doverbose=1 ;;
     -V|+(-)version) 
       doversion=1
+    ;;
+    +(-)info) 
+      doinfo=1
     ;;
     +(-)help) 
       dohelp=1
@@ -195,24 +201,37 @@ Most arguments are passed through without change to the C++ compiler.
 Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications
 
 Usage: upcxx [options] file...
+
 upcxx Wrapper Options:
+----------------------
+
+ Informational queries (no compilation):
   -help           This message
-  -network={ibv|aries|smp|udp|mpi}
+  -version        Print UPC++ and compiler version information
+  -info           Print full configuration info
+
+ UPC++ library configuration:
+  -network={ibv|aries|ofi|ucx|smp|udp|mpi}
                    Use the indicated GASNet network backend for communication.
 		   The default and availability of backends is system-dependent.
   -codemode={opt|debug}
                    Select the optimized or debugging variant of the UPC++ library.
   -threadmode={seq|par}
                    Select the single-threaded or thread-safe variant of the UPC++ library.
+
+ All other C++ compiler options:
   -Wc,<anything>   <anything> is passed-through uninterpreted to the underlying compiler
   <anything-else>  Passed-through uninterpreted to the underlying compiler
 
-C++ compiler --help:
+C++ Compiler --help:
+--------------------
 EOF
   $CXX --help
   exit 0
-elif [[ $doversion ]] ; then
- if [[ ! $UPCXX_VERSION_CLEAN ]] ; then # allow silencing our version prepend
+elif [[ $doversion || $doinfo ]] ; then
+ line=--------------------------------------------------------------------
+ if [[ ! $UPCXX_VERSION_CLEAN || $doinfo ]] ; then # allow silencing our version prepend
+  [[ $doinfo ]] && ( echo $line ; echo "Software Version Info:" ; echo )
   header="$prefix/upcxx.*/include/upcxx/version.hpp $prefix/include/upcxx/version.hpp" # build-tree or installed
   version=$(grep "# *define  *UPCXX_VERSION " ${header} 2>/dev/null| head -1)
   if [[ "$version" =~ ([0-9]{4})([0-9]{2})([0-9]{2}) ]]; then
@@ -222,17 +241,44 @@ elif [[ $doversion ]] ; then
   fi
   githash=`(cat $prefix/share/doc/upcxx/docs/version.git ) 2> /dev/null`
   gexhash=`(cat $prefix/gasnet.*/share/doc/GASNet/version.git | head -1 ) 2> /dev/null`
+  if [[ -z $gexhash ]] ; then
+    # version.git is missing (not a GASNet release tarball or git clone)
+    # at least report the package version
+    gexhash=`(grep -h RELEASE_VERSION $prefix/gasnet.*/config-details.txt | grep -i gasnet | cut -d: -f2 | head -1 ) 2> /dev/null`
+    gexhash=${gexhash:+gex-$(echo $gexhash)}
+  fi
   if [[ -n $gexhash ]] ; then
     gexhash=" / $gexhash"
   fi
   echo "UPC++ version $version $githash$gexhash"
   echo "Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications"
-  echo "Copyright (c) 2022, The Regents of the University of California,"
+  echo "Copyright (c) 2023, The Regents of the University of California,"
   echo "through Lawrence Berkeley National Laboratory."
   echo "https://upcxx.lbl.gov"
   echo ""
  fi
   $CXX --version
+  [[ $doinfo ]] || exit 0
+fi
+if [[ $doinfo ]] ; then
+  echo $line
+  echo "Configuration settings:"
+  echo
+  printf "%-35s %s\n" "prefix:" "$prefix"
+  for var in UPCXX_CODEMODE UPCXX_NETWORK UPCXX_THREADMODE ; do
+    fmt="%-35s %s\n"
+    eval printf \"\$fmt\" $var: \$$var
+  done
+  for f in \
+    $prefix/gasnet.${UPCXX_CODEMODE}/config-details.txt \
+    $prefix/gasnet.${UPCXX_CODEMODE}/config-summary.txt \
+    ; do
+    if [[ -f $f ]] ; then 
+      cat $f
+    else
+      echo Config file not found: $f
+    fi
+  done
   exit 0
 fi
 

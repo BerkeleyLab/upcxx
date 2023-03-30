@@ -4,6 +4,7 @@
 #include <upcxx/backend.hpp>
 #include <upcxx/cuda.hpp>
 #include <upcxx/hip.hpp>
+#include <upcxx/ze.hpp>
 #include <upcxx/completion.hpp>
 #include <upcxx/global_ptr.hpp>
 #include <upcxx/rput.hpp>
@@ -16,10 +17,6 @@
 #endif
 #ifndef UPCXXI_COPY_PROMOTEPRIVATE
 #define UPCXXI_COPY_PROMOTEPRIVATE 1 // private promotion optimization can be disabled for debugging library behavior
-#endif
-
-#ifndef UPCXXI_USING_ISSUE557_WORKAROUND
-#define UPCXXI_USING_ISSUE557_WORKAROUND (UPCXXI_ISSUE557_WORKAROUND && UPCXX_NETWORK_OFI)
 #endif
 
 namespace upcxx {
@@ -69,6 +66,12 @@ namespace upcxx {
           return;
         }
       #endif
+      #if UPCXXI_ZE_ENABLED
+        if (kind_d == memory_kind::ze_device || kind_s == memory_kind::ze_device) {
+          detail::ze_copy_local(heap_d,buf_d,heap_s,buf_s,size,cb);
+          return;
+        }
+      #endif
 
       UPCXXI_INVOKE_UB("Unrecognized device kinds in upcxx::copy() -- gptr corruption?");      
     }
@@ -84,6 +87,10 @@ namespace upcxx {
         #if UPCXXI_HIP_ENABLED
           case memory_kind::hip_device: 
                      return hip_device::use_gex_mk(detail::internal_only());
+        #endif
+        #if UPCXXI_ZE_ENABLED
+          case memory_kind::ze_device: 
+                     return ze_device::use_gex_mk(detail::internal_only());
         #endif
         default: // includes memory_kind::any
           UPCXXI_INVOKE_UB("Internal error, bad kind query: " << to_string(k));
@@ -399,13 +406,7 @@ namespace upcxx {
       constexpr bool use_gex_mk = false;
     #endif
     if (  use_gex_mk && rank_s == initiator && // MK put to different-rank
-          (
-            ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
-            #if UPCXXI_USING_ISSUE557_WORKAROUND
-              // invert MK puts from device source memory, where necessary for correctness
-              || kind_s != memory_kind::host 
-            #endif
-          )
+        ( copy_traits::want_remote && !copy_traits::want_op ) // RC but not OC
       ) { // convert MK put into MK get, as an optimization to reduce completion latency
       UPCXX_ASSERT(rank_d != initiator);
       UPCXX_ASSERT(heap_d != private_heap);
@@ -467,9 +468,6 @@ namespace upcxx {
     else if (use_gex_mk) { // MK-enabled GASNet backend
       // GASNet will do a direct source-to-dest memory transfer.
       // No bounce buffering, we just need to orchestrate the completions
-      #if UPCXXI_USING_ISSUE557_WORKAROUND
-        UPCXX_ASSERT(rank_s != initiator || kind_s == memory_kind::host); // not a put from local device
-      #endif
       
       deserialized_cxs_remote_bound_t *cxs_remote_heaped_local = nullptr;
       using cxs_remote_am_t = decltype(backend::prepare_deferred_am_master(rank_d, 

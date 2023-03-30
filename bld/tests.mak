@@ -143,7 +143,7 @@ test_requires_gpu_device = \
 	test/bad-segment-alloc.cpp \
 	test/regression/issue432.cpp \
 	example/prog-guide/h-d-remote.cpp
-ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)),)
+ifeq ($(strip $(UPCXX_CUDA)$(UPCXX_HIP)$(UPCXX_ZE)),)
 test_exclude_all += $(test_requires_gpu_device)
 endif
 
@@ -163,6 +163,13 @@ ifneq ($(UPCXX_HIP),1)
 test_exclude_all += $(test_requires_hip_device)
 endif
 
+# Conditionally exclude tests that require a valid ZE-kind device at runtime:
+test_requires_ze_device = \
+        test/ze_device.cpp 
+ifneq ($(UPCXX_ZE),1)
+test_exclude_all += $(test_requires_ze_device)
+endif
+
 # Conditionally exclude tests that require OpenMP:
 ifeq ($(strip $(UPCXX_HAVE_OPENMP)),)
 test_exclude_all += \
@@ -175,6 +182,14 @@ export TEST_FLAGS_RPUT_OMP =      $(UPCXX_OPENMP_FLAGS)
 export TEST_FLAGS_RPC_OMP =       $(UPCXX_OPENMP_FLAGS)
 export TEST_FLAGS_UTS_OMP_RANKS = $(UPCXX_OPENMP_FLAGS)
 export OMP_NUM_THREADS ?= 4
+endif
+
+# Conditionally exclude tests that require C++17:
+ifeq ($(strip $(UPCXX_HAVE_CXX17)),)
+test_exclude_all += \
+	test/regression/issue469.cpp
+else
+export TEST_FLAGS_ISSUE469=-std=c++17
 endif
 
 # Conditionally exclude based on UPCXX_CODEMODE
@@ -230,6 +245,9 @@ TEST_FLAGS_MEMBEROF_PGI=--diag_suppress1427
 TEST_FLAGS_MEMBEROF_GNU=-Wno-invalid-offsetof
 TEST_FLAGS_MEMBEROF_Clang=-Wno-invalid-offsetof
 export TEST_FLAGS_MEMBEROF=$(TEST_FLAGS_MEMBEROF_$(GASNET_CXX_FAMILY))
+
+TEST_FLAGS_ISSUE547_Clang=-Wno-self-move
+export TEST_FLAGS_ISSUE547=$(TEST_FLAGS_ISSUE547_$(GASNET_CXX_FAMILY))
 
 ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled

@@ -8,13 +8,15 @@
 #include <utility>
 
 #if UPCXXI_GEX_MK_CUDA \
- || UPCXXI_GEX_MK_HIP // || ...
+ || UPCXXI_GEX_MK_HIP \
+ || UPCXXI_GEX_MK_ZE // || ...
   #define UPCXXI_GEX_MK_ANY 1 // true iff ANY memory kind is using GASNet MK
 #else
   #undef  UPCXXI_GEX_MK_ANY
 #endif
 #if (!UPCXXI_CUDA_ENABLED || UPCXXI_GEX_MK_CUDA) \
- && (!UPCXXI_HIP_ENABLED  || UPCXXI_GEX_MK_HIP) // && ...
+ && (!UPCXXI_HIP_ENABLED  || UPCXXI_GEX_MK_HIP) \
+ && (!UPCXXI_ZE_ENABLED   || UPCXXI_GEX_MK_ZE) // && ...
   #define UPCXXI_GEX_MK_ALL 1 // true iff ALL memory kinds are using GASNet MK
 #else
   #undef  UPCXXI_GEX_MK_ALL
@@ -108,6 +110,10 @@ namespace backend {
   struct device_cb {
     detail::intru_queue_intruder<device_cb> intruder;
     void *event;
+    #if UPCXXI_ZE_ENABLED
+      void *extra;
+      heap_state *hs;
+    #endif
     virtual void execute_and_delete() = 0;
   };
 
@@ -146,6 +152,13 @@ namespace backend {
                            &device_cb::intruder > cbs;
     } hip;
   #endif
+  #if UPCXXI_ZE_ENABLED
+    struct persona_ze_state {
+      // queue of pending events
+      detail::intru_queue< device_cb, detail::intru_queue_safety::none,
+                           &device_cb::intruder > cbs;
+    } ze;
+  #endif
   };
 
 } // namespace backend
@@ -166,6 +179,7 @@ class device {
     *this = std::move(other);
   }
   device& operator=(device&& other) {
+    if (&other == this) return *this; // see issue 547
     UPCXX_ASSERT(heap_idx_ == -1,
                  "Move assignment is only allowed an an inactive device");
     UPCXX_ASSERT(kind_ == other.kind_);
@@ -182,9 +196,13 @@ class device {
   template<typename Device>
   static typename Device::id_type heap_idx_to_device_id(int heap_idx);
 
+  virtual std::string kind_info_dispatch() const = 0;
+
  public:
   memory_kind kind() const { return kind_; }
   /*virtual*/ bool is_active() const { return heap_idx_ >= 0; }
+
+  std::string kind_info() const { return this->kind_info_dispatch(); }
 
   virtual void destroy(upcxx::entry_barrier eb = entry_barrier::user) = 0;
 
@@ -224,6 +242,7 @@ class gpu_device : public detail::device {
     other.device_id_ = invalid_device_id;
   }
   gpu_device& operator=(gpu_device&& other) {
+    if (&other == this) return *this; // see issue 547
     device::operator=(std::move(other));
     device_id_ = other.device_id_;
     other.device_id_ = invalid_device_id;

@@ -357,7 +357,7 @@ namespace detail {
   template<typename Fp>
   Fp function_token_ms_idx::detokenize(segmap_cache& cache) const
   {
-    return fnptr_from_uintptr<Fp>(cache.lookup_at_idx(idx).start + offset);
+    return fnptr_from_uintptr<Fp>(cache.lookup_at_idx(idx) + offset);
   }
 
   template<typename Fp>
@@ -395,11 +395,10 @@ namespace detail {
     return *this;
   }
 
-  inline const segmap_cache::segment_lookup_idx& segmap_cache::lookup_at_idx(int16_t idx)
+  inline std::uintptr_t segmap_cache::lookup_at_idx(int16_t idx)
   {
-    UPCXXI_ASSERT_MASTER(); //potential data race on segment_vector_
-    UPCXX_ASSERT(static_cast<int64_t>(idx) < static_cast<int64_t>(segment_vector_.size()));
-    return segment_vector_[idx];
+    UPCXX_ASSERT(idx <= verified_segment_count_);
+    return indexed_segment_starts_[idx].load(std::memory_order_relaxed);
   }
 
   inline segment_hash segmap_cache::ident_at_idx(int16_t idx)
@@ -408,7 +407,7 @@ namespace detail {
     auto& segmap = segment_map();
     for (const auto& seg : segmap)
     {
-      if (segment_vector_[idx].start == seg.start)
+      if (seg.idx == idx)
         return seg.ident;
     }
     UPCXXI_FATAL_ERROR("Segment ident not found.");
@@ -418,22 +417,22 @@ namespace detail {
 namespace experimental {
 namespace relocation {
   template<typename R, typename... Args>
-  void verify_segment(R(*ptr)(Args...), entry_barrier eb = entry_barrier::user)
+  void verify_segment(R(*ptr)(Args...))
   {
     UPCXXI_ASSERT_INIT();
     UPCXXI_ASSERT_ALWAYS_MASTER();
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
-    detail::segmap_cache::verify_segment(detail::fnptr_to_uintptr(ptr), eb);
+    UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+    detail::segmap_cache::verify_segment(detail::fnptr_to_uintptr(ptr));
   }
 
-  inline void verify_all(entry_barrier eb = entry_barrier::user)
+  inline void verify_all()
   {
     UPCXXI_ASSERT_INIT();
     UPCXXI_ASSERT_ALWAYS_MASTER();
     UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
-    UPCXXI_ASSERT_COLLECTIVE_SAFE(eb);
-    detail::segmap_cache::verify_all(eb);
+    UPCXXI_ASSERT_COLLECTIVE_SAFE(entry_barrier::none);
+    detail::segmap_cache::verify_all();
   }
 
   inline bool enforce_verification(bool v)

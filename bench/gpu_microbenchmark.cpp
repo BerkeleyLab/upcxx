@@ -9,7 +9,9 @@ using namespace std;
 using namespace upcxx;
 
 #ifndef DEVICE
-  #if UPCXX_KIND_HIP
+  #if UPCXX_KIND_ZE
+    #define DEVICE ze_device
+  #elif UPCXX_KIND_HIP
     #define DEVICE hip_device
   #elif UPCXX_KIND_CUDA
     #define DEVICE cuda_device
@@ -611,6 +613,10 @@ int do_main(int argc, char **argv) {
        if (!run_uni && !run_bi) {
          run_uni = run_bi = true;
        }
+       if (upcxx::rank_n() == 1) {
+         std::cerr << "WARNING: Single-rank job, bi-directional tests disabled\n" << std::flush;
+         run_bi = false;
+       }
        if (!run_put && !run_get) {
          run_put = run_get = true;
        }
@@ -636,7 +642,12 @@ int do_main(int argc, char **argv) {
      #if UPCXX_VERSION >= 20210905
        // use GPU auto-assignment, which spreads local_team members across available physical GPUs
        auto gpu_alloc = upcxx::make_gpu_allocator<Device>(max_msg_size); // alloc GPU segment 
-       UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active());
+       #if UPCXX_VERSION >= 20220905
+         auto kind_info = Device::kind_info();
+       #else
+         std::string kind_info{};
+       #endif
+       UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active(), "Failed to open GPU:\n" << kind_info);
        auto& cleanup = gpu_alloc;
        string my_gpu_desc = DeviceStr + ":" + to_string(gpu_alloc.device_id()) + "/" + to_string(Device::device_n());
      #else // pre 2022.3.0 API

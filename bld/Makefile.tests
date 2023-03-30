@@ -408,7 +408,7 @@ ALL_TESTS = $(foreach test, $(notdir $(test_progs_seq) $(test_progs_par)), \
 # Split the tests-clean rule to avoid over-long command lines (issue #406)
 do-tests-clean: force
 	@echo 'Removing tests for $(CONDUIT).'
-	@rm -f $(call ALL_TESTS,$(CONDUIT))
+	@rm -Rf $(call ALL_TESTS,$(CONDUIT))
 # Note $(CONDUITS) may be empty for `(dev-)tests-clean` after `clean`
 tests-clean: force
 	@list='$(CONDUITS)'; \
@@ -506,7 +506,7 @@ do-run-tests: force
 	   date >> $$output;                                            \
 	   if [[ $$exitcode != 0 ]] ||                                  \
 	      ( tail -n +$$firstout $$output | grep -q ERROR ) ; then   \
-	     tail -n +$$firstout $$output | grep -e "Test result:" -e ERROR -e 'Caught a signal ' -e 'Caught a fatal signal' ; \
+	     tail -n +$$firstout $$output | grep -e "Test result:" -e ERROR -e 'Caught a signal ' -e 'Caught a fatal signal' -e ': command not found' -e 'No such file or directory' ; \
 	     comment= ; \
 	     case $$exitcode in 124) comment=": probable timeout" ;; esac ; \
 	     echo "FAILED (exitcode=$$exitcode)$$comment"; : $$((++failed));     \

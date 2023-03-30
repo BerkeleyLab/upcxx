@@ -29,6 +29,7 @@ CXXFLAGS = # optional command-line override
 
 # Programs to build, assuming each has a corresponding *.cpp file
 EXAMPLES = \
+  broadcast-example \
   dmap-async-find-test \
   dmap-async-insert-test \
   dmap-atomics-test \
@@ -44,6 +45,7 @@ EXAMPLES = \
   rb1d \
   rb1d-rpc \
   rb1d-rpcinit \
+  reduce-complex-minloc \
   rput-rpc \
   serial-custom \
   serial-fields \

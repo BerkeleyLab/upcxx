@@ -125,6 +125,33 @@ Usage:
   --with-hip-home=...
         Install prefix of HIP developer tools 
         The default is determined by searching for 'hipcc' in $PATH.
+  --with-hip-cppflags=...
+        Sets the pre-processor flags needed to find HIP runtime headers.
+        Overrides the value of $UPCXX_HIP_CPPFLAGS, if any.
+        The default is automatically determined based on the host compiler.
+  --with-hip-libflags=...
+        Sets the linker flags needed to link HIP runtime libraries.
+        Overrides the value of $UPCXX_HIP_LIBFLAGS, if any.
+        The default is automatically determined.
+  --with-hip-platform=nvidia
+        Activates EXPERIMENTAL support for --enable-hip using HIP-over-CUDA on NVIDIA GPUs.
+        Additionally requires a working CUDA installation (details in INSTALL.md).
+        The default of --with-hip-platform=amd selects native AMD GPU hardware.
+
+  --enable-ze
+  --disable-ze
+        Enable or disable UPC++ Memory Kinds over Intel Level Zero.
+  --with-ze-home=...
+        Install prefix of Level Zero developer tools 
+        The default is determined by searching for 'ocloc' in $PATH.
+  --with-ze-cppflags=...
+        Sets the pre-processor flags needed to find Level Zero runtime headers.
+        Overrides the value of $UPCXX_ZE_CPPFLAGS, if any.
+        The default is automatically determined.
+  --with-ze-libflags=...
+        Sets the linker flags needed to link ze runtime libraries.
+        Overrides the value of $UPCXX_ZE_LIBFLAGS, if any.
+        The default is automatically determined.
 
   --enable-ccs-rpc
   --disable-ccs-rpc
@@ -201,7 +228,7 @@ function version {
   fi
   githash=$(git describe --always 2> /dev/null)
   echo "UPC++ version $version $githash"
-  echo "Copyright (c) 2022, The Regents of the University of California,"
+  echo "Copyright (c) 2023, The Regents of the University of California,"
   echo "through Lawrence Berkeley National Laboratory."
   echo "https://upcxx.lbl.gov"
   echo ""
@@ -236,7 +263,9 @@ fi
 UPCXX_CONFIG_ENVVARS=( CC CFLAGS CXX CXXFLAGS CPPFLAGS LDFLAGS LIBS\
                        GASNET GASNET_CONDUIT GASNET_CONFIGURE_ARGS UPCXX_CROSS \
                        GMAKE UPCXX_PYTHON \
-                       UPCXX_CUDA{,_NVCC,_CPPFLAGS,_LIBFLAGS} )
+                       UPCXX_CUDA{,_NVCC,_CPPFLAGS,_LIBFLAGS} \
+                       HIP_HOME UPCXX_HIP{,_CPPFLAGS,_LIBFLAGS} \
+                       ZE_HOME UPCXX_ZE{,_CPPFLAGS,_LIBFLAGS} )
 for var in ${UPCXX_CONFIG_ENVVARS[*]} ; do
     eval ORIG_$var=\'${!var}\'
 done
@@ -246,7 +275,8 @@ done
 UPCXX_VALGRIND=
 UPCXX_DISCONTIG=
 UPCXX_FORCE_LEGACY_RELOCATIONS=''
-UPCXX_ISSUE557_WORKAROUND=''
+UPCXX_HAVE_OPENMP=
+UPCXX_HAVE_CXX17=
 
 unset gasnet_help
 
@@ -318,9 +348,6 @@ while [[ $# -gt 0 ]]; do
     -with-allow-compiler-mismatch)    UPCXX_ALLOW_COMPILER_MISMATCH=1;;
     -without-allow-compiler-mismatch) UPCXX_ALLOW_COMPILER_MISMATCH=0;;
 
-    -with-issue557-workaround)    UPCXX_ISSUE557_WORKAROUND=1;  export UPCXX_ISSUE557_WORKAROUND;; # NOT documented in usage
-    -without-issue557-workaround) UPCXX_ISSUE557_WORKAROUND=''; export UPCXX_ISSUE557_WORKAROUND;; # NOT documented in usage
-
     # Passed explicitly to GASNet's configure, potentially after some processing:
     -with-cc?(=*))              CC="$(get_arg_val $arg)";    export CC;;
     -with-cxx?(=*))             CXX="$(get_arg_val $arg)";   export CXX;;
@@ -340,7 +367,14 @@ while [[ $# -gt 0 ]]; do
     -with-hip)                 UPCXX_HIP=1; export UPCXX_HIP;;
     -without-hip)              unset UPCXX_HIP;;
     -with-hip-home?(=*))       HIP_HOME="$(get_arg_val $arg)"; export HIP_HOME;;
+    -with-hip-cppflags?(=*))   UPCXX_HIP_CPPFLAGS="$(get_arg_val $arg)"; export UPCXX_HIP_CPPFLAGS;;
     -with-hip-libflags?(=*))   UPCXX_HIP_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_HIP_LIBFLAGS;;
+
+    -with-ze)                  UPCXX_ZE=1; export UPCXX_ZE;;
+    -without-ze)               unset UPCXX_ZE;;
+    -with-ze-home?(=*))        ZE_HOME="$(get_arg_val $arg)"; export ZE_HOME;;
+    -with-ze-cppflags?(=*))    UPCXX_ZE_CPPFLAGS="$(get_arg_val $arg)"; export UPCXX_ZE_CPPFLAGS;;
+    -with-ze-libflags?(=*))    UPCXX_ZE_LIBFLAGS="$(get_arg_val $arg)"; export UPCXX_ZE_LIBFLAGS;;
 
     -with-ccs-rpc)              UPCXX_FORCE_LEGACY_RELOCATIONS=''; export UPCXX_FORCE_LEGACY_RELOCATIONS;;
     -without-ccs-rpc)           UPCXX_FORCE_LEGACY_RELOCATIONS=1; export UPCXX_FORCE_LEGACY_RELOCATIONS;;
@@ -384,6 +418,11 @@ while [[ $# -gt 0 ]]; do
     -with-mpsc-queue=*)
       UPCXX_MPSC_QUEUE="$(get_arg_val $arg)"; export UPCXX_MPSC_QUEUE
       ;;
+    # deliberately undocumented maintainer flags to control default dev-test set
+    -with-tests-cxx17)     UPCXX_HAVE_CXX17=1  ; export UPCXX_HAVE_CXX17 ;;
+    -without-tests-cxx17)  UPCXX_HAVE_CXX17=   ; export UPCXX_HAVE_CXX17 ;;
+    -with-tests-openmp)    UPCXX_HAVE_OPENMP=1 ; export UPCXX_HAVE_OPENMP ;;
+    -without-tests-openmp) UPCXX_HAVE_OPENMP=  ; export UPCXX_HAVE_OPENMP ;;
 
     *) # Anything we don't consume above will be passed to GASNet's configure
 
@@ -468,7 +507,7 @@ check_tool_path() {
 # Enable offline installers with an embedded GASNet-EX tarball
 #
 #GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz' # Un-comment for development
-GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2022.9.0.tar.gz' # Un-comment for release
+GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2023.3.0.tar.gz' # Un-comment for release
 #GASNET_DEFAULT='NONE' # Un-comment for snapshots
 gex_offline=`/bin/ls "$UPCXX_SRC"/src/GASNet-{stable,2???.*}.tar.gz 2> /dev/null | sort -t. -k1,1 -k2,2n -k3n | tail -1`
 if [[ -n "$GASNET" ]]; then
@@ -945,26 +984,72 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
     GASNET_CONFIGURE_ARGS+=" --with-hip-home='$HIP_HOME'"
   fi
 
-  # -isystem silences obnoxious warnings from ROCm headers that are not pedantic-clean
-  export UPCXX_HIP_CPPFLAGS="-I${HIP_HOME}/include -isystem ${HIP_HOME}/include"
+  CXXVERS='eval $CXX --version 2>&1'
+  cppflags="-I${HIP_HOME}/include"
+  if [[ -z $UPCXX_HIP_CPPFLAGS ]]; then
+    if $CXXVERS | grep -e 'Free Software Foundation' -e 'clang version' &> /dev/null ; then
+      # -isystem silences obnoxious warnings from ROCm headers that are not pedantic-clean
+      cppflags+=" -isystem ${HIP_HOME}/include" 
+    fi
+  fi
   case ${hip_platform} in
     amd|hcc|'')
       UPCXX_HIP_CPPFLAGS+=" -D__HIP_PLATFORM_AMD__= -D__HIP_PLATFORM_HCC__="
+      export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lamdhip64}
       ;;
     nvidia|nvcc)
+      if [[ -z $UPCXX_HIP_CPPFLAGS ]]; then
+        if $CXXVERS | grep -e 'Free Software Foundation' -e 'clang version' &> /dev/null ; then
+          # disable warnings generated by HIP-over-CUDA header: (TODO: icpc needs -wd1478 -wd303)
+          cppflags+=" -Wno-deprecated-declarations -Wno-return-type"
+        fi
+      fi
       UPCXX_HIP_CPPFLAGS+=" -D__HIP_PLATFORM_NVIDIA__= -D__HIP_PLATFORM_NVCC__="
-      # disable warnings generated by HIP-over-CUDA header: (TODO: icpc needs -wd1478 -wd303)
-      UPCXX_HIP_CPPFLAGS+=" -Wno-deprecated-declarations -Wno-return-type"
+      export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lcudart}
       UPCXX_CUDA=1 # force enable full CUDA support for simplicity
-      warnings+="\nWARNING: -with-hip-platform=nvidia is not officially supported and only intended for maintainers.\n"
-      warnings+="AMD GPUs should use '-enable-hip -with-hip-platform=amd' and CUDA GPUs should use '-enable-cuda'\n"
       ;;
     *)
       echo_and_die 'unrecognized argument to --with-hip-platform={amd,nvidia}'
       ;;
   esac
-  # -lamdhip64 is required by some versions of HIP-over-CUDA, default to adding it
-  export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lamdhip64}
+  UPCXX_HIP_CPPFLAGS="${cppflags} ${UPCXX_HIP_CPPFLAGS}"
+  [[ -z ${HIP_LIBS} ]] && HIP_LIBS=${UPCXX_HIP_LIBFLAGS}
+fi
+
+#
+# ZE setup
+#
+if [[ $UPCXX_ZE -eq 1 ]]; then
+  # PREpend to allow user to disable if needed
+  GASNET_CONFIGURE_ARGS="--enable-kind-ze ${GASNET_CONFIGURE_ARGS}"
+
+  ZE_HEADER="include/level_zero/ze_api.h"
+  zecmd="ocloc"
+  if [[ -z $ZE_HOME ]] && type -p $zecmd >/dev/null ; then # try probing zecmd
+    ZE_HOME="$(dirname $(dirname $(type -p $zecmd)))"
+  fi
+  if [[ -z $ZE_HOME ]] && [[ -d /usr/include ]] ; then
+    ZE_HOME=/usr # last resort, check system include dir
+  fi
+  if [[ -z $ZE_HOME ]] || ! [[ -f $ZE_HOME/$ZE_HEADER ]] ; then
+    echo_and_die 'Failed to find Intel Level Zero developer tools, please pass --with-ze-home=/ze/install/prefix'
+  else
+    GASNET_CONFIGURE_ARGS+=" --with-ze-home='$ZE_HOME'"
+  fi
+  if [[ -z ${UPCXX_ZE_LIBFLAGS} ]] ; then
+    ZE_LIB=ze_loader
+    for dir in lib lib64 lib/x86_64-linux-gnu ; do # TODO: improve this search
+      if [[ -f $ZE_HOME/$dir/lib${ZE_LIB}.so || -f $ZE_HOME/$dir/lib${ZE_LIB}.a ]] ; then
+        UPCXX_ZE_LIBFLAGS="-L${ZE_HOME}/$dir -l$ZE_LIB"
+      fi
+    done
+    if [[ -z ${UPCXX_ZE_LIBFLAGS} ]] ; then
+      echo_and_die 'Failed to find Intel Level Zero library, please pass --with-ze-libflags="-L/ze/install/prefix/lib -l'$ZE_LIB'"'
+    fi
+  fi
+
+  [[ -z ${UPCXX_ZE_CPPFLAGS} ]] && UPCXX_ZE_CPPFLAGS="-I${ZE_HOME}/include"
+  [[ -z ${ZE_LIBS} ]] && ZE_LIBS=${UPCXX_ZE_LIBFLAGS}
 fi
 
 #
@@ -1090,6 +1175,8 @@ if [[ $UPCXX_CUDA -eq 1 ]]; then
     echo_and_die 'failed to link against CUDA Driver API'
   fi
   trap failure_and_die ERR  # restore error handler
+
+  [[ -z ${CUDA_LIBS} ]] && CUDA_LIBS=${UPCXX_CUDA_LIBFLAGS}
 fi
 
 #
@@ -1140,6 +1227,8 @@ mkdir -p bld
 #
 # Generate top-level Makefile
 #
+# NOTICE: when adding variables to the Makefile that affect post-install behavior, 
+# please consider if they belong in `upcxx-info` output (see `do-config-summary` target)
 cat > Makefile <<EOF
 # This file is generated by the UPC++ configure script
 # Modifications to this file may be overwritten
@@ -1176,10 +1265,21 @@ export UPCXX_CUDA_LIBFLAGS=$UPCXX_CUDA_LIBFLAGS
 export UPCXX_HIP=$UPCXX_HIP
 export UPCXX_HIP_CPPFLAGS=$UPCXX_HIP_CPPFLAGS
 export UPCXX_HIP_LIBFLAGS=$UPCXX_HIP_LIBFLAGS
+export UPCXX_ZE=$UPCXX_ZE
+export UPCXX_ZE_CPPFLAGS=$UPCXX_ZE_CPPFLAGS
+export UPCXX_ZE_LIBFLAGS=$UPCXX_ZE_LIBFLAGS
 export UPCXX_VALGRIND=$UPCXX_VALGRIND
 export UPCXX_DISCONTIG=$UPCXX_DISCONTIG
 export UPCXX_FORCE_LEGACY_RELOCATIONS=$UPCXX_FORCE_LEGACY_RELOCATIONS
-export UPCXX_ISSUE557_WORKAROUND=$UPCXX_ISSUE557_WORKAROUND
+export CUDA_LIBS=$CUDA_LIBS
+export HIP_LIBS=$HIP_LIBS
+export ZE_LIBS=$ZE_LIBS
+
+# These control use of optional dependencies in tests, and support command-line override:
+export UPCXX_HAVE_CXX17?=$UPCXX_HAVE_CXX17
+export UPCXX_HAVE_OPENMP?=$UPCXX_HAVE_OPENMP
+
+# This does all the actual work:
 include \$(upcxx_src)/bld/Makefile.rules
 EOF
 
@@ -1216,9 +1316,20 @@ tmp=\$($GMAKE --no-print-directory -f '$PWD/Makefile' upcxx \$vars 2>&1)
 [[ \$? -ne 0 ]] && echo "\$tmp" >&2 && die 'build of the required runtime failed.'
 exec \${tmp##*\$'\n'} "\$@"
 EOF
+cat >| bin/upcxx-info <<EOF
+#!$BASH
+export UPCXX_CODEMODE=\${UPCXX_CODEMODE:=${UPCXX_DBGOPT##* }}
+exec \${0%/*}/upcxx "\$@" -info
+EOF
 cat >| bin/upcxx-run <<EOF
 #!$BASH
 function die { echo -e "upcxx-run: ERROR: \$*" >&2; exit 1; }
+for arg in "\$@"; do
+  case \$arg in
+    -h|--help) exec \${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -h ;;
+    --) break ;;
+  esac
+done
 conduit=\$(\${UPCXX_PYTHON-$UPCXX_PYTHON} $UPCXX_SRC/utils/upcxx-run -info "\$@" | grep ^GASNetConduitName: | cut -d' ' -f2 | tr '[A-Z]' '[a-z]'; exit \${PIPESTATUS[0]})
 [[ \$? -ne 0 ]] && die 'pre-parse of command line failed'
 codemode=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_CODEMODE:-${UPCXX_DBGOPT% *}})
@@ -1267,7 +1378,12 @@ else
   exec "\$meta" \$*
 fi
 EOF
-chmod a+rx bin/upcxx bin/upcxx-run bin/upcxx-meta
+chmod a+rx bin/upcxx bin/upcxx-run bin/upcxx-meta bin/upcxx-info
+
+#
+# Remove (potentially out-of-date) generated headers to ensure they are rebuilt
+#
+rm -Rf bld/upcxx.*/gen_include
 
 #
 # Remove any (potentially out-of-date) GASNet builds to ensure they are reconfigured

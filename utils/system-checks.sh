@@ -23,6 +23,8 @@ sys_info() {
         done
         echo -n -e "Configure environment:\n$SETTINGS"
         echo " "
+        $BASH --version 2>&1 | head -2
+        echo " "
     ) fi
 }
 
@@ -324,6 +326,23 @@ check_intel_compiler() {
    esac
 }
 
+check_pgi_compiler() {
+    local bash_re='(([1-9][0-9]?)([0-9][0-9])([0-9][0-9]))' # 5 or 6 decimal digits
+    if ! cpp_extract_expr CXX '__pgnu_vsn' "$bash_re"; then
+        echo "WARNING: failed to probe '$CXX' for underlying GNUC/libstdc++ version." \
+             "Validation of libstdc++ version has been skipped."
+        return 0
+    fi
+    if  (( ${UPCXX_REMATCH[1]} <
+           (MIN_GNU_MAJOR*10000 + MIN_GNU_MINOR*100 + MIN_GNU_PATCH) )); then
+        ver_string="${UPCXX_REMATCH[2]}.${UPCXX_REMATCH[3]#0}.${UPCXX_REMATCH[4]#0}"
+        echo "ERROR: UPC++ with PGI and NVHPC compilers requires use of g++ version $MIN_GNU_STRING or" \
+             "newer, but version $ver_string was detected."
+        return 1
+    fi
+    return 0
+}
+
 # Determine if compiler families match
 check_family_match() {
     if ! cpp_extract_pp_expr CXX PLATFORM_COMPILER_FAMILYNAME '[A-Z]+'; then
@@ -614,6 +633,14 @@ platform_sanity_checks() {
                # PrgEnv-pgi: currently neither GOOD nor BAD due to lack of testing
                # However, if logic above identified a bad version, we'll preserve that.
                unset COMPILER_GOOD
+            elif [[ $LMOD_FAMILY_PRGENV = PrgEnv-nvidia || $LMOD_FAMILY_PRGENV = PrgEnv-nvhpc ]]; then
+               # HPE Cray EX (Shasta) only validated for 21.9 and newer
+               if ! egrep ' +(21\.9|21\.1[0-9]|2[2-9]\.[0-9]+|[3-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+                  unset COMPILER_GOOD
+               fi
+            fi
+            if (( ! COMPILER_BAD )); then
+               check_pgi_compiler || exit 1
             fi
         elif echo "$CXXVERS" | egrep 'IBM XL'  > /dev/null ; then
             COMPILER_BAD=1
@@ -663,6 +690,26 @@ platform_sanity_checks() {
             COMPILER_BAD=1
         elif test x86_64 = "$ARCH" && echo "$CXXVERS" | egrep 'clang version ([4-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
             COMPILER_GOOD=1
+            if [[ $LMOD_FAMILY_PRGENV = PrgEnv-aocc ]]; then
+               # HPE Cray EX (Shasta) only validated for aocc/3.1.0 and newer
+               # NOTE: 3.2 was end of 3.x series, but we'll accept up to 3.9 here
+               if ! egrep 'AOCC_(3\.[1-9]|[4-9]\.|[1-9][0-9]\.)' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+                  unset COMPILER_GOOD
+               fi
+            elif [[ $LMOD_FAMILY_PRGENV = PrgEnv-amd ]]; then
+               # HPE Cray EX (Shasta) only validated for amd/4.2.0 and newer
+               # NOTE: 4.5 was end of 4.x series, but we'll accept up to 4.9 here
+               if ! egrep 'roc-(4\.[2-9]|[5-9]\.|[1-9][0-9]\.)' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+                  unset COMPILER_GOOD
+               fi
+            elif egrep 'AOCC_(1\.|2\.[0-2])' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # AOCC older than 2.3 has not been validated
+               unset COMPILER_GOOD
+            elif grep 'AOCC\.LLVM\.1' <<<"$CXXVERS" 2>&1 >/dev/null ; then
+               # AOCC 1.x is known bad
+               unset COMPILER_GOOD
+               COMPILER_BAD=1
+            fi
         elif test ppc64le = "$ARCH" && echo "$CXXVERS" | egrep 'clang version ([5-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
 	    # Issue #236: ppc64le/clang support floor is 5.x. clang-4.x/ppc has correctness issues and is deliberately left "unvalidated"
             COMPILER_GOOD=1
@@ -723,7 +770,8 @@ platform_sanity_checks() {
         read -r -d '' RECOMMEND<<'EOF'
 We recommend one of the following C++ compilers (or any later versions where no end-of-range is given):
            Linux on x86_64:   g++ 6.4.0, LLVM/clang 4.0.0, PGI 19.3 through 20.4 (inclusive),
-                              NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2
+                              NVIDIA HPC SDK 20.9, Intel C 17.0.2, Intel oneAPI compilers 2021.1.2,
+                              AMD AOCC 2.3.0
            Linux on ppc64le:  g++ 6.4.0, LLVM/clang 5.0.0, PGI 19.3 through 20.4 (inclusive),
                               NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
@@ -734,6 +782,10 @@ We recommend one of the following C++ compilers (or any later versions where no 
                               ALCF's PrgEnv-llvm/4.0
            HPE Cray EX:       PrgEnv-gnu with gcc/10.3.0 environment module loaded
                               PrgEnv-cray with cce/12.0.0 environment module loaded
+                              PrgEnv-amd with amd/4.2.0 environment module loaded
+                              PrgEnv-aocc with aocc/3.1.0 environment module loaded
+                              PrgEnv-nvidia with nvidia/21.9 environment module loaded
+                              PrgEnv-nvhpc with nvhpc/21.9 environment module loaded
 EOF
         if test -n "$ARCH_BAD" ; then
             echo "ERROR: This version of UPC++ does not support the '$ARCH' architecture."

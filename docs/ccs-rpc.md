@@ -84,6 +84,10 @@ the segment's hash. The most significant bit indicates a multi-segment
 relocation, the next 15 bits the segment index, and the bottom bits are the
 address offset from the basis pointer.
 
+Verified segment number to offset conversion uses a fixed-size array with a
+size defined by the `UPCXX_CCS_MAX_SEGMENTS` environment variable, defaulting
+to 256 segments.
+
 Each batch of `verify_all()` or `verify_segment()` newly verified segments are
 sorted and appended to a vector of segments that can be identified by index.
 Index zero indicates a segment that is relocated using a hash.
@@ -128,11 +132,12 @@ executable segments or TEXTRELs.  It causes these errors to be detected by the
 sender rather than the receiver for easier debugging.  These sources of
 asymmetry may result in different hashes of the executable segments and/or
 different function offsets within the library, both of which prevent UPC++ from
-properly relocating function pointers. The library can be rebuilt with
-`-Wl,--build-id` to provide a consistent hash.  Otherwise, UPC++ will fall back
-to trying to use the hash of the library's file path as an identifier.  Some
-systems can report inconsistent file paths for a library, in which case this
-will fail.
+properly relocating function pointers.  However, setting breakpoints may modify
+code segments legitimately, resulting in asymmetry. The library can be rebuilt
+with `-Wl,--build-id` to provide a consistent hash.  For segments with writable
+code segments or TEXTRELs, UPC++ will fall back to trying to use the hash of
+the library's file path as an identifier.  Some systems can report inconsistent
+file paths for a library, in which case this will fail.
 
 Duplicate code segments are also a problem for UPC++ acquiring unique hashes.
 This is a known occurrence with small libraries that return different
@@ -178,7 +183,7 @@ enforcement is enabled.
 
 This namespace has a shorthand name of `upcxx::experimental::relo`.
 
-#### `void verify_segment(R(*ptr)(Args...), entry_barrier eb = entry_barrier::user)`
+#### `void verify_segment(R(*ptr)(Args...))`
 
 World collective function. Checks the segment is not a bad segment (RWX segment
 or containing TEXTRELs with an unknown file path). Runs a reduction on the
@@ -187,10 +192,9 @@ must be a pointer to the same function on all processes.  Raises an error on
 failure.  Allows outgoing RPC verification. Allows for more compact function
 pointer relocation.  
 
-UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
-otherwise.
+UPC++ progress level: `internal`
 
-#### `void verify_all(entry_barrier eb = entry_barrier::user)`
+#### `void verify_all()`
 
 World collective function. All processes have their segment maps compared
 against rank 0 for verification. Marks segments as verified if they are
@@ -201,8 +205,7 @@ function should be called after `dlopen` if UPC++ intends to RPC the functions
 contained within this library. Allows for more compact function pointer
 relocation.
 
-UPC++ progress level: `user` if `eb == entry_barrier::user`, `internal`
-otherwise.
+UPC++ progress level: `internal`
 
 #### `bool enforce_verification(bool)` 
 
@@ -252,6 +255,9 @@ As above, but writes to a `std::ostream`
   "yes" or "true" forces color on, "no" or "false" forces color off, and if
   unset `isatty` is used automatically color output if the output is a
   terminal.
+
+* `UPCXX_CCS_MAX_SEGMENTS`: Controls the limit on verified executable segments.
+  Default: 256.
   
 ## Potential Improvements
 

@@ -4,7 +4,7 @@
 
 ## Basics:
 
-Sripts below this directory are run to generate content in `upcxx_config.hpp`
+Scripts below this directory are run to generate content in `upcxx_config.hpp`
 and `gasnet.{codemode}.mak`.  To be run, they must be named in either the
 `UPCXX_CONFIG_SCRIPTS` or `GASNET_CONFIG_SCRIPTS` variable in `bld/config.mak`.
 

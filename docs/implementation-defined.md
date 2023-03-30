@@ -24,6 +24,12 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     feature to which this implementation adheres, defined only when the library
     is built with ROCm/HIP enabled. See the UPC++ specification for the specified
     value.
+  * `UPCXX_KIND_ZE`:
+    An integer literal providing the version number of the oneAPI Level Zero
+    (ZE) memory-kind feature to which this implementation adheres, defined only
+    when the library is built with ZE support enabled. See the UPC++
+    specification for the specified value.
+
 
   * `UPCXX_THREADMODE`:
     This is either undefined (for the default "seq" threadmode) or defined to
@@ -95,9 +101,9 @@ UPC++ specifies the type `upcxx::gpu_default_device` which is an implementation-
 alias for a GPU device type. The binding of that alias is determined as follows:
 
 1. For the common case where UPC++ is configured for exactly one GPU
-   variety (e.g. `configure --enable-cuda` OR `configure --enable-hip`) then
+   variety (e.g. `--enable-cuda` OR `--enable-hip` OR `--enable-ze`) then
    `upcxx::gpu_default_device` defaults to an alias for that corresponding device
-   type (i.e. `upcxx::cuda_device` or `upcxx::hip_device`).
+   type (i.e. `upcxx::cuda_device`, `upcxx::hip_device`, `upcxx::ze_device`).
 
 2. When no device support is configured, then `upcxx::gpu_default_device`
    defaults to an alias for `upcxx::cuda_device`.
@@ -107,6 +113,7 @@ alias for a GPU device type. The binding of that alias is determined as follows:
    independently per translation unit):
     * `UPCXX_GPU_DEFAULT_DEVICE_CUDA=1` makes `gpu_default_device` an alias for `cuda_device`
     * `UPCXX_GPU_DEFAULT_DEVICE_HIP=1` makes `gpu_default_device` an alias for `hip_device`
+    * `UPCXX_GPU_DEFAULT_DEVICE_ZE=1` makes `gpu_default_device` an alias for `ze_device`
 
 4. For rare cases where UPC++ is configured to support two or more GPU varieties, then 
    `upcxx::gpu_default_device` will default to aliasing an unspecified device type.
@@ -302,3 +309,26 @@ upcxx::master_persona().lpc_ff([=]() {
 });
 ```
 
+## Job layouts and local_team ##
+
+UPC++ specifies that processes who are members of `upcxx::local_team()` have
+the ability to obtain valid "raw" C++ pointers (i.e. `T*`) referencing
+shared objects allocated by team members (specifically, `global_ptr::is_local()`
+is guaranteed to return true for such objects). In practice, this generally means
+these processes must be co-located on the same compute node, defined as a
+set of CPU resources sharing an OS image and coherent physical memory domain.
+
+UPC++ computes `upcxx::local_team()` membership at startup by examining the
+job layout of processes across physical nodes. By default, UPC++ attempts to
+maximize the size of each local team to encompass all processes co-resident
+on the same compute node (this strategy can be adjusted via GASNet environment
+variables, but the default is strongly recommended). 
+
+The algorithm used to construct `upcxx::local_team()` membership additionally
+ensures the following invariant: 
+
+  * **Processes within a single local team always have consecutive rank indexes in `upcxx::world()`**. 
+  * More formally, for all `I` in `[0, local_team().rank_n() - 1)`, `local_team()[I+1] == local_team()[I] + 1`
+
+This invariant is not currently required by the UPC++ specification, but it is 
+maintained by all versions of the LBNL UPC++ v1.0 implementation.

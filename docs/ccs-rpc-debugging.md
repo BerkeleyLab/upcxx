@@ -8,6 +8,14 @@ information produced by the cross-code segment (CCS) RPC feature (see
 require but not enabled and various errors from invalid usage of CCS will be
 covered.
 
+Linking with `-Wl,--build-id` is recommended when debugging a CCS-enabled
+application (see [debugging.md](debugging.md)). Otherwise, the debugger may
+modify the code segment, interfering with the ability for UPC++ to identify
+and verify code segments by their hashes. This link option will embed an
+invariant identifier at link-time. A segment in an executable or library
+built with `-Wl,--build-id` will have a numerical "segment #" in the CCS debug
+tables, while executables and libraries built without will report "segment hash".
+
 ## CCS Verification Failure
 
 CCS verification is enabled by default with `UPCXX_CODEMODE=debug` and disabled

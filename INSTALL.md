@@ -28,10 +28,8 @@ The current release is known to work on the following configurations:
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
-    At the time of the 2022.9.0 release of UPC++, we have not tested Xcode 14
-    well and have not tested at all on macOS 13 "Ventura" (which is still in
-    public beta testing).  We welcome your reports of success or failure with
-    either.
+    At the time of the 2023.3.0 release of UPC++, we have tested only very lightly
+    on macOS 13 "Ventura".  We welcome reports of success or failure on macOS 13.
 
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
@@ -40,6 +38,7 @@ The current release is known to work on the following configurations:
     - Intel oneAPI compilers 2021.1.2 or newer (with libstdc++ from g++ 6.4.0 or newer)
     - PGI C++ 19.3 through 20.4 (with libstdc++ from g++ 6.4.0 or newer)
     - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
+    - AMD AOCC compilers 2.3.0 or newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
     see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
@@ -82,12 +81,13 @@ The current release is known to work on the following configurations:
   modules, plus its dependencies (smp and ofi conduits):
     - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
     - PrgEnv-cray with cce/12.0.0 (or later) loaded.
+    - PrgEnv-amd with amd/4.2.0 (or later) loaded.
+    - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
+    - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
+    - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
 
-    PrgEnv-nvidia, PrgEnv-amd and PrgEnv-intel are not yet officially
-    supported.  In the first two cases (nvidia and amd) this is due to
-    insufficient duration of testing.  However, there are currently no known
-    issues with either.  The UPC++ team has had no access to PrgEnv-intel on
-    this platform.  If you choose to use any of these compiler families, we
+    PrgEnv-intel is not yet officially supported, due to a lack of access
+    by the UPC++ team.  If you choose to use PrgEnv-intel, then we would
     welcome your reports of success or failure.
 
 * NOT officially supported:  
@@ -100,9 +100,8 @@ The current release is known to work on the following configurations:
       At this time we consider it premature to list this platform as
       "supported", and the `configure` script will issue a warning.
     - Vendor-specific `clang++` or `g++` variants.  
-      At least Arm Ltd., Intel and AMD provide compilers based on their own
-      modifications to Clang/LLVM.  Similarly, at least Arm Ltd. and IBM
-      provide forks of `g++`.  
+      At least Arm Ltd. provides compilers based on their own modifications to
+      Clang/LLVM.  Similarly, at least Arm Ltd. and IBM provide forks of `g++`.  
       To the best of our limited current knowledge, these all behave as their
       respective "upstream" compilers, with no additional compiler-specific
       issues.  
@@ -181,6 +180,8 @@ in the following sections, below:
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+* [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
+* [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
@@ -419,7 +420,7 @@ use of the default version of GASNet-EX.  If using an earlier release of
 GASNet-EX, please consult documentation in a UPC++ release of similar age.
 
 ```bash
-module load libfabric cray-pmi
+module load libfabric cray-pmi <GPU_MODULES>
 cd <upcxx-source-path>
 ./configure --prefix=<upcxx-install-path> \
     --with-cc=cc --with-cxx=CC --with-mpi-cc=cc \
@@ -430,8 +431,16 @@ cd <upcxx-source-path>
 
 The `libfabric` and `cray-pmi` environment modules may or may not be loaded by
 default at any given site.  Please ensure they are loaded (as shown above) or
-the configure or build steps may fail.  Additionally, one may need an
-environment module (sometimes site-specific) for the GPU programming model.
+the configure or build steps may fail.
+
+As denoted by the <GPU_MODULES> placeholder, one or more environment modules
+may be needed for GPU support.  Example module names (to help locate the
+appropriate information in site-specific documentation) include `cudatoolkit`,
+`rocm` and `intel_compute_runtime`, though variations on these names exist.
+In some cases one may also need a device-specific module, often with a name
+starting with `craype-accel-`, to avoid link errors or warnings on every
+compile.  Be advised that some sites may bundle the programming model and
+device modules into a single module.
 
 There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
 "Slingshot-11".  They require different libfabric "providers", as indicated by
@@ -467,12 +476,13 @@ At the time of this writing we've only tested UPC++ on HPE Cray EX systems with
 AMD CPUs.
 
 As mentioned earlier and indicated by the `<GPU_OPTIONS>` placeholder, this
-UPC++ release supports GPUs using Nvidia CUDA and AMD ROCm/HIP APIs in HPE Cray
-EX systems.  Please _also_ see the respective sections of this document for
-UPC++ configure options needed to enable this support:
+UPC++ release supports GPUs using Nvidia CUDA, AMD ROCm/HIP, and Intel oneAPI
+in HPE Cray EX systems.  Please _also_ see the respective sections of this
+document for UPC++ configure options needed to enable this support:
 
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+* [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
 
 With the Slingshot-11 network, some users have seen application hangs due to
 what appears to be "lost" RPCs.  At the time this is written, there are two
@@ -646,6 +656,22 @@ argument to `nvcc` during application compilation to ensure it uses the same hos
 compiler as was passed to the UPC++ `configure` script.
 
 #### Validation of CUDA memory kinds support
+
+One can validate CUDA support in a given UPC++ install using a command like the following:
+
+```bash
+$ upcxx-info | grep CUDA
+
+UPCXX_CUDA:                         1
+UPCXX_CUDA_NVCC:                    /path/to/cuda/bin/nvcc
+UPCXX_CUDA_CPPFLAGS:                ...CUDA include options...
+UPCXX_CUDA_LIBFLAGS:                ...CUDA library options...
+  GPUs with NVIDIA CUDA API (cuda-uva)               ON     (enabled)
+```
+
+Where the `UPCXX_CUDA: 1` indicates the UPC++ install is CUDA-aware, and in the last line
+`ON` indicates that GASNet-EX *may* include GDR acceleration support (actual availability
+also depends on network backend selection at application compile time).
    
 UPC++ CUDA operation can be validated using the following programs in the source tree:
 
@@ -731,7 +757,7 @@ configurations, and the current/default version of GASNet-EX:
 Additional Requirements:
 
 * Linux OS with x86\_64 or ppc64le CPU (not ARM)
-* ROCK AMD GPU kernel driver installed
+* AMD GPU kernel driver installed
 
 When using ROCmRDMA-accelerated memory kinds, calls to `upcxx::copy` will offload
 the data transfer to the network adapter, streaming data directly between the
@@ -765,10 +791,16 @@ in the GASNet distribution.
 `configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
 in your `$PATH` and will attempt to infer the correct ROCm/HIP install location for
 your system. If this automatic detection fails, then you may need to manually
-override the following option to `configure`:
+override the following options to `configure`:
 
 * `--with-hip-home=...`: the install prefix for the ROCm/HIP developer tools 
    Eg `--with-hip-home=/opt/rocm-4.5.0/hip`
+
+* `--with-hip-cppflags=...`: the pre-processor flags needed to find HIP runtime headers
+   Eg `--with-hip-cppflags='-I/opt/rocm-4.5.0/hip/include'`
+
+* `--with-hip-libflags=...`: the linker flags needed to link HIP runtime libraries
+   Eg `--with-hip-libflags='-L/opt/rocm-4.5.0/hip/lib -lamdhip64'`
 
 Note that you must build UPC++ with the same host compiler toolchain as is used
 by `hipcc` when compiling any UPC++ ROCm programs. That is, both UPC++ and your
@@ -780,6 +812,21 @@ compiler as was passed to the UPC++ `configure` script.
 
 #### Validation of ROCm/HIP memory kinds support
    
+One can validate HIP/ROCm support in a given UPC++ install using a command like the following:
+
+```bash
+$ upcxx-info | grep HIP
+
+UPCXX_HIP:                          1
+UPCXX_HIP_CPPFLAGS:                 ...HIP include options...
+UPCXX_HIP_LIBFLAGS:                 ...HIP library options...
+  GPUs with AMD HIP API (hip)                        ON     (enabled)
+```
+
+Where the `UPCXX_HIP: 1` indicates the UPC++ install is HIP-aware, and in the last line
+`ON` indicates that GASNet-EX *may* include ROCmRDMA acceleration support (actual availability
+also depends on network backend selection at application compile time).
+
 UPC++ ROCm/HIP operation can be validated using the following programs in the source tree:
 
 * `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `hip_device`
@@ -808,6 +855,135 @@ ROCmRDMA-accelerated memory kinds enforces a per-process limit of 32 active `hip
 opens over the lifetime of the process. This static limit can be raised at configure time
 via `configure --with-maxeps=N`, and is expected to become a more dynamic limit
 in a future release.
+
+#### Use of UPC++ memory kinds
+
+See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more details on 
+using the UPC++ GPU support.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
+### Configuration: HIP-over-CUDA GPU support
+
+#### System Requirements:
+
+AMD ROCm provides an implementation of HIP-over-CUDA allowing HIP code to target 
+NVIDIA-branded GPUs. UPC++ can interoperate with this translation layer, 
+allowing the use of `upcxx::hip_device` on NVIDIA GPU hardware. This enables RMA 
+communication on memory buffers resident in these GPUs just as if
+they were AMD GPUs (or if the code being compiled was written in CUDA). This is
+an experimental capability, but has been shown to work with the following
+configurations:
+
+* AMD ROCm version 5.1.0 and CUDA toolkit version 11.4.0
+* AMD ROCm version 5.3.2 and CUDA toolkit version 11.7.0
+
+as well as modern NVIDIA-branded [CUDA-compatible GPU hardware](https://developer.nvidia.com/cuda-gpus).
+
+Additional requirements for GPUDirect RDMA can be found in the section 
+[Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support).
+
+#### `configure` Command for Enabling HIP-over-CUDA GPU Support
+
+To activate the UPC++ support for HIP-over-CUDA, pass `--enable-hip` and 
+`--with-hip-platform=nvidia` to the `configure` script:
+
+```bash
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --enable-hip --with-hip-platform=nvidia
+```
+
+For issues with automatic detection of compiler location or build flags, 
+consult the relevant sections of  
+[Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support) and 
+[Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support).
+
+As mentioned in prior sections, both UPC++ and your UPC++ application must be 
+compiled using the same host compiler toolchain.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
+### Configuration: Intel oneAPI GPU support
+
+UPC++ includes initial EXPERIMENTAL support for RMA communication operations on
+memory buffers resident in a oneAPI-compatible Intel GPU, using the 
+oneAPI Level-Zero (ZE) interface.
+
+**Intel GPU memory kind support in this release is believed to be functionally correct,
+  but has not been tuned for performance. `upcxx::copy()` operations on `ze_device` 
+  memory are currently staged through host memory and do not yet leverage network-direct RDMA.**
+
+#### System Requirements:
+
+* Modern Intel-branded oneAPI-compatible GPU hardware with appropriate kernel drivers
+* Intel Level-Zero development headers (`level-zero-dev` package)
+
+The full Intel oneAPI Toolkits are *NOT* required to build UPC++ and use
+`ze_device`, but are likely required by applications that want to use the
+GPU for computation.
+
+#### `configure` Command for Enabling Intel oneAPI GPU Support
+
+To activate the UPC++ support for Intel oneAPI Level-Zero,
+pass `--enable-ze` to the `configure` script:
+
+```bash
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --enable-ze
+```
+
+`configure --enable-ze` attempts to automatically detect the install prefix of
+the Level-Zero developer tools and related compilation options for your system.
+If this automatic detection fails, then you may need to manually
+override one or more of the following options to `configure`:
+
+* `--with-ze-home=...`: the install prefix for the Level Zero developer tools 
+   Eg `--with-ze-home=/usr/local/pkg/intel/level-zero/1.9.4 `
+
+* `--with-ze-cppflags=...`: the pre-processor flags needed to find Level Zero headers
+   Eg `--with-ze-cppflags='-I/usr/local/pkg/intel/level-zero/1.9.4/include'`
+
+* `--with-ze-libflags=...`: the linker flags needed to link Level Zero runtime libraries
+   Eg `--with-ze-libflags='-L/usr/local/pkg/intel/level-zero/1.9.4/lib64 -lze_loader'`
+
+Note that you must build UPC++ with the same host compiler toolchain used for
+compiling objects linked to any UPC++ oneAPI programs. That is, both UPC++ and your
+UPC++ application must be compiled using the same host compiler toolchain.
+
+#### Validation of oneAPI memory kinds support
+   
+One can validate `ze_device` support in a given UPC++ install using a command like the following:
+
+```bash
+$ upcxx-info | grep ZE
+
+UPCXX_ZE:                          1
+UPCXX_ZE_CPPFLAGS:                 ...ZE include options...
+UPCXX_ZE_LIBFLAGS:                 ...ZE library options...
+```
+
+Where the `UPCXX_ZE: 1` indicates the UPC++ install is ZE-aware.
+
+UPC++ `ze_device` operation can be validated using the following programs in the source tree:
+
+* `test/copy.cpp` and `test/copy-cover.cpp`: correctness testers for the UPC++ `ze_device`
+* `bench/gpu_microbenchmark.cpp`: performance microbenchmark for `upcxx::copy` using GPU memory
+
+One can validate a given UPC++ executable includes `ze_device` support with a command
+like the following:
+
+```bash
+$ upcxx-run -i a.out | grep ZE
+UPCXXKindZE: 202303L
+UPCXXZEEnabled: 1
+UPCXXZEGASNet: 0
+```
+
+Where the `UPCXXZEEnabled: 1` line indicates the presence of `ze_device`
+support in UPC++, and `UPCXXZEGASNet: 0` indicates the lack of hardware
+acceleration for `ze_device` transfers in the current GASNet release.
 
 #### Use of UPC++ memory kinds
 
@@ -852,6 +1028,8 @@ options:
   [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * Options for control of (optional) AMD ROCm/HIP GPU support are documented in the section
   [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+* Options for control of (optional) Intel oneAPI GPU support are documented in the section
+  [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
 * Options not recognized by the UPC\+\+ `configure` script will be passed to
   the GASNet-EX `configure`.  For instance, `--with-mpirun-cmd=...` might be
   required to setup MPI-based launch of ibv-conduit applications.  Please read
@@ -863,4 +1041,6 @@ options:
 In addition to these explicit configure options, there are several environment
 variables which can implicitly affect the configuration of GASNet-EX.  The most
 common of these are listed at the end of the output of `configure --help`.
+Since these influence the GASNet-EX `configure` script, they are used in the
+`make` or `make all` stages of the UPC++ build, not its `configure` stage.
 

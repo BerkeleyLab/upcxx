@@ -3,8 +3,8 @@
 #if UPCXX_VERSION < 20210905
 #error This test requires UPC++ 2021.9.5 or newer
 #endif
-#if !(UPCXX_KIND_CUDA || UPCXX_KIND_HIP)
-#error "This example requires UPC++ to be built with either CUDA or HIP support."
+#if !(UPCXX_KIND_CUDA || UPCXX_KIND_HIP || UPCXX_KIND_ZE)
+#error "This example requires UPC++ to be built with GPU Memory Kinds support."
 #endif
 using namespace std;
 using namespace upcxx; 
@@ -14,7 +14,8 @@ int main() {
 
   std::size_t segsize = 4*1024*1024; // 4 MiB
   auto gpu_alloc = upcxx::make_gpu_allocator(segsize); // alloc GPU segment 
-  UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active());
+  UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active(),
+                      "Failed to open GPU:\n" << gpu_default_device::kind_info());
 
   // alloc some arrays of 1024 doubles on GPU and host
   global_ptr<double,gpu_default_device::kind> gpu_array = gpu_alloc.allocate<double>(1024);

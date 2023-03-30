@@ -16,6 +16,7 @@ trap "rm -f $TMPDIR $EXE" ERR
 
 set -x  # Start tracing the actual build commands
 
+$MAKE -C $TMPDIR clean UPCXX_INSTALL=$upcxx_bld
 $MAKE -C $TMPDIR $TEST UPCXX_INSTALL=$upcxx_bld
 
 mv $TMPDIR/$TEST $EXE

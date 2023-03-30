@@ -6,6 +6,7 @@
 #include <upcxx/concurrency.hpp>
 #include <upcxx/cuda_internal.hpp>
 #include <upcxx/hip_internal.hpp>
+#include <upcxx/ze_internal.hpp>
 #include <upcxx/os_env.hpp>
 #include <upcxx/reduce.hpp>
 #include <upcxx/team.hpp>
@@ -139,7 +140,6 @@ namespace {
 
   bool oversubscribed;
   
-  auto do_internal_progress = []() { upcxx::progress(progress_level::internal); };
   auto operation_cx_as_internal_future =
     upcxx::detail::operation_cx_as_internal_future_t{{}};
 
@@ -526,6 +526,10 @@ void upcxx::init() {
   // Determine a bound on the max usable shared segment size
   size_t gasnet_max_segsize = gasnet_getMaxLocalSegmentSize();
   if (upcxxi_upc_is_linked()) {
+    if (!backend::rank_me && os_env<bool>("UPCXX_WARN_UPC", true)) {
+      say() << "WARNING: Integration with Berkeley UPC is now deprecated and may be removed in a future UPC++ release. "
+            << "This warning may be silenced by setting envvar: UPCXX_WARN_UPC=0";
+    }
     gasnet_max_segsize = gasnet_getMaxGlobalSegmentSize();
     size_t upc_segment_pad = 16*1024*1024; // TODO: replace this hack
     UPCXX_ASSERT_ALWAYS(gasnet_max_segsize > upc_segment_pad);
@@ -681,9 +685,11 @@ void upcxx::init() {
     oversubscribed = os_env<bool>("UPCXX_OVERSUBSCRIBED", oversubscribed_default);
 
     if(backend::verbose_noise)
-      noise.line()<<"CPUs Oversubscribed: "<<(oversubscribed
-        ? "yes \"upcxx::progress() may yield to OS)\""
-        : "no \"upcxx::progress() never yields to OS\"");
+      noise.line() << gasnett_cpu_count() 
+        << " CPUs " << (oversubscribed ? "ARE" : "ARE NOT")
+        << " Oversubscribed: "<<(oversubscribed
+        ? "upcxx::progress() may yield to OS"
+        : "upcxx::progress() never yields to OS");
 
     gasnet_set_waitmode(oversubscribed ? GASNET_WAIT_BLOCK : GASNET_WAIT_SPIN);
   }
@@ -863,18 +869,30 @@ void upcxx::init() {
 
   // Automatically verify segments on init() in debug mode
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
+  detail::segmap_cache::max_segments_ = os_env<int16_t>("UPCXX_CCS_MAX_SEGMENTS", 256);
+  detail::segmap_cache::indexed_segment_starts_ = new std::atomic<std::uintptr_t>[detail::segmap_cache::max_segments_]();
   if (os_env<bool>("UPCXX_CCS_AUTOVERIFY", true))
-    detail::segmap_cache::verify_all(entry_barrier::none);
+    detail::segmap_cache::verify_all();
 #endif
 
   noise.show();
 
-  if(backend::verbose_noise) {
+  if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise) && peer_me == 0) {
     // output process identity information, for validating job layout matches user intent
-    say(std::cerr,"") << "UPCXX: Process " 
-        << setw(to_string(backend::rank_n-1).size()) << backend::rank_me << "/" << backend::rank_n
-        << " (local_team: " << setw(to_string(peer_n-1).size()) << peer_me << "/" << peer_n << ") on "
-        << gasnett_gethostname() << " (" << gasnett_cpu_count() << " processors)";
+    say s(std::cerr,"");
+    s << "UPCXX: Process ";
+    auto rankw = std::setw(to_string(backend::rank_n-1).size());
+    if (backend::nbrhd_set_size == backend::rank_n) { // All singleton local teams
+      s << rankw << backend::rank_me << "/" << backend::rank_n;
+    } else { // first process in each local_team reports
+      if (peer_n > 1) 
+        s << rankw << backend::rank_me << "-" << rankw << + std::left << (backend::rank_me+peer_n-1);
+      else            
+        s << rankw << " " << " " << rankw << backend::rank_me;
+      s << "/" << backend::rank_n;
+    }
+    s << " (local_team: " << peer_n << " rank" << (peer_n>1?"s)":") ")
+      << " on " << gasnett_gethostname() << " (" << gasnett_cpu_count() << " processors)";
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1049,7 +1067,7 @@ void upcxx::finalize() {
         },
         /*root=*/0, upcxx::world(),
         operation_cx_as_internal_future
-      ).wait(do_internal_progress);
+      ).wait_internal(upcxx::detail::internal_only{});
   };
   
   if(backend::verbose_noise) {
@@ -1110,6 +1128,10 @@ void upcxx::finalize() {
   
   if(backend::initial_master_scope != nullptr)
     delete backend::initial_master_scope;
+
+#if !UPCXXI_FORCE_LEGACY_RELOCATIONS
+  delete[] detail::segmap_cache::indexed_segment_starts_;
+#endif
 
   noise.show();
   UPCXX_ASSERT_ALWAYS(backend::init_count == 1);
@@ -1394,7 +1416,7 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
       error = true; break;
     }
 
-    if_pf ( dynamic_kind >= memory_kind::any // invalid garbage
+    if_pf ( !detail::is_valid_memory_kind(dynamic_kind) || dynamic_kind == memory_kind::any // invalid garbage
          || (Kind != memory_kind::any && dynamic_kind != Kind) // static type mismatch
          || ((dynamic_kind == memory_kind::host) != (heap_idx == 0)) // dynamic_type/heap_idx mismatch
       ) {
@@ -2017,7 +2039,7 @@ namespace {
   #if UPCXXI_CUDA_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
       if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
-        CU_CHECK(cuEventDestroy((CUevent)cb->event));
+        UPCXXI_CU_CHECK(cuEventDestroy((CUevent)cb->event));
         per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
         cb->execute_and_delete();
       }
@@ -2034,6 +2056,27 @@ namespace {
       }
       else
         break;
+    }
+  #endif
+  #if UPCXXI_ZE_ENABLED
+    while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).ze.cbs.peek()) {
+      ze_fence_handle_t hFence = (ze_fence_handle_t)(cb->event);
+      ze_result_t fenceQueryResult;
+      if ((fenceQueryResult = zeFenceQueryStatus(hFence)) == ZE_RESULT_NOT_READY) break;
+      UPCXXI_ZE_CHECK(fenceQueryResult);
+
+      ze_command_list_handle_t hCommandList = (ze_command_list_handle_t)(cb->extra);
+      // reset objects for next use
+      UPCXXI_ZE_CHECK( zeCommandListReset(hCommandList) );
+      UPCXXI_ZE_CHECK( zeFenceReset(hFence) );
+      // push onto device free list
+      auto st = (backend::ze_heap_state *)cb->hs;
+      { std::lock_guard<detail::par_mutex> g(st->lock);
+        st->cmdFreeList.emplace(hCommandList, hFence);
+      }
+
+      per->UPCXXI_INTERNAL_ONLY(device_state_).ze.cbs.dequeue();
+      cb->execute_and_delete();
     }
   #endif
   }

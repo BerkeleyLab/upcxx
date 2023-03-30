@@ -35,6 +35,8 @@ int main() {
 
    // alloc GPU segment
    auto gpu_alloc = upcxx::make_gpu_allocator(segsize);
+   UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active(),
+                       "Failed to open GPU:\n" << gpu_default_device::kind_info());
    int gpu_dev = gpu_alloc.device_id();
 
    gp_device dA = gpu_alloc.allocate<double>(N);

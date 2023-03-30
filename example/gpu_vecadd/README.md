@@ -2,7 +2,7 @@
 
 This folder contains a simple example of how to initialize and add two vectors
 into a third, all of which are in GPU memory. The vectors are segmented across
-all ranks used to run the executable, with validation occuring at the root. The
+all ranks used to run the executable, with validation occurring at the root. The
 example only intends to demonstrate capabilities of the UPC++ features used,
 not an efficient implementation of vector addition.
 

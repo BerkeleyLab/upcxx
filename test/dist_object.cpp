@@ -3,6 +3,7 @@
 #include "util.hpp"
 
 #include <iostream>
+#include <unordered_map>
 
 using namespace std;
 using namespace upcxx;
@@ -22,9 +23,43 @@ struct asym_type {
   };
 };
 
+struct non_default_constructible {
+  int x;
+  non_default_constructible(int x_) : x(x_) {}
+};
+
 bool got_ff = false;
 
+// dist_object construction before init (and destruction after finalize)
+dist_object<non_default_constructible> global_obj1;
+dist_object<non_default_constructible> global_obj2{upcxx::inactive, -2};
+
 int main() {
+  // dist_object construction before init (and destruction after finalize)
+  dist_object<non_default_constructible> preinit_obj1;
+  dist_object<non_default_constructible> preinit_obj2{upcxx::inactive, -3};
+  // member functions that are permitted before init
+  UPCXX_ASSERT_ALWAYS(!global_obj1.is_active());
+  UPCXX_ASSERT_ALWAYS(!global_obj1.has_value());
+  UPCXX_ASSERT_ALWAYS(!global_obj2.is_active());
+  UPCXX_ASSERT_ALWAYS(global_obj2.has_value());
+  UPCXX_ASSERT_ALWAYS(!preinit_obj1.is_active());
+  UPCXX_ASSERT_ALWAYS(!preinit_obj1.has_value());
+  UPCXX_ASSERT_ALWAYS(!preinit_obj2.is_active());
+  UPCXX_ASSERT_ALWAYS(preinit_obj2.has_value());
+  global_obj1.emplace(-4);
+  preinit_obj1.emplace(-5);
+  UPCXX_ASSERT_ALWAYS(global_obj1.has_value());
+  UPCXX_ASSERT_ALWAYS(preinit_obj1.has_value());
+  UPCXX_ASSERT_ALWAYS((*global_obj1).x == -4);
+  UPCXX_ASSERT_ALWAYS((*global_obj2).x == -2);
+  UPCXX_ASSERT_ALWAYS((*preinit_obj1).x == -5);
+  UPCXX_ASSERT_ALWAYS((*preinit_obj2).x == -3);
+  UPCXX_ASSERT_ALWAYS(global_obj1->x == -4);
+  UPCXX_ASSERT_ALWAYS(global_obj2->x == -2);
+  UPCXX_ASSERT_ALWAYS(preinit_obj1->x == -5);
+  UPCXX_ASSERT_ALWAYS(preinit_obj2->x == -3);
+
   upcxx::init();
 
   print_test_header();
@@ -95,6 +130,45 @@ int main() {
     while(!got_ff)
       upcxx::progress();
     
+    // spec issue 192 additions
+    upcxx::dist_object<int> obj5;
+    UPCXX_ASSERT_ALWAYS(!obj5.is_active());
+    UPCXX_ASSERT_ALWAYS(!obj5.has_value());
+    obj5.emplace(400 + upcxx::rank_me());
+    UPCXX_ASSERT_ALWAYS(!obj5.is_active());
+    UPCXX_ASSERT_ALWAYS(obj5.has_value());
+    obj5.activate(upcxx::world());
+    UPCXX_ASSERT_ALWAYS(obj5.is_active());
+    upcxx::dist_object<int> obj6;
+    obj6 = std::move(obj5);
+    UPCXX_ASSERT_ALWAYS(!obj5.is_active());
+    UPCXX_ASSERT_ALWAYS(obj6.is_active());
+    UPCXX_ASSERT_ALWAYS(obj6.has_value());
+    UPCXX_ASSERT_ALWAYS(*obj6 == 400 + upcxx::rank_me());
+    UPCXX_ASSERT_ALWAYS(obj6.fetch(nebr).wait() == 400 + nebr);
+    upcxx::dist_object<int> obj7{upcxx::inactive, 500 + upcxx::rank_me()};
+    UPCXX_ASSERT_ALWAYS(!obj7.is_active());
+    UPCXX_ASSERT_ALWAYS(obj7.has_value());
+    UPCXX_ASSERT_ALWAYS(*obj7 == 500 + upcxx::rank_me());
+    // tests with initializer lists
+    dist_object<std::unordered_map<int, int>> d1 =
+      dist_object<std::unordered_map<int, int>>({});
+    UPCXX_ASSERT_ALWAYS(d1.is_active());
+    UPCXX_ASSERT_ALWAYS(d1.has_value());
+    dist_object<std::unordered_map<int, int>> d2{};
+    UPCXX_ASSERT_ALWAYS(!d2.is_active());
+    UPCXX_ASSERT_ALWAYS(!d2.has_value());
+    dist_object<std::unordered_map<int, int>> d3 = {};
+    UPCXX_ASSERT_ALWAYS(!d3.is_active());
+    UPCXX_ASSERT_ALWAYS(!d3.has_value());
+    dist_object<std::unordered_map<int, int>> d4 =
+      dist_object<std::unordered_map<int, int>>{};
+    UPCXX_ASSERT_ALWAYS(!d4.is_active());
+    UPCXX_ASSERT_ALWAYS(!d4.has_value());
+    dist_object<std::unordered_map<int, int>> d5{{}};
+    UPCXX_ASSERT_ALWAYS(d5.is_active());
+    UPCXX_ASSERT_ALWAYS(d5.has_value());
+
     upcxx::barrier(); // ensures dist_object lifetime
   }
 

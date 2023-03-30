@@ -123,7 +123,7 @@ def heapsz_type(a):
     
 def load_args():
     global _parser
-    _parser = argparse.ArgumentParser(description='A portable parallel job launcher for UPC++ programs, v2022.9.0\n \n' + \
+    _parser = argparse.ArgumentParser(description='A portable parallel job launcher for UPC++ programs, v2023.3.0\n \n' + \
                                                   'Citing UPC++ in publication? Please see: https://upcxx.lbl.gov/publications',
                                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     _parser.add_argument('-n', '-np', dest='nranks', type=ranks_type, default=None, metavar='NUM',

@@ -37,7 +37,7 @@ supported for end-users while "Internal-Only Configuration Options", below,
 documents some unsupported ones.
 
 The `configure` script populates `<upcxx-build-dir>/bin` with special `upcxx`,
-`upcxx-meta` and `upcxx-run` scripts specific to use in the build-dir.  These
+`upcxx-meta`, `upcxx-run` and `upcxx-info` scripts specific to use in the build-dir.  These
 scripts dynamically build any necessary UPC\+\+ and GASNet-EX libraries the
 first time they are required, and updates them if any UPC\+\+ or GASNet-EX
 source files change.  For `upcxx` the necessary libraries are determined from
@@ -50,7 +50,7 @@ including working with a user's bug reproducer (even one with its own Makefile),
 without the need to complete an install with two versions of GASNet-EX and
 `libupcxx.a` for every detected conduit.
 
-By default, these three scripts remind you that you are using their build-dir
+By default, these scripts remind you that you are using their build-dir
 versions with the following message on stderr:  
       `INFO: may need to build the required runtime.  Please be patient.`  
 This can be suppressed by setting `UPCXX_QUIET=1` in your environment.
@@ -138,6 +138,11 @@ Additional make targets:
   configure step has run, or the list of all supported conduits otherwise.
   Use of `make gasnet-single list-networks` is sufficient to ensure one
   always gets the list of detected conduits.
+
+* `make config-summary`  
+  This prints the GASNet configure summary output *if* the GASNet
+  configure step has run. This can provide more details about major GASNet
+  feature detections and any configure warnings.
 
 * `make dev-tests` and `make dev-check`  
   These are maintainer versions of `tests` and `check` which operate on nearly
@@ -254,6 +259,10 @@ enough to be part of the user-facing docs.
   `configure` itself.  This should be the first command line option if one
   desires to debug option parsing, since it invokes `set -x` when this option is
   processed.
+
+If you add a new configure setting that alters the behavior of the final UPC++ install,
+you should also consider adding the resulting Makefile variable to the list in the
+`do-config-summary` target which is used to generate the `upcxx-info` output.
 
 ## Guide to Maintenance Tasks
 

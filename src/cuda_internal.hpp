@@ -17,13 +17,13 @@
     #endif
   #endif
 
-  #define CU_CHECK_ALWAYS(expr) do { \
+  #define UPCXXI_CU_CHECK_ALWAYS(expr) do { \
       CUresult res_xxxxxx = (expr); \
       if_pf (res_xxxxxx != CUDA_SUCCESS) \
         ::upcxx::detail::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr); \
     } while(0)
 
-  #define CU_CHECK_ALWAYS_VERBOSE(expr) do { \
+  #define UPCXXI_CU_CHECK_ALWAYS_VERBOSE(expr) do { \
       CUresult res_xxxxxx = (expr); \
       if_pf (res_xxxxxx != CUDA_SUCCESS) \
         ::upcxx::detail::cuda::cu_failed(res_xxxxxx, __FILE__, __LINE__, #expr, true); \
@@ -31,9 +31,9 @@
 
 
   #if UPCXXI_ASSERT_ENABLED
-    #define CU_CHECK(expr)   CU_CHECK_ALWAYS(expr)
+    #define UPCXXI_CU_CHECK(expr)   UPCXXI_CU_CHECK_ALWAYS(expr)
   #else
-    #define CU_CHECK(expr)   ((void)(expr))
+    #define UPCXXI_CU_CHECK(expr)   ((void)(expr))
   #endif
 
   namespace upcxx {
@@ -50,9 +50,9 @@
         inline context(CUcontext ctx) : ctx_(ctx) {
           UPCXX_ASSERT(ctx, "tried to push an invalid null context");
           switch (check_level) {
-            case 0: CU_CHECK(cuCtxPushCurrent(ctx)); break;
-            case 1: CU_CHECK_ALWAYS(cuCtxPushCurrent(ctx)); break;
-            case 2: CU_CHECK_ALWAYS_VERBOSE(cuCtxPushCurrent(ctx)); break;
+            case 0: UPCXXI_CU_CHECK(cuCtxPushCurrent(ctx)); break;
+            case 1: UPCXXI_CU_CHECK_ALWAYS(cuCtxPushCurrent(ctx)); break;
+            case 2: UPCXXI_CU_CHECK_ALWAYS_VERBOSE(cuCtxPushCurrent(ctx)); break;
           }
         }
         inline context(context&& other) : ctx_(other.ctx_) {
@@ -63,9 +63,9 @@
           UPCXXI_IF_PF (!ctx_) return; // moved out
           CUcontext out;
           switch (check_level) {
-            case 0: CU_CHECK(cuCtxPopCurrent(&out)); break;
-            case 1: CU_CHECK_ALWAYS(cuCtxPopCurrent(&out)); break;
-            case 2: CU_CHECK_ALWAYS_VERBOSE(cuCtxPopCurrent(&out)); break;
+            case 0: UPCXXI_CU_CHECK(cuCtxPopCurrent(&out)); break;
+            case 1: UPCXXI_CU_CHECK_ALWAYS(cuCtxPopCurrent(&out)); break;
+            case 2: UPCXXI_CU_CHECK_ALWAYS_VERBOSE(cuCtxPopCurrent(&out)); break;
           }
           if (check_level) 
             UPCXX_ASSERT_ALWAYS(out == ctx_, "Unexpected cuCtxPopCurrent outcome -- misbalanced context?");

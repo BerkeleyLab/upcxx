@@ -111,6 +111,8 @@ export UPCXX_META
 source "${install_to}/bin/upcxx.sh" "\$@"
 EOF
   chmod 755 "${DESTDIR}${install_to}/bin/upcxx"
+  cp ${upcxx_bld}/bin/upcxx-info "${DESTDIR}${install_to}/bin/upcxx-info"
+  chmod 755 "${DESTDIR}${install_to}/bin/upcxx-info"
   sed -e "s,/bin/bash,${BASH}," < ./utils/upcxx.sh > "${DESTDIR}${install_to}/bin/upcxx.sh"
   chmod 755 "${DESTDIR}${install_to}/bin/upcxx.sh"
   if [[ -n "$UPCXX_PYTHON" ]]; then
