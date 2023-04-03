@@ -1294,6 +1294,7 @@ void backend::warn_empty_rma(const char *fnname) {
 
 tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const *addr) {
   intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
+  UPCXX_ASSERT(peer_n == backend::pshm_peer_n);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1308,8 +1309,10 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const 
   #define bad_memory "Local memory "<<addr<<" is not in any local rank's shared segment."
 
   UPCXX_ASSERT(key_ix > 0, bad_memory);
+  UPCXX_ASSERT(key_ix <= peer_n);
   
   intrank_t peer = pshm_owner_peer[key_ix-1];
+  UPCXX_ASSERT(peer >= 0 && peer < peer_n);
 
   UPCXX_ASSERT(uaddr - pshm_vbase[peer] <= pshm_size[peer], bad_memory);
   
@@ -1326,6 +1329,7 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
     tuple<intrank_t/*rank*/, uintptr_t/*raw*/> otherwise
   ) {
   intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
+  UPCXX_ASSERT(peer_n == backend::pshm_peer_n);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1339,8 +1343,10 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
   
   if(key_ix <= 0)
     return otherwise;
+  UPCXX_ASSERT(key_ix <= peer_n);
   
   intrank_t peer = pshm_owner_peer[key_ix-1];
+  UPCXX_ASSERT(peer >= 0 && peer < peer_n);
 
   if(uaddr - pshm_vbase[peer] <= pshm_size[peer])
     return std::make_tuple(
