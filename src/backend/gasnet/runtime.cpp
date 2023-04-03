@@ -98,9 +98,9 @@ constexpr int backend::heap_state::max_heaps_cat[2]; // because C++ constexpr ru
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
 
-intrank_t backend::pshm_peer_lb_;
-intrank_t backend::pshm_peer_ub;
-intrank_t backend::pshm_peer_n;
+intrank_t backend::pshm_peer_lb_; // USE NON-UNDERSCORE VERSION: pshm_peer_lb == local_team()[0]
+intrank_t backend::pshm_peer_ub;  // 1 + local_team()[local_team()::rank_n()-1]
+intrank_t backend::pshm_peer_n;   // local_team::rank_n()
 
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_local_minus_remote;
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_vbase;
@@ -1293,8 +1293,8 @@ void backend::warn_empty_rma(const char *fnname) {
 }
 
 tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const *addr) {
-  intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
-  UPCXX_ASSERT(peer_n == backend::pshm_peer_n);
+  intrank_t peer_n = pshm_peer_n;
+  UPCXX_ASSERT(peer_n == pshm_peer_ub - pshm_peer_lb);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1328,8 +1328,8 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
     void const *addr,
     tuple<intrank_t/*rank*/, uintptr_t/*raw*/> otherwise
   ) {
-  intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
-  UPCXX_ASSERT(peer_n == backend::pshm_peer_n);
+  intrank_t peer_n = pshm_peer_n;
+  UPCXX_ASSERT(peer_n == pshm_peer_ub - pshm_peer_lb);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
