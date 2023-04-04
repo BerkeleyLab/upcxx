@@ -852,7 +852,7 @@ void upcxx::init() {
 
     if (!upcxxi_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
       gex_TM_SetCData(local_tm, local_scratch_ptr );
-  }
+  } // !local_is_world
   
   
   // Build upcxx::local_team()
@@ -876,6 +876,32 @@ void upcxx::init() {
 #endif
 
   noise.show();
+
+  #if UPCXXI_DISCONTIG
+    // issue 600: Need to "fix up" backend::nbrhd_set_{size,rank} to accomodate 
+    // singleton local_teams arising from discontiguous nbrhd ranks, to ensure
+    // correct results are reported by upcxx::local_team_position().
+    // Lacking a scan collective there is unfortunately no convenient and scalable way to do this.
+    std::vector<intrank_t> local_team_base(backend::rank_n);
+    gasnet_coll_gather_all(GASNET_TEAM_ALL, 
+                           local_team_base.data(), &backend::pshm_peer_lb_, sizeof(intrank_t), 
+                           GASNET_COLL_LOCAL | GASNET_COLL_IN_MYSYNC | GASNET_COLL_OUT_MYSYNC);
+    intrank_t last_base = -1;
+    intrank_t pos = -1;
+    for (intrank_t i = 0; i < backend::rank_n; i++) {
+      if (local_team_base[i] != last_base) {
+        pos++;
+        last_base = local_team_base[i];
+      }
+      if (i == backend::rank_me) {
+        UPCXX_ASSERT_ALWAYS(pos >= backend::nbrhd_set_rank);
+        backend::nbrhd_set_rank = pos;
+      }
+    }
+    pos++;
+    UPCXX_ASSERT_ALWAYS(pos >= backend::nbrhd_set_size);
+    backend::nbrhd_set_size = pos;
+  #endif
 
   if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise) && peer_me == 0) {
     // output process identity information, for validating job layout matches user intent
