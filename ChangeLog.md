@@ -19,7 +19,7 @@ Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #596: Failure of in-build-tree utils when configured without a default network
-* ...
+* issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 2023.3.0](docs/spec.pdf).
