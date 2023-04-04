@@ -98,9 +98,9 @@ constexpr int backend::heap_state::max_heaps_cat[2]; // because C++ constexpr ru
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
 
-intrank_t backend::pshm_peer_lb_;
-intrank_t backend::pshm_peer_ub;
-intrank_t backend::pshm_peer_n;
+intrank_t backend::pshm_peer_lb_; // USE NON-UNDERSCORE VERSION: pshm_peer_lb == local_team()[0]
+intrank_t backend::pshm_peer_ub;  // 1 + local_team()[local_team()::rank_n()-1]
+intrank_t backend::pshm_peer_n;   // local_team::rank_n()
 
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_local_minus_remote;
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_vbase;
@@ -852,7 +852,7 @@ void upcxx::init() {
 
     if (!upcxxi_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
       gex_TM_SetCData(local_tm, local_scratch_ptr );
-  }
+  } // !local_is_world
   
   
   // Build upcxx::local_team()
@@ -876,6 +876,32 @@ void upcxx::init() {
 #endif
 
   noise.show();
+
+  #if UPCXXI_DISCONTIG
+    // issue 600: Need to "fix up" backend::nbrhd_set_{size,rank} to accomodate 
+    // singleton local_teams arising from discontiguous nbrhd ranks, to ensure
+    // correct results are reported by upcxx::local_team_position().
+    // Lacking a scan collective there is unfortunately no convenient and scalable way to do this.
+    std::vector<intrank_t> local_team_base(backend::rank_n);
+    gasnet_coll_gather_all(GASNET_TEAM_ALL, 
+                           local_team_base.data(), &backend::pshm_peer_lb_, sizeof(intrank_t), 
+                           GASNET_COLL_LOCAL | GASNET_COLL_IN_MYSYNC | GASNET_COLL_OUT_MYSYNC);
+    intrank_t last_base = -1;
+    intrank_t pos = -1;
+    for (intrank_t i = 0; i < backend::rank_n; i++) {
+      if (local_team_base[i] != last_base) {
+        pos++;
+        last_base = local_team_base[i];
+      }
+      if (i == backend::rank_me) {
+        UPCXX_ASSERT_ALWAYS(pos >= backend::nbrhd_set_rank);
+        backend::nbrhd_set_rank = pos;
+      }
+    }
+    pos++;
+    UPCXX_ASSERT_ALWAYS(pos >= backend::nbrhd_set_size);
+    backend::nbrhd_set_size = pos;
+  #endif
 
   if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise) && peer_me == 0) {
     // output process identity information, for validating job layout matches user intent
@@ -1293,7 +1319,8 @@ void backend::warn_empty_rma(const char *fnname) {
 }
 
 tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const *addr) {
-  intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
+  intrank_t peer_n = pshm_peer_n;
+  UPCXX_ASSERT(peer_n == pshm_peer_ub - pshm_peer_lb);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1308,8 +1335,10 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const 
   #define bad_memory "Local memory "<<addr<<" is not in any local rank's shared segment."
 
   UPCXX_ASSERT(key_ix > 0, bad_memory);
+  UPCXX_ASSERT(key_ix <= peer_n);
   
   intrank_t peer = pshm_owner_peer[key_ix-1];
+  UPCXX_ASSERT(peer >= 0 && peer < peer_n);
 
   UPCXX_ASSERT(uaddr - pshm_vbase[peer] <= pshm_size[peer], bad_memory);
   
@@ -1325,7 +1354,8 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
     void const *addr,
     tuple<intrank_t/*rank*/, uintptr_t/*raw*/> otherwise
   ) {
-  intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
+  intrank_t peer_n = pshm_peer_n;
+  UPCXX_ASSERT(peer_n == pshm_peer_ub - pshm_peer_lb);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1339,8 +1369,10 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
   
   if(key_ix <= 0)
     return otherwise;
+  UPCXX_ASSERT(key_ix <= peer_n);
   
   intrank_t peer = pshm_owner_peer[key_ix-1];
+  UPCXX_ASSERT(peer >= 0 && peer < peer_n);
 
   if(uaddr - pshm_vbase[peer] <= pshm_size[peer])
     return std::make_tuple(
