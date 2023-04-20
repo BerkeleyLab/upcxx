@@ -249,6 +249,10 @@ export TEST_FLAGS_MEMBEROF=$(TEST_FLAGS_MEMBEROF_$(GASNET_CXX_FAMILY))
 TEST_FLAGS_ISSUE547_Clang=-Wno-self-move
 export TEST_FLAGS_ISSUE547=$(TEST_FLAGS_ISSUE547_$(GASNET_CXX_FAMILY))
 
+# default "fast floating point mode" in recent oneAPI compilers leads to nuisance warnings
+TEST_FLAGS_RPUT_RPC_ClangINTEL=-Wno-tautological-constant-compare
+export TEST_FLAGS_RPUT_RPC=$(TEST_FLAGS_RPUT_RPC_$(GASNET_CXX_FAMILY)$(GASNET_CXX_SUBFAMILY))
+
 ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
 # this compiler lacks a '-g0' option, so we use our home-grown alternative to strip off -g
