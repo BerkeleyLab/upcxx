@@ -179,7 +179,7 @@ namespace detail {
       const ElfW(Nhdr) *note = nullptr;
       const ElfW(Nhdr) *note_end = nullptr;
       bool has_build_id = false;
-      std::array<uint8_t,elf_hash_size> build_id;
+      std::array<uint8_t,elf_hash_size> build_id{};
       int flags = 0;
       ElfW(Addr) dptr_basis = 0;
       ElfW(Addr) addr_lo = 0, addr_hi = 0;
