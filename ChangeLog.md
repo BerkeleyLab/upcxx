@@ -21,6 +21,7 @@ Notable issues resolved
 * issue #596: Failure of in-build-tree utils when configured without a default network
 * issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
 * issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1
+* issue #605: library build failure with GCC 13.1.0
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 2023.3.0](docs/spec.pdf).
