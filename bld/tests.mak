@@ -247,6 +247,7 @@ TEST_FLAGS_MEMBEROF_Clang=-Wno-invalid-offsetof
 export TEST_FLAGS_MEMBEROF=$(TEST_FLAGS_MEMBEROF_$(GASNET_CXX_FAMILY))
 
 TEST_FLAGS_ISSUE547_Clang=-Wno-self-move
+TEST_FLAGS_ISSUE547_GNU=-Wno-self-move
 export TEST_FLAGS_ISSUE547=$(TEST_FLAGS_ISSUE547_$(GASNET_CXX_FAMILY))
 
 # default "fast floating point mode" in recent oneAPI compilers leads to nuisance warnings
