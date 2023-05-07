@@ -195,15 +195,14 @@ the `upcxx-ci/dev-ci/*` scripts can be run in place.
 The `upcxx` git repo contains a 1-line `.gitlab-ci.yml` which just includes a
 complete configuration file in the same `upcxx-ci` git repo described in the
 preceding section.  This is usable only if you have an account on the
-[ALCF GitLab server](https://gitlab-ci.alcf.anl.gov/).  If you want access,
-you should contact Paul to initiate an account request as the project PI.
+[LBL GitLab server](https://socks.lbl.gov/).  Contact Pagoda project management for access.
 
 There is
 [documentation](https://bitbucket.org/berkeleylab/upcxx-ci/src/master/gitlab-ci.md)
 available describing the various settings to control the CI pipelines.
 Additionally, since the UI provided by GitLab for launching CI pipelines is
 "minimal" (to be kind), we have a
-[frontend](https://upcxx-bugs.lbl.gov/gitlab-ci/ci-form.html) to simplify
+[frontend](https://upcxx-bugs.lbl.gov/gitlab-ci/ci-form-socks.html) to simplify
 composition of GitLab CI pipeline launch requests.
   
 ## Internal-Only Make Options
