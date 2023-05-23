@@ -384,17 +384,6 @@ namespace upcxx {
   }
   
   namespace detail {
-
-    template<typename Results, typename Promise>
-    struct lpc_initiator_finish {
-      Results results_;
-      Promise *pro_;
-      
-      void operator()() {
-        promise_fulfill_result(pro_, std::move(results_));
-        pro_->dropref();
-      }
-    };
     
     template<typename Promise>
     struct lpc_recipient_executed {
@@ -403,14 +392,12 @@ namespace upcxx {
       
       template<typename ...Args>
       void operator()(Args &&...args) {
-        using results_t = typename detail::decay_tupled_rrefs<std::tuple<Args...>>::type;
-        
-        initiator_->lpc_ff(
-          lpc_initiator_finish<results_t, Promise>{
-            results_t{std::forward<Args>(args)...},
-            pro_
-          }
-        );
+        pro_->base_header_result.construct_results(std::forward<Args>(args)...);
+
+        the_persona_tls.enqueue_quiesced_promise(
+            *initiator_, progress_level::user,
+            /*move ref*/pro_, /*result*/1 + /*anon*/0,
+            /*known_active=*/std::false_type{});
       }
     };
     
