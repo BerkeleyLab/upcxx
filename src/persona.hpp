@@ -98,51 +98,6 @@ namespace upcxx {
     template<typename Fn>
     void lpc_ff(Fn &&fn);
   
-  private:
-    template<typename Results, typename Promise>
-    struct lpc_initiator_finish {
-      Results results_;
-      Promise *pro_;
-      
-      void operator()() {
-        pro_->fulfill_result(std::move(results_));
-        delete pro_;
-      }
-    };
-    
-    template<typename Promise>
-    struct lpc_recipient_executed {
-      persona *initiator_;
-      Promise *pro_;
-      
-      template<typename ...Args>
-      void operator()(Args &&...args) {
-        using results_t = typename detail::decay_tupled_rrefs<std::tuple<Args...>>::type;
-        
-        initiator_->lpc_ff(
-          lpc_initiator_finish<results_t, Promise>{
-            results_t{std::forward<Args>(args)...},
-            pro_
-          }
-        );
-      }
-    };
-    
-    template<typename Fn, typename Promise>
-    struct lpc_recipient_execute {
-      persona *initiator_;
-      Promise *pro_;
-      Fn fn_;
-      
-      void operator()() {
-        detail::apply_as_future_then_lazy(
-          fn_,
-          lpc_recipient_executed<Promise>{initiator_, pro_}
-        );
-      }
-    };
-  
-  public:
     template<typename Fn>
     UPCXXI_NODISCARD
     auto lpc(Fn &&fn)
@@ -428,6 +383,52 @@ namespace upcxx {
       this->peer_inbox_[(int)progress_level::user].send(std::forward<Fn>(fn));
   }
   
+  namespace detail {
+
+    template<typename Results, typename Promise>
+    struct lpc_initiator_finish {
+      Results results_;
+      Promise *pro_;
+      
+      void operator()() {
+        pro_->fulfill_result(std::move(results_));
+        delete pro_;
+      }
+    };
+    
+    template<typename Promise>
+    struct lpc_recipient_executed {
+      persona *initiator_;
+      Promise *pro_;
+      
+      template<typename ...Args>
+      void operator()(Args &&...args) {
+        using results_t = typename detail::decay_tupled_rrefs<std::tuple<Args...>>::type;
+        
+        initiator_->lpc_ff(
+          lpc_initiator_finish<results_t, Promise>{
+            results_t{std::forward<Args>(args)...},
+            pro_
+          }
+        );
+      }
+    };
+    
+    template<typename Fn, typename Promise>
+    struct lpc_recipient_execute {
+      persona *initiator_;
+      Promise *pro_;
+      Fn fn_;
+      
+      void operator()() {
+        detail::apply_as_future_then_lazy(
+          fn_,
+          lpc_recipient_executed<Promise>{initiator_, pro_}
+        );
+      }
+    };
+  } // namespace detail
+  
   template<typename Fn>
   UPCXXI_NODISCARD
   auto persona::lpc(Fn &&fn)
@@ -446,7 +447,7 @@ namespace upcxx {
     auto ans = pro->get_future();
     
     this->lpc_ff(tls,
-      lpc_recipient_execute<typename std::decay<Fn>::type, results_promise>{
+      detail::lpc_recipient_execute<typename std::decay<Fn>::type, results_promise>{
         /*initiator*/tls.get_top_persona(),
         /*promise*/pro,
         /*fn*/std::forward<Fn>(fn)
