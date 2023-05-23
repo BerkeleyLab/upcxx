@@ -391,8 +391,8 @@ namespace upcxx {
       Promise *pro_;
       
       void operator()() {
-        pro_->fulfill_result(std::move(results_));
-        delete pro_;
+        promise_fulfill_result(pro_, std::move(results_));
+        pro_->dropref();
       }
     };
     
@@ -439,12 +439,12 @@ namespace upcxx {
     UPCXXI_ASSERT_INIT();
     
     using results_type = typename detail::lpc_results_type<Fn>;
-    using results_promise = detail::tuple_types_into_t<results_type, promise>;
+    using results_promise = detail::tuple_types_into_t<results_type, detail::future_header_promise>;
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
     results_promise *pro = new results_promise;
-    auto ans = pro->get_future();
+    auto ans = detail::promise_get_future(pro);
     
     this->lpc_ff(tls,
       detail::lpc_recipient_execute<typename std::decay<Fn>::type, results_promise>{
