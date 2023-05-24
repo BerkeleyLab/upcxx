@@ -71,22 +71,20 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
   
   #if !SKIP_OUTPUT
   if(upcxx::rank_me() == 0) {
-    std::cout<<std::left<<std::setw(50)<<title<< " \t(line " << line << ")" << std::endl;
-    std::cout<<"  T::ctors  = "<<ctors<<std::endl;
-    std::cout<<"  T::copies = "<<copies<<std::endl;
-    std::cout<<"  T::moves  = "<<moves<<std::endl;
-    std::cout<<"  T::dtors  = "<<dtors<<std::endl;
-    std::cout<<std::endl;
+    say("\n")<<std::left<<std::setw(50)<<title<< " \t(line " << line << ")\n" 
+           <<"  T::ctors  = "<<ctors<<"\n"
+           <<"  T::copies = "<<copies<<"\n"
+           <<"  T::moves  = "<<moves<<"\n"
+           <<"  T::dtors  = "<<dtors;
   }
   #endif
 
   #define CHECK(prop, ...) do { \
     if (!(prop)) { \
       success = false; \
-      if (!upcxx::rank_me()) \
-        std::cerr << "ERROR: failed check: " << #prop << "\n" \
-                  << title << ": " << __VA_ARGS__ \
-                  << " \t(line " << line << ")" << "\n" << std::endl; \
+      say() << "ERROR: failed check: " << #prop << "\n" \
+            << "    " << title << ": " << __VA_ARGS__ \
+            << " \t(line " << line << ")" << "\n"; \
     } \
   } while (0)
   CHECK(ctors == expected_ctors, "ctors="<<ctors<<" expected="<<expected_ctors);
@@ -111,6 +109,9 @@ bool done = false;
 
 struct Fn {
   T t;
+  Fn() : t(T()) { UPCXX_ASSERT_ALWAYS(done == false, "Constructed a Fn with done set"); }
+  Fn(const Fn &other) : t(other.t) { UPCXX_ASSERT_ALWAYS(done == false, "Copied an Fn with done set"); }
+  Fn(Fn &&other) : t(std::move(other.t)) { UPCXX_ASSERT_ALWAYS(done == false, "Moved an Fn with done set"); }
   void operator()() { set_done(); }
   // Deliberately NOT Serializable
   //UPCXX_SERIALIZED_FIELDS(t)
