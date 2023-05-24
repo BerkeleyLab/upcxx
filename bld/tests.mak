@@ -282,6 +282,7 @@ endif
 test_seq_threaded = \
 	VIEW \
 	LPC_BARRIER \
+	LPC_CTOR_TRACE \
 	LPC_STRESS
 $(foreach test,$(test_seq_threaded), \
   $(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) $(TEST_THREADED_FLAGS)))

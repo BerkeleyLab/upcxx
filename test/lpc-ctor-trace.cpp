@@ -1,6 +1,11 @@
 #include <iomanip>
+#include <thread>
 #include <upcxx/upcxx.hpp>
+#include <unistd.h>
 #include "util.hpp"
+
+// NOTE: This test is carefully written to be safe in either SEQ or PAR THREADMODE
+// See the rules documented in docs/implementation-defined.md
 
 // This test measures the number of copies/moves invoked on objects passed to
 // various UPC++ routines. The results asserted by this test are only indicative
@@ -11,7 +16,7 @@
 using std::uint64_t;
 
 struct T {
-  static int ctors, dtors, copies, moves;
+  static std::atomic<int> ctors, dtors, copies, moves;
   static void show_stats(int line, char const *title, int expected_ctors, int expected_copies,
                          int expected_moves=-1);
   static void reset_counts() { ctors = copies = moves = dtors = 0; } 
@@ -58,10 +63,7 @@ struct T {
 };
 static_assert(!upcxx::is_serializable<T>::value, "oops");
 
-int T::ctors = 0;
-int T::dtors = 0;
-int T::copies = 0;
-int T::moves = 0;
+std::atomic<int> T::ctors{0}, T::dtors{0}, T::copies{0}, T::moves{0};
 
 bool success = true;
 
@@ -87,6 +89,12 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
             << " \t(line " << line << ")" << "\n"; \
     } \
   } while (0)
+  int retry = 0;
+  while (dtors < ctors+copies+moves && ++retry < 5) {
+    // handle potential race where passive target persona hasn't finished destruction
+    say() << "Detected incomplete destruction, waiting...";
+    sleep(1);
+  }
   CHECK(ctors == expected_ctors, "ctors="<<ctors<<" expected="<<expected_ctors);
   CHECK(copies == expected_copies, "copies="<<copies<<" expected="<<expected_copies);
   CHECK(expected_moves == -1 || moves == expected_moves,
@@ -101,7 +109,7 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
 
 T global;
 
-bool done = false;
+std::atomic<bool> done{false};
 #define set_done() do { \
   UPCXX_ASSERT_ALWAYS(done == false, "Duplicate call to set_done()"); \
   done = true; \
@@ -120,7 +128,7 @@ static_assert(!upcxx::is_serializable<Fn>::value, "oops");
 
 void test_lpc(upcxx::persona &target, std::string context) {
   upcxx::barrier();
-  if(upcxx::rank_me() == 0) say() << "*** Testing LPC to " << context << " ***";
+  if(upcxx::rank_me() == 0) say("") << "\n*** Testing LPC to " << context << " ***\n";
   upcxx::barrier();
 
   int peer = (upcxx::rank_me() + 1) % upcxx::rank_n();
@@ -336,8 +344,26 @@ int main() {
   test_lpc(upcxx::current_persona(), "current_persona (self)"); 
   test_lpc(upcxx::default_persona(), "default_persona (held)");
 
+  // now test LPC to a persona held by a different thread
+  say() << "Starting worker thread...";
+  std::atomic<upcxx::persona *> worker_persona{nullptr};
+  std::thread worker_thread([&]() {
+     worker_persona = &upcxx::current_persona();
+     while (worker_persona) {
+       upcxx::progress();
+       sched_yield();
+     }
+     upcxx::discharge();
+     say() << "Exiting worker thread...";
+  });
+  upcxx::persona *target;
+  do { target = worker_persona; sched_yield(); } while (!target);
+  test_lpc(*target, "worker persona (cross-thread)");
+  worker_persona = nullptr; // kill switch
+  worker_thread.join();
+
   upcxx::barrier();
-  if(upcxx::rank_me() == 0) say() << "*** Testing future::then ***";
+  if(upcxx::rank_me() == 0) say("") << "\n*** Testing future::then ***\n";
   upcxx::barrier();
 
   // then
