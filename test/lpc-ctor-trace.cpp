@@ -118,14 +118,12 @@ struct Fn {
 };
 static_assert(!upcxx::is_serializable<Fn>::value, "oops");
 
-int main() {
-  upcxx::init();
-  print_test_header();
-
-  T::reset_counts(); // discount construction of global
+void test_lpc(upcxx::persona &target, std::string context) {
+  upcxx::barrier();
+  if(upcxx::rank_me() == 0) say() << "*** Testing LPC to " << context << " ***";
+  upcxx::barrier();
 
   int peer = (upcxx::rank_me() + 1) % upcxx::rank_n();
-  upcxx::persona &target = upcxx::current_persona();
 
   // lpc
   { 
@@ -215,6 +213,7 @@ int main() {
   upcxx::dist_object<upcxx::global_ptr<int>> dobj(upcxx::new_<int>(0));
   upcxx::global_ptr<int> gp = dobj.fetch(peer).wait();
   upcxx::global_ptr<int> gp_local = *dobj;
+  upcxx::barrier();
   int x = 0; int *lp = &x;
 
   { 
@@ -322,6 +321,24 @@ int main() {
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-loopback source_cx::as_lpc(Fn&&) ->", 1, 0, 6);
+ 
+  upcxx::delete_(gp_local);
+}
+
+int main() {
+  upcxx::init();
+  print_test_header();
+
+  T::reset_counts(); // discount construction of global
+
+  // first test LPC to personas on the primordial thread
+  UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() != &upcxx::default_persona());
+  test_lpc(upcxx::current_persona(), "current_persona (self)"); 
+  test_lpc(upcxx::default_persona(), "default_persona (held)");
+
+  upcxx::barrier();
+  if(upcxx::rank_me() == 0) say() << "*** Testing future::then ***";
+  upcxx::barrier();
 
   // then
   using upcxx::future;
