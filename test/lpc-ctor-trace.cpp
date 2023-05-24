@@ -131,6 +131,7 @@ void test_lpc(upcxx::persona &target, std::string context) {
   if(upcxx::rank_me() == 0) say("") << "\n*** Testing LPC to " << context << " ***\n";
   upcxx::barrier();
 
+  auto &initiator = upcxx::current_persona();
   int peer = (upcxx::rank_me() + 1) % upcxx::rank_n();
 
   // lpc
@@ -212,6 +213,45 @@ void test_lpc(upcxx::persona &target, std::string context) {
     f.wait_reference();
   }
   SHOW("lpc([]&&) T -> T const &", 1, 1, 2);
+
+  // futures along lpc return path
+  { 
+    auto f = target.lpc([]() { return upcxx::make_future<T>(global); });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T>", 0, 2, 2);
+
+  { 
+    auto f = target.lpc([]() { return upcxx::make_future<T&>(global); });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T&>", 0, 0, 0);
+
+  { 
+    auto f = target.lpc([]() { return upcxx::make_future<T>(T()); });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T>", 1, 1, 2);
+
+  { 
+    auto f = target.lpc([&]() { 
+       return initiator.lpc([]() {
+         return upcxx::make_future<T>(T()); 
+       });
+    });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T> chain", 1, 2, 2);
+
+  { 
+    auto f = target.lpc([&]() { 
+       return initiator.lpc([]() {
+         return upcxx::make_future<T>(T()); 
+       }).then([](const T& t) { return t; });
+    });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T> chain w/then", 1, 3, 5);
 
   // put: as_lpc
 
