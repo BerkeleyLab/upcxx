@@ -143,11 +143,43 @@ struct myarr { // a silly, but minimal container whose serialization ubound is d
 };
 void doit1() {
     if (!upcxx::rank_me()) std::cout << "\n Local UPC++ tests:" << std::endl;
-    TIME_OPERATION("upcxx::progress",upcxx::progress());
+    TIME_OPERATION("upcxx::progress (do-nothing)",upcxx::progress());
 
     upcxx::persona &selfp = upcxx::current_persona();
-    TIME_OPERATION("self.lpc(noop0)",selfp.lpc(&noop0).wait());
-    TIME_OPERATION("self.lpc(lamb0)",selfp.lpc([](){}).wait());
+    TIME_OPERATION("self.lpc(noop0) latency",selfp.lpc(&noop0).wait());
+    TIME_OPERATION("self.lpc(lamb0) latency",selfp.lpc([](){}).wait());
+    {
+      static std::int64_t sent=0,recv=0;
+      { std::vector<upcxx::future<>> fs; fs.reserve(iters);
+        TIME_OPERATION_FULL("self.lpc(lamb0) inv. throughput", {},
+                       fs.push_back(selfp.lpc([](){}));
+                    , { for (auto f: fs) f.wait(); 
+                        fs.clear(); /* releases futures */ }, 1);
+      }
+    #if 0
+      // Alternate version that under-estimates inv throughput:
+      TIME_OPERATION_FULL("self.lpc(lamb0) inv. throughput (lower-bound)", {},
+                       sent++;
+                       (void)selfp.lpc([](){recv++;}); /* deliberately drops ack future */
+                    , { while (recv<sent) { upcxx::progress(); } }, 1);
+      // following is correct but incurs alot more overhead in practice:
+      TIME_OPERATION_FULL("self.lpc(lamb0) inv. throughput (upper-bound, future chain)", {},
+                       sent++;
+                       selfp.lpc([](){}).then([](){recv++;});
+                    , { while (recv<sent) { upcxx::progress(); } }, 1);
+    #endif
+
+      // lpc_ff
+      TIME_OPERATION_FULL("self.lpc_ff(lamb0) latency", {},
+                       sent++;
+                       selfp.lpc_ff([](){recv++;});
+                       while (recv<sent) { upcxx::progress(); } 
+                    , {}, 1);
+      TIME_OPERATION_FULL("self.lpc_ff(lamb0) inv. throughput", {},
+                       sent++;
+                       selfp.lpc_ff([](){recv++;});
+                    , { while (recv<sent) { upcxx::progress(); } }, 1);
+    }
 
     TIME_OPERATION("upcxx::rpc(self,noop0)",upcxx::rpc(self,&noop0).wait());
     TIME_OPERATION("upcxx::rpc(self,noop8)",upcxx::rpc(self,&noop8,0,0,0,0,0,0,0,0).wait());
