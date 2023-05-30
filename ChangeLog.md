@@ -22,6 +22,7 @@ Notable issues resolved
 * issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
 * issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1
 * issue #605: library build failure with GCC 13.1.0
+* spec issue 104: `discharge()` from the restricted context is an error
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 2023.3.0](docs/spec.pdf).
@@ -30,7 +31,10 @@ See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bu
 
 Breaking changes:
 
-* ...
+* Invoking `discharge()` from inside the restricted context is now forbidden,
+  where previously it could lead to deadlock. 
+* `discharge()` and `progress_required()` now default to selecting all personas
+  active with the calling thread. The optional argument can override this behavior.
 
 ### 2023.03.31: Release 2023.3.0
 
