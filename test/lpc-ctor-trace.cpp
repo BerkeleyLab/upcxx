@@ -1,6 +1,11 @@
 #include <iomanip>
+#include <thread>
 #include <upcxx/upcxx.hpp>
+#include <unistd.h>
 #include "util.hpp"
+
+// NOTE: This test is carefully written to be safe in either SEQ or PAR THREADMODE
+// See the rules documented in docs/implementation-defined.md
 
 // This test measures the number of copies/moves invoked on objects passed to
 // various UPC++ routines. The results asserted by this test are only indicative
@@ -11,7 +16,7 @@
 using std::uint64_t;
 
 struct T {
-  static int ctors, dtors, copies, moves;
+  static std::atomic<int> ctors, dtors, copies, moves;
   static void show_stats(int line, char const *title, int expected_ctors, int expected_copies,
                          int expected_moves=-1);
   static void reset_counts() { ctors = copies = moves = dtors = 0; } 
@@ -58,10 +63,7 @@ struct T {
 };
 static_assert(!upcxx::is_serializable<T>::value, "oops");
 
-int T::ctors = 0;
-int T::dtors = 0;
-int T::copies = 0;
-int T::moves = 0;
+std::atomic<int> T::ctors{0}, T::dtors{0}, T::copies{0}, T::moves{0};
 
 bool success = true;
 
@@ -71,24 +73,28 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
   
   #if !SKIP_OUTPUT
   if(upcxx::rank_me() == 0) {
-    std::cout<<std::left<<std::setw(50)<<title<< " \t(line " << line << ")" << std::endl;
-    std::cout<<"  T::ctors  = "<<ctors<<std::endl;
-    std::cout<<"  T::copies = "<<copies<<std::endl;
-    std::cout<<"  T::moves  = "<<moves<<std::endl;
-    std::cout<<"  T::dtors  = "<<dtors<<std::endl;
-    std::cout<<std::endl;
+    say("\n")<<std::left<<std::setw(50)<<title<< " \t(line " << line << ")\n" 
+           <<"  T::ctors  = "<<ctors<<"\n"
+           <<"  T::copies = "<<copies<<"\n"
+           <<"  T::moves  = "<<moves<<"\n"
+           <<"  T::dtors  = "<<dtors;
   }
   #endif
 
   #define CHECK(prop, ...) do { \
     if (!(prop)) { \
       success = false; \
-      if (!upcxx::rank_me()) \
-        std::cerr << "ERROR: failed check: " << #prop << "\n" \
-                  << title << ": " << __VA_ARGS__ \
-                  << " \t(line " << line << ")" << "\n" << std::endl; \
+      say() << "ERROR: failed check: " << #prop << "\n" \
+            << "    " << title << ": " << __VA_ARGS__ \
+            << " \t(line " << line << ")" << "\n"; \
     } \
   } while (0)
+  int retry = 0;
+  while (dtors < ctors+copies+moves && ++retry < 5) {
+    // handle potential race where passive target persona hasn't finished destruction
+    say() << "Detected incomplete destruction, waiting...";
+    sleep(1);
+  }
   CHECK(ctors == expected_ctors, "ctors="<<ctors<<" expected="<<expected_ctors);
   CHECK(copies == expected_copies, "copies="<<copies<<" expected="<<expected_copies);
   CHECK(expected_moves == -1 || moves == expected_moves,
@@ -103,7 +109,7 @@ void T::show_stats(int line, const char *title, int expected_ctors, int expected
 
 T global;
 
-bool done = false;
+std::atomic<bool> done{false};
 #define set_done() do { \
   UPCXX_ASSERT_ALWAYS(done == false, "Duplicate call to set_done()"); \
   done = true; \
@@ -111,20 +117,22 @@ bool done = false;
 
 struct Fn {
   T t;
+  Fn() : t(T()) { UPCXX_ASSERT_ALWAYS(done == false, "Constructed a Fn with done set"); }
+  Fn(const Fn &other) : t(other.t) { UPCXX_ASSERT_ALWAYS(done == false, "Copied an Fn with done set"); }
+  Fn(Fn &&other) : t(std::move(other.t)) { UPCXX_ASSERT_ALWAYS(done == false, "Moved an Fn with done set"); }
   void operator()() { set_done(); }
   // Deliberately NOT Serializable
   //UPCXX_SERIALIZED_FIELDS(t)
 };
 static_assert(!upcxx::is_serializable<Fn>::value, "oops");
 
-int main() {
-  upcxx::init();
-  print_test_header();
+void test_lpc(upcxx::persona &target, std::string context) {
+  upcxx::barrier();
+  if(upcxx::rank_me() == 0) say("") << "\n*** Testing LPC to " << context << " ***\n";
+  upcxx::barrier();
 
-  T::reset_counts(); // discount construction of global
-
+  auto &initiator = upcxx::current_persona();
   int peer = (upcxx::rank_me() + 1) % upcxx::rank_n();
-  upcxx::persona &target = upcxx::current_persona();
 
   // lpc
   { 
@@ -163,7 +171,7 @@ int main() {
     auto f = target.lpc([]() -> T { return global; });
     f.wait_reference();
   }
-  SHOW("lpc([]&&) -> T", 0, 1, 3);
+  SHOW("lpc([]&&) -> T", 0, 1, 1);
 
   { 
     auto f = target.lpc([]() -> T const & { return global; });
@@ -176,21 +184,21 @@ int main() {
     auto f = target.lpc([&t]() -> T&& { return std::move(t); });
     f.wait_reference();
   }
-  SHOW("lpc([]&&) T& -> T&&", 1, 0, 3);
+  SHOW("lpc([]&&) T& -> T&&", 1, 0, 1);
 
   { 
     T t;
     auto f = target.lpc([&t]() -> T { return t; });
     f.wait_reference();
   }
-  SHOW("lpc([]&&) T& -> T", 1, 1, 3);
+  SHOW("lpc([]&&) T& -> T", 1, 1, 1);
 
   { 
     T t;
     auto f = target.lpc([t]() -> T { return t; });
     f.wait_reference();
   }
-  SHOW("lpc([]&&) T -> T", 1, 2, 5);
+  SHOW("lpc([]&&) T -> T", 1, 2, 3);
 
   { 
     T t;
@@ -206,6 +214,45 @@ int main() {
   }
   SHOW("lpc([]&&) T -> T const &", 1, 1, 2);
 
+  // futures along lpc return path
+  { 
+    auto f = target.lpc([]() { return upcxx::make_future<T>(global); });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T>", 0, 2, 2);
+
+  { 
+    auto f = target.lpc([]() { return upcxx::make_future<T&>(global); });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T&>", 0, 0, 0);
+
+  { 
+    auto f = target.lpc([]() { return upcxx::make_future<T>(T()); });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T>", 1, 1, 2);
+
+  { 
+    auto f = target.lpc([&]() { 
+       return initiator.lpc([]() {
+         return upcxx::make_future<T>(T()); 
+       });
+    });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T> chain", 1, 2, 2);
+
+  { 
+    auto f = target.lpc([&]() { 
+       return initiator.lpc([]() {
+         return upcxx::make_future<T>(T()); 
+       }).then([](const T& t) { return t; });
+    });
+    f.wait_reference();
+  }
+  SHOW("lpc([]&&) -> future<T> chain w/then", 1, 3, 5);
+
   // put: as_lpc
 
   using upcxx::operation_cx;
@@ -214,6 +261,7 @@ int main() {
   upcxx::dist_object<upcxx::global_ptr<int>> dobj(upcxx::new_<int>(0));
   upcxx::global_ptr<int> gp = dobj.fetch(peer).wait();
   upcxx::global_ptr<int> gp_local = *dobj;
+  upcxx::barrier();
   int x = 0; int *lp = &x;
 
   { 
@@ -321,6 +369,42 @@ int main() {
   while (!done) { upcxx::progress(); }
   done = false;
   SHOW("copy-loopback source_cx::as_lpc(Fn&&) ->", 1, 0, 6);
+ 
+  upcxx::delete_(gp_local);
+}
+
+int main() {
+  upcxx::init();
+  print_test_header();
+
+  T::reset_counts(); // discount construction of global
+
+  // first test LPC to personas on the primordial thread
+  UPCXX_ASSERT_ALWAYS(&upcxx::current_persona() != &upcxx::default_persona());
+  test_lpc(upcxx::current_persona(), "current_persona (self)"); 
+  test_lpc(upcxx::default_persona(), "default_persona (held)");
+
+  // now test LPC to a persona held by a different thread
+  say() << "Starting worker thread...";
+  std::atomic<upcxx::persona *> worker_persona{nullptr};
+  std::thread worker_thread([&]() {
+     worker_persona = &upcxx::current_persona();
+     while (worker_persona) {
+       upcxx::progress();
+       sched_yield();
+     }
+     upcxx::discharge();
+     say() << "Exiting worker thread...";
+  });
+  upcxx::persona *target;
+  do { target = worker_persona; sched_yield(); } while (!target);
+  test_lpc(*target, "worker persona (cross-thread)");
+  worker_persona = nullptr; // kill switch
+  worker_thread.join();
+
+  upcxx::barrier();
+  if(upcxx::rank_me() == 0) say("") << "\n*** Testing future::then ***\n";
+  upcxx::barrier();
 
   // then
   using upcxx::future;
