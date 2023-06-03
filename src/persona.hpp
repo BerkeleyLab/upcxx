@@ -736,10 +736,7 @@ namespace upcxx {
   }
   
   inline bool detail::persona_tls::progress_required() {
-    persona_tls &tls = *this;
-    persona_scope_raw *ps = tls.get_top_scope();
-    persona *p = ps->get_persona(tls);
-    return p->UPCXXI_INTERNAL_ONLY(undischarged_n_) != 0;
+    return this->progress_required(persona_scope::the_default_dummy_);
   }
   
   inline bool detail::persona_tls::progress_required(persona_scope &bottom) {
