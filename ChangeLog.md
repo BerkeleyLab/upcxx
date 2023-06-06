@@ -10,6 +10,7 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 General features/enhancements: (see specification and programmer's guide for full details)
 
 * Reduce CPU overheads along the round-trip LPC return path in `persona::lpc()`
+* Reduce CPU overheads for some small `copy()` operations involving CUDA/HIP GPUs
 
 Infrastructure changes:
 
