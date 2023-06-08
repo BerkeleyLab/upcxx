@@ -2070,8 +2070,14 @@ namespace {
   void burst_device(persona *per) {
   #if UPCXXI_CUDA_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
-      if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
-        UPCXXI_CU_CHECK(cuEventDestroy((CUevent)cb->event));
+      CUevent hEvent = (CUevent)cb->event;
+      if(cuEventQuery(hEvent) == CUDA_SUCCESS) {
+        // push onto device free list
+        auto st = (backend::cuda_heap_state *)cb->hs;
+        { std::lock_guard<detail::par_mutex> g(st->lock);
+          st->eventFreeList.push(hEvent);
+        }
+
         per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
         cb->execute_and_delete();
       }
@@ -2081,8 +2087,14 @@ namespace {
   #endif
   #if UPCXXI_HIP_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.peek()) {
-      if(hipEventQuery((hipEvent_t)cb->event) == hipSuccess) {
-        UPCXXI_HIP_CHECK(hipEventDestroy((hipEvent_t)cb->event));
+      hipEvent_t hEvent = (hipEvent_t)cb->event;
+      if(hipEventQuery(hEvent) == hipSuccess) {
+        // push onto device free list
+        auto st = (backend::hip_heap_state *)cb->hs;
+        { std::lock_guard<detail::par_mutex> g(st->lock);
+          st->eventFreeList.push(hEvent);
+        }
+
         per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.dequeue();
         cb->execute_and_delete();
       }

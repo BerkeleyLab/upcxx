@@ -199,9 +199,20 @@ extern void detail::hip_copy_local(int heap_d, void *buf_d, int heap_s, void con
   }
 
   hipEvent_t event;
-  UPCXXI_HIP_CHECK(hipEventCreateWithFlags(&event, hipEventDisableTiming));
+  st->lock.lock();
+  if (!st->eventFreeList.empty()) { // reuse when possible to avoid high construction overheads
+    event = st->eventFreeList.top();
+    st->eventFreeList.pop();
+    st->lock.unlock();
+  } else {
+    st->lock.unlock();
+
+    // Create an event object
+    UPCXXI_HIP_CHECK(hipEventCreateWithFlags(&event, hipEventDisableTiming));
+  }
   UPCXXI_HIP_CHECK(hipEventRecord(event, st->stream));
   cb->event = (void*)event;
+  cb->hs = st;
 
   persona *per = detail::the_persona_tls.get_top_persona();
   per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.enqueue(cb);
@@ -290,6 +301,15 @@ void hip_device::destroy(upcxx::entry_barrier eb) {
       auto alloc = static_cast<detail::device_allocator_core<hip_device>*>(st->alloc_base);
       alloc->release();
       UPCXX_ASSERT(!st->alloc_base);
+    }
+
+    { std::lock_guard<detail::par_mutex> g(st->lock);
+      while (!st->eventFreeList.empty()) { // drain the free list
+        hipEvent_t hEvent = st->eventFreeList.top();
+        st->eventFreeList.pop();
+
+        UPCXXI_HIP_CHECK(hipEventDestroy(hEvent));
+      }
     }
 
     UPCXXI_HIP_CHECK_ALWAYS(hipStreamDestroy(st->stream));
