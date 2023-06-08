@@ -409,7 +409,7 @@ namespace upcxx {
       
       void operator()() {
         detail::apply_as_future_then_lazy(
-          fn_,
+          std::move(fn_),
           lpc_recipient_executed<Promise>{initiator_, pro_}
         );
       }

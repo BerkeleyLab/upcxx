@@ -23,6 +23,7 @@ Notable issues resolved
 * issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
 * issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1
 * issue #605: library build failure with GCC 13.1.0
+* issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
 * spec issue 104: `discharge()` from the restricted context is an error
 
 This library release conforms to the
