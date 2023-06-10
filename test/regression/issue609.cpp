@@ -264,6 +264,8 @@ int main() {
 
   delete_(gp);
 
+  print_test_success();
+
   upcxx::finalize();
   return 0;
 }
