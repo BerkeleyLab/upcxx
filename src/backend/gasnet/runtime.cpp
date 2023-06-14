@@ -293,10 +293,11 @@ namespace {
 
     void *segment_base = 0;
     size_t segment_size = 0;
-    int ok = gex_Segment_QueryBound(
-        world_tm, backend::rank_me, &segment_base, nullptr, &segment_size
+    gex_Event_Wait(
+      gex_EP_QueryBoundSegmentNB(
+        world_tm, backend::rank_me, &segment_base, nullptr, &segment_size, 0
+      )
     );
-    UPCXX_ASSERT_ALWAYS(ok == GASNET_OK);
 
     if (upcxxi_upc_is_linked()) {
       static bool firstcall = true;
@@ -947,12 +948,15 @@ void init_localheap_tables(void) {
     owner_vbase_vp = local_vbase_vp = 0;
     size = 0;
 
-    gex_Segment_QueryBound(
-      /*team*/world_tm,
-      /*rank*/backend::pshm_peer_lb + p,
-      &owner_vbase_vp, 
-      &local_vbase_vp, 
-      &size
+    gex_Event_Wait( 
+      gex_EP_QueryBoundSegmentNB(
+        /*team=*/world_tm,
+        /*rank=*/backend::pshm_peer_lb + p,
+        &owner_vbase_vp, 
+        &local_vbase_vp, 
+        &size,
+        /*flags=*/0
+      )
     );
     owner_vbase = reinterpret_cast<char*>(owner_vbase_vp);
     local_vbase = reinterpret_cast<char*>(local_vbase_vp);
