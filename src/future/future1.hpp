@@ -137,7 +137,8 @@ namespace upcxx {
       this->impl_ = static_cast<future1<Kind1,T...>&&>(that).impl_;
       return *this;
     }
-    
+   
+    UPCXXI_DEPRECATED("future::ready() function name is deprecated since 2023.3.5, use future::is_ready() instead")
     bool ready() const {
       return impl_.ready();
     }
