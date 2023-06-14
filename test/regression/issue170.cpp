@@ -14,7 +14,7 @@ int main() {
   assert(id != world().id());
   
   future<team &> f = id.when_here();
-  assert(f.ready());
+  assert(f.is_ready());
   assert(&f.result() == &t);
 
   team &t1 = id.here();

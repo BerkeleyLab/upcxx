@@ -189,9 +189,9 @@ int main() {
             source_cx::as_lpc(current_persona(), t)
             , [](view<char> const &v) {}, big_view);
           });
-      if (!sp.finalize().ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
+      if (!sp.finalize().is_ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
       sp2.fulfill_result(42);
-      if (!sp2.get_future().ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
+      if (!sp2.get_future().is_ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
     }
     tracker::check();
 
@@ -214,15 +214,15 @@ int main() {
             operation_cx::as_lpc(current_persona(), t) 
             , [](view<char> const &v) {}, big_view);
          });
-      if (!sp.finalize().ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
+      if (!sp.finalize().is_ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
       sp2.fulfill_result(42);
-      if (!sp2.get_future().ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
+      if (!sp2.get_future().is_ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
 
-      if (!p.finalize().ready()) say() << "ERROR: operation_cx::as_promise() completion was not cleaned up.";
+      if (!p.finalize().is_ready()) say() << "ERROR: operation_cx::as_promise() completion was not cleaned up.";
       p2.fulfill_result(42);
-      if (!p2.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>) completion was not cleaned up.";
+      if (!p2.get_future().is_ready()) say() << "ERROR: operation_cx::as_promise(promise<int>) completion was not cleaned up.";
       p3.fulfill_result(42);
-      if (!p3.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>)x2 completion was not cleaned up.";
+      if (!p3.get_future().is_ready()) say() << "ERROR: operation_cx::as_promise(promise<int>)x2 completion was not cleaned up.";
     }
     tracker::check();
 
@@ -245,14 +245,14 @@ int main() {
             operation_cx::as_lpc(current_persona(), t) 
             , [](view<char> const &v) { return 0; }, big_view);
          });
-      if (!sp.finalize().ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
+      if (!sp.finalize().is_ready()) say() << "ERROR: source_cx::as_promise() completion was not cleaned up.";
       sp2.fulfill_result(42);
-      if (!sp2.get_future().ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
+      if (!sp2.get_future().is_ready()) say() << "ERROR: source_cx::as_promise(promise<int>) completion was not cleaned up.";
 
       p2.fulfill_result(42); // crash here indicates erroneous fulfillment
-      if (!p2.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>) completion was not cleaned up.";
+      if (!p2.get_future().is_ready()) say() << "ERROR: operation_cx::as_promise(promise<int>) completion was not cleaned up.";
       p3.fulfill_result(42); // crash here indicates erroneous fulfillment
-      if (!p3.get_future().ready()) say() << "ERROR: operation_cx::as_promise(promise<int>)x2 completion was not cleaned up.";
+      if (!p3.get_future().is_ready()) say() << "ERROR: operation_cx::as_promise(promise<int>)x2 completion was not cleaned up.";
     }
     tracker::check();
 

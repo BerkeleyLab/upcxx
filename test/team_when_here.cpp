@@ -31,14 +31,14 @@ int main() {
   say() << "left constructor";
   constructed = true;
   team_id id = t.id(); 
-  UPCXX_ASSERT_ALWAYS(id.when_here().ready());
+  UPCXX_ASSERT_ALWAYS(id.when_here().is_ready());
   UPCXX_ASSERT_ALWAYS(&id.here() == &t);
 
   if (rank_me() != 0) {
     rpc(0, [](team_id id, int src) {
       say() << "began RPC callback from " << src;
       future<team&> f2 = id.when_here();
-      //UPCXX_ASSERT_ALWAYS(!f2.ready());
+      //UPCXX_ASSERT_ALWAYS(!f2.is_ready());
       return f2.then([=](team &t2) { 
         say() << "when_here callback from " << src; 
         UPCXX_ASSERT_ALWAYS(in_progress());
@@ -47,7 +47,7 @@ int main() {
         UPCXX_ASSERT_ALWAYS(&t2 == &t);
         UPCXX_ASSERT_ALWAYS(&id.here() == &t);
         future<team&> f3 = id.when_here();
-        UPCXX_ASSERT_ALWAYS(f3.ready());
+        UPCXX_ASSERT_ALWAYS(f3.is_ready());
         UPCXX_ASSERT_ALWAYS(&f3.result() == &t);
       });
     }, id, rank_me()).wait();
@@ -60,7 +60,7 @@ int main() {
   t.destroy();
   #if 0 // currently prohibited
   auto fd = id.when_here();
-  UPCXX_ASSERT_ALWAYS(!fd.ready());
+  UPCXX_ASSERT_ALWAYS(!fd.is_ready());
   #endif
 
   print_test_success();

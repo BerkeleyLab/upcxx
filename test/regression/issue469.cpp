@@ -3,7 +3,7 @@
 using namespace upcxx;
 
 static void check(const future<int, double, char, int> &fut) {
-  UPCXX_ASSERT_ALWAYS(fut.ready());
+  UPCXX_ASSERT_ALWAYS(fut.is_ready());
   auto [i, d, c, j] = fut.wait();
   UPCXX_ASSERT_ALWAYS(i == 3);
   UPCXX_ASSERT_ALWAYS(d == 3.5);
@@ -12,7 +12,7 @@ static void check(const future<int, double, char, int> &fut) {
 }
 
 static void ref_check(const future<int, double, char, int> &fut) {
-  UPCXX_ASSERT_ALWAYS(fut.ready());
+  UPCXX_ASSERT_ALWAYS(fut.is_ready());
   auto [i, d, c, j] = fut.wait_reference();
   UPCXX_ASSERT_ALWAYS(i == 3);
   UPCXX_ASSERT_ALWAYS(d == 3.5);

@@ -51,7 +51,7 @@ future<A> f19;
 future<A> f20 = make_future(A{});
 
 static void check(const future<int, double, char, int, int, int> &fut) {
-  UPCXX_ASSERT_ALWAYS(fut.ready());
+  UPCXX_ASSERT_ALWAYS(fut.is_ready());
   int i, j, k, m;
   double d;
   char c;
@@ -70,7 +70,7 @@ int main() {
   init();
   print_test_header();
 
-  UPCXX_ASSERT_ALWAYS(!f0.ready());
+  UPCXX_ASSERT_ALWAYS(!f0.is_ready());
   check(f8);
   check(f9);
   check(f10);

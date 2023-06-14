@@ -27,13 +27,13 @@ void test(bool bypass, bool op_eager, bool src_eager,
           upcxx::atomic_domain<std::int64_t> &ad) {
 #define CHECK_READY(fut, eagerness) \
   ([=]() { \
-    auto ready = fut.ready(); \
+    auto ready = fut.is_ready(); \
     UPCXX_ASSERT_ALWAYS((ready <= eagerness) && \
                         (ready >= (bypass && eagerness)), \
     "ready()="<<ready<<" eagerness="<<eagerness<<" bypass="<<bypass); \
   })()
 #define CHECK_RESULT(fut, expected) \
-  UPCXX_ASSERT_ALWAYS((fut.ready() ? fut.result() : fut.wait()) == expected)
+  UPCXX_ASSERT_ALWAYS((fut.is_ready() ? fut.result() : fut.wait()) == expected)
 
   // reset values
   upcxx::rput(std::int64_t(0), gptr).wait();
