@@ -25,6 +25,7 @@ Notable issues resolved
 * issue #605: library build failure with GCC 13.1.0
 * issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
 * spec issue 104: `discharge()` from the restricted context is an error
+* spec issue 206: Add `future::is_ready()` as a synonym for `future::ready()`
 
 This library release conforms to the
 [UPC++ v1.0 Specification, Revision 2023.3.0](docs/spec.pdf).
@@ -37,6 +38,9 @@ Breaking changes:
   where previously it could lead to deadlock. 
 * `discharge()` and `progress_required()` now default to selecting all personas
   active with the calling thread. The optional argument can override this behavior.
+* Member function `future::ready()` has been renamed to `future::is_ready()`, for
+  consistency with similar function names elsewhere in the library. 
+  The old function name is now deprecated and may be removed in a future release. 
 
 ### 2023.03.31: Release 2023.3.0
 
