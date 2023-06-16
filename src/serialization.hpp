@@ -152,6 +152,8 @@ namespace upcxx {
         return new (ptr_) value_type{std::forward<Args>(args)...};
       }
       // implicit conversion to allow legacy definition of deserialize()
+      UPCXXI_DEPRECATED("Invoking custom deserialization callback using legacy deserialize(Reader, void *) signature, DEPRECATED since 2022.9.0. "
+                        "Please provide a deserialization callback conforming to the new deserialize(Reader,Storage) signature.")
       operator void*() const {
         return ptr_;
       }
