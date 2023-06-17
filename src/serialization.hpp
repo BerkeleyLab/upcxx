@@ -2003,8 +2003,11 @@ namespace upcxx {
     // since arrays are not Serializable, we only support
     // deserializing into raw memory, which is what is needed by
     // UPCXX_DESERIALIZED_FIELDS
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *raw) {
+    // However, we need to provide the Storage overload of
+    // deserialize to avoid the deprecation warning on the old signature.
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage storage) {
+      void *raw = storage.unwrap(detail::internal_only{});
       return reinterpret_cast<T1(*)[n]>(
         r.template read_sequence_into<base_elem_type_>(raw, base_elem_count_)
       );
