@@ -310,6 +310,15 @@ $(foreach test,$(test_zero_length_rma), \
   $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) UPCXX_WARN_EMPTY_RMA=0))
 
 #
+# Section 5.
+# Known failures such as:
+# export TEST_KCF_FOO_par_ANY_ANY='Reason foo.cpp fails to compile in par mode'
+# export TEST_KRF_BAR_ANY_ANY_ofi='Reason bar.cpp fails to run on ofi-conduit'
+# export TEST_KRF_BAZ_seq_opt_ANY='Reason test-baz-seq-opt-* fais to run'
+# export TEST_KRF_QUX='Reason qux.cpp always fais to run'
+#
+
+#
 # End of configuration
 #
 
