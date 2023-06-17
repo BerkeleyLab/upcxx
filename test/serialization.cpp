@@ -1,3 +1,10 @@
+// correctness test for serialization
+
+// this test deliberately invokes the deprecated deserialize() interface to
+// ensure it remains functional. The following disables the deprecation warning:
+#undef UPCXX_USE_DEPRECATED
+#define UPCXX_USE_DEPRECATED 0
+
 #include "util.hpp"
 
 using namespace std;

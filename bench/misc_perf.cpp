@@ -133,9 +133,9 @@ struct myarr { // a silly, but minimal container whose serialization ubound is d
      static void serialize (Writer& writer, myarr const & object) {
        writer.write_sequence(object.data, object.data+sz);
      }
-     template<typename Reader>
-     static myarr* deserialize(Reader& reader, void* storage) {
-       myarr *r = ::new(storage) myarr;
+     template<typename Reader, typename Storage>
+     static myarr* deserialize(Reader& reader, Storage storage) {
+       myarr *r = storage.construct();
        reader.template read_sequence_into<char>(r->data, sz);
        return r;
      }

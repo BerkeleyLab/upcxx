@@ -18,9 +18,9 @@ struct C {
     static void serialize(Writer &w, const C &c) {
       w.write_sequence(c.as, c.as + 7, 7);
     }
-    template<typename Reader>
-    static C* deserialize(Reader &r, void *storage) {
-      C *c = new(storage) C;
+    template<typename Reader, typename Storage>
+    static C* deserialize(Reader &r, Storage storage) {
+      C *c = storage.construct();
       r.template read_sequence_into<A>(c->as, 7);
       return c;
     }

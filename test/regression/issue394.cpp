@@ -13,10 +13,10 @@ struct A {
     static void serialize(Writer &w, const A &a) {
       w.write(a.x);
     }
-    template<typename Reader>
-    static B* deserialize(Reader &r, void *spot) {
+    template<typename Reader, typename Storage>
+    static B* deserialize(Reader &r, Storage storage) {
       int x = r.template read<int>();
-      return new(spot) B{x};
+      return storage.construct(x);
     }
   };
 };

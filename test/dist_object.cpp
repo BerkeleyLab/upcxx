@@ -16,9 +16,9 @@ struct asym_type {
     static void serialize(W &w, asym_type const &x) {
       w.template write<int>(x.i);
     }
-    template<typename R>
-    static int* deserialize(R &r, void *spot) {
-      return ::new (spot) int(r.template read<int>());
+    template<typename R, typename Storage>
+    static int* deserialize(R &r, Storage storage) {
+      return storage.construct(r.template read<int>());
     }
   };
 };
