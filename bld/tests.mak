@@ -318,6 +318,10 @@ $(foreach test,$(test_zero_length_rma), \
 # export TEST_KRF_QUX='Reason qux.cpp always fais to run'
 #
 
+ifeq ($(UPCXX_VALGRIND),1)
+export TEST_KRF_ISSUE478='Issue 536: Unfulfilled promise leaks memory if it has a dependent future created by then() or when_all()'
+endif
+
 #
 # End of configuration
 #
