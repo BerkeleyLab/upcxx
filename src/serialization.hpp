@@ -152,6 +152,8 @@ namespace upcxx {
         return new (ptr_) value_type{std::forward<Args>(args)...};
       }
       // implicit conversion to allow legacy definition of deserialize()
+      UPCXXI_DEPRECATED("Invoking custom deserialization callback using legacy deserialize(Reader, void *) signature, DEPRECATED since 2022.9.0. "
+                        "Please provide a deserialization callback conforming to the new deserialize(Reader,Storage) signature.")
       operator void*() const {
         return ptr_;
       }
@@ -2001,8 +2003,11 @@ namespace upcxx {
     // since arrays are not Serializable, we only support
     // deserializing into raw memory, which is what is needed by
     // UPCXX_DESERIALIZED_FIELDS
-    template<typename Reader>
-    static deserialized_type* deserialize(Reader &r, void *raw) {
+    // However, we need to provide the Storage overload of
+    // deserialize to avoid the deprecation warning on the old signature.
+    template<typename Reader, typename Storage>
+    static deserialized_type* deserialize(Reader &r, Storage storage) {
+      void *raw = storage.unwrap(detail::internal_only{});
       return reinterpret_cast<T1(*)[n]>(
         r.template read_sequence_into<base_elem_type_>(raw, base_elem_count_)
       );

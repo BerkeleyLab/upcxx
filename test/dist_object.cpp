@@ -16,9 +16,9 @@ struct asym_type {
     static void serialize(W &w, asym_type const &x) {
       w.template write<int>(x.i);
     }
-    template<typename R>
-    static int* deserialize(R &r, void *spot) {
-      return ::new (spot) int(r.template read<int>());
+    template<typename R, typename Storage>
+    static int* deserialize(R &r, Storage storage) {
+      return storage.construct(r.template read<int>());
     }
   };
 };
@@ -99,7 +99,7 @@ int main() {
           UPCXX_ASSERT_ALWAYS(his1.id() != his2.id());
           dist_id<int> const idc = his1.id();
           future<dist_object<int>&> f = idc.when_here();
-          UPCXX_ASSERT_ALWAYS(f.ready());
+          UPCXX_ASSERT_ALWAYS(f.is_ready());
           UPCXX_ASSERT_ALWAYS(&f.result() == &his1);
           // issue 312:
           //UPCXX_ASSERT_ALWAYS(&idc.here() == &his1);
@@ -115,7 +115,7 @@ int main() {
     UPCXX_ASSERT_ALWAYS(f.wait() == expect);
     UPCXX_ASSERT_ALWAYS(f.wait<0>() == expect);
     UPCXX_ASSERT_ALWAYS(std::get<0>(f.wait_tuple()) == expect);
-    UPCXX_ASSERT_ALWAYS(f.ready());
+    UPCXX_ASSERT_ALWAYS(f.is_ready());
     UPCXX_ASSERT_ALWAYS(f.result() == expect);
     UPCXX_ASSERT_ALWAYS(f.result<0>() == expect);
     UPCXX_ASSERT_ALWAYS(std::get<0>(f.result_tuple()) == expect);

@@ -300,7 +300,7 @@ int main() {
                 if(0 == iters%PROGRESS_PERIOD) {
                   upcxx::progress();
                   
-                  while(!futs.empty() && futs.front().ready())
+                  while(!futs.empty() && futs.front().is_ready())
                     futs.pop_front();
                 }
               }

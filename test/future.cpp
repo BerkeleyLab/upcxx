@@ -226,7 +226,7 @@ int main() {
   static_assert(std::is_same<tuple<bool,int>,decltype(make_future(true,1).result_tuple())>::value, "uh-oh");
   static_assert(std::is_same<tuple<bool,int>,decltype(make_future(true,1).wait_tuple())>::value, "uh-oh");
   
-  UPCXX_ASSERT_ALWAYS(ans2.ready(), "Answer is not ready");
+  UPCXX_ASSERT_ALWAYS(ans2.is_ready(), "Answer is not ready");
   cout << "fib("<<(2*ans1.result())<<") = "<<ans2.result()<<'\n';
   UPCXX_ASSERT_ALWAYS(ans2.result() == 987, "expected 987, got " << ans2.result());
   

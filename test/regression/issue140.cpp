@@ -63,7 +63,7 @@ int main() {
         ps = new persona_scope(master_persona());  // re-acquire master
       #endif
     } else {
-      while (!done.ready()) progress();
+      while (!done.is_ready()) progress();
     }
 
     barrier();

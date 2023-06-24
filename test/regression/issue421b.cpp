@@ -19,9 +19,9 @@ struct A {
     static void serialize(Writer &w, const A &a) {
       w.write(a.fn);
     }
-    template<typename Reader>
-    static B* deserialize(Reader &r, void *spot) {
-      return new(spot) B{r.template read<B>()};
+    template<typename Reader, typename Storage>
+    static B* deserialize(Reader &r, Storage storage) {
+      return storage.construct(r.template read<B>());
     }
   };
 };

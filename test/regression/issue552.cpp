@@ -26,9 +26,9 @@ struct foo {
     static void serialize(Writer &w, const foo &x) {
       w.write(x.data);
     }
-    template<typename Reader>
-    static foo* deserialize(Reader &r, void *spot) {
-      auto result = new(spot) foo;
+    template<typename Reader, typename Storage>
+    static foo* deserialize(Reader &r, Storage storage) {
+      auto result = storage.construct();
       r.template read_into<int[2][3]>(result->data);
       return result;
     }
@@ -59,9 +59,9 @@ struct bar {
     static void serialize(Writer &w, const bar &x) {
       w.write(x.data);
     }
-    template<typename Reader>
-    static bar* deserialize(Reader &r, void *spot) {
-      auto result = new(spot) bar;
+    template<typename Reader, typename Storage>
+    static bar* deserialize(Reader &r, Storage storage) {
+      auto result = storage.construct();
       r.template read_overwrite<std::string[2][3]>(result->data);
       return result;
     }

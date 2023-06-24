@@ -58,18 +58,18 @@ int main() {
   // misc tests
   int v = 0;
   future<int> bar = when_all(7);
-  assert(bar.ready());
+  assert(bar.is_ready());
   assert(bar.result() == 7);
   future<int> foo = when_all(v); v++;
-  assert(foo.ready());
+  assert(foo.is_ready());
   assert(foo.result() == 0);
   std::string s("s");
   future<std::string> baz = when_all(std::move(s));
-  assert(baz.ready());
+  assert(baz.is_ready());
   assert(baz.result() == "s");
   std::unique_ptr<int> up(new int(17));
   future<std::unique_ptr<int>> boof = when_all(std::move(up));
-  assert(boof.ready());
+  assert(boof.is_ready());
   assert(*boof.result_reference() == 17);
 
   barrier();

@@ -280,7 +280,7 @@ void check_general(bool has_virtual) {
   auto fut0 = upcxx_memberof_general(gp_o, f0);
   auto fut1 = upcxx_memberof_general(gp_o, f1);
   auto fut2 = upcxx_memberof_general(gp_o, f2);
-  bool all_ready = fut0.ready() && fut1.ready() && fut2.ready();
+  bool all_ready = fut0.is_ready() && fut1.is_ready() && fut2.is_ready();
   // the following is not guaranteed by spec, just tests the known implementation
   bool expect_ready = std::is_standard_layout<T>::value
                       || gp_o.where() == upcxx::rank_me()
@@ -339,7 +339,7 @@ void check_general(bool has_virtual) {
     auto fut2 = upcxx_memberof_general(gpu_o, f2);
     // the following is not guaranteed by spec, just tests the known implementation
     bool expect_ready = std::is_standard_layout<T>::value || gpu_o.where() == upcxx::rank_me();
-    bool all_ready = fut0.ready() && fut1.ready() && fut2.ready();
+    bool all_ready = fut0.is_ready() && fut1.is_ready() && fut2.is_ready();
     if (expect_ready) assert(all_ready);
     else assert(!all_ready);
     upcxx::global_ptr<char_t,Device::kind> gpu_f0 = fut0.wait();

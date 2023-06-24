@@ -18,7 +18,7 @@ int main() {
     upcxx::future<int> got = upcxx::rpc(nebr, [=]() { return upcxx::rank_me(); });
     
     int countdown = 10*1000*1000;
-    while(!got.ready() && --countdown)
+    while(!got.is_ready() && --countdown)
       upcxx::progress(upcxx::progress_level::internal);
     
     success = countdown == 0;
