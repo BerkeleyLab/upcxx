@@ -165,10 +165,7 @@ namespace upcxx {
       this->next_ = reinterpret_cast<persona_scope_raw*>(0x1);
     }
     
-    persona_scope(persona &persona, detail::persona_tls &tls);
-    
-    template<typename Mutex>
-    persona_scope(Mutex &lock, persona &persona, detail::persona_tls &tls);
+    void activate(persona &persona);
     
     static persona_scope the_default_dummy_;
     
@@ -481,52 +478,17 @@ namespace upcxx {
     tls.set_top_scope(this->next_);
     tls.set_top_persona(this->restore_top_persona_);
   }
-  
-  inline persona_scope::persona_scope(persona &persona):
-    persona_scope(persona, detail::the_persona_tls) {
-  }
-  
-  inline persona_scope::persona_scope(persona &p, detail::persona_tls &tls) {
+ 
+  inline persona_scope::persona_scope(persona &p) {
     UPCXXI_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(persona &p)");
     this->lock_ = nullptr;
     this->unlocker_ = nullptr;
-    
-    bool was_active = p.active();
-    UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
-    if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
-       UPCXX_ASSERT(tls.is_primordial_thread,
-        "When compiled in threadmode=seq, only the primordial thread may acquire the master persona.\n"
-        "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n"
-        "For details, please see `docs/implementation-defined.md`");
 
-    // point this scope at persona
-    this->set_persona(&p, tls);
-    
-    // set persona's owner thread to this thread
-    p.set_owner(&tls.default_persona);
-    
-    // push this scope on this thread's stack
-    this->next_ = tls.get_top_scope();
-    tls.set_top_scope(this);
-    tls.set_top_persona(&p);
-    
-    if(!was_active) {
-      this->next_unique_ = tls.get_top_unique_scope();
-      tls.set_top_unique_scope(this);
-    }
-    else
-      this->next_unique_ = reinterpret_cast<persona_scope_raw*>(0x1);
-    
-    UPCXX_ASSERT(p.active_with_caller(tls));
-  }
+    this->activate(p);
+  }  
   
   template<typename Mutex>
-  persona_scope::persona_scope(Mutex &lock, persona &p):
-    persona_scope(lock, p, detail::the_persona_tls) {
-  }
-  
-  template<typename Mutex>
-  persona_scope::persona_scope(Mutex &lock, persona &p, detail::persona_tls &tls) {
+  persona_scope::persona_scope(Mutex &lock, persona &p) {
     UPCXXI_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(Mutex &lock, persona &p)");
     this->lock_ = &lock;
     this->unlocker_ = (void(*)(void*))[](void *lock) {
@@ -535,6 +497,13 @@ namespace upcxx {
     
     lock.lock();
     
+    this->activate(p);
+  }
+  
+  // called by non-default persona_scope constructors:
+  inline void persona_scope::activate(persona &p) {
+    detail::persona_tls &tls = detail::the_persona_tls;
+
     bool was_active = p.active();
     UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
     if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
