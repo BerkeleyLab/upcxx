@@ -57,6 +57,46 @@ namespace {
 #endif
 
 GASNETT_COLD
+std::string hip_device::uuid(id_type device_id) {
+  UPCXXI_ASSERT_INIT();
+#if UPCXXI_HIP_ENABLED
+  int dev_n = hip_device::device_n(); // handles hip_init
+  UPCXX_ASSERT_ALWAYS(device_id >= 0 && device_id < dev_n);
+  #if HIP_VERSION_MAJOR > 5 || (HIP_VERSION_MAJOR == 5 && HIP_VERSION_MINOR >= 2)
+    union {
+      hipUUID uuid;
+      std::uint8_t bytes[16];
+    } u;
+    if (hipDeviceGetUuid(&u.uuid, device_id) == hipSuccess) {
+      std::stringstream ss;
+      ss << "GPU-";
+      #if __HIP_PLATFORM_NVIDIA__  
+        // NVIDIA GPss sse an 8-4-4-4-12 binary UUID
+        // e.g. see: nvidia-smi -L
+        int i = 0;
+        for (auto v : u.bytes) {
+          if (i == 4 || i == 6 || i == 8 || i == 10) ss << "-";
+          ss << std::setw(2) << std::setfill('0') << std::hex << (unsigned int)v;
+          i++;
+        }
+      #else
+        // AMD GPUs use an 8-byte textual UUID
+        // e.g. see: rocm-smi --showuniqueid
+        for (char v : u.bytes) {
+          if (std::isprint(v)) ss << v;
+          else ss << '?';
+        }
+      #endif
+      return ss.str();
+    }
+  #endif
+  return "Unsupported query";
+#else
+  return "HIP support is disabled in this UPC++ install.";
+#endif
+}
+
+GASNETT_COLD
 std::string hip_device::kind_info() {
   UPCXXI_ASSERT_INIT();
 #if UPCXXI_HIP_ENABLED
@@ -96,6 +136,7 @@ std::string hip_device::kind_info() {
           ss << "\n    Compute capability equivalent: " << prop.major << "." << prop.minor;
         }
       }
+      ss << "\n    UUID: " << hip_device::uuid(d);
       ss << '\n';
     }
   }

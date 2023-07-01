@@ -47,6 +47,7 @@ namespace upcxx {
     }
 
     static std::string kind_info();
+    static std::string uuid(id_type);
 
     void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
 
