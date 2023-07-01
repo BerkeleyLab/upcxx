@@ -24,6 +24,7 @@ Notable issues resolved
 * issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1
 * issue #605: library build failure with GCC 13.1.0
 * issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
+* issue #613: Warnings from persona.hpp on progress_required() with GCC 13.1.0
 * spec issue 104: `discharge()` from the restricted context is an error
 * spec issue 206: Add `future::is_ready()` as a synonym for `future::ready()`
 
