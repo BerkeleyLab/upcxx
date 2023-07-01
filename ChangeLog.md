@@ -11,6 +11,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 * Reduce CPU overheads along the round-trip LPC return path in `persona::lpc()`
 * Reduce CPU overheads for some small `copy()` operations involving CUDA/HIP GPUs
+* New `*_device::uuid()` query for GPU hardware UUID
 
 Infrastructure changes:
 
@@ -23,6 +24,7 @@ Notable issues resolved
 * issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
 * issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1
 * issue #605: library build failure with GCC 13.1.0
+* issue #608: Add device UUID to `Device::kind_info()`
 * issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
 * issue #613: Warnings from persona.hpp on progress_required() with GCC 13.1.0
 * spec issue 104: `discharge()` from the restricted context is an error
