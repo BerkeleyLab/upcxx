@@ -117,6 +117,37 @@ namespace {
 #endif // UPCXXI_ZE_ENABLED
 
 GASNETT_COLD
+std::string ze_device::uuid(id_type device_id) {
+  UPCXXI_ASSERT_INIT();
+#if UPCXXI_ZE_ENABLED
+  int dev_n = ze_device::device_n(); // handles ze_init
+  UPCXX_ASSERT_ALWAYS(device_id >= 0 && device_id < dev_n);
+  return enumerate_ze_devices(
+    [&](id_type id, ze_device_handle_t zeDevice, ze_driver_handle_t zeDriver) -> std::string {
+      if (id == device_id) {
+        ze_device_properties_t prop{ ZE_STRUCTURE_TYPE_DEVICE_PROPERTIES };
+        if ( zeDeviceGetProperties(zeDevice, &prop) == ZE_RESULT_SUCCESS) {
+          std::stringstream ss;
+          // Intel GPUs use an 8-4-4-4-12 binary UUID
+          // see:  clinfo -a | grep UUID
+          int i = 0;
+          for (auto v : prop.uuid.id) {
+            if (i == 4 || i == 6 || i == 8 || i == 10) ss << "-";
+            ss << std::setw(2) << std::setfill('0') << std::hex << (unsigned int)v;
+            i++;
+          }
+          return ss.str();
+        } 
+        else return "Unsupported query";
+      } 
+      return {};
+    });
+#else
+  return "ZE support is disabled in this UPC++ install.";
+#endif
+}
+
+GASNETT_COLD
 std::string ze_device::kind_info() {
   UPCXXI_ASSERT_INIT();
 #if UPCXXI_ZE_ENABLED
@@ -191,6 +222,7 @@ std::string ze_device::kind_info() {
           SHOW_PROP(prop.coreClockRate << " MHz", "clock rate");
           SHOW_PROP(prop.maxMemAllocSize/(1024*1024.0) << " MiB", "maxMemAllocSize");
           SHOW_PROP(prop.maxHardwareContexts, "maxHardwareContexts");
+          SHOW_PROP(ze_device::uuid(id), "UUID");
           #undef SHOW_PROP
        }
        ze_device_memory_properties_t mprop { ZE_STRUCTURE_TYPE_DEVICE_MEMORY_PROPERTIES };

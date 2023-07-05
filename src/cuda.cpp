@@ -60,6 +60,42 @@ namespace {
 #endif
 
 GASNETT_COLD
+std::string cuda_device::uuid(id_type device_id) {
+  UPCXXI_ASSERT_INIT();
+#if UPCXXI_CUDA_ENABLED
+  int dev_n = cuda_device::device_n(); // handles cu_init
+  UPCXX_ASSERT_ALWAYS(device_id >= 0 && device_id < dev_n);
+  #if CUDA_VERSION >= 9020
+    union {
+      CUuuid uuid;
+      std::uint8_t bytes[16];
+    } u;
+    #if CUDA_VERSION >= 11040
+      if (cuDeviceGetUuid_v2(&u.uuid, device_id) == CUDA_SUCCESS)
+    #else
+      if (cuDeviceGetUuid(&u.uuid, device_id) == CUDA_SUCCESS) 
+    #endif
+      {
+        // NVIDIA GPUs use an 8-4-4-4-12 binary UUID
+        // e.g. see: nvidia-smi -L
+        std::stringstream ss;
+        ss << "GPU-";
+        int i = 0;
+        for (auto v : u.bytes) {
+          if (i == 4 || i == 6 || i == 8 || i == 10) ss << "-";
+          ss << std::setw(2) << std::setfill('0') << std::hex << (unsigned int)v;
+          i++;
+        }
+        return ss.str();
+      }
+  #endif
+  return "Unsupported query";
+#else
+  return "CUDA support is disabled in this UPC++ install.";
+#endif
+}
+
+GASNETT_COLD
 std::string cuda_device::kind_info() {
   UPCXXI_ASSERT_INIT();
 #if UPCXXI_CUDA_ENABLED
@@ -95,6 +131,7 @@ std::string cuda_device::kind_info() {
       if (cuDeviceTotalMem(&mem, d) == CUDA_SUCCESS && mem > 0) {
         ss << "\n    Total memory: " << mem/(1024*1024.0) << " MiB";
       }
+      ss << "\n    UUID: " << cuda_device::uuid(d);
       ss << '\n';
     }
   }
