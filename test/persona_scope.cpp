@@ -57,7 +57,7 @@ void check_active(bool have_my = false, bool have_master = false, bool have_s = 
     check_awc();
     check_progress();
     check_awc();
-};
+}
 
 void check(persona &base, persona_scope &base_scope) {
   
