@@ -191,6 +191,9 @@ namespace detail {
   #if __clang__ && __cplusplus < 201402
     // clang advertises the attribute in -std=c++11 mode and then warns about it with -Wall
     #undef UPCXX_USE_DEPRECATED
+  #elif __GNUC__ == 6 && __cplusplus < 201402
+    // g++ 6 (only) advertises the attribute in -std=c++11 mode and then warns about it with -pedantic
+    #undef UPCXX_USE_DEPRECATED
   #endif
 #endif // !defined(UPCXX_USE_DEPRECATED)
 #if UPCXX_USE_DEPRECATED
