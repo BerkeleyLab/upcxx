@@ -132,9 +132,10 @@ do-build-%: force
          fi ; \
 	 output=$(TEST_OUTPUT)/$${exe}-compile.out ;     \
 	 suffix="$${src##*.}";                             \
+	 upper_name=$$(basename $$src .$$suffix | tr '[a-z]-' '[A-Z]_'); \
 	 verbose_cmd='head -n 1' ;                         \
 	 if [[ $$suffix = cpp ]]; then                     \
-	   flags=TEST_FLAGS_$$(basename $$src .cpp | tr '[a-z]-' '[A-Z]_'); \
+	   flags=TEST_FLAGS_$$upper_name;                  \
 	   upcxx_cmd="$(UPCXX_BINDIR)/upcxx" ;             \
 	   if (( $(UPCXX_DRY_RUN) )); then upcxx_cmd="echo $$upcxx_cmd"; fi; \
 	   ( set -x ;                                      \
@@ -176,14 +177,32 @@ do-build-%: force
 	     printf 'Compiling %-60s SKIPPED\n' "$$exe"; \
 	     exit 0;                                     \
 	 fi;                                             \
+	 kv_stem=TEST_KCF_$$upper_name;                  \
+	 for known_var in $$(eval "echo $${kv_stem}_{$$threadmode,ANY}_{$(UPCXX_CODEMODE),ANY}_{$$network,ANY}") $$kv_stem; do \
+	   [[ -n $${!known_var} ]] && break;             \
+	 done;                                           \
+	 if [[ -n "$${!known_var}" ]]; then              \
+	    fail_type='KNOWN';                           \
+	    fail_reason=" - $${!known_var}";             \
+	    fail_result='known';                         \
+	    fail_sentinel='TEST_KNOWN_SENTINEL';         \
+	    fail_rc=0;                                   \
+	 else                                            \
+	    fail_type='FAILED';                          \
+	    fail_reason='';                              \
+	    fail_result='fail';                          \
+	    fail_sentinel='TEST_SENTINEL';               \
+	    fail_rc=1;                                   \
+	 fi;                                             \
 	 if [[ -f $$errc ]]; then : expect compile error ; \
 	   if [[ $$result == 0 ]]; then                  \
-	     $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-fail OUTPUT=$$output ; \
+	     $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-$$fail_result OUTPUT=$$output ; \
 	     head -n $(TEST_CERR_LIMIT) $$output ;       \
-	     printf 'Compiling %-30s FAILED: expected compile error, got success\n' "$$exe"; \
+	     printf 'Compiling %-60s %s: expected compile error, got success%s\n' \
+	            "$$exe" "$$fail_type" "$$fail_reason"; \
 	     rm -f "$$exe$(EXESUFFIX)";                  \
-	     [[ -n "$$TEST_SENTINEL" ]] && touch $$TEST_SENTINEL; \
-	     exit 1;                                     \
+	     [[ -n "$${!fail_sentinel}" ]] && touch $${!fail_sentinel}; \
+	     exit $$fail_rc;                             \
 	   else : match output to any line in .errc, each specifying a multi-line perl regexp ; \
 	     match=0 ;                                   \
 	     while IFS= read -r line ; do                \
@@ -199,11 +218,12 @@ do-build-%: force
 	       $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-pass OUTPUT=$$output ; \
 	       printf 'Compiling %-60s SUCCESS\n' "$$exe"; \
 	     else                                        \
-	       $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-fail OUTPUT=$$output ; \
+	       $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-$$fail_result OUTPUT=$$output ; \
 	       head -n $(TEST_CERR_LIMIT) $$output ;       \
-	       printf 'Compiling %-60s FAILED: compile error did not match expected pattern\n' "$$exe"; \
-	       [[ -n "$$TEST_SENTINEL" ]] && touch $$TEST_SENTINEL; \
-	       exit 1;                                   \
+	       printf 'Compiling %-60s %s: compile error did not match expected pattern%s\n' \
+	              "$$exe" "$$fail_type" "$$fail_reason"; \
+	       [[ -n "$${!fail_sentinel}" ]] && touch $${!fail_sentinel}; \
+	       exit $$fail_rc;                            \
 	     fi;                                         \
 	   fi;                                           \
 	 else : expect compile pass ;                    \
@@ -220,11 +240,11 @@ do-build-%: force
 	     $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-skip OUTPUT=$$output ; \
 	     printf 'Compiling %-60s SKIPPED\n' "$$exe"; \
 	   else                                          \
-	     $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-fail OUTPUT=$$output ; \
+	     $$MAKE $(MAKE_HERE) do-test-xml RESULT=compile-$$fail_result OUTPUT=$$output ; \
 	     head -n $(TEST_CERR_LIMIT) $$output ;       \
-	     printf 'Compiling %-60s FAILED\n' "$$exe";  \
-	     [[ -n "$$TEST_SENTINEL" ]] && touch $$TEST_SENTINEL; \
-	     exit 1;                                     \
+	     printf 'Compiling %-60s %s%s\n' "$$exe" "$$fail_type" "$$fail_reason"; \
+	     [[ -n "$${!fail_sentinel}" ]] && touch $${!fail_sentinel}; \
+	     exit $$fail_rc;                              \
 	   fi;                                           \
 	 fi; 
 
@@ -247,7 +267,8 @@ do-tests: force
 	 mkdir -p "$(TEST_OUTPUT)" ;                         \
 	 export TEST_SENTINEL=.tests_failed_$$$$;            \
 	 export TEST_WARNING_SENTINEL=.tests_warning_$$$$;   \
-	 rm -f $$TEST_SENTINEL $$TEST_WARNING_SENTINEL;      \
+	 export TEST_KNOWN_SENTINEL=.tests_known_$$$$;   \
+	 rm -f $$TEST_SENTINEL $$TEST_WARNING_SENTINEL $$TEST_KNOWN_SENTINEL;      \
 	 if [[ -n '$(filter -j%,$(MAKEFLAGS))' ]]; then      \
 	   rm -f $$TEST_SENTINEL;                            \
 	   $(MAKE) $(MAKE_HERE) -k -s $$targets;             \
@@ -256,13 +277,17 @@ do-tests: force
 	     rm -f $$TEST_WARNING_SENTINEL;                  \
 	     echo -e "\nGot WARNING compiling at least one test\n";\
 	   fi;                                               \
+	   if [[ -e $$TEST_KNOWN_SENTINEL ]]; then         \
+	     rm -f $$TEST_KNOWN_SENTINEL;                  \
+	     echo -e "\nGot KNOWN failure compiling at least one test\n";\
+	   fi;                                               \
 	   if [[ -e $$TEST_SENTINEL ]]; then                 \
 	     rm -f $$TEST_SENTINEL;                          \
 	     echo -e "\nFAILED to compile at least one test\n";\
 	     exit 1;                                         \
 	   fi;                                               \
 	 else                                                \
-	   total=0; failed=0; warned=0;                      \
+	   total=0; failed=0; warned=0; known=0;             \
 	   for target in $$targets; do                       \
 	     $(MAKE) $(MAKE_HERE) -s $$target;               \
 	     : $$((total += 1));                             \
@@ -274,17 +299,27 @@ do-tests: force
 	       rm -f $$TEST_WARNING_SENTINEL;                \
 	       : $$((warned += 1)) ;                         \
 	     fi;                                             \
+	     if [[ -e $$TEST_KNOWN_SENTINEL ]]; then         \
+	       rm -f $$TEST_KNOWN_SENTINEL;                  \
+	       : $$((known += 1)) ;                          \
+	     fi;                                             \
 	   done;                                             \
 	   echo -e "\nResult reports: $(TEST_OUTPUT)";       \
-           if [[ $$warned = 0 ]]; then                       \
-             warn_msg="";                                    \
-           else                                              \
-             warn_msg=" (Got WARNING on $$warned tests)";    \
-           fi;                                               \
-	   if [[ $$failed = 0 ]]; then                       \
-	     echo -e "\nPASSED compiling $$total tests$$warn_msg\n"; \
+	   if (( $$warned )); then                           \
+	     extra_msg="Got WARNING on $$warned tests";      \
 	   else                                              \
-	     echo -e "\nFAILED to compile $$failed of $$total tests$$warn_msg\n";\
+	     extra_msg='';                                   \
+	   fi;                                               \
+	   if (( $$known )); then                            \
+	     extra_msg+="$${extra_msg:+, }Got KNOWN on $$known tests";\
+	   fi;                                               \
+	   if [[ -n "$$extra_msg" ]]; then                   \
+	     extra_msg=" ($$extra_msg)";                     \
+	   fi;                                               \
+	   if [[ $$failed = 0 ]]; then                       \
+	     echo -e "\nPASSED compiling $$total tests$$extra_msg\n"; \
+	   else                                              \
+	     echo -e "\nFAILED to compile $$failed of $$total tests$$extra_msg\n";\
 	     exit 1;                                         \
 	   fi;                                               \
 	 fi
@@ -450,7 +485,7 @@ do-run-tests: force
 	     run_wrapper= ;                                             \
 	   fi;                                                          \
 	 fi;                                                            \
-	 total=0; failed=0; skipped=0;                                  \
+	 total=0; failed=0; skipped=0; known=0;                         \
 	 export UPCXX_SKIP_REBUILD=1;                                   \
 	 echo "Running tests with RANKS=$$ranks";                       \
 	 for test in $(call ALL_TESTS,$(NETWORKS)); do                  \
@@ -461,8 +496,11 @@ do-run-tests: force
 	      : $$((++skipped)); continue;                              \
            fi ; \
 	   echo "Running $$test"; : $$((++total));                      \
-	   conduit=$${test##*-};                                        \
-	   stem=$$(echo $$test | $(PERL) -pe 's/^test-//; s/-'$$conduit'$$//; s/-(opt|debug)$$//; s/-(seq|par)$$//'); \
+	   [[ $$test =~ ^test-(.*)-(seq|par)-(opt|debug)-([^-]*)$$ ]] || continue; \
+	   stem=$${BASH_REMATCH[1]};                                    \
+	   tmode=$${BASH_REMATCH[2]};                                   \
+	   cmode=$${BASH_REMATCH[3]};                                   \
+	   conduit=$${BASH_REMATCH[4]};                                 \
 	   if [[ -n '$(UPCXX_BINDIR)' ]]; then                          \
 	     runcmd='$(UPCXX_BINDIR)/upcxx-run';                        \
 	   else                                                         \
@@ -480,9 +518,10 @@ do-run-tests: force
 	   fi;                                                          \
 	   if (( $(UPCXX_DRY_RUN) )); then runcmd="echo $$runcmd"; fi;  \
 	   output=$(TEST_OUTPUT)/$$test-run.out ;                       \
+	   upper_name=$$(tr '[a-z]-' '[A-Z]_' <<<$$stem);               \
 	   (                                                            \
-	     test_args=TEST_ARGS_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');\
-	     test_env=TEST_ENV_$$(echo $$stem | tr '[a-z]-' '[A-Z]_');  \
+	     test_args=TEST_ARGS_$$upper_name;                          \
+	     test_env=TEST_ENV_$$upper_name;                            \
 	     if [[ -n "$${!test_env}" ]] ; then                         \
 	       test_env="env $${!test_env}";                            \
 	     else                                                       \
@@ -509,8 +548,19 @@ do-run-tests: force
 	     tail -n +$$firstout $$output | grep -e "Test result:" -e ERROR -e 'Caught a signal ' -e 'Caught a fatal signal' -e ': command not found' -e 'No such file or directory' ; \
 	     comment= ; \
 	     case $$exitcode in 124) comment=": probable timeout" ;; esac ; \
-	     echo "FAILED (exitcode=$$exitcode)$$comment"; : $$((++failed));     \
-	     result=fail;                                               \
+	     kv_stem=TEST_KRF_$$upper_name;                             \
+	     for known_var in $$(eval "echo $${kv_stem}_{$$tmode,ANY}_{$$cmode,ANY}_{$$conduit,ANY}") $$kv_stem; do \
+	       [[ -n $${!known_var} ]] && break;                        \
+	     done;                                                      \
+	     if [[ -n "$${!known_var}" ]]; then                             \
+	       echo "KNOWN (exitcode=$$exitcode)$$comment - $${!known_var}";\
+	       : $$((++known));                                         \
+	       fail_result=known;                                       \
+	     else                                                       \
+	       echo "FAILED (exitcode=$$exitcode)$$comment";            \
+	       : $$((++failed));                                        \
+	       result=fail;                                             \
+	     fi;                                                        \
 	   elif grep UPCXX_TEST_SKIPPED $$output; then                  \
 	     result=skip; : $$((++skipped));                            \
 	   else                                                         \
@@ -524,15 +574,21 @@ do-run-tests: force
 	   fi;                                                          \
 	 done;                                                          \
 	 echo -e "\nResult reports: $(TEST_OUTPUT)";                    \
-	 if [[ $$skipped = 0 ]]; then                                   \
-	   skip_msg="";                                                 \
+	 if (( $$skipped )); then                                       \
+	   extra_msg="$$skipped skipped";                               \
 	 else                                                           \
-	   skip_msg=" ($$skipped skipped)";                             \
+	   extra_msg='';                                                \
+	 fi;                                                            \
+	 if (( $$known )); then                                         \
+	   extra_msg+="$${extra_msg:+, }$$known known failures";        \
+	 fi;                                                            \
+	 if [[ -n "$$extra_msg" ]]; then                                \
+	   extra_msg=" ($$extra_msg)";                                  \
 	 fi;                                                            \
 	 if [[ $$failed = 0 ]]; then                                    \
-	   echo "PASSED running $$total tests$$skip_msg";               \
+	   echo "PASSED running $$total tests$$extra_msg";              \
 	 else                                                           \
-	   echo "FAILED running $$failed of $$total tests$$skip_msg";   \
+	   echo "FAILED running $$failed of $$total tests$$extra_msg";  \
 	   $(MAKE) failure TARGET=tests;                                \
 	 fi;                                                            \
 	 [[ $$failed = 0 ]] # exit code
@@ -555,19 +611,21 @@ do-test-xml: force
 	 testname=$${testname#test-} ; \
 	 target="$${output%.out}.xml" ; \
 	 suitename=$$(cut -d- -f1 <<<$(RESULT)); \
-	 skips=0; errors=0 ; failures=0 ; outtype= ; \
+	 known=0; skips=0; errors=0 ; failures=0 ; outtype= ; \
 	 case "$(RESULT)" in \
 	   compile-skip) skips=1;    outtype=skipped ;; \
 	   compile-fail) failures=1; outtype=failure ;; \
+	   compile-known) known=1;   outtype=known   ;; \
 	   run-skip)     skips=1;    outtype=skipped ;; \
 	   run-fail)     errors=1;   outtype=error   ;; \
+	   run-known)    known=1;    outtype=known   ;; \
 	   compile-pass) outtype=system-out ;; \
 	   run-pass)     outtype=system-out ;; \
 	 esac; \
 	 elapsed=$$($(PERL) -ne 'if (m/^real\s+(\d+(\.\d+)?)\s*$$/) { print " time=\"$$1\""; }' < $(OUTPUT) | tail -n 1); \
 	 echo -e '<?xml version="1.0" encoding="UTF-8"?>\n' \
 	         '<testsuite errors="'$$errors'" failures="'$$failures'" name="'$$suitename'" test-cases="1" tests="1">\n'\
-	         ' <testcase name="'"$$testname-$$suitename"'" skip="'$$skips'" tests="1"'"$$elapsed"'>' >$$target ; \
+	         ' <testcase name="'"$$testname-$$suitename"'" known="'$$known'" skip="'$$skips'" tests="1"'"$$elapsed"'>' >$$target ; \
 	 if [[ -n "$$outtype" ]] ; then \
 	   echo "    <$$outtype>" >>$$target ; \
 	   cat $$output | $(XML_ENCODE) >>$$target ; \
