@@ -133,6 +133,7 @@ do-build-%: force
 	 output=$(TEST_OUTPUT)/$${exe}-compile.out ;     \
 	 suffix="$${src##*.}";                             \
 	 upper_name=$$(basename $$src .$$suffix | tr '[a-z]-' '[A-Z]_'); \
+	 upper_name=$${upper_name#.};                      \
 	 verbose_cmd='head -n 1' ;                         \
 	 if [[ $$suffix = cpp ]]; then                     \
 	   flags=TEST_FLAGS_$$upper_name;                  \
@@ -519,6 +520,7 @@ do-run-tests: force
 	   if (( $(UPCXX_DRY_RUN) )); then runcmd="echo $$runcmd"; fi;  \
 	   output=$(TEST_OUTPUT)/$$test-run.out ;                       \
 	   upper_name=$$(tr '[a-z]-' '[A-Z]_' <<<$$stem);               \
+	   upper_name=$${upper_name#.};                                 \
 	   (                                                            \
 	     test_args=TEST_ARGS_$$upper_name;                          \
 	     test_env=TEST_ENV_$$upper_name;                            \
