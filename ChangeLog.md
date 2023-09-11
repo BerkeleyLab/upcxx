@@ -12,6 +12,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 * Reduce CPU overheads along the round-trip LPC return path in `persona::lpc()`
 * Reduce CPU overheads for some small `copy()` operations involving CUDA/HIP GPUs
 * New `*_device::uuid()` query for GPU hardware UUID
+* Add human-readable memory sizes to shared heap exception messages
 
 Infrastructure changes:
 
