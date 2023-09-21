@@ -812,6 +812,9 @@ EOF
 platform_settings() {
    local KERNEL=`uname -s 2> /dev/null`
    case "$KERNEL" in
+     Linux)
+       LDFLAGS="-Wl,--build-id ${LDFLAGS}"
+       ;;
      *)
        ;;
    esac
