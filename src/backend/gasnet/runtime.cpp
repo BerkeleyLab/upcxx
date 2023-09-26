@@ -870,7 +870,7 @@ void upcxx::init() {
 
   // Automatically verify segments on init() in debug mode
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-  detail::segmap_cache::max_segments_ = os_env<int16_t>("UPCXX_CCS_MAX_SEGMENTS", 256);
+  detail::segmap_cache::max_segments_ = os_env<int16_t>("UPCXX_CCS_MAX_SEGMENTS", 512);
   detail::segmap_cache::indexed_segment_starts_ = new std::atomic<std::uintptr_t>[detail::segmap_cache::max_segments_]();
   if (os_env<bool>("UPCXX_CCS_AUTOVERIFY", true))
     detail::segmap_cache::verify_all();

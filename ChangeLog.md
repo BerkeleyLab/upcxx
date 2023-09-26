@@ -21,6 +21,7 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #594: CCS: Add --build-id to linker flags on Linux
 * issue #596: Failure of in-build-tree utils when configured without a default network
 * issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
 * issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1

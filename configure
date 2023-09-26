@@ -353,6 +353,7 @@ while [[ $# -gt 0 ]]; do
     -with-cxx?(=*))             CXX="$(get_arg_val $arg)";   export CXX;;
     -with-cflags?(=*))          CFLAGS="$(get_arg_val $arg)";   export CFLAGS;;  # NOT documented in usage
     -with-cxxflags?(=*))        CXXFLAGS="$(get_arg_val $arg)"; export CXXFLAGS;;# NOT documented in usage
+    -with-ldflags?(=*))         LDFLAGS="$(get_arg_val $arg)"; export LDFLAGS;;  # NOT documented in usage
 
     # Passed to GASNet's configure implicitly via environment:
     -with-gmake?(=*))           GMAKE="$(get_arg_val $arg)"; export GMAKE;;
@@ -406,6 +407,7 @@ while [[ $# -gt 0 ]]; do
     CXX?(=*))  CXX="$(get_arg_val $arg)";   export CXX;;
     CFLAGS?(=*))   CFLAGS="$(get_arg_val $arg)";    export CFLAGS;;
     CXXFLAGS?(=*)) CXXFLAGS="$(get_arg_val $arg)";  export CXXFLAGS;;
+    LDFLAGS?(=*)) LDFLAGS="$(get_arg_val $arg)";    export LDFLAGS;;
 
     # These are to remain undocumented
     -v|-verbose) set -x ;;
@@ -809,6 +811,7 @@ GASNET_CONFIGURE_ARGS+=" --with-cc=\"${CC//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cflags=\"${CFLAGS//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cxx=\"${CXX//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cxxflags=\"${CXXFLAGS//\"/\\\"}\""
+GASNET_CONFIGURE_ARGS+=" --with-ldflags=\"${LDFLAGS//\"/\\\"}\""
 
 #
 # Colorization support
