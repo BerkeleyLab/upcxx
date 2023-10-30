@@ -60,7 +60,7 @@ def nodes_type(a):
 
 def upcxx_memstr_parse(s):
     mmax = re.search('^MAX$', s, re.IGNORECASE)
-    mint = re.search('^\s*(\d+)\s*$', s, re.IGNORECASE)
+    mint = re.search(r'^\s*(\d+)\s*$', s, re.IGNORECASE)
     if mmax:
         return SegmentStrategy(100,'%')
     elif mint:
@@ -74,9 +74,9 @@ def memstr_parse(s):
     int_heapsz_units = '|'.join(INT_HEAPSZ_UNITS)
     float_heapsz_units = '|'.join(FLOAT_HEAPSZ_UNITS)
 
-    mfloat = re.search('^\s*(([1-9]\d*|0)(\.\d+)?)\s*(' + float_heapsz_units + ')\s*$', s, re.IGNORECASE)
-    mint = re.search('^\s*([1-9]\d*)\s*('+ int_heapsz_units +')\s*$', s, re.IGNORECASE)
-    m4 = re.search('^\s*(([1-9]\d*|0)(\.\d+)?)\s*('+ max_heapsz_units_special + ')\s*$', s, re.IGNORECASE)
+    mfloat = re.search(r'^\s*(([1-9]\d*|0)(\.\d+)?)\s*(' + float_heapsz_units + r')\s*$', s, re.IGNORECASE)
+    mint = re.search(r'^\s*([1-9]\d*)\s*('+ int_heapsz_units + r')\s*$', s, re.IGNORECASE)
+    m4 = re.search(r'^\s*(([1-9]\d*|0)(\.\d+)?)\s*('+ max_heapsz_units_special + r')\s*$', s, re.IGNORECASE)
 
     if not mfloat and not mint and not m4:
         return None
