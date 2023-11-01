@@ -257,7 +257,7 @@ As above, but writes to a `std::ostream`
   terminal.
 
 * `UPCXX_CCS_MAX_SEGMENTS`: Controls the limit on verified executable segments.
-  Default: 256.
+  Default: initially loaded segment count + 256.
   
 ## Potential Improvements
 

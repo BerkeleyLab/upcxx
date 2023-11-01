@@ -345,6 +345,8 @@ namespace detail {
     static inline bool enforce_verification(bool v) noexcept { bool prev = enforce_verification_; enforce_verification_ = v; return prev; }
     static inline bool verification_enforced() noexcept { return enforce_verification_; }
     static bool should_debug_color(int,int);
+    static inline std::size_t segment_count() { return segment_map().size(); }
+    static inline std::size_t max_segments() { return max_segments_; }
 
   private:
     static std::recursive_mutex mutex_;
