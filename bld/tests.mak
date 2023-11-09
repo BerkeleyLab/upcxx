@@ -166,6 +166,7 @@ endif
 
 # Conditionally exclude tests that require a valid ZE-kind device at runtime:
 test_requires_ze_device = \
+	example/gpu_vecadd/.sycl_vecadd.sh \
         test/ze_device.cpp 
 ifneq ($(UPCXX_ZE),1)
 test_exclude_all += $(test_requires_ze_device)

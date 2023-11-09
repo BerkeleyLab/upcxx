@@ -13,6 +13,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 * Reduce CPU overheads for some small `copy()` operations involving CUDA/HIP GPUs
 * New `*_device::uuid()` query for GPU hardware UUID
 * Add human-readable memory sizes to shared heap exception messages
+* New `sycl_vecadd` target in `examples/gpu_vecadd` performs vector addition on Level Zero devices
 
 Infrastructure changes:
 

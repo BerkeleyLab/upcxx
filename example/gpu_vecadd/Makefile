@@ -15,9 +15,11 @@ UPCXX=$(UPCXX_INSTALL)/bin/upcxx
 UPCXXRUN=$(UPCXX_INSTALL)/bin/upcxx-run
 endif
 endif
+UPCXXMETA=$(UPCXX)-meta
 
 NVCC ?= nvcc
 HIPCC ?= hipcc
+SYCL ?= icpx 
 # Honor user's NVCCARCH_FLAGS (if any) warning if NVCCARCH is also set.
 # Otherwise convert NVCCARCH (if any) to an -arch=... option.
 ifneq ($(strip $(NVCCARCH)),)
@@ -41,16 +43,28 @@ ifneq ($(strip $(HIPCCARCH)),)
   endif
 endif
 
-CXXFLAGS ?= -g # optional command-line override
-CUDAFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_CUDA=1
-HIPFLAGS = $(CXXFLAGS) -DUPCXX_GPU_DEFAULT_DEVICE_HIP=1
+# Honor user's SYCLARCH_FLAGS (if any) warning if SYCLARCH is also set.
+# Otherwise convert SYCLARCH (if any) to an -arch=... option.
+ifneq ($(strip $(SYCLARCH)),)
+  ifneq ($(strip $(SYCLARCH_FLAGS)),)
+    $(warning Both SYCLARCH and SYCLARCH_FLAGS are set.  Ignoring SYCLARCH.)
+  else
+    SYCLARCH_FLAGS = -fsycl-targets=$(SYCLARCH)
+  endif
+endif
 
-TARGETS = cuda_vecadd hip_vecadd
-OBJS = cuda_kernels.o hip_kernels.o
+CXXFLAGS ?= -g # optional command-line override
+CUDAFLAGS = $(CXXFLAGS) 
+HIPFLAGS = $(CXXFLAGS) 
+SYCLFLAGS = -O $(CXXFLAGS) -std=c++17 -fsycl
+
+TARGETS = cuda_vecadd hip_vecadd sycl_vecadd
+OBJS = cuda_kernels.o hip_kernels.o sycl_kernels.o
 default:
-	@echo "Please select one of the following three targets:"
+	@echo "Please select one of the following four targets:"
 	@echo " - \`make cuda_vecadd\` makes an executable using CUDA kernels for NVIDIA GPUs"
 	@echo " - \`make hip_vecadd\`  makes an executable using ROCm/HIP kernels for AMD GPUs"
+	@echo " - \`make sycl_vecadd\` makes an executable using SYCL kernels for Intel GPUs"
 	@echo " - \`make all\`         makes both executables"
 
 all: $(TARGETS)
@@ -62,10 +76,17 @@ clean:
 	$(NVCC) $(NVCCFLAGS) $(NVCCARCH_FLAGS) $(CUDAFLAGS) -c $<
 
 cuda_vecadd: vecadd.cxx cuda_kernels.o
-	$(UPCXX) $(CUDAFLAGS) $^ -o $@
+	$(UPCXX) -DUPCXX_GPU_DEFAULT_DEVICE_CUDA=1 $(CUDAFLAGS) $^ -o $@
 
-%.o : %.cxx kernels.hpp
+hip_kernels.o : hip_kernels.cxx kernels.hpp
 	$(HIPCC) $(HIPCCFLAGS) $(HIPCCARCH_FLAGS) $(HIPFLAGS) -c $<
 
 hip_vecadd: vecadd.cxx hip_kernels.o
-	$(UPCXX) $(HIPFLAGS) $^ -o $@
+	$(UPCXX) -DUPCXX_GPU_DEFAULT_DEVICE_HIP=1 $(HIPFLAGS) $^ -o $@
+
+sycl_kernels.o : sycl_kernels.cxx kernels.hpp
+	$(SYCL) $(SYCLFLAGS) $(SYCLARCH_FLAGS) -c $<
+
+sycl_vecadd: vecadd.cxx sycl_kernels.o
+	$(SYCL) -DUPCXX_GPU_DEFAULT_SDEVICE_ZE=1 $(shell $(UPCXXMETA) CPPFLAGS) $(shell $(UPCXXMETA) LDFLAGS) $(SYCLFLAGS) $^ -o $@ $(shell $(UPCXXMETA) LIBS) 
+

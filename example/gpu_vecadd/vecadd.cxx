@@ -21,6 +21,11 @@
 using namespace std;
 using namespace upcxx; 
 using gp_device = upcxx::global_ptr<double, gpu_default_device::kind>;
+extern ze_device::device_handle_t handle_init();
+
+#if UPCXX_GPU_DEFAULT_DEVICE_ZE
+extern ze_device::device_handle_t handle_init();
+#endif
 
 int main() {
    upcxx::init();
@@ -34,10 +39,16 @@ int main() {
    upcxx::barrier();
 
    // alloc GPU segment
+#if UPCXX_GPU_DEFAULT_DEVICE_ZE
+   ze_device::device_handle_t handle = handle_init();
+   ze_device::id_type dev_id = ze_device::device_handle_to_device_id(handle);
+   auto gpu_alloc = upcxx::make_gpu_allocator(segsize, dev_id);
+#else
    auto gpu_alloc = upcxx::make_gpu_allocator(segsize);
+#endif
+   int gpu_dev = gpu_alloc.device_id();
    UPCXX_ASSERT_ALWAYS(gpu_alloc.is_active(),
                        "Failed to open GPU:\n" << gpu_default_device::kind_info());
-   int gpu_dev = gpu_alloc.device_id();
 
    gp_device dA = gpu_alloc.allocate<double>(N);
    UPCXX_ASSERT_ALWAYS(dA);
