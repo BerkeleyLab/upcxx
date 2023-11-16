@@ -473,7 +473,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 * The optimizations and features supporting CUDA GPUs initially previewed in
   the 2020.11.0 Memory Kinds Prototype have been hardened and incorporated
   into this release.
-* On platforms with NVIDIA-branded CUDA devices and Mellanox-branded InfiniBand
+* On platforms with NVIDIA-branded CUDA devices and NVIDIA- or Mellanox-branded InfiniBand
   network adapters (such as OLCF Summit), `upcxx::copy()` uses GPUDirect RDMA
   (GDR) hardware support to offload RMA operations involving GPU memory.
 * See [INSTALL.md](INSTALL.md) for instructions to enable UPC++ CUDA support
@@ -577,7 +577,7 @@ Breaking changes:
 
 This is a **prototype** release of UPC++ demonstrating the new GPUDirect RDMA (GDR)
 native implementation of memory kinds for NVIDIA-branded CUDA devices with
-Mellanox-branded InfiniBand network adapters.
+NVIDIA- or Mellanox-branded InfiniBand network adapters.
 
 As a prototype, it has not been validated as widely as normal stable releases,
 and may include features and behaviors that are subject to change without notice.

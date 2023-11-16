@@ -447,7 +447,7 @@ There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
 the `<PROVIDER>` placeholder above:  
 
   + `--with-ofi-provider=verbs` for Slingshot-10.  
-    This is a Mellanox ConnectX-5 100Gbps NIC.  
+    This is a Mellanox ConnectX-5 (or -6) 100Gbps NIC.  
   + `--with-ofi-provider=cxi` for Slingshot-11.  
     This is an HPE 200Gbps NIC  
 
@@ -592,11 +592,11 @@ resident in a CUDA-compatible NVIDIA GPU.  General requirements:
 
 This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory
 kinds data transfers on selected platforms using modern NVIDIA-branded GPUs
-with Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
+with NVIDIA- or Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
 This support requires one of the following native network conduit
 configurations, and the current/default version of GASNet-EX:
 
-* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
 * ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
 
@@ -696,7 +696,7 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 
 #### Known problems with GDR-accelerated memory kinds
 
-There is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
+There is a known bug in the vendor-provided IB Verbs firmware affecting GDR Gets that
 causes crashes inside the IB Verbs network stack during `copy()` operations
 targeting small objects in a `cuda_device` segment with affinity to the calling
 process on some platforms. This problem can be worked-around by setting
@@ -750,7 +750,7 @@ kinds data transfers on selected platforms using modern AMD-branded GPUs.
 This support requires one of the following native network conduit
 configurations, and the current/default version of GASNet-EX:
 
-* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
 * ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
 

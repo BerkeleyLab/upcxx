@@ -141,7 +141,7 @@ influence which backend `upcxx-meta` selects:
     * `aries` is the high-performance Cray XC network.
     * `ibv` is the high-performance InfiniBand network.
     * `smp` is the high-performance choice for single-node multi-core runs.
-    * `ofi` the libfabric backend, recommended on HPE Cray EX and Intel Omni-Path systems.
+    * `ofi` the libfabric backend, recommended on Omni-Path networks and HPE Cray EX systems.
     * `ucx` the experimental UCX backend for certain InfiniBand systems.
     * `udp` is a portable low-performance alternative for testing and debugging.
     * `mpi` is a portable low-performance alternative for testing and debugging. 
