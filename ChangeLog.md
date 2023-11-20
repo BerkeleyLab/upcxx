@@ -19,7 +19,9 @@ General features/enhancements: (see specification and programmer's guide for ful
 
 Infrastructure changes:
 
-* ...
+* The value of `UPCXX_CCS_MAX_SEGMENTS` must fall between the number of segments
+  loaded at init time (plus some unspecified padding) and 32768. Values outside this
+  range are silently raised or lowered to meet this requirement.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
@@ -33,6 +35,7 @@ Notable issues resolved
 * issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
 * issue #613: Warnings from persona.hpp on progress_required() with GCC 13.1.0
 * issue #617: Spawner warnings (upcxx-run) with Python 3.12
+* issue #618: CCS segment limit exceeded on MacOS
 * spec issue 104: `discharge()` from the restricted context is an error
 * spec issue 206: Add `future::is_ready()` as a synonym for `future::ready()`
 
