@@ -14,7 +14,7 @@
 
   #if UPCXXI_GEX_MK_ZE
     // Validate GASNet native memory kinds support
-    #if GASNET_MAXEPS <= 1 || !GASNET_HAVE_MK_CLASS_ZE_UVA
+    #if GASNET_MAXEPS <= 1 || !GASNET_HAVE_MK_CLASS_ZE
     #error Internal error: missing expected GASNet MK ZE support
     #endif
   #endif
