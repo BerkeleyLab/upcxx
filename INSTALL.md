@@ -913,7 +913,7 @@ oneAPI Level-Zero (ZE) interface.
 
 **Intel GPU memory kind support in this release is believed to be functionally correct,
   but has not been tuned for performance. `upcxx::copy()` operations on `ze_device` 
-  memory are currently staged through host memory and do not yet leverage network-direct RDMA.**
+  memory are currently staged through host memory by default and do not yet leverage network-direct RDMA.**
 
 #### System Requirements:
 
@@ -982,8 +982,42 @@ UPCXXZEGASNet: 0
 ```
 
 Where the `UPCXXZEEnabled: 1` line indicates the presence of `ze_device`
-support in UPC++, and `UPCXXZEGASNet: 0` indicates the lack of hardware
+support in UPC++, and `UPCXXZEGASNet: 0` indicates the default lack of hardware
 acceleration for `ze_device` transfers in the current GASNet release.
+
+#### EXPERIMENTAL accelerated memory kinds for Intel GPUs:
+
+This version of UPC++ includes an **EXPERIMENTAL** prototype-quality implementation
+of accelerated memory kinds data transfers on selected platforms using modern
+Intel-branded GPUs with HPE Slingshot-11 network hardware.  **This support is
+preliminary and has known correctness and functionality limitations**, and 
+is thus disabled by default; configure option `--enable-kind-ze` must be
+provided to activate this support.
+
+This support requires the following native network conduit
+configurations, and the current/default version of GASNet-EX:
+
+* ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
+
+Additional requirements:
+
+* Recent Linux OS with x86\_64 CPU
+* Appropriate Intel GPU drivers installed
+
+When using accelerated memory kinds, calls to `upcxx::copy` will offload
+the data transfer to the network adapter, streaming data directly between the
+source and destination memory locations (in host or device memory on any node), 
+without staging through additional memory buffers. Presence of this support
+can be validated using the same commands in the previous section, where the
+output includes a `UPCXXZEGASNet: 1` line to indicate presence of the support.
+
+In the absence of this experimental support, the Level Zero memory kinds
+support in this UPC++ release utilizes a reference implementation which has not
+been tuned for performance. In particular, `upcxx::copy` will stage data
+transfers involving device memory through intermediate buffers in host memory,
+and is expected to underperform relative to solutions using zero-copy technologies.
+Future versions of UPC++ and GASNet-EX will expand and enhance the support
+for native memory kinds acceleration on Intel GPUs.
 
 #### Use of UPC++ memory kinds
 

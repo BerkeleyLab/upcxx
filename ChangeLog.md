@@ -9,6 +9,8 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
+* NEW: Experimental accelerated memory kinds support for Intel GPUs with HPE Slingshot-11
+    - See [INSTALL.md](INSTALL.md) for more information
 * Reduce CPU overheads along the round-trip LPC return path in `persona::lpc()`
 * Reduce CPU overheads for some small `copy()` operations involving CUDA/HIP GPUs
 * New `*_device::uuid()` query for GPU hardware UUID
