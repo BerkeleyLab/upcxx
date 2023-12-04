@@ -3,6 +3,11 @@
 #include <unistd.h>
 #include "util.hpp"
 
+// WARNING: This is an "open-box" test that relies upon unspecified interfaces and/or
+// behaviors of the UPC++ implementation that are subject to change or removal
+// without notice. See "Unspecified Internals" in docs/implementation-defined.md
+// for details, and consult the UPC++ Specification for guaranteed interfaces/behaviors.
+
 // This test invokes various UPC++ routines with a user-provided serializable object 
 // that prints a detailed log of construct/deserialize/copy/move/destroy operations
 // and checks for use-after-invalidate defects.
