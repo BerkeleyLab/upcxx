@@ -1050,7 +1050,8 @@ namespace detail {
           epoch++;
           it->set_verified();
           int16_t idx = verified_segment_count_++;
-          UPCXX_ASSERT_ALWAYS(idx <= max_segments_, "Segment limit exceeded. Current limit: " << max_segments_ << ". Increase UPCXX_CCS_MAX_SEGMENTS to at least " << idx << ".");
+          if (idx > max_segments_)
+            UPCXXI_FATAL_ERROR("CCS Internal Error: Maximum supported dynamic shared object segment count exceeded. Current limit: " << max_segments_ << ". Increase UPCXX_CCS_MAX_SEGMENTS to at least " << idx << ".");
           it->idx = idx;
           indexed_segment_starts_[idx].store(it->start, std::memory_order_relaxed);
         } else {
