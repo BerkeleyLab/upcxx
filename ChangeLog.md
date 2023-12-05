@@ -34,6 +34,7 @@ Notable issues resolved
 * issue #608: Add device UUID to `Device::kind_info()`
 * issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
 * issue #613: Warnings from persona.hpp on progress_required() with GCC 13.1.0
+* issue #616: Linker warning on macos
 * issue #617: Spawner warnings (upcxx-run) with Python 3.12
 * issue #618: CCS segment limit exceeded on MacOS
 * spec issue 104: `discharge()` from the restricted context is an error
