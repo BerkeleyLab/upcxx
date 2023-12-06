@@ -226,7 +226,7 @@ namespace upcxx { namespace backend {
             "gex_Segment_Create("<<size<<") failed in " << where);
   
           gex_EP_BindSegment(st->ep, st->segment, 0);
-          UPCXX_ASSERT(gex_EP_QuerySegment(st->ep) == st->segment,
+          UPCXX_ASSERT_ALWAYS(gex_EP_QuerySegment(st->ep) == st->segment,
             "gex_EP_BindSegment() failed in " << where);
   
           ok = gex_EP_PublishBoundSegment(TM0, &st->ep, 1, 0);
