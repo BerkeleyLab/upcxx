@@ -23,13 +23,14 @@ a modern C++ compiler and corresponding standard library implementation.
 The current release is known to work on the following configurations:
 
 * Apple macOS/x86\_64 (smp and udp conduits):
-    - The most recent Xcode release for each macOS release is well-tested
+    - The most recent Xcode release for each macOS release is generally well-tested
         + It is suspected that any Xcode (ie Apple clang) release 8.0 or newer will work
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
-    At the time of the 2023.3.0 release of UPC++, we have tested only very lightly
-    on macOS 13 "Ventura".  We welcome reports of success or failure on macOS 13.
+    At the time of the 2023.9.0 release of UPC++, we have tested only lightly on
+    macOS 13 "Ventura" and macOS 14 "Sonoma".
+    We welcome reports of success or failure on macOS 13 and/or 14.
 
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
