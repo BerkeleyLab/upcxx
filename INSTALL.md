@@ -86,10 +86,7 @@ The current release is known to work on the following configurations:
     - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
     - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
     - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
-
-    PrgEnv-intel is not yet officially supported, due to a lack of access
-    by the UPC++ team.  If you choose to use PrgEnv-intel, then we would
-    welcome your reports of success or failure.
+    - PrgEnv-intel with intel/2023.1.0 (or later) loaded.
 
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  

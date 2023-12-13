@@ -22,6 +22,9 @@ Infrastructure changes:
 * The value of `UPCXX_CCS_MAX_SEGMENTS` must fall between the number of segments
   loaded at init time (plus some unspecified padding) and 32768. Values outside this
   range are silently raised or lowered to meet this requirement.
+* Support for an additional compiler family on HPE Cray EX systems:
+    - Intel oneAPI compilers via PrgEnv-intel
+    - See [INSTALL.md](INSTALL.md) for details such as minimum versions.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
