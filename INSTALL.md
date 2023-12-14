@@ -63,6 +63,16 @@ The current release is known to work on the following configurations:
     Note the GPUDirect drivers necessary for GDR-accelerated memory kinds on
     InfiniBand are not supported on the Linux/aarch64 platform.
 
+* HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
+  modules, plus its dependencies (smp and ofi conduits):
+    - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
+    - PrgEnv-cray with cce/12.0.0 (or later) loaded.
+    - PrgEnv-amd with amd/4.2.0 (or later) loaded.
+    - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
+    - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
+    - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
+    - PrgEnv-intel with intel/2023.1.0 (or later) loaded.
+
 * **DEPRECATED**  
   Cray XC/x86\_64 with one of the following PrgEnv environment modules and
   its dependencies (smp and aries conduits):
@@ -78,16 +88,6 @@ The current release is known to work on the following configurations:
     it is recommended to `module unload xalt` to avoid a large volume of
     verbose linker output in this configuration.  Mixing with OpenMP in this
     configuration is not currently supported.  (smp and aries conduits).
-
-* HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
-  modules, plus its dependencies (smp and ofi conduits):
-    - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
-    - PrgEnv-cray with cce/12.0.0 (or later) loaded.
-    - PrgEnv-amd with amd/4.2.0 (or later) loaded.
-    - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
-    - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
-    - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
-    - PrgEnv-intel with intel/2023.1.0 (or later) loaded.
 
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
@@ -173,10 +173,10 @@ Depending on the platform, additional command-line arguments may be necessary
 when invoking `configure`. For guidance, see the platform-specific instructions
 in the following sections, below:
 
-* [Configuration: Cray XC](#markdown-header-configuration-cray-xc)
 * [Configuration: HPE Cray EX](#markdown-header-configuration-hpe-cray-ex)
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
+* [Configuration: Cray XC](#markdown-header-configuration-cray-xc)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 * [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
@@ -366,44 +366,6 @@ be run to replicate the verification performed by `make test_install` _without_
 instance, to verify permissions for a user other than the one performing the
 installation.
 
-### Configuration: Cray XC
-
-** Support for the Cray XC platform is deprecated and will be removed in a future release. **
-
-By default, on a Cray XC the logic in `configure` will automatically detect either
-the SLURM or Cray ALPS job scheduler and will cross-configure for the
-appropriate package.  If this auto-detection fails, you may need to explicitly
-pass the appropriate value for your system:
-
-* `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
-* `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
-
-When Intel compilers are being used (a common default for these systems),
-`g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
-then you may need to explicitly load a `gcc` environment module, e.g.:
-
-```bash
-module load gcc/7.1.0
-cd <upcxx-source-path>
-./configure --prefix=<upcxx-install-path> --with-cross=cray-aries-slurm
-```
-
-If using PrgEnv-cray, then version 9.0 or newer of the Cray compilers is
-required.  This means the cce/9.0.0 or later environment module must be
-loaded, and not "cce/9.0.0-classic" (the "-classic" Cray compilers are not
-supported).
-
-The `configure` script will use the `cc` and `CC` compiler aliases of the Cray
-programming environment loaded.  It is *not* necessary to specify these
-explicitly using `--with-cc` or `--with-cxx`.
-
-Currently only Intel-based Cray XC systems have been tested, including Xeon
-and Xeon Phi (aka "KNL").  Note that UPC++ has not yet been tested on an
-ARM-based Cray XC.
-
-After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
-
 ### Configuration: HPE Cray EX
 
 This release of UPC++ includes initial support for the HPE Cray EX platform,
@@ -575,6 +537,44 @@ use development tools, including the `lldb` debugger.  If that is not
 desirable, then use of debuggers will be limited to members of the
 `_developer` group.  An internet search for `macos _developer group` will
 provide additional information.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
+### Configuration: Cray XC
+
+** Support for the Cray XC platform is deprecated and will be removed in a future release. **
+
+By default, on a Cray XC the logic in `configure` will automatically detect either
+the SLURM or Cray ALPS job scheduler and will cross-configure for the
+appropriate package.  If this auto-detection fails, you may need to explicitly
+pass the appropriate value for your system:
+
+* `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
+* `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
+
+When Intel compilers are being used (a common default for these systems),
+`g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
+then you may need to explicitly load a `gcc` environment module, e.g.:
+
+```bash
+module load gcc/7.1.0
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --with-cross=cray-aries-slurm
+```
+
+If using PrgEnv-cray, then version 9.0 or newer of the Cray compilers is
+required.  This means the cce/9.0.0 or later environment module must be
+loaded, and not "cce/9.0.0-classic" (the "-classic" Cray compilers are not
+supported).
+
+The `configure` script will use the `cc` and `CC` compiler aliases of the Cray
+programming environment loaded.  It is *not* necessary to specify these
+explicitly using `--with-cc` or `--with-cxx`.
+
+Currently only Intel-based Cray XC systems have been tested, including Xeon
+and Xeon Phi (aka "KNL").  Note that UPC++ has not yet been tested on an
+ARM-based Cray XC.
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
