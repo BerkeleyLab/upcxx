@@ -138,7 +138,7 @@ influence which backend `upcxx-meta` selects:
 * `UPCXX_NETWORK=<see below>`: The GASNet network backend ("conduit") to use
   for communication (the default and available values are system-dependent).
   Supported values include:
-    * `aries` is the high-performance Cray XC network.
+    * `aries` is the high-performance Cray XC network (deprecated).
     * `ibv` is the high-performance InfiniBand network.
     * `smp` is the high-performance choice for single-node multi-core runs.
     * `ofi` the libfabric backend, recommended on Omni-Path networks and HPE Cray EX systems.

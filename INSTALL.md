@@ -63,7 +63,8 @@ The current release is known to work on the following configurations:
     Note the GPUDirect drivers necessary for GDR-accelerated memory kinds on
     InfiniBand are not supported on the Linux/aarch64 platform.
 
-* Cray XC/x86\_64 with one of the following PrgEnv environment modules and
+* **DEPRECATED**  
+  Cray XC/x86\_64 with one of the following PrgEnv environment modules and
   its dependencies (smp and aries conduits):
     - PrgEnv-gnu with gcc/7.1.0 (or later) loaded.
     - PrgEnv-intel with intel/18.0.1 and gcc/7.1.0 (or later) loaded.
@@ -366,6 +367,8 @@ instance, to verify permissions for a user other than the one performing the
 installation.
 
 ### Configuration: Cray XC
+
+** Support for the Cray XC platform is deprecated and will be removed in a future release. **
 
 By default, on a Cray XC the logic in `configure` will automatically detect either
 the SLURM or Cray ALPS job scheduler and will cross-configure for the

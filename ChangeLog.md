@@ -25,6 +25,8 @@ Infrastructure changes:
 * Support for an additional compiler family on HPE Cray EX systems:
     - Intel oneAPI compilers via PrgEnv-intel
     - See [INSTALL.md](INSTALL.md) for details such as minimum versions.
+* Support for the Cray XC platform is now deprecated and will be removed in a
+  future release.
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
