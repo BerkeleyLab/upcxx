@@ -497,11 +497,18 @@ do-run-tests: force
 	      : $$((++skipped)); continue;                              \
            fi ; \
 	   echo "Running $$test"; : $$((++total));                      \
-	   [[ $$test =~ ^test-(.*)-(seq|par)-(opt|debug)-([^-]*)$$ ]] || continue; \
-	   stem=$${BASH_REMATCH[1]};                                    \
-	   tmode=$${BASH_REMATCH[2]};                                   \
-	   cmode=$${BASH_REMATCH[3]};                                   \
-	   conduit=$${BASH_REMATCH[4]};                                 \
+	   if [[ $$test =~ ^test-(.*)-(seq|par)-(opt|debug)-([^-]*)$$ ]] ; then \
+	     stem=$${BASH_REMATCH[1]};                                  \
+	     tmode=$${BASH_REMATCH[2]};                                 \
+	     cmode=$${BASH_REMATCH[3]};                                 \
+	     conduit=$${BASH_REMATCH[4]};                               \
+	   elif [[ $$test =~ ^test-(.*)-([^-]*)$$ ]] ; then \
+	     stem=$${BASH_REMATCH[1]};                                  \
+	     conduit=$${BASH_REMATCH[2]};                               \
+	     unset tmode cmode;                                         \
+	   else                                                         \
+	     continue;                                                  \
+	   fi ; \
 	   if [[ -n '$(UPCXX_BINDIR)' ]]; then                          \
 	     runcmd='$(UPCXX_BINDIR)/upcxx-run';                        \
 	   else                                                         \

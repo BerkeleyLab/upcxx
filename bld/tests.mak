@@ -318,6 +318,9 @@ $(foreach test,$(test_zero_length_rma), \
 # export TEST_KRF_BAZ_seq_opt_ANY='Reason test-baz-seq-opt-* fais to run'
 # export TEST_KRF_QUX='Reason qux.cpp always fais to run'
 #
+# Note that currently these work only with the `dev-*` targets,
+# but not with `make check` or `make tests; make run-tests`.
+#
 
 ifeq ($(UPCXX_VALGRIND),1)
 export TEST_KRF_ISSUE478='Issue 536: Unfulfilled promise leaks memory if it has a dependent future created by then() or when_all()'
