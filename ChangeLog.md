@@ -5,7 +5,7 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### 202X.YY.ZZ: PENDING
+### 2023.12.15: Release 2023.9.0
 
 General features/enhancements: (see specification and programmer's guide for full details)
 
@@ -20,7 +20,7 @@ General features/enhancements: (see specification and programmer's guide for ful
 Infrastructure changes:
 
 * The value of `UPCXX_CCS_MAX_SEGMENTS` must fall between the number of segments
-  loaded at init time (plus some unspecified padding) and 32768. Values outside this
+  loaded at init time (plus some unspecified padding) and 32767. Values outside this
   range are silently raised or lowered to meet this requirement.
 * Support for an additional compiler family on HPE Cray EX systems:
     - Intel oneAPI compilers via PrgEnv-intel
@@ -31,22 +31,40 @@ Infrastructure changes:
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
-* issue #594: CCS: Add --build-id to linker flags on Linux
+* issue #594: CCS: Add `--build-id` to linker flags on Linux
 * issue #596: Failure of in-build-tree utils when configured without a default network
 * issue #600: `upcxx::local_team_position()` returns incorrect results for discontiguous layouts
-* issue #604: CCS: Uninitialized variable when reading -Wl,--build-id if algorithm is not sha1
+* issue #604: CCS: Uninitialized variable when reading `-Wl,--build-id` if algorithm is not sha1
 * issue #605: library build failure with GCC 13.1.0
 * issue #608: Add device UUID to `Device::kind_info()`
 * issue #609: Accept LPC function object callbacks that can only be invoked by rvalue
-* issue #613: Warnings from persona.hpp on progress_required() with GCC 13.1.0
+* issue #613: Warnings from persona.hpp on `progress_required()` with GCC 13.1.0
 * issue #616: Linker warning on macos
 * issue #617: Spawner warnings (upcxx-run) with Python 3.12
 * issue #618: CCS segment limit exceeded on MacOS
 * spec issue 104: `discharge()` from the restricted context is an error
 * spec issue 206: Add `future::is_ready()` as a synonym for `future::ready()`
 
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
+
+  - ofi-conduit now defaults to setting envvars `FI_MR_CACHE_MAX_COUNT` and
+    `FI_MR_CACHE_MAX_SIZE` for cxi provider, partially addressing bug 4676.
+  - ibv-conduit now attempts to maximize `RLIMIT_MEMLOCK` by default. 
+  - bug4172: crash in ucx-conduit atexit handlers when mpi interop is enabled
+  - bug4413: (partial fix) set `FI_UNIVERSE_SIZE` (conflicting provider requirements)
+  - bug4594: UCX should not enable native atomics unconditionally
+  - bug4598: ucx-conduit + ssh-spawner `GASNET_FREEZE` support is unusable
+  - bug4655: ucx: bad exits on Summit
+  - bug4663: failure compiling pmi-spawner with PMIx 4.2.0 and higher
+  - bug4665: Cray PMI configure detection logic should be smarter
+  - bug4669: Some `GASNET_OFI_DEVICE_*` and `GASNET_IBV_PORTS_*` settings ignored
+  - bug4670: UCX environment personalized prefix not working as we document
+  - bug4676: (partial fix) ofi-conduit RMA performance issues (cxi & verbs providers)
+  - bug4677: Linker warnings from Xcode 15
+
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2023.3.0](docs/spec.pdf).
+[UPC++ v1.0 Specification, Revision 2023.9.0](docs/spec.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
