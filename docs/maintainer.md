@@ -195,7 +195,7 @@ the `upcxx-ci/dev-ci/*` scripts can be run in place.
 The `upcxx` git repo contains a 1-line `.gitlab-ci.yml` which just includes a
 complete configuration file in the same `upcxx-ci` git repo described in the
 preceding section.  This is usable only if you have an account on the
-[LBL GitLab server](https://socks.lbl.gov/).  Contact Pagoda project management for access.
+[LBL GitLab server](https://socks.lbl.gov/).  Contact UPC++ project management for access.
 
 There is
 [documentation](https://bitbucket.org/berkeleylab/upcxx-ci/src/master/gitlab-ci.md)

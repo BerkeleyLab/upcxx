@@ -6,10 +6,10 @@ For information on using UPC++, see: [README.md](README.md)
 
 ## Public Installs
 
-The Pagoda project, the team which develops and maintains UPC++, provides public
+The team which develops and maintains UPC++ also provides public
 installs of current UPC++ releases at several HPC centers.  Before you invest
-time in installing UPC++ for yourself, please consider checking the [online
-documentation](https://upcxx.lbl.gov/wiki/docs/site-docs.md) which describes
+time in installing UPC++ for yourself, please consider checking the 
+[online documentation](https://upcxx.lbl.gov/site) which describes
 these installs, including site-specific usage instructions regarding compiling
 and running on each such system.
 

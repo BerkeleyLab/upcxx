@@ -38,7 +38,7 @@ Other topics are covered in the following documents:
 * Copyright notice and licensing agreement, see: [LICENSE.txt](LICENSE.txt)
 
 Usage information for public installs of UPC\+\+ at certain computing centers
-is available [online](https://upcxx.lbl.gov/wiki/docs/site-docs.md).
+is available [online](https://upcxx.lbl.gov/site).
 
 To report problems or request features: [issue tracker](https://upcxx-bugs.lbl.gov).
 
