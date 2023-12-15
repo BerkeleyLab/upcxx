@@ -11,7 +11,7 @@
 
 #if UPCXXI_CUDA_ENABLED
   // feature macro: ONLY changes when a new spec is officially released that alters CUDA feature
-  #define UPCXX_KIND_CUDA 202203L
+  #define UPCXX_KIND_CUDA 202309L
 #else
   #undef UPCXX_KIND_CUDA
 #endif

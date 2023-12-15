@@ -11,7 +11,7 @@
 
 #if UPCXXI_ZE_ENABLED
   // feature macro: ONLY changes when a new spec is officially released that alters ZE feature
-  #define UPCXX_KIND_ZE 202303L
+  #define UPCXX_KIND_ZE 202309L
 #else
   #undef UPCXX_KIND_ZE
 #endif
