@@ -67,6 +67,11 @@
 
 #include <cstdio>
 
+// WARNING: This is an "open-box" test that relies upon unspecified interfaces and/or
+// behaviors of the UPC++ implementation that are subject to change or removal
+// without notice. See "Unspecified Internals" in docs/implementation-defined.md
+// for details, and consult the UPC++ Specification for guaranteed interfaces/behaviors.
+
 using namespace bench;
 using namespace std;
 
@@ -300,7 +305,7 @@ int main() {
                 if(0 == iters%PROGRESS_PERIOD) {
                   upcxx::progress();
                   
-                  while(!futs.empty() && futs.front().ready())
+                  while(!futs.empty() && futs.front().is_ready())
                     futs.pop_front();
                 }
               }

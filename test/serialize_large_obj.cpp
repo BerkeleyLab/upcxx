@@ -44,12 +44,12 @@ class val_chunk {
                 }
             }
 
-            template<typename Reader>
-            static val_chunk* deserialize(Reader& reader, void* storage) {
+            template<typename Reader, typename Storage>
+            static val_chunk* deserialize(Reader& reader, Storage storage) {
                 int rank = reader.template read<int>();
                 int n = reader.template read<int>();
 
-                val_chunk *v = new(storage) val_chunk();
+                val_chunk *v = storage.construct();
                 v->rank = rank;
                 v->n = n;
                 v->vals = new int[n];

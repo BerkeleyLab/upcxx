@@ -353,6 +353,7 @@ while [[ $# -gt 0 ]]; do
     -with-cxx?(=*))             CXX="$(get_arg_val $arg)";   export CXX;;
     -with-cflags?(=*))          CFLAGS="$(get_arg_val $arg)";   export CFLAGS;;  # NOT documented in usage
     -with-cxxflags?(=*))        CXXFLAGS="$(get_arg_val $arg)"; export CXXFLAGS;;# NOT documented in usage
+    -with-ldflags?(=*))         LDFLAGS="$(get_arg_val $arg)"; export LDFLAGS;;  # NOT documented in usage
 
     # Passed to GASNet's configure implicitly via environment:
     -with-gmake?(=*))           GMAKE="$(get_arg_val $arg)"; export GMAKE;;
@@ -406,6 +407,7 @@ while [[ $# -gt 0 ]]; do
     CXX?(=*))  CXX="$(get_arg_val $arg)";   export CXX;;
     CFLAGS?(=*))   CFLAGS="$(get_arg_val $arg)";    export CFLAGS;;
     CXXFLAGS?(=*)) CXXFLAGS="$(get_arg_val $arg)";  export CXXFLAGS;;
+    LDFLAGS?(=*)) LDFLAGS="$(get_arg_val $arg)";    export LDFLAGS;;
 
     # These are to remain undocumented
     -v|-verbose) set -x ;;
@@ -507,7 +509,7 @@ check_tool_path() {
 # Enable offline installers with an embedded GASNet-EX tarball
 #
 #GASNET_DEFAULT='https://gasnet-bugs.lbl.gov/nightly/unlisted/GASNet-stable.tar.gz' # Un-comment for development
-GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2023.3.0.tar.gz' # Un-comment for release
+GASNET_DEFAULT='https://gasnet.lbl.gov/EX/GASNet-2023.9.0.tar.gz' # Un-comment for release
 #GASNET_DEFAULT='NONE' # Un-comment for snapshots
 gex_offline=`/bin/ls "$UPCXX_SRC"/src/GASNet-{stable,2???.*}.tar.gz 2> /dev/null | sort -t. -k1,1 -k2,2n -k3n | tail -1`
 if [[ -n "$GASNET" ]]; then
@@ -809,6 +811,7 @@ GASNET_CONFIGURE_ARGS+=" --with-cc=\"${CC//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cflags=\"${CFLAGS//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cxx=\"${CXX//\"/\\\"}\""
 GASNET_CONFIGURE_ARGS+=" --with-cxxflags=\"${CXXFLAGS//\"/\\\"}\""
+GASNET_CONFIGURE_ARGS+=" --with-ldflags=\"${LDFLAGS//\"/\\\"}\""
 
 #
 # Colorization support
@@ -1021,7 +1024,8 @@ fi
 #
 if [[ $UPCXX_ZE -eq 1 ]]; then
   # PREpend to allow user to disable if needed
-  GASNET_CONFIGURE_ARGS="--enable-kind-ze ${GASNET_CONFIGURE_ARGS}"
+  # Do not enable until native ZE kind support in GASNet-EX reaches production-quality
+  #GASNET_CONFIGURE_ARGS="--enable-kind-ze ${GASNET_CONFIGURE_ARGS}"
 
   ZE_HEADER="include/level_zero/ze_api.h"
   zecmd="ocloc"
@@ -1304,7 +1308,7 @@ if [[ \$vars =~ UPCXX_NETWORK=([^\$IFS]*) ]]; then
 else
   network="$GASNET_CONDUIT"
 fi
-if [[ ! " $ALL_CONDUITS " =~ " \$network " ]]; then
+if [[ -n \$network && ! " $ALL_CONDUITS " =~ " \$network " ]]; then
   die "invalid UPCXX_NETWORK='\$network'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
 fi
 vars=\${vars/UPCXX_NETWORK/GASNET_CONDUIT}
@@ -1312,6 +1316,7 @@ vars=\${vars/UPCXX_THREADMODE=/UPCXX_BACKEND=gasnet_}
 vars=\${vars/UPCXX_CODEMODE=opt/ASSERT=0 OPTLEV=3 DBGSYM=0}
 vars=\${vars/UPCXX_CODEMODE=debug/ASSERT=1 OPTLEV=0 DBGSYM=1}
 [[ -z "\$UPCXX_QUIET" ]] && echo 'INFO: may need to build the required runtime.  Please be patient.' >&2
+[[ -z "\$network" ]] && export GASNET_CONDUIT="\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' echo-default-network)"
 tmp=\$($GMAKE --no-print-directory -f '$PWD/Makefile' upcxx \$vars 2>&1)
 [[ \$? -ne 0 ]] && echo "\$tmp" >&2 && die 'build of the required runtime failed.'
 exec \${tmp##*\$'\n'} "\$@"
@@ -1358,10 +1363,11 @@ case \$tmode in
   *)       die "invalid UPCXX_THREADMODE='\$UPCXX_THREADMODE' (valid values: 'seq' or 'par')";;
 esac
 export GASNET_CONDUIT=\$(tr '[A-Z]' '[a-z]' <<<\${UPCXX_NETWORK:-\${UPCXX_GASNET_CONDUIT:-$GASNET_CONDUIT}})
-if [[ ! " $ALL_CONDUITS " =~ " \$GASNET_CONDUIT " ]]; then
+if [[ -n \$GASNET_CONDUIT && ! " $ALL_CONDUITS " =~ " \$GASNET_CONDUIT " ]]; then
   die "invalid UPCXX_NETWORK='\$GASNET_CONDUIT'.\n\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' list-networks 2>&1)"
 fi
 [[ -z "\$UPCXX_QUIET" ]] && echo 'INFO: may need to build the required runtime.  Please be patient.' >&2
+[[ -z "\$GASNET_CONDUIT" ]] && export GASNET_CONDUIT="\$($GMAKE --no-print-directory -s -f '$PWD/Makefile' echo-default-network)"
 tmp=\$($GMAKE --no-print-directory -f '$PWD/Makefile' upcxx-meta 2>&1)
 [[ \$? -ne 0 ]] && echo "\$tmp" >&2 && die 'build of the required runtime failed.'
 meta=\${tmp##*\$'\n'}

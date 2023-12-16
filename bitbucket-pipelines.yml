@@ -11,19 +11,28 @@ definitions:
   variables: &variables
     - name: CI_DEV_CHECK
       default: 0
+      description: "1 to run a full dev-check (all tests), 0 for check (abbreviated list of tests)"
     - name: CI_RUN_TESTS
       default: 1
+      description: "1 to run tests, 0 for compile-only"
     - name: CI_NETWORKS
       default: smp udp
+      description: "space-delimited list of network conduits to use"
     - name: CI_RANKS
       default: 4
+      description: "number of processes to use for most tests"
     - name: CI_CONFIGURE_ARGS
+      description: "extra configure-time arguments to add"
     - name: CI_EXTRAFLAGS
       default: -Werror
+      description: "extra compiler flags to use for tests"
     - name: CI_MAKE_PARALLEL
       default: -j8
+      description: "make command-line arguments for parallelism"
     - name: CI_TESTS
+      description: "comma-delimited list of test name substrings to INCLUDE (blank = all)"
     - name: CI_NO_TESTS
+      description: "comma-delimited list of test name substrings to EXCLUDE (blank = none)"
   steps:
     - step: &build-test
           name: Build and Test

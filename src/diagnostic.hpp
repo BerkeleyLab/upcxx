@@ -177,6 +177,31 @@ namespace detail {
   #define UPCXXI_NODISCARD 
 #endif
 
+// UPCXXI_DEPRECATED("message"): The C++14 [[deprecated]] attribute, when supported/enabled
+// Auto-detection can be overridden by -DUPCXX_USE_DEPRECATED=1/0
+#ifndef UPCXX_USE_DEPRECATED
+  // general case: trust __has_cpp_attribute when available
+  // This *should* be sufficient for any C++11-compliant compiler
+  #ifdef __has_cpp_attribute
+    #if __has_cpp_attribute(deprecated)
+      #define UPCXX_USE_DEPRECATED 1
+    #endif
+  #endif
+  // exceptions:
+  #if __clang__ && __cplusplus < 201402
+    // clang advertises the attribute in -std=c++11 mode and then warns about it with -Wall
+    #undef UPCXX_USE_DEPRECATED
+  #elif __GNUC__ == 6 && __cplusplus < 201402
+    // g++ 6 (only) advertises the attribute in -std=c++11 mode and then warns about it with -pedantic
+    #undef UPCXX_USE_DEPRECATED
+  #endif
+#endif // !defined(UPCXX_USE_DEPRECATED)
+#if UPCXX_USE_DEPRECATED
+  #define UPCXXI_DEPRECATED(msg) [[deprecated(msg)]]
+#else
+  #define UPCXXI_DEPRECATED(msg) 
+#endif
+
 namespace upcxx {
  namespace experimental {
   // ostream-like class which will print to the provided stream with an optional prefix and

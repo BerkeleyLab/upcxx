@@ -54,7 +54,7 @@ int main() {
     auto f = rput(42, gp, cxs);
     f.wait();
     p2.finalize().wait();
-    assert(!p1.get_future().ready());
+    assert(!p1.get_future().is_ready());
   }
 
   {
@@ -69,7 +69,7 @@ int main() {
     auto f = rput(42, gp, cxs);
     f.wait();
     p2.finalize().wait();
-    assert(!p1.get_future().ready());
+    assert(!p1.get_future().is_ready());
   }
 
   {

@@ -16,6 +16,7 @@ volatile bool ze_enabled;
 std::vector<std::function<void()>> post_fini;
 
 #define HAVE_KIND_INFO (UPCXX_VERSION >= 20220905)
+#define HAVE_UUID      (UPCXX_VERSION >= 20230307)
 
 template<typename Device>
 void run_test(typename Device::id_type id, std::size_t heap_size) {
@@ -96,7 +97,15 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   #endif
   int n_dev = Device::device_n();
   assert(n_dev >= 0);
-  say() << "Testing " << n_dev << " " << desc << " GPUs";
+  upcxx::barrier();
+  { say s;
+    s << "Testing " << n_dev << " " << desc << " GPUs\n";
+    #if HAVE_UUID
+      for (int i = 0; i < n_dev; i++) {
+        s << "    UUID " << std::setw(2) << i << ": " << Device::uuid(i) << "\n";
+      }
+    #endif
+  }
   int low = reduce_all(Device::device_n(), op_fast_min).wait();
   if (low == 0) {
     if (!rank_me())
@@ -107,10 +116,8 @@ void run_test(typename Device::id_type id, std::size_t heap_size) {
   // deliberately create three heaps on the same device
   // managed via pointer for precision testing of destruction
   Device *d0 = new Device(id);
-  *d0 = std::move(*d0); // issue 547: self move
   gpu_device *gd0 = d0;
   Allocator *a0 = new Allocator(*d0, heap_size);
-  *a0 = std::move(*a0); // issue 547: self move
   heap_allocator *ga0 = a0;
   assert(d0->is_active()); assert(gd0->is_active()); 
   assert(a0->is_active()); assert(ga0->is_active()); 

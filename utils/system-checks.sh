@@ -786,6 +786,7 @@ We recommend one of the following C++ compilers (or any later versions where no 
                               PrgEnv-aocc with aocc/3.1.0 environment module loaded
                               PrgEnv-nvidia with nvidia/21.9 environment module loaded
                               PrgEnv-nvhpc with nvhpc/21.9 environment module loaded
+                              PrgEnv-intel with intel/2023.3.1 environment module loaded
 EOF
         if test -n "$ARCH_BAD" ; then
             echo "ERROR: This version of UPC++ does not support the '$ARCH' architecture."
@@ -812,6 +813,9 @@ EOF
 platform_settings() {
    local KERNEL=`uname -s 2> /dev/null`
    case "$KERNEL" in
+     Linux)
+       LDFLAGS="-Wl,--build-id ${LDFLAGS}"
+       ;;
      *)
        ;;
    esac

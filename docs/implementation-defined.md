@@ -247,10 +247,20 @@ These features are subject to change or removal at any time. If you find any of
 them useful, please send an email to `upcxx@googlegroups.com`, and we will
 consider adding them to the specification proper.
 
+## Unspecified Internals
+
 Aside from `upcxx::experimental`, all other namespaces nested inside of `upcxx`
 are intended solely for internal use by the implementation (e.g. `upcxx::backend`,
 `upcxx::detail`). Similarly, all identifiers with the `UPCXXI` or `upcxxi`
-prefix are intended solely for internal use by the implementation.
+prefix are intended solely for internal use by the implementation. 
+The behavior and existence of all such interfaces and identifiers is subject
+to change without notice, and as such their use in user code is STRONGLY discouraged.
+
+The UPC++ v1.0 Specification is the canonical authoritative document that 
+specifies all the required and guaranteed behaviors of the UPC++ interface.
+Users are strongly advised to rely solely on features and behaviors specified
+by that document, or implementation-defined behaviors outlined in the other
+sections of this document.
 
 ## UPCXX_THREADMODE=seq Restrictions ##
 

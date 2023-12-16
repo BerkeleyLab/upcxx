@@ -1,6 +1,11 @@
 #ifndef _62625b7f_859f_4b3a_a765_ff3505ce3d8b
 #define _62625b7f_859f_4b3a_a765_ff3505ce3d8b
 
+// WARNING: This is an "open-box" test that relies upon unspecified interfaces and/or
+// behaviors of the UPC++ implementation that are subject to change or removal
+// without notice. See "Unspecified Internals" in docs/implementation-defined.md
+// for details, and consult the UPC++ Specification for guaranteed interfaces/behaviors.
+
 // This version of this test deliberately avoids initializing the UPC++/GASNet backend, 
 // but still uses some of the UPC++ internals to test them in isolation.
 // This is NOT in any way supported for user code!!

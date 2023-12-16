@@ -9,11 +9,11 @@ int main() {
   print_test_header();
 
   promise<> p(2); // empty promise with 2 dependencies
-  assert(!p.get_future().ready());
+  assert(!p.get_future().is_ready());
   p.fulfill_anonymous(1); 
-  assert(!p.get_future().ready());
+  assert(!p.get_future().is_ready());
   p.fulfill_anonymous(1); 
-  assert(p.get_future().ready()); // crashes here
+  assert(p.get_future().is_ready()); // crashes here
 
   print_test_success(true);
 

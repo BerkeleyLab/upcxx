@@ -34,7 +34,7 @@ int main () {
 _EOF
 
 unset openmp_flags
-for x in -fopenmp -mp; do
+for x in -qopenmp -fopenmp -mp; do
   if eval ${GASNET_CXX} ${GASNET_CXXCPPFLAGS} ${GASNET_CXXFLAGS} $x -o conftest conftest.cpp &> /dev/null; then
     openmp_flags=$x
     break

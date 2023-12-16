@@ -2,6 +2,11 @@
 #include <upcxx/upcxx.hpp>
 #include "util.hpp"
 
+// WARNING: This is an "open-box" test that relies upon unspecified interfaces and/or
+// behaviors of the UPC++ implementation that are subject to change or removal
+// without notice. See "Unspecified Internals" in docs/implementation-defined.md
+// for details, and consult the UPC++ Specification for guaranteed interfaces/behaviors.
+
 // This test measures the number of copies/moves invoked on objects passed to
 // various UPC++ routines. The results asserted by this test are only indicative
 // of the current implementation and should NOT be construed as a guarantee of
@@ -149,9 +154,9 @@ struct NmNcFn { // non-movable/non-copyable object that deserializes as Fn
     static void serialize(Writer &writer, const NmNcFn &obj) {
       writer.write(obj.t);
     }
-    template<typename Reader>
-    static Fn* deserialize(Reader &reader, void *spot) {
-      return new (spot) Fn{reader.template read<T>()};
+    template<typename Reader, typename Storage>
+    static Fn* deserialize(Reader &reader, Storage storage) {
+      return storage.construct(reader.template read<T>());
     }
   };
 };
@@ -347,13 +352,13 @@ void UTIL_ATTRIB_NOINLINE test_rpc4() {
     NmNcFn fn;
     upcxx::rpc(target, fn).wait_reference();
   }
-  SHOW("NmNcFn& ->", 2, 0, 1);
+  SHOW("NmNcFn& ->", 2, 0, 2);
 
   {
     NmNcFn fn;
     upcxx::rpc(target, [](Fn const &) {}, fn).wait_reference();
   }
-  SHOW("(arg) NmNcFn& ->", 2, 0, 1);
+  SHOW("(arg) NmNcFn& ->", 2, 0, 2);
 
   {
     NmNcFn fn;
@@ -362,7 +367,7 @@ void UTIL_ATTRIB_NOINLINE test_rpc4() {
         return NmNcFn::global;
       }, fn).wait_reference();
   }
-  SHOW("(arg) NmNcFn& -> NmNcFn&", 3, 0, 3);
+  SHOW("(arg) NmNcFn& -> NmNcFn&", 3, 0, 5);
 #endif
 }
 void UTIL_ATTRIB_NOINLINE test_rpc5() {
@@ -418,7 +423,7 @@ void UTIL_ATTRIB_NOINLINE test_rpc5() {
   }
   while (!done) { upcxx::progress(); }
   done = false;
-  SHOW("(rpc_ff) NmNcFn& ->", 2, 0, 1);
+  SHOW("(rpc_ff) NmNcFn& ->", 2, 0, 2);
 
   {
     NmNcFn fn;
@@ -429,7 +434,7 @@ void UTIL_ATTRIB_NOINLINE test_rpc5() {
   }
   while (!done) { upcxx::progress(); }
   done = false;
-  SHOW("(rpc_ff arg) NmNcFn& ->", 2, 0, 1);
+  SHOW("(rpc_ff arg) NmNcFn& ->", 2, 0, 2);
 #endif
 }
 upcxx::global_ptr<int> gp;
@@ -495,7 +500,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc1() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("as_rpc(NmNcFn&)&& ->", 2, 0, 1);
+    SHOW("as_rpc(NmNcFn&)&& ->", 2, 0, 2);
 
     {
       NmNcFn fn;
@@ -506,7 +511,7 @@ void UTIL_ATTRIB_NOINLINE test_rput_rpc1() {
     }
     while (!done) { upcxx::progress(); }
     done = false;
-    SHOW("as_rpc(lambda, NmNcFn&)&& ->", 2, 0, 1);
+    SHOW("as_rpc(lambda, NmNcFn&)&& ->", 2, 0, 2);
 #endif
 }
 void UTIL_ATTRIB_NOINLINE test_rput_rpc2() {

@@ -3,6 +3,7 @@
 
 #include <map>
 #include <unordered_map>
+#include <cstdint>
 
 namespace upcxx {
 namespace detail {

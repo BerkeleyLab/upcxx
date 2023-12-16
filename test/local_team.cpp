@@ -119,6 +119,7 @@ int main() {
       intrank_t got = dp->local()[i];
       UPCXX_ASSERT_ALWAYS(want == got, "Want="<<want<<" got="<<got);
     }
+    upcxx::deallocate(*dp);
 
     print_test_success();
   }

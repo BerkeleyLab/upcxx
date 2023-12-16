@@ -18,10 +18,10 @@ struct T {
     static void serialize (Writer& writer, T const & t) {
         writer.write(t.x);
     }
-    template<typename Reader>
-    static U* deserialize(Reader& reader, void* storage) {
+    template<typename Reader, typename Storage>
+    static U* deserialize(Reader& reader, Storage storage) {
         int x = reader.template read<int>();
-        U *up = new(storage) U();
+        U *up = storage.construct();
         up->x = x;
         return up;
     }

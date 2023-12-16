@@ -179,7 +179,7 @@ namespace detail {
       const ElfW(Nhdr) *note = nullptr;
       const ElfW(Nhdr) *note_end = nullptr;
       bool has_build_id = false;
-      std::array<uint8_t,elf_hash_size> build_id;
+      std::array<uint8_t,elf_hash_size> build_id{};
       int flags = 0;
       ElfW(Addr) dptr_basis = 0;
       ElfW(Addr) addr_lo = 0, addr_hi = 0;
@@ -1050,7 +1050,8 @@ namespace detail {
           epoch++;
           it->set_verified();
           int16_t idx = verified_segment_count_++;
-          UPCXX_ASSERT_ALWAYS(idx <= max_segments_, "Segment limit exceeded. Current limit: " << max_segments_ << ". Increase UPCXX_CCS_MAX_SEGMENTS to at least " << idx << ".");
+          if (idx > max_segments_)
+            UPCXXI_FATAL_ERROR("CCS Internal Error: Maximum supported dynamic shared object segment count exceeded. Current limit: " << max_segments_ << ". Increase UPCXX_CCS_MAX_SEGMENTS to at least " << idx << ".");
           it->idx = idx;
           indexed_segment_starts_[idx].store(it->start, std::memory_order_relaxed);
         } else {

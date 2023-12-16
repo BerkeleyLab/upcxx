@@ -40,9 +40,9 @@ int main() {
         method = "MOVE_ASSIGN";
       #endif
       if (i == 0) cout << "Rank " << rank_me() << " using " << method << endl;
-      if (i > 1) assert(f[step].ready()); // check 2 iters ago
+      if (i > 1) assert(f[step].is_ready()); // check 2 iters ago
       f[step] = p[step].get_future();
-      assert(!f[step].ready()); assert(!p[step].get_future().ready());
+      assert(!f[step].is_ready()); assert(!p[step].get_future().is_ready());
 
       // communicate for this iteration
       rput(val,   gptr[step],   operation_cx::as_promise(p[step]));
@@ -51,12 +51,12 @@ int main() {
       #if UPCXX_DEFER_COMPLETION
         // with eager completion and local bypass, p[step] may be
         // readied by finalize() above
-        assert(!f[step].ready()); assert(!p[step].get_future().ready());
+        assert(!f[step].is_ready()); assert(!p[step].get_future().is_ready());
       #endif
 
       if (i > 0) {  // sync and check the last iteration
         f[prev].wait();
-        assert(f[prev].ready()); assert(p[prev].get_future().ready());
+        assert(f[prev].is_ready()); assert(p[prev].get_future().is_ready());
         barrier();
         assert(mydata[!prev*2]   == VAL(peer[!prev],i-1));
         assert(mydata[!prev*2+1] == VAL(peer[!prev],i-1)+1);

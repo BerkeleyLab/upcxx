@@ -14,9 +14,9 @@ public:
     static void serialize(Writer &w, const A &x) {
       w.write(x.x);
     }
-    template<typename Reader>
-    static A* deserialize(Reader &r, void *spot) {
-      return new(spot) A(r.template read<int>());
+    template<typename Reader, typename Storage>
+    static A* deserialize(Reader &r, Storage storage) {
+      return storage.construct(r.template read<int>());
     }
   };
 };

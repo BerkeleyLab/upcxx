@@ -7,6 +7,8 @@
 #include <upcxx/backend/gasnet/runtime_internal.hpp>
 #include <upcxx/device_internal.hpp>
 
+#include <stack>
+
 #if UPCXXI_HIP_ENABLED
   #include <hip/hip_runtime_api.h>
 
@@ -84,6 +86,9 @@
     template<>
     struct device_heap_state<hip_device> : public device_heap_state_base<hip_device> {
         hipStream_t stream;
+
+        detail::par_mutex lock;
+        std::stack<hipEvent_t> eventFreeList;
     };
     using hip_heap_state = device_heap_state<hip_device>;
   }} // namespace

@@ -102,7 +102,7 @@ int main (int argc, char ** argv) {
 
       for (long i=0; i<iters; i++) {
         upcxx::future<msg> f = upcxx::master_persona().lpc(msg(i));
-        assert(!f.ready());
+        assert(!f.is_ready());
         #if UPCXX_VERSION < 20200300 || FORCE_WAIT
           msg result = f.wait();
         #else

@@ -1,37 +1,68 @@
 #include <upcxx/upcxx.hpp>
-#define CHECK UPCXX_ASSERT_ALWAYS
 
-// this test runs with at most one device kind, in the following priority order:
+// Note: This test is an "open-box" validation test for UPC++ memory kind functionality
+// that deliberately makes redundant direct calls to the GPU library to validate 
+// correct operation of UPC++ memory kinds. Much of the cruft below is unnecessary
+// to normal use of memory kinds and should NOT be used as an example for that feature.
+//
+// This test runs with at most one device kind, in the following priority order:
 #undef DEVICE
 #if UPCXX_KIND_HIP
   #define DEVICE hip_device
   #include <hip/hip_runtime_api.h>
   constexpr int max_dev_n = 32;
   int dev_n;
-  #define DEVICE_INIT()    CHECK(hipInit(0) == hipSuccess)
-  #define DEVICE_SET(id)   CHECK(hipSetDevice(id) == hipSuccess)
+  #define HIP_CHECK(expr) do { \
+    hipError_t resxxx = (expr); \
+    if (resxxx != hipSuccess) { \
+      const char *errname = hipGetErrorName(resxxx); \
+      const char *errstr  = hipGetErrorString(resxxx); \
+      upcxx::experimental::say() << "HIP ERROR: "  \
+        << errname << "(" << resxxx << ")" << ": " << errstr \
+        << "\n  in " << #expr \
+        << "\n  at " << __FILE__ << ":" << __LINE__; \
+      std::abort(); \
+    } \
+  } while (0)
+  #define DEVICE_INIT()    HIP_CHECK(hipInit(0))
+  #define DEVICE_SET(id)   HIP_CHECK(hipSetDevice(id))
   #define DEVICE_MEMCPY_D2H(dst, src, sz) \
-         CHECK(hipMemcpyDtoH(dst, reinterpret_cast<hipDeviceptr_t>(src), sz) == hipSuccess)
+         HIP_CHECK(hipMemcpyDtoH(dst, reinterpret_cast<hipDeviceptr_t>(src), sz))
   #define DEVICE_MEMCPY_H2D(dst, src, sz) \
-         CHECK(hipMemcpyHtoD(reinterpret_cast<hipDeviceptr_t>(dst), src, sz) == hipSuccess)
-  #define DEVICE_SYNC() do { \
-          CHECK(hipDeviceSynchronize() == hipSuccess); \
-    } while(0)
+         HIP_CHECK(hipMemcpyHtoD(reinterpret_cast<hipDeviceptr_t>(dst), src, sz))
+  #define DEVICE_SYNC()    HIP_CHECK(hipDeviceSynchronize())
 #elif UPCXX_KIND_CUDA
   #define DEVICE cuda_device
   #include <cuda_runtime_api.h>
   #include <cuda.h>
   constexpr int max_dev_n = 32;
   int dev_n;
-  #define DEVICE_INIT()    CHECK(cuInit(0) == CUDA_SUCCESS)
-  #define DEVICE_SET(id)   CHECK(cudaSetDevice(id) == cudaSuccess)
+  #define CU_CHECK(expr) do { \
+    CUresult resxxx = (CUresult)(expr); \
+    if (resxxx != CUDA_SUCCESS) { \
+      const char *errname="", *errstr=""; \
+      cuGetErrorName(resxxx, &errname); \
+      cuGetErrorString(resxxx, &errstr); \
+      if (!errname) { \
+        errname = cudaGetErrorName((cudaError_t)resxxx); \
+        errstr = cudaGetErrorString((cudaError_t)resxxx); \
+      } \
+      upcxx::experimental::say() << "CUDA ERROR: "  \
+        << errname << "(" << resxxx << ")" << ": " << errstr \
+        << "\n  in " << #expr \
+        << "\n  at " << __FILE__ << ":" << __LINE__; \
+      std::abort(); \
+    } \
+  } while (0)
+  #define DEVICE_INIT()    CU_CHECK(cuInit(0))
+  #define DEVICE_SET(id)   CU_CHECK(cudaSetDevice(id))
   #define DEVICE_MEMCPY_D2H(dst, src, sz) \
-         CHECK(cuMemcpyDtoH(dst, reinterpret_cast<CUdeviceptr>(src), sz) == CUDA_SUCCESS)
+         CU_CHECK(cuMemcpyDtoH(dst, reinterpret_cast<CUdeviceptr>(src), sz))
   #define DEVICE_MEMCPY_H2D(dst, src, sz) \
-         CHECK(cuMemcpyHtoD(reinterpret_cast<CUdeviceptr>(dst), src, sz) == CUDA_SUCCESS)
+         CU_CHECK(cuMemcpyHtoD(reinterpret_cast<CUdeviceptr>(dst), src, sz))
   #define DEVICE_SYNC() do { \
-          CHECK(cuCtxSynchronize() == CUDA_SUCCESS); /* issue #241 */ \
-          CHECK(cudaDeviceSynchronize() == cudaSuccess); \
+          CU_CHECK(cuCtxSynchronize()); /* issue #241 */ \
+          CU_CHECK(cudaDeviceSynchronize()); \
     } while(0)
 #elif UPCXX_KIND_ZE
   #define DEVICE ze_device
@@ -46,8 +77,19 @@
   std::vector<ze_command_queue_handle_t> zeQueue;
   std::vector<ze_command_list_handle_t> zeCmd;
 
+  #define ZE_CHECK(expr) do { \
+    ze_result_t resxxx = (expr); \
+    if (resxxx != ZE_RESULT_SUCCESS) { \
+      /* level zero lacks proper runtime error code support */ \
+      upcxx::experimental::say() << "ZE ERROR: "  \
+        << "0x" << std::hex << resxxx \
+        << "\n  in " << #expr \
+        << "\n  at " << __FILE__ << ":" << std::dec << __LINE__; \
+      std::abort(); \
+    } \
+  } while (0)
   void DEVICE_INIT() {
-    CHECK(zeInit(0) == ZE_RESULT_SUCCESS);
+    ZE_CHECK(zeInit(0));
     const int dev_n = ze_device::device_n();
     zeDev.reserve(dev_n);
     zeCtx.reserve(dev_n);
@@ -61,33 +103,26 @@
       cmdQueueDesc.index = 0;
       // makes zeCommandQueueExecuteCommandLists block for completion:
       cmdQueueDesc.mode = ZE_COMMAND_QUEUE_MODE_SYNCHRONOUS;
-      CHECK(ZE_RESULT_SUCCESS == 
-        zeCommandQueueCreate(zeCtx[d], zeDev[d], &cmdQueueDesc, &zeQueue[d]));
+      ZE_CHECK( zeCommandQueueCreate(zeCtx[d], zeDev[d], &cmdQueueDesc, &zeQueue[d]));
       ze_command_list_desc_t commandListDesc = { ZE_STRUCTURE_TYPE_COMMAND_LIST_DESC };
       commandListDesc.commandQueueGroupOrdinal = group_ordinal;
-      CHECK(ZE_RESULT_SUCCESS ==
-        zeCommandListCreate(zeCtx[d], zeDev[d], &commandListDesc, &zeCmd[d]));
+      ZE_CHECK( zeCommandListCreate(zeCtx[d], zeDev[d], &commandListDesc, &zeCmd[d]));
     }
   }
   void ze_copy(void *dst, void *src, size_t sz) {
     // this is a bare-minimum fully blocking copy, 
     // and should not be considered a good example.
-    CHECK(ZE_RESULT_SUCCESS ==
-      zeCommandListAppendMemoryCopy(zeCmd[cur_dev], dst, src, sz, nullptr, 0, nullptr));
-    CHECK(ZE_RESULT_SUCCESS ==
-      zeCommandListClose(zeCmd[cur_dev]));
-    CHECK(ZE_RESULT_SUCCESS ==
-      zeCommandQueueExecuteCommandLists(zeQueue[cur_dev], 1, &zeCmd[cur_dev], nullptr)); 
-    CHECK(ZE_RESULT_SUCCESS ==
-      zeCommandListReset(zeCmd[cur_dev]));
+    ZE_CHECK( zeCommandListAppendMemoryCopy(zeCmd[cur_dev], dst, src, sz, nullptr, 0, nullptr));
+    ZE_CHECK( zeCommandListClose(zeCmd[cur_dev]));
+    ZE_CHECK( zeCommandQueueExecuteCommandLists(zeQueue[cur_dev], 1, &zeCmd[cur_dev], nullptr)); 
+    ZE_CHECK( zeCommandListReset(zeCmd[cur_dev]));
   }
   #define DEVICE_SET(id)   (cur_dev = (id))
   #define DEVICE_MEMCPY_D2H(dst, src, sz) ze_copy(dst, src, sz)
   #define DEVICE_MEMCPY_H2D(dst, src, sz) ze_copy(dst, src, sz)
   #define DEVICE_SYNC() do { \
     for (int d = 0; d < dev_n; d++) { \
-      CHECK(ZE_RESULT_SUCCESS == \
-        zeCommandQueueSynchronize(zeQueue[d],  std::numeric_limits<uint64_t>::max())); \
+      ZE_CHECK( zeCommandQueueSynchronize(zeQueue[d],  std::numeric_limits<uint64_t>::max())); \
     } \
   } while(0)
 #else

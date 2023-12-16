@@ -98,9 +98,9 @@ constexpr int backend::heap_state::max_heaps_cat[2]; // because C++ constexpr ru
 persona backend::master;
 persona_scope *backend::initial_master_scope = nullptr;
 
-intrank_t backend::pshm_peer_lb_;
-intrank_t backend::pshm_peer_ub;
-intrank_t backend::pshm_peer_n;
+intrank_t backend::pshm_peer_lb_; // USE NON-UNDERSCORE VERSION: pshm_peer_lb == local_team()[0]
+intrank_t backend::pshm_peer_ub;  // 1 + local_team()[local_team()::rank_n()-1]
+intrank_t backend::pshm_peer_n;   // local_team::rank_n()
 
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_local_minus_remote;
 unique_ptr<uintptr_t[/*local_team.size()*/]> backend::pshm_vbase;
@@ -293,10 +293,11 @@ namespace {
 
     void *segment_base = 0;
     size_t segment_size = 0;
-    int ok = gex_Segment_QueryBound(
-        world_tm, backend::rank_me, &segment_base, nullptr, &segment_size
+    gex_Event_Wait(
+      gex_EP_QueryBoundSegmentNB(
+        world_tm, backend::rank_me, &segment_base, nullptr, &segment_size, 0
+      )
     );
-    UPCXX_ASSERT_ALWAYS(ok == GASNET_OK);
 
     if (upcxxi_upc_is_linked()) {
       static bool firstcall = true;
@@ -852,7 +853,7 @@ void upcxx::init() {
 
     if (!upcxxi_upc_is_linked()) // UPC mode has custom local_tm scratch cleanup
       gex_TM_SetCData(local_tm, local_scratch_ptr );
-  }
+  } // !local_is_world
   
   
   // Build upcxx::local_team()
@@ -869,13 +870,40 @@ void upcxx::init() {
 
   // Automatically verify segments on init() in debug mode
 #if !UPCXXI_FORCE_LEGACY_RELOCATIONS
-  detail::segmap_cache::max_segments_ = os_env<int16_t>("UPCXX_CCS_MAX_SEGMENTS", 256);
+  int16_t default_max_segments = detail::segmap_cache::segment_count() + 256;
+  detail::segmap_cache::max_segments_ = std::min<int32_t>(std::max<int32_t>(os_env<int32_t>("UPCXX_CCS_MAX_SEGMENTS", default_max_segments), default_max_segments), std::numeric_limits<int16_t>::max());
   detail::segmap_cache::indexed_segment_starts_ = new std::atomic<std::uintptr_t>[detail::segmap_cache::max_segments_]();
   if (os_env<bool>("UPCXX_CCS_AUTOVERIFY", true))
     detail::segmap_cache::verify_all();
 #endif
 
   noise.show();
+
+  #if UPCXXI_DISCONTIG
+    // issue 600: Need to "fix up" backend::nbrhd_set_{size,rank} to accomodate 
+    // singleton local_teams arising from discontiguous nbrhd ranks, to ensure
+    // correct results are reported by upcxx::local_team_position().
+    // Lacking a scan collective there is unfortunately no convenient and scalable way to do this.
+    std::vector<intrank_t> local_team_base(backend::rank_n);
+    gasnet_coll_gather_all(GASNET_TEAM_ALL, 
+                           local_team_base.data(), &backend::pshm_peer_lb_, sizeof(intrank_t), 
+                           GASNET_COLL_LOCAL | GASNET_COLL_IN_MYSYNC | GASNET_COLL_OUT_MYSYNC);
+    intrank_t last_base = -1;
+    intrank_t pos = -1;
+    for (intrank_t i = 0; i < backend::rank_n; i++) {
+      if (local_team_base[i] != last_base) {
+        pos++;
+        last_base = local_team_base[i];
+      }
+      if (i == backend::rank_me) {
+        UPCXX_ASSERT_ALWAYS(pos >= backend::nbrhd_set_rank);
+        backend::nbrhd_set_rank = pos;
+      }
+    }
+    pos++;
+    UPCXX_ASSERT_ALWAYS(pos >= backend::nbrhd_set_size);
+    backend::nbrhd_set_size = pos;
+  #endif
 
   if (os_env<bool>("UPCXX_VERBOSE_ID", backend::verbose_noise) && peer_me == 0) {
     // output process identity information, for validating job layout matches user intent
@@ -921,12 +949,15 @@ void init_localheap_tables(void) {
     owner_vbase_vp = local_vbase_vp = 0;
     size = 0;
 
-    gex_Segment_QueryBound(
-      /*team*/world_tm,
-      /*rank*/backend::pshm_peer_lb + p,
-      &owner_vbase_vp, 
-      &local_vbase_vp, 
-      &size
+    gex_Event_Wait( 
+      gex_EP_QueryBoundSegmentNB(
+        /*team=*/world_tm,
+        /*rank=*/backend::pshm_peer_lb + p,
+        &owner_vbase_vp, 
+        &local_vbase_vp, 
+        &size,
+        /*flags=*/0
+      )
     );
     owner_vbase = reinterpret_cast<char*>(owner_vbase_vp);
     local_vbase = reinterpret_cast<char*>(local_vbase_vp);
@@ -1293,7 +1324,8 @@ void backend::warn_empty_rma(const char *fnname) {
 }
 
 tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const *addr) {
-  intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
+  intrank_t peer_n = pshm_peer_n;
+  UPCXX_ASSERT(peer_n == pshm_peer_ub - pshm_peer_lb);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1308,8 +1340,10 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/> backend::globalize_memory(void const 
   #define bad_memory "Local memory "<<addr<<" is not in any local rank's shared segment."
 
   UPCXX_ASSERT(key_ix > 0, bad_memory);
+  UPCXX_ASSERT(key_ix <= peer_n);
   
   intrank_t peer = pshm_owner_peer[key_ix-1];
+  UPCXX_ASSERT(peer >= 0 && peer < peer_n);
 
   UPCXX_ASSERT(uaddr - pshm_vbase[peer] <= pshm_size[peer], bad_memory);
   
@@ -1325,7 +1359,8 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
     void const *addr,
     tuple<intrank_t/*rank*/, uintptr_t/*raw*/> otherwise
   ) {
-  intrank_t peer_n = pshm_peer_ub - pshm_peer_lb;
+  intrank_t peer_n = pshm_peer_n;
+  UPCXX_ASSERT(peer_n == pshm_peer_ub - pshm_peer_lb);
   uintptr_t uaddr = reinterpret_cast<uintptr_t>(addr);
 
   // key is a pointer to one past the last vbase less-or-equal to addr.
@@ -1339,8 +1374,10 @@ tuple<intrank_t/*rank*/, uintptr_t/*raw*/>  backend::globalize_memory(
   
   if(key_ix <= 0)
     return otherwise;
+  UPCXX_ASSERT(key_ix <= peer_n);
   
   intrank_t peer = pshm_owner_peer[key_ix-1];
+  UPCXX_ASSERT(peer >= 0 && peer < peer_n);
 
   if(uaddr - pshm_vbase[peer] <= pshm_size[peer])
     return std::make_tuple(
@@ -2038,8 +2075,14 @@ namespace {
   void burst_device(persona *per) {
   #if UPCXXI_CUDA_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.peek()) {
-      if(cuEventQuery((CUevent)cb->event) == CUDA_SUCCESS) {
-        UPCXXI_CU_CHECK(cuEventDestroy((CUevent)cb->event));
+      CUevent hEvent = (CUevent)cb->event;
+      if(cuEventQuery(hEvent) == CUDA_SUCCESS) {
+        // push onto device free list
+        auto st = (backend::cuda_heap_state *)cb->hs;
+        { std::lock_guard<detail::par_mutex> g(st->lock);
+          st->eventFreeList.push(hEvent);
+        }
+
         per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.dequeue();
         cb->execute_and_delete();
       }
@@ -2049,8 +2092,14 @@ namespace {
   #endif
   #if UPCXXI_HIP_ENABLED
     while(backend::device_cb *cb = per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.peek()) {
-      if(hipEventQuery((hipEvent_t)cb->event) == hipSuccess) {
-        UPCXXI_HIP_CHECK(hipEventDestroy((hipEvent_t)cb->event));
+      hipEvent_t hEvent = (hipEvent_t)cb->event;
+      if(hipEventQuery(hEvent) == hipSuccess) {
+        // push onto device free list
+        auto st = (backend::hip_heap_state *)cb->hs;
+        { std::lock_guard<detail::par_mutex> g(st->lock);
+          st->eventFreeList.push(hEvent);
+        }
+
         per->UPCXXI_INTERNAL_ONLY(device_state_).hip.cbs.dequeue();
         cb->execute_and_delete();
       }

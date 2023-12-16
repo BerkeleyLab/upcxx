@@ -164,11 +164,11 @@ namespace upcxx {
   persona_scope& default_persona_scope();
   persona_scope& top_persona_scope();
   
-  // bool progress_required(persona_scope &ps = top_persona_scope());
+  // bool progress_required(persona_scope &ps = default_persona_scope());
   bool progress_required();
   bool progress_required(persona_scope &ps);
 
-  // void discharge(persona_scope &ps = top_persona_scope());
+  // void discharge(persona_scope &ps = default_persona_scope());
   void discharge();
   void discharge(persona_scope &ps);
   

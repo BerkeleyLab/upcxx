@@ -30,10 +30,10 @@ struct S { // asymmetric serialization
     static void serialize (Writer& writer, S const & t) {
         writer.write(t.x);
     }
-    template<typename Reader>
-    static D* deserialize(Reader& reader, void* storage) {
+    template<typename Reader, typename Storage>
+    static D* deserialize(Reader& reader, Storage storage) {
         int x = reader.template read<int>();
-        D *up = new(storage) D();
+        D *up = storage.construct();
         up->x = x;
         return up;
     }

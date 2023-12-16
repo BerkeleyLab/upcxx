@@ -22,16 +22,16 @@ int main() {
     std::unique_ptr<int> up(new int(17));
     boof = make_future(std::move(up)); // trivially ready future
   }
-  assert(boof.ready());
+  assert(boof.is_ready());
   assert(*boof.result_reference() == 17);
   {
     promise<std::unique_ptr<int>> p;
     boof = p.get_future(); // real non-ready future
-    assert(!boof.ready());
+    assert(!boof.is_ready());
     std::unique_ptr<int> up(new int(42));
     p.fulfill_result(std::move(up));
   }
-  assert(boof.ready());
+  assert(boof.is_ready());
   assert(*boof.result_reference() == 42);
 
   // demonstrate with a custom non-copyable type
@@ -43,7 +43,7 @@ int main() {
   {
     promise<A> p;
     fa = p.get_future(); // real non-ready future
-    assert(!fa.ready());
+    assert(!fa.is_ready());
     p.fulfill_result(A(16));
   }
   assert(fa.result_reference().x == 16);
@@ -58,7 +58,7 @@ int main() {
   {
     promise<A,A> p;
     fb = p.get_future(); // real non-ready future
-    assert(!fb.ready());
+    assert(!fb.is_ready());
     p.fulfill_result(A(3),A(4));
   }
   assert(fb.result_reference<0>().x == 3);

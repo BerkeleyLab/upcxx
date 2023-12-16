@@ -98,51 +98,6 @@ namespace upcxx {
     template<typename Fn>
     void lpc_ff(Fn &&fn);
   
-  private:
-    template<typename Results, typename Promise>
-    struct lpc_initiator_finish {
-      Results results_;
-      Promise *pro_;
-      
-      void operator()() {
-        pro_->fulfill_result(std::move(results_));
-        delete pro_;
-      }
-    };
-    
-    template<typename Promise>
-    struct lpc_recipient_executed {
-      persona *initiator_;
-      Promise *pro_;
-      
-      template<typename ...Args>
-      void operator()(Args &&...args) {
-        using results_t = typename detail::decay_tupled_rrefs<std::tuple<Args...>>::type;
-        
-        initiator_->lpc_ff(
-          lpc_initiator_finish<results_t, Promise>{
-            results_t{std::forward<Args>(args)...},
-            pro_
-          }
-        );
-      }
-    };
-    
-    template<typename Fn, typename Promise>
-    struct lpc_recipient_execute {
-      persona *initiator_;
-      Promise *pro_;
-      Fn fn_;
-      
-      void operator()() {
-        detail::apply_as_future_then_lazy(
-          fn_,
-          lpc_recipient_executed<Promise>{initiator_, pro_}
-        );
-      }
-    };
-  
-  public:
     template<typename Fn>
     UPCXXI_NODISCARD
     auto lpc(Fn &&fn)
@@ -210,10 +165,7 @@ namespace upcxx {
       this->next_ = reinterpret_cast<persona_scope_raw*>(0x1);
     }
     
-    persona_scope(persona &persona, detail::persona_tls &tls);
-    
-    template<typename Mutex>
-    persona_scope(Mutex &lock, persona &persona, detail::persona_tls &tls);
+    void activate(persona &persona);
     
     static persona_scope the_default_dummy_;
     
@@ -428,6 +380,39 @@ namespace upcxx {
       this->peer_inbox_[(int)progress_level::user].send(std::forward<Fn>(fn));
   }
   
+  namespace detail {
+    
+    template<typename Promise>
+    struct lpc_recipient_executed {
+      persona *initiator_;
+      Promise *pro_;
+      
+      template<typename ...Args>
+      void operator()(Args &&...args) {
+        pro_->base_header_result.construct_results(std::forward<Args>(args)...);
+
+        the_persona_tls.enqueue_quiesced_promise(
+            *initiator_, progress_level::user,
+            /*move ref*/pro_, /*result*/1 + /*anon*/0,
+            /*known_active=*/std::false_type{});
+      }
+    };
+    
+    template<typename Fn, typename Promise>
+    struct lpc_recipient_execute {
+      persona *initiator_;
+      Promise *pro_;
+      Fn fn_;
+      
+      void operator()() {
+        detail::apply_as_future_then_lazy(
+          std::move(fn_),
+          lpc_recipient_executed<Promise>{initiator_, pro_}
+        );
+      }
+    };
+  } // namespace detail
+  
   template<typename Fn>
   UPCXXI_NODISCARD
   auto persona::lpc(Fn &&fn)
@@ -438,15 +423,15 @@ namespace upcxx {
     UPCXXI_ASSERT_INIT();
     
     using results_type = typename detail::lpc_results_type<Fn>;
-    using results_promise = detail::tuple_types_into_t<results_type, promise>;
+    using results_promise = detail::tuple_types_into_t<results_type, detail::future_header_promise>;
     
     detail::persona_tls &tls = detail::the_persona_tls;
     
     results_promise *pro = new results_promise;
-    auto ans = pro->get_future();
+    auto ans = detail::promise_get_future(pro);
     
     this->lpc_ff(tls,
-      lpc_recipient_execute<typename std::decay<Fn>::type, results_promise>{
+      detail::lpc_recipient_execute<typename std::decay<Fn>::type, results_promise>{
         /*initiator*/tls.get_top_persona(),
         /*promise*/pro,
         /*fn*/std::forward<Fn>(fn)
@@ -493,52 +478,17 @@ namespace upcxx {
     tls.set_top_scope(this->next_);
     tls.set_top_persona(this->restore_top_persona_);
   }
-  
-  inline persona_scope::persona_scope(persona &persona):
-    persona_scope(persona, detail::the_persona_tls) {
-  }
-  
-  inline persona_scope::persona_scope(persona &p, detail::persona_tls &tls) {
+ 
+  inline persona_scope::persona_scope(persona &p) {
     UPCXXI_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(persona &p)");
     this->lock_ = nullptr;
     this->unlocker_ = nullptr;
-    
-    bool was_active = p.active();
-    UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
-    if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
-       UPCXX_ASSERT(tls.is_primordial_thread,
-        "When compiled in threadmode=seq, only the primordial thread may acquire the master persona.\n"
-        "Multi-threaded applications should compile with `upcxx -threadmode=par` or `UPCXX_THREADMODE=par`.\n"
-        "For details, please see `docs/implementation-defined.md`");
 
-    // point this scope at persona
-    this->set_persona(&p, tls);
-    
-    // set persona's owner thread to this thread
-    p.set_owner(&tls.default_persona);
-    
-    // push this scope on this thread's stack
-    this->next_ = tls.get_top_scope();
-    tls.set_top_scope(this);
-    tls.set_top_persona(&p);
-    
-    if(!was_active) {
-      this->next_unique_ = tls.get_top_unique_scope();
-      tls.set_top_unique_scope(this);
-    }
-    else
-      this->next_unique_ = reinterpret_cast<persona_scope_raw*>(0x1);
-    
-    UPCXX_ASSERT(p.active_with_caller(tls));
-  }
+    this->activate(p);
+  }  
   
   template<typename Mutex>
-  persona_scope::persona_scope(Mutex &lock, persona &p):
-    persona_scope(lock, p, detail::the_persona_tls) {
-  }
-  
-  template<typename Mutex>
-  persona_scope::persona_scope(Mutex &lock, persona &p, detail::persona_tls &tls) {
+  persona_scope::persona_scope(Mutex &lock, persona &p) {
     UPCXXI_ASSERT_INIT_NAMED("upcxx::persona_scope::persona_scope(Mutex &lock, persona &p)");
     this->lock_ = &lock;
     this->unlocker_ = (void(*)(void*))[](void *lock) {
@@ -547,6 +497,13 @@ namespace upcxx {
     
     lock.lock();
     
+    this->activate(p);
+  }
+  
+  // called by non-default persona_scope constructors:
+  inline void persona_scope::activate(persona &p) {
+    detail::persona_tls &tls = detail::the_persona_tls;
+
     bool was_active = p.active();
     UPCXX_ASSERT(!was_active || p.active_with_caller(tls), "Persona already active in another thread.");
     if (UPCXXI_BACKEND_GASNET_SEQ && &p == &master_persona()) 
@@ -748,10 +705,7 @@ namespace upcxx {
   }
   
   inline bool detail::persona_tls::progress_required() {
-    persona_tls &tls = *this;
-    persona_scope_raw *ps = tls.get_top_scope();
-    persona *p = ps->get_persona(tls);
-    return p->UPCXXI_INTERNAL_ONLY(undischarged_n_) != 0;
+    return this->progress_required(persona_scope::the_default_dummy_);
   }
   
   inline bool detail::persona_tls::progress_required(persona_scope &bottom) {

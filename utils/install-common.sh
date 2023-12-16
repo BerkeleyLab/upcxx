@@ -113,7 +113,9 @@ EOF
   chmod 755 "${DESTDIR}${install_to}/bin/upcxx"
   cp ${upcxx_bld}/bin/upcxx-info "${DESTDIR}${install_to}/bin/upcxx-info"
   chmod 755 "${DESTDIR}${install_to}/bin/upcxx-info"
-  sed -e "s,/bin/bash,${BASH}," < ./utils/upcxx.sh > "${DESTDIR}${install_to}/bin/upcxx.sh"
+  sed -e "s,/bin/bash,${BASH}," \
+      -e "s,-network=.*,-network={$conduits_pipes} (default is $conduit_default)," \
+         < ./utils/upcxx.sh > "${DESTDIR}${install_to}/bin/upcxx.sh"
   chmod 755 "${DESTDIR}${install_to}/bin/upcxx.sh"
   if [[ -n "$UPCXX_PYTHON" ]]; then
     sed -e "s,/usr/bin/env python,$UPCXX_PYTHON," < ./utils/upcxx-run > "${DESTDIR}${install_to}/bin/upcxx-run"

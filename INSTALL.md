@@ -6,10 +6,10 @@ For information on using UPC++, see: [README.md](README.md)
 
 ## Public Installs
 
-The Pagoda project, the team which develops and maintains UPC++, provides public
+The team which develops and maintains UPC++ also provides public
 installs of current UPC++ releases at several HPC centers.  Before you invest
-time in installing UPC++ for yourself, please consider checking the [online
-documentation](https://upcxx.lbl.gov/wiki/docs/site-docs.md) which describes
+time in installing UPC++ for yourself, please consider checking the 
+[online documentation](https://upcxx.lbl.gov/site) which describes
 these installs, including site-specific usage instructions regarding compiling
 and running on each such system.
 
@@ -23,13 +23,14 @@ a modern C++ compiler and corresponding standard library implementation.
 The current release is known to work on the following configurations:
 
 * Apple macOS/x86\_64 (smp and udp conduits):
-    - The most recent Xcode release for each macOS release is well-tested
+    - The most recent Xcode release for each macOS release is generally well-tested
         + It is suspected that any Xcode (ie Apple clang) release 8.0 or newer will work
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
-    At the time of the 2023.3.0 release of UPC++, we have tested only very lightly
-    on macOS 13 "Ventura".  We welcome reports of success or failure on macOS 13.
+    At the time of the 2023.9.0 release of UPC++, we have tested only lightly on
+    macOS 13 "Ventura" and macOS 14 "Sonoma".
+    We welcome reports of success or failure on macOS 13 and/or 14.
 
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
@@ -62,7 +63,18 @@ The current release is known to work on the following configurations:
     Note the GPUDirect drivers necessary for GDR-accelerated memory kinds on
     InfiniBand are not supported on the Linux/aarch64 platform.
 
-* Cray XC/x86\_64 with one of the following PrgEnv environment modules and
+* HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
+  modules, plus its dependencies (smp and ofi conduits):
+    - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
+    - PrgEnv-cray with cce/12.0.0 (or later) loaded.
+    - PrgEnv-amd with amd/4.2.0 (or later) loaded.
+    - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
+    - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
+    - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
+    - PrgEnv-intel with intel/2023.1.0 (or later) loaded.
+
+* **DEPRECATED**  
+  Cray XC/x86\_64 with one of the following PrgEnv environment modules and
   its dependencies (smp and aries conduits):
     - PrgEnv-gnu with gcc/7.1.0 (or later) loaded.
     - PrgEnv-intel with intel/18.0.1 and gcc/7.1.0 (or later) loaded.
@@ -76,19 +88,6 @@ The current release is known to work on the following configurations:
     it is recommended to `module unload xalt` to avoid a large volume of
     verbose linker output in this configuration.  Mixing with OpenMP in this
     configuration is not currently supported.  (smp and aries conduits).
-
-* HPE Cray EX with x86\_64 CPUs and one of the following PrgEnv environment
-  modules, plus its dependencies (smp and ofi conduits):
-    - PrgEnv-gnu with gcc/10.3.0 (or later) loaded.
-    - PrgEnv-cray with cce/12.0.0 (or later) loaded.
-    - PrgEnv-amd with amd/4.2.0 (or later) loaded.
-    - PrgEnv-aocc with aocc/3.1.0 (or later) loaded.
-    - PrgEnv-nvidia with nvidia/21.9 (or later) loaded.
-    - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
-
-    PrgEnv-intel is not yet officially supported, due to a lack of access
-    by the UPC++ team.  If you choose to use PrgEnv-intel, then we would
-    welcome your reports of success or failure.
 
 * NOT officially supported:  
     - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
@@ -174,10 +173,10 @@ Depending on the platform, additional command-line arguments may be necessary
 when invoking `configure`. For guidance, see the platform-specific instructions
 in the following sections, below:
 
-* [Configuration: Cray XC](#markdown-header-configuration-cray-xc)
 * [Configuration: HPE Cray EX](#markdown-header-configuration-hpe-cray-ex)
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
+* [Configuration: Cray XC](#markdown-header-configuration-cray-xc)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 * [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
@@ -367,42 +366,6 @@ be run to replicate the verification performed by `make test_install` _without_
 instance, to verify permissions for a user other than the one performing the
 installation.
 
-### Configuration: Cray XC
-
-By default, on a Cray XC the logic in `configure` will automatically detect either
-the SLURM or Cray ALPS job scheduler and will cross-configure for the
-appropriate package.  If this auto-detection fails, you may need to explicitly
-pass the appropriate value for your system:
-
-* `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
-* `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
-
-When Intel compilers are being used (a common default for these systems),
-`g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
-then you may need to explicitly load a `gcc` environment module, e.g.:
-
-```bash
-module load gcc/7.1.0
-cd <upcxx-source-path>
-./configure --prefix=<upcxx-install-path> --with-cross=cray-aries-slurm
-```
-
-If using PrgEnv-cray, then version 9.0 or newer of the Cray compilers is
-required.  This means the cce/9.0.0 or later environment module must be
-loaded, and not "cce/9.0.0-classic" (the "-classic" Cray compilers are not
-supported).
-
-The `configure` script will use the `cc` and `CC` compiler aliases of the Cray
-programming environment loaded.  It is *not* necessary to specify these
-explicitly using `--with-cc` or `--with-cxx`.
-
-Currently only Intel-based Cray XC systems have been tested, including Xeon
-and Xeon Phi (aka "KNL").  Note that UPC++ has not yet been tested on an
-ARM-based Cray XC.
-
-After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
-
 ### Configuration: HPE Cray EX
 
 This release of UPC++ includes initial support for the HPE Cray EX platform,
@@ -447,7 +410,7 @@ There are two NICs options in an HPE Cray EX system, known as "Slingshot-10" and
 the `<PROVIDER>` placeholder above:  
 
   + `--with-ofi-provider=verbs` for Slingshot-10.  
-    This is a Mellanox ConnectX-5 100Gbps NIC.  
+    This is a Mellanox ConnectX-5 (or -6) 100Gbps NIC.  
   + `--with-ofi-provider=cxi` for Slingshot-11.  
     This is an HPE 200Gbps NIC  
 
@@ -578,6 +541,44 @@ provide additional information.
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
 
+### Configuration: Cray XC
+
+** Support for the Cray XC platform is deprecated and will be removed in a future release. **
+
+By default, on a Cray XC the logic in `configure` will automatically detect either
+the SLURM or Cray ALPS job scheduler and will cross-configure for the
+appropriate package.  If this auto-detection fails, you may need to explicitly
+pass the appropriate value for your system:
+
+* `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
+* `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
+
+When Intel compilers are being used (a common default for these systems),
+`g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
+then you may need to explicitly load a `gcc` environment module, e.g.:
+
+```bash
+module load gcc/7.1.0
+cd <upcxx-source-path>
+./configure --prefix=<upcxx-install-path> --with-cross=cray-aries-slurm
+```
+
+If using PrgEnv-cray, then version 9.0 or newer of the Cray compilers is
+required.  This means the cce/9.0.0 or later environment module must be
+loaded, and not "cce/9.0.0-classic" (the "-classic" Cray compilers are not
+supported).
+
+The `configure` script will use the `cc` and `CC` compiler aliases of the Cray
+programming environment loaded.  It is *not* necessary to specify these
+explicitly using `--with-cc` or `--with-cxx`.
+
+Currently only Intel-based Cray XC systems have been tested, including Xeon
+and Xeon Phi (aka "KNL").  Note that UPC++ has not yet been tested on an
+ARM-based Cray XC.
+
+After running `configure`, return to
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+
 ### Configuration: CUDA GPU support
 
 #### System Requirements:
@@ -592,11 +593,11 @@ resident in a CUDA-compatible NVIDIA GPU.  General requirements:
 
 This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory
 kinds data transfers on selected platforms using modern NVIDIA-branded GPUs
-with Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
+with NVIDIA- or Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
 This support requires one of the following native network conduit
 configurations, and the current/default version of GASNet-EX:
 
-* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
 * ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
 
@@ -696,7 +697,7 @@ use of GDR acceleration. If either value is 0 or absent then GDR acceleration is
 
 #### Known problems with GDR-accelerated memory kinds
 
-There is a known bug in the Mellanox IB Verbs firmware affecting GDR Gets that
+There is a known bug in the vendor-provided IB Verbs firmware affecting GDR Gets that
 causes crashes inside the IB Verbs network stack during `copy()` operations
 targeting small objects in a `cuda_device` segment with affinity to the calling
 process on some platforms. This problem can be worked-around by setting
@@ -750,7 +751,7 @@ kinds data transfers on selected platforms using modern AMD-branded GPUs.
 This support requires one of the following native network conduit
 configurations, and the current/default version of GASNet-EX:
 
-* ibv-conduit with recent Mellanox-branded InfiniBand network hardware
+* ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
 * ofi-conduit on HPE Cray EX with HPE Slingshot-10 (verbs provider)
 
@@ -913,7 +914,7 @@ oneAPI Level-Zero (ZE) interface.
 
 **Intel GPU memory kind support in this release is believed to be functionally correct,
   but has not been tuned for performance. `upcxx::copy()` operations on `ze_device` 
-  memory are currently staged through host memory and do not yet leverage network-direct RDMA.**
+  memory are currently staged through host memory by default and do not yet leverage network-direct RDMA.**
 
 #### System Requirements:
 
@@ -982,8 +983,42 @@ UPCXXZEGASNet: 0
 ```
 
 Where the `UPCXXZEEnabled: 1` line indicates the presence of `ze_device`
-support in UPC++, and `UPCXXZEGASNet: 0` indicates the lack of hardware
+support in UPC++, and `UPCXXZEGASNet: 0` indicates the default lack of hardware
 acceleration for `ze_device` transfers in the current GASNet release.
+
+#### EXPERIMENTAL accelerated memory kinds for Intel GPUs:
+
+This version of UPC++ includes an **EXPERIMENTAL** prototype-quality implementation
+of accelerated memory kinds data transfers on selected platforms using modern
+Intel-branded GPUs with HPE Slingshot-11 network hardware.  **This support is
+preliminary and has known correctness and functionality limitations**, and 
+is thus disabled by default; configure option `--enable-kind-ze` must be
+provided to activate this support.
+
+This support requires the following native network conduit
+configurations, and the current/default version of GASNet-EX:
+
+* ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
+
+Additional requirements:
+
+* Recent Linux OS with x86\_64 CPU
+* Appropriate Intel GPU drivers installed
+
+When using accelerated memory kinds, calls to `upcxx::copy` will offload
+the data transfer to the network adapter, streaming data directly between the
+source and destination memory locations (in host or device memory on any node), 
+without staging through additional memory buffers. Presence of this support
+can be validated using the same commands in the previous section, where the
+output includes a `UPCXXZEGASNet: 1` line to indicate presence of the support.
+
+In the absence of this experimental support, the Level Zero memory kinds
+support in this UPC++ release utilizes a reference implementation which has not
+been tuned for performance. In particular, `upcxx::copy` will stage data
+transfers involving device memory through intermediate buffers in host memory,
+and is expected to underperform relative to solutions using zero-copy technologies.
+Future versions of UPC++ and GASNet-EX will expand and enhance the support
+for native memory kinds acceleration on Intel GPUs.
 
 #### Use of UPC++ memory kinds
 

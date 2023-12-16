@@ -11,7 +11,7 @@
 
 #if UPCXXI_CUDA_ENABLED
   // feature macro: ONLY changes when a new spec is officially released that alters CUDA feature
-  #define UPCXX_KIND_CUDA 202203L
+  #define UPCXX_KIND_CUDA 202309L
 #else
   #undef UPCXX_KIND_CUDA
 #endif
@@ -47,6 +47,7 @@ namespace upcxx {
     }
 
     static std::string kind_info();
+    static std::string uuid(id_type);
 
     void destroy(upcxx::entry_barrier eb = entry_barrier::user) override;
 

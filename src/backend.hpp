@@ -54,13 +54,13 @@ namespace upcxx {
   
   inline void discharge() {
     UPCXXI_ASSERT_INIT();
-    while(upcxx::progress_required())
-      upcxx::progress(progress_level::internal);
+    UPCXX_ASSERT(!in_progress(), "discharge() is forbidden within UPC++ restricted context (upcxx::in_progress())");
+    UPCXXI_PROGRESS_UNTIL(!upcxx::progress_required(),   detail::progress_internal);
   }
   inline void discharge(persona_scope &ps) {
     UPCXXI_ASSERT_INIT();
-    while(upcxx::progress_required(ps))
-      upcxx::progress(progress_level::internal);
+    UPCXX_ASSERT(!in_progress(), "discharge() is forbidden within UPC++ restricted context (upcxx::in_progress())");
+    UPCXXI_PROGRESS_UNTIL(!upcxx::progress_required(ps), detail::progress_internal);
   }
 }
 

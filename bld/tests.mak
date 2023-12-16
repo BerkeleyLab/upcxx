@@ -114,6 +114,7 @@ test_exclude_compile_only = \
 	issue412 \
 	issue428 \
 	issue450 \
+	issue613b \
 	nodiscard \
 	promise_multiple_results \
 	promise_reused \
@@ -165,6 +166,7 @@ endif
 
 # Conditionally exclude tests that require a valid ZE-kind device at runtime:
 test_requires_ze_device = \
+	example/gpu_vecadd/.sycl_vecadd.sh \
         test/ze_device.cpp 
 ifneq ($(UPCXX_ZE),1)
 test_exclude_all += $(test_requires_ze_device)
@@ -247,7 +249,12 @@ TEST_FLAGS_MEMBEROF_Clang=-Wno-invalid-offsetof
 export TEST_FLAGS_MEMBEROF=$(TEST_FLAGS_MEMBEROF_$(GASNET_CXX_FAMILY))
 
 TEST_FLAGS_ISSUE547_Clang=-Wno-self-move
+TEST_FLAGS_ISSUE547_GNU=-Wno-self-move
 export TEST_FLAGS_ISSUE547=$(TEST_FLAGS_ISSUE547_$(GASNET_CXX_FAMILY))
+
+# default "fast floating point mode" in recent oneAPI compilers leads to nuisance warnings
+TEST_FLAGS_RPUT_RPC_ClangINTEL=-Wno-tautological-constant-compare
+export TEST_FLAGS_RPUT_RPC=$(TEST_FLAGS_RPUT_RPC_$(GASNET_CXX_FAMILY)$(GASNET_CXX_SUBFAMILY))
 
 ifeq ($(strip $(UPCXX_PLATFORM_HAS_ISSUE_390)),1)
 # issue #390: the following tests are known to ICE PGI floor version when debugging symbols are enabled
@@ -277,6 +284,7 @@ endif
 test_seq_threaded = \
 	VIEW \
 	LPC_BARRIER \
+	LPC_CTOR_TRACE \
 	LPC_STRESS
 $(foreach test,$(test_seq_threaded), \
   $(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) $(TEST_THREADED_FLAGS)))
@@ -301,6 +309,22 @@ test_zero_length_rma = \
         RPUT_RPC_CX
 $(foreach test,$(test_zero_length_rma), \
   $(eval export TEST_ENV_$(test):=$(TEST_ENV_$(test)) UPCXX_WARN_EMPTY_RMA=0))
+
+#
+# Section 5.
+# Known failures such as:
+# export TEST_KCF_FOO_par_ANY_ANY='Reason foo.cpp fails to compile in par mode'
+# export TEST_KRF_BAR_ANY_ANY_ofi='Reason bar.cpp fails to run on ofi-conduit'
+# export TEST_KRF_BAZ_seq_opt_ANY='Reason test-baz-seq-opt-* fais to run'
+# export TEST_KRF_QUX='Reason qux.cpp always fais to run'
+#
+# Note that currently these work only with the `dev-*` targets,
+# but not with `make check` or `make tests; make run-tests`.
+#
+
+ifeq ($(UPCXX_VALGRIND),1)
+export TEST_KRF_ISSUE478='Issue 536: Unfulfilled promise leaks memory if it has a dependent future created by then() or when_all()'
+endif
 
 #
 # End of configuration

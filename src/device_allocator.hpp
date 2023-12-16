@@ -134,7 +134,8 @@ namespace upcxx {
          UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ(),
          dev), base, size) { }
 
-    // Legacy constructor argument ordering, DEPRECATED since 2022.3.0, will be removed soon!
+    UPCXXI_DEPRECATED("Legacy constructor argument ordering, DEPRECATED since 2022.3.0. "
+                      "Use device_allocator(device,size,opt_base) instead, or better yet upcxx::make_gpu_allocator()")
     device_allocator(Device &dev, typename Device::template pointer<void> base, std::size_t size):
       device_allocator(dev, size, base) {}
 

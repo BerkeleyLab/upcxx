@@ -38,7 +38,7 @@ Other topics are covered in the following documents:
 * Copyright notice and licensing agreement, see: [LICENSE.txt](LICENSE.txt)
 
 Usage information for public installs of UPC\+\+ at certain computing centers
-is available [online](https://upcxx.lbl.gov/wiki/docs/site-docs.md).
+is available [online](https://upcxx.lbl.gov/site).
 
 To report problems or request features: [issue tracker](https://upcxx-bugs.lbl.gov).
 
@@ -138,10 +138,10 @@ influence which backend `upcxx-meta` selects:
 * `UPCXX_NETWORK=<see below>`: The GASNet network backend ("conduit") to use
   for communication (the default and available values are system-dependent).
   Supported values include:
-    * `aries` is the high-performance Cray XC network.
+    * `aries` is the high-performance Cray XC network (deprecated).
     * `ibv` is the high-performance InfiniBand network.
     * `smp` is the high-performance choice for single-node multi-core runs.
-    * `ofi` the libfabric backend, recommended on HPE Cray EX and Intel Omni-Path systems.
+    * `ofi` the libfabric backend, recommended on Omni-Path networks and HPE Cray EX systems.
     * `ucx` the experimental UCX backend for certain InfiniBand systems.
     * `udp` is a portable low-performance alternative for testing and debugging.
     * `mpi` is a portable low-performance alternative for testing and debugging. 

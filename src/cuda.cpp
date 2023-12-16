@@ -60,6 +60,42 @@ namespace {
 #endif
 
 GASNETT_COLD
+std::string cuda_device::uuid(id_type device_id) {
+  UPCXXI_ASSERT_INIT();
+#if UPCXXI_CUDA_ENABLED
+  int dev_n = cuda_device::device_n(); // handles cu_init
+  UPCXX_ASSERT_ALWAYS(device_id >= 0 && device_id < dev_n);
+  #if CUDA_VERSION >= 9020
+    union {
+      CUuuid uuid;
+      std::uint8_t bytes[16];
+    } u;
+    #if CUDA_VERSION >= 11040
+      if (cuDeviceGetUuid_v2(&u.uuid, device_id) == CUDA_SUCCESS)
+    #else
+      if (cuDeviceGetUuid(&u.uuid, device_id) == CUDA_SUCCESS) 
+    #endif
+      {
+        // NVIDIA GPUs use an 8-4-4-4-12 binary UUID
+        // e.g. see: nvidia-smi -L
+        std::stringstream ss;
+        ss << "GPU-";
+        int i = 0;
+        for (auto v : u.bytes) {
+          if (i == 4 || i == 6 || i == 8 || i == 10) ss << "-";
+          ss << std::setw(2) << std::setfill('0') << std::hex << (unsigned int)v;
+          i++;
+        }
+        return ss.str();
+      }
+  #endif
+  return "Unsupported query";
+#else
+  return "CUDA support is disabled in this UPC++ install.";
+#endif
+}
+
+GASNETT_COLD
 std::string cuda_device::kind_info() {
   UPCXXI_ASSERT_INIT();
 #if UPCXXI_CUDA_ENABLED
@@ -95,6 +131,7 @@ std::string cuda_device::kind_info() {
       if (cuDeviceTotalMem(&mem, d) == CUDA_SUCCESS && mem > 0) {
         ss << "\n    Total memory: " << mem/(1024*1024.0) << " MiB";
       }
+      ss << "\n    UUID: " << cuda_device::uuid(d);
       ss << '\n';
     }
   }
@@ -167,9 +204,20 @@ extern void detail::cuda_copy_local(int heap_d, void *buf_d, int heap_s, void co
   }
 
   CUevent event;
-  UPCXXI_CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
+  st->lock.lock();
+  if (!st->eventFreeList.empty()) { // reuse when possible to avoid high construction overheads
+    event = st->eventFreeList.top();
+    st->eventFreeList.pop();
+    st->lock.unlock();
+  } else {
+    st->lock.unlock();
+
+    // Create an event object
+    UPCXXI_CU_CHECK(cuEventCreate(&event, CU_EVENT_DISABLE_TIMING));
+  }
   UPCXXI_CU_CHECK(cuEventRecord(event, st->stream));
   cb->event = (void*)event;
+  cb->hs = st;
 
   persona *per = detail::the_persona_tls.get_top_persona();
   per->UPCXXI_INTERNAL_ONLY(device_state_).cuda.cbs.enqueue(cb);
@@ -261,6 +309,15 @@ void cuda_device::destroy(upcxx::entry_barrier eb) {
       auto alloc = static_cast<detail::device_allocator_core<cuda_device>*>(st->alloc_base);
       alloc->release();
       UPCXX_ASSERT(!st->alloc_base);
+    }
+
+    { std::lock_guard<detail::par_mutex> g(st->lock);
+      while (!st->eventFreeList.empty()) { // drain the free list
+        CUevent hEvent = st->eventFreeList.top();
+        st->eventFreeList.pop();
+
+        UPCXXI_CU_CHECK(cuEventDestroy(hEvent));
+      }
     }
 
     UPCXXI_CU_CHECK_ALWAYS(cuStreamDestroy(st->stream));

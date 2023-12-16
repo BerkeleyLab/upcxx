@@ -6,6 +6,7 @@
  */
 
 #include <upcxx/backend_fwd.hpp>
+#include <upcxx/backend/gasnet/noise_log.hpp>
 
 #include <sstream>
 #include <cstddef>
@@ -19,7 +20,8 @@ namespace upcxx {
       if (showName) ss << _base;
       ss << "UPC++ shared heap is out of memory on process " << rank_me();
       if (where) ss << "\n inside upcxx::" << where;
-      if (nbytes) ss << " while trying to allocate " << nbytes <<  " more bytes";
+      if (nbytes) ss << " while trying to allocate additional " 
+                     << nbytes <<  " bytes (" << backend::gasnet::noise_log::size(nbytes) << ")";
       ss << "\n " << detail::shared_heap_stats();
       ss << "\n You may need to request a larger shared heap with `upcxx-run -shared-heap`"
                " or $UPCXX_SHARED_HEAP_SIZE.";
@@ -44,8 +46,9 @@ namespace upcxx {
       if (who == -1) ss << " on one or more processes";
       else           ss << " on process " << who << " (and possibly others)";
       ss << "\n inside upcxx::device_allocator<" << device_typename <<"> segment-allocating constructor";
-      if (nbytes) ss << "\n while trying to allocate a " << nbytes <<  " byte segment";
-      ss << "\n You may need to request a smaller device segment to accomodate the memory capacity of your device.";
+      if (nbytes) ss << "\n while trying to allocate a segment of size " 
+                     << nbytes <<  " bytes (" << backend::gasnet::noise_log::size(nbytes) << ")";
+      ss << "\n You may need to request a smaller device segment to accommodate the memory capacity of your device.";
       _what = ss.str();
     }
     bad_segment_alloc(const std::string & reason) noexcept : _what(_base) {
