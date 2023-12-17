@@ -331,9 +331,9 @@ def main():
     if conduit != 'udp' and args.localhost:
         print('Ignoring -localhost setting: only applies to UDP conduit, not', conduit)
         
-    # FIXME: ucx and ofi intentionally omitted from warning text until we claim support
+    # FIXME: ucx intentionally omitted from warning text until we claim support
     if args.sshservers and conduit not in ['udp', 'ibv', 'ucx', 'ofi']:
-        print('Ignoring -ssh-servers setting: only applies to UDP and IBV conduits, not', conduit)
+        print('Ignoring -ssh-servers setting: only applies to UDP, IBV and OFI conduits, not', conduit)
         
     if spawner:
         print_verbose('UPCXX_RUN: Looking for spawner "' + spawner + '" in:')
