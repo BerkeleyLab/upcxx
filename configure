@@ -228,7 +228,7 @@ function version {
   fi
   githash=$(git describe --always 2> /dev/null)
   echo "UPC++ version $version $githash"
-  echo "Copyright (c) 2023, The Regents of the University of California,"
+  echo "Copyright (c) 2024, The Regents of the University of California,"
   echo "through Lawrence Berkeley National Laboratory."
   echo "https://upcxx.lbl.gov"
   echo ""
