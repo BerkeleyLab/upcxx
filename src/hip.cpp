@@ -70,8 +70,8 @@ std::string hip_device::uuid(id_type device_id) {
     if (hipDeviceGetUuid(&u.uuid, device_id) == hipSuccess) {
       std::stringstream ss;
       ss << "GPU-";
-      #if __HIP_PLATFORM_NVIDIA__  
-        // NVIDIA GPss sse an 8-4-4-4-12 binary UUID
+      #ifdef __HIP_PLATFORM_NVIDIA__
+        // NVIDIA GPUs use an 8-4-4-4-12 binary UUID
         // e.g. see: nvidia-smi -L
         int i = 0;
         for (auto v : u.bytes) {
