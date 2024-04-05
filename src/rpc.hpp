@@ -10,6 +10,10 @@
 namespace upcxx {
   //////////////////////////////////////////////////////////////////////
   // detail::rpc_remote_results
+  // Given the initiator-side RPC Fn and Args (before serialization)
+  // Produces in `type` the target-side return type of the callback 
+  //   invocation (before serialization)
+  // Otherwise a missing `type` field if the invocation is a type error
   
   namespace detail {
     template<typename Call, typename = void>
@@ -88,9 +92,9 @@ namespace upcxx {
       using type = typename detail::rpc_ff_return<Fn(Arg...), Cxs>::type;
       static const bool value = true;
     };
-  }
+  } // namespace detail
   
-  // defaulted completions
+  // rpc_ff: world with defaulted completions
   template<typename Fn, typename ...Arg>
   auto rpc_ff(intrank_t recipient, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if fn is a completions type
@@ -157,6 +161,7 @@ namespace upcxx {
     );
   }
   
+  // rpc_ff: team with defaulted completions
   template<typename Fn, typename ...Arg>
   auto rpc_ff(const team &tm, intrank_t recipient, Fn &&fn, Arg &&...args)
     // computes our return type, but SFINAE's out if fn is a completions type
@@ -173,7 +178,7 @@ namespace upcxx {
     return rpc_ff(backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...);
   }
 
-  // explicit completions
+  // rpc_ff: world with explicit completions
   template<typename Cxs, typename Fn, typename ...Arg>
   UPCXXI_NODISCARD
   auto rpc_ff(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
@@ -270,6 +275,7 @@ namespace upcxx {
     return returner();
   }
   
+  // rpc_ff: team with explicit completions
   template<typename Cxs, typename Fn, typename ...Arg>
   UPCXXI_NODISCARD
   auto rpc_ff(const team &tm, intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
@@ -378,12 +384,13 @@ namespace upcxx {
       using type = typename detail::rpc_return<Fn(Arg...), Cxs>::type;
       static const bool value = true;
     };
-  }
+  } // namespace detail
   
   namespace detail {
     template<typename Cxs, typename Fn, typename ...Arg>
     auto rpc_internal(intrank_t recipient, Fn &&fn, Arg &&...args, Cxs &&cxs, int /*dummy*/)
-      // computes our return type, but SFINAE's out if fn(args...) is ill-formed
+      // computes our return type, but SFINAE's out if fn(args...) is ill-formed.
+      // dummy argument ensures preferred overload resolution (see comment below)
       -> typename detail::rpc_return<Fn(Arg...), typename std::decay<Cxs>::type>::type {
       using CxsDecayed = typename std::decay<Cxs>::type;
       
@@ -495,7 +502,8 @@ namespace upcxx {
     // Overload replaces SFINAE with a static assertion failure.
     // Note: cxs comes after args to prevent the dummy int from being
     // folded into the parameter pack for ...Arg, forcing it into the
-    // variadic arguments here.
+    // variadic arguments here. That in turn ensures overload resolution
+    // favors the overload above (iff it did not SFINAE away) over this one.
     template<typename Cxs, typename Fn, typename ...Arg>
     future<> rpc_internal(intrank_t, Fn &&, Arg &&..., Cxs&&, ...) {
       using CxsDecayed = typename std::decay<Cxs>::type;
@@ -513,8 +521,9 @@ namespace upcxx {
       );
       return make_future();
     }
-  }
+  } // namespace detail
 
+  // rpc: team with explicit completions
   template<typename Cxs, typename Fn, typename ...Arg>
   UPCXXI_NODISCARD
   auto rpc(const team &tm, intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
@@ -535,6 +544,7 @@ namespace upcxx {
       );
   }
   
+  // rpc: world with explicit completions
   template<typename Cxs, typename Fn, typename ...Arg>
   UPCXXI_NODISCARD
   auto rpc(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
@@ -555,7 +565,7 @@ namespace upcxx {
       );
   }
   
-  // rpc: default completions variant
+  // rpc: team with default completions
   template<typename Fn, typename ...Arg>
   UPCXXI_NODISCARD
   auto rpc(const team &tm, intrank_t recipient, Fn &&fn, Arg &&...args)
@@ -576,6 +586,7 @@ namespace upcxx {
     );
   }
   
+  // rpc: world with default completions
   template<typename Fn, typename ...Arg>
   UPCXXI_NODISCARD
   auto rpc(intrank_t recipient, Fn &&fn, Arg &&...args)
@@ -595,5 +606,5 @@ namespace upcxx {
       operation_cx::as_future(), 0
     );
   }
-}
+} // namespace upcxx
 #endif
