@@ -96,8 +96,9 @@ namespace upcxx {
 
   namespace detail {
     template<typename Cxs, typename Fn, typename ...Arg>
-    auto rpc_ff_internal(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
+    auto rpc_ff_internal(intrank_t recipient, Fn &&fn, Arg &&...args, Cxs &&cxs, int /*dummy*/)
       // computes our return type, but SFINAE's out if fn(args...) is ill-formed.
+      // dummy argument ensures preferred overload resolution (see comment below)
       -> typename detail::rpc_ff_return<Fn(Arg...), typename std::decay<Cxs>::type>::type {
       using CxsDecayed = typename std::decay<Cxs>::type;
 
@@ -134,13 +135,6 @@ namespace upcxx {
         "Deserialized type of all rpc arguments must be MoveConstructible."
       );
         
-      static_assert(
-        detail::rpc_ff_return_no_sfinae<Fn(Arg...), CxsDecayed>::value,
-        "function object provided to rpc_ff cannot be invoked on the given arguments as rvalue references "
-        "(after deserialization of the function object and arguments). "
-        "Note: make sure that the function object does not have any non-const lvalue-reference parameters."
-      );
-
       static_assert(
         detail::trait_forall<
            detail::type_respects_static_size_limit,
@@ -184,6 +178,28 @@ namespace upcxx {
       return returner();
     }
 
+    // Overload below replaces substitution failure for bad Fn(Arg...)
+    // with a static assertion failure and a user-friendly message.
+    // Note: cxs comes after args to prevent the dummy int from being
+    // folded into the parameter pack for ...Arg, forcing it into the
+    // variadic arguments here. That in turn ensures overload resolution
+    // favors the overload above (iff it did not SFINAE away) over this one.
+    template<typename Cxs, typename Fn, typename ...Arg>
+    void rpc_ff_internal(intrank_t, Fn &&, Arg &&..., Cxs&&, ...) {
+      using CxsDecayed = typename std::decay<Cxs>::type;
+      // check that this overload is not unintentionally invoked
+      static_assert(
+        !detail::rpc_ff_return_no_sfinae<Fn(Arg...), CxsDecayed>::value,
+        "internal error"
+      );
+      // friendlier error message for when Fn(Arg...) is invalid
+      static_assert(
+        detail::rpc_ff_return_no_sfinae<Fn(Arg...), CxsDecayed>::value,
+        "function object provided to rpc_ff cannot be invoked on the given arguments as rvalue references "
+        "(after deserialization of the function object and arguments). "
+        "Note: make sure that the function object does not have any non-const lvalue-reference parameters."
+      );
+    }
   } // namespace detail
   
   // rpc_ff: world with defaulted completions
@@ -203,8 +219,8 @@ namespace upcxx {
 
     return detail::rpc_ff_internal<detail::completions<>, Fn&&, Arg&&...>(
       recipient,
-      detail::completions<>{},
-      std::forward<Fn>(fn), std::forward<Arg>(args)...
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      detail::completions<>{}, 0
     );
   }
   
@@ -225,8 +241,8 @@ namespace upcxx {
 
     return detail::rpc_ff_internal<detail::completions<>, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), 
-      detail::completions<>{},
-      std::forward<Fn>(fn), std::forward<Arg>(args)...
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      detail::completions<>{}, 0
     );
   }
 
@@ -247,8 +263,8 @@ namespace upcxx {
 
     return detail::rpc_ff_internal<Cxs, Fn&&, Arg&&...>(
       recipient, 
-      std::forward<Cxs>(cxs), 
-      std::forward<Fn>(fn), std::forward<Arg>(args)...
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      std::forward<Cxs>(cxs), 0
     );
   }
   
@@ -269,8 +285,8 @@ namespace upcxx {
 
     return detail::rpc_ff_internal<Cxs, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), 
-      std::forward<Cxs>(cxs), 
-      std::forward<Fn>(fn), std::forward<Arg>(args)...
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      std::forward<Cxs>(cxs), 0
     );
   }
   
@@ -480,7 +496,8 @@ namespace upcxx {
       return returner();
     }
 
-    // Overload replaces SFINAE with a static assertion failure.
+    // Overload below replaces substitution failure for bad Fn(Arg...)
+    // with a static assertion failure and a user-friendly message.
     // Note: cxs comes after args to prevent the dummy int from being
     // folded into the parameter pack for ...Arg, forcing it into the
     // variadic arguments here. That in turn ensures overload resolution
