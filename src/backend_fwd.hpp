@@ -240,7 +240,7 @@ namespace backend {
       persona &active_per = current_persona()
     );
   
-  template<progress_level level, typename Fn>
+  template<progress_level level, bool immediate=false, typename Fn>
   void send_am_master(intrank_t recipient, Fn &&fn);
   
   template<progress_level level, typename Fn>

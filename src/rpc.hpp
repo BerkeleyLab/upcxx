@@ -95,7 +95,7 @@ namespace upcxx {
   } // namespace detail
 
   namespace detail {
-    template<typename Cxs, typename Fn, typename ...Arg>
+    template<bool immediate, typename Cxs, typename Fn, typename ...Arg>
     auto rpc_ff_internal(intrank_t recipient, Fn &&fn, Arg &&...args, Cxs &&cxs, int /*dummy*/)
       // computes our return type, but SFINAE's out if fn(args...) is ill-formed.
       // dummy argument ensures preferred overload resolution (see comment below)
@@ -155,7 +155,7 @@ namespace upcxx {
       // during unwinding in case the injection call throws an excetion.
       // This is safe for rpc_ff (only) because there is no acknowledgment
       // message that might race us to trigger local completion events.
-      backend::template send_am_master<progress_level::user>( recipient,
+      backend::template send_am_master<progress_level::user, immediate>( recipient,
         detail::bind_rvalue_as_lvalue(std::forward<Fn>(fn), std::forward<Arg>(args)...)
       );
 
@@ -184,7 +184,7 @@ namespace upcxx {
     // folded into the parameter pack for ...Arg, forcing it into the
     // variadic arguments here. That in turn ensures overload resolution
     // favors the overload above (iff it did not SFINAE away) over this one.
-    template<typename Cxs, typename Fn, typename ...Arg>
+    template<bool immediate, typename Cxs, typename Fn, typename ...Arg>
     void rpc_ff_internal(intrank_t, Fn &&, Arg &&..., Cxs&&, ...) {
       using CxsDecayed = typename std::decay<Cxs>::type;
       // check that this overload is not unintentionally invoked
@@ -217,7 +217,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_ff_internal<detail::completions<>, Fn&&, Arg&&...>(
+    return detail::rpc_ff_internal<false, detail::completions<>, Fn&&, Arg&&...>(
       recipient,
       std::forward<Fn>(fn), std::forward<Arg>(args)...,
       detail::completions<>{}, 0
@@ -239,7 +239,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
         "rpc_ff(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_ff_internal<detail::completions<>, Fn&&, Arg&&...>(
+    return detail::rpc_ff_internal<false, detail::completions<>, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), 
       std::forward<Fn>(fn), std::forward<Arg>(args)...,
       detail::completions<>{}, 0
@@ -261,7 +261,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
         "rpc_ff(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_ff_internal<Cxs, Fn&&, Arg&&...>(
+    return detail::rpc_ff_internal<false, Cxs, Fn&&, Arg&&...>(
       recipient, 
       std::forward<Fn>(fn), std::forward<Arg>(args)...,
       std::forward<Cxs>(cxs), 0
@@ -283,13 +283,106 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
         "rpc_ff(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_ff_internal<Cxs, Fn&&, Arg&&...>(
+    return detail::rpc_ff_internal<false, Cxs, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), 
       std::forward<Fn>(fn), std::forward<Arg>(args)...,
       std::forward<Cxs>(cxs), 0
     );
   }
+
+ namespace experimental {
+  //////////////////////////////////////////////////////////////////////
+  // rpc_ff_immediate
   
+  // rpc_ff_immediate: world with defaulted completions
+  template<typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_ff_immediate(intrank_t recipient, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if fn is a completions type
+    -> typename std::enable_if<
+         !detail::is_completions<Fn>::value,
+         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), detail::completions<>>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
+      "rpc_ff_immediate(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_ff_internal<true, detail::completions<>, Fn&&, Arg&&...>(
+      recipient,
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      detail::completions<>{}, 0
+    );
+  }
+  
+  // rpc_ff_immediate: team with defaulted completions
+  template<typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_ff_immediate(const team &tm, intrank_t recipient, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if fn is a completions type
+    -> typename std::enable_if<
+         !detail::is_completions<Fn>::value,
+         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), detail::completions<>>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
+        "rpc_ff_immediate(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_ff_internal<true, detail::completions<>, Fn&&, Arg&&...>(
+      backend::team_rank_to_world(tm, recipient), 
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      detail::completions<>{}, 0
+    );
+  }
+
+  // rpc_ff_immediate: world with explicit completions
+  template<typename Cxs, typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_ff_immediate(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if cxs is not a completions type
+    -> typename std::enable_if<
+         detail::is_completions<typename std::decay<Cxs>::type>::value,
+         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
+        "rpc_ff_immediate(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_ff_internal<true, Cxs, Fn&&, Arg&&...>(
+      recipient, 
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      std::forward<Cxs>(cxs), 0
+    );
+  }
+  
+  // rpc_ff_immediate: team with explicit completions
+  template<typename Cxs, typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_ff_immediate(const team &tm, intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if cxs is not a completions type
+    -> typename std::enable_if<
+         detail::is_completions<typename std::decay<Cxs>::type>::value,
+         typename detail::rpc_ff_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
+       >::type {
+  
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
+        "rpc_ff_immediate(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_ff_internal<true, Cxs, Fn&&, Arg&&...>(
+      backend::team_rank_to_world(tm, recipient), 
+      std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      std::forward<Cxs>(cxs), 0
+    );
+  }
+ } // namespace experimental
+
   //////////////////////////////////////////////////////////////////////
   // rpc
   
@@ -384,7 +477,7 @@ namespace upcxx {
   } // namespace detail
   
   namespace detail {
-    template<typename Cxs, typename Fn, typename ...Arg>
+    template<bool immediate, typename Cxs, typename Fn, typename ...Arg>
     auto rpc_internal(intrank_t recipient, Fn &&fn, Arg &&...args, Cxs &&cxs, int /*dummy*/)
       // computes our return type, but SFINAE's out if fn(args...) is ill-formed.
       // dummy argument ensures preferred overload resolution (see comment below)
@@ -468,7 +561,7 @@ namespace upcxx {
       
       using fn_bound_t = typename detail::bind1<const Fn&, const Arg&...>::return_type;
 
-      backend::template send_am_master<progress_level::user>(
+      backend::template send_am_master<progress_level::user, immediate>(
         recipient,
         detail::bind_rvalue_as_lvalue(
           [=](deserialized_type_t<fn_bound_t> &&fn_bound) {
@@ -502,7 +595,7 @@ namespace upcxx {
     // folded into the parameter pack for ...Arg, forcing it into the
     // variadic arguments here. That in turn ensures overload resolution
     // favors the overload above (iff it did not SFINAE away) over this one.
-    template<typename Cxs, typename Fn, typename ...Arg>
+    template<bool immediate, typename Cxs, typename Fn, typename ...Arg>
     future<> rpc_internal(intrank_t, Fn &&, Arg &&..., Cxs&&, ...) {
       using CxsDecayed = typename std::decay<Cxs>::type;
       // check that this overload is not unintentionally invoked
@@ -536,7 +629,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_internal<Cxs, Fn&&, Arg&&...>(
+    return detail::rpc_internal<false, Cxs, Fn&&, Arg&&...>(
         backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
         std::forward<Cxs>(cxs), 0
       );
@@ -557,7 +650,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_internal<Cxs, Fn&&, Arg&&...>(
+    return detail::rpc_internal<false, Cxs, Fn&&, Arg&&...>(
         recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
         std::forward<Cxs>(cxs), 0
       );
@@ -578,7 +671,7 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
       "rpc(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_internal<detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
+    return detail::rpc_internal<false, detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
       backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
       operation_cx::as_future(), 0
     );
@@ -599,10 +692,100 @@ namespace upcxx {
     UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
       "rpc(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
 
-    return detail::rpc_internal<detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
+    return detail::rpc_internal<false, detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
       recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
       operation_cx::as_future(), 0
     );
   }
+
+ namespace experimental {
+  //////////////////////////////////////////////////////////////////////
+  // rpc_immediate
+
+  // rpc_immediate: team with explicit completions
+  template<typename Cxs, typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_immediate(const team &tm, intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if cxs is not a completions type
+    -> typename std::enable_if<
+         detail::is_completions<typename std::decay<Cxs>::type>::value,
+         typename detail::rpc_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
+      "rpc_immediate(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_internal<true, Cxs, Fn&&, Arg&&...>(
+        backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
+        std::forward<Cxs>(cxs), 0
+      );
+  }
+  
+  // rpc_immediate: world with explicit completions
+  template<typename Cxs, typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_immediate(intrank_t recipient, Cxs &&cxs, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if cxs is not a completions type
+    -> typename std::enable_if<
+         detail::is_completions<typename std::decay<Cxs>::type>::value,
+         typename detail::rpc_return_no_sfinae<Fn(Arg...), typename std::decay<Cxs>::type>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
+      "rpc_immediate(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_internal<true, Cxs, Fn&&, Arg&&...>(
+        recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
+        std::forward<Cxs>(cxs), 0
+      );
+  }
+  
+  // rpc_immediate: team with default completions
+  template<typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_immediate(const team &tm, intrank_t recipient, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if fn is a completions type
+    -> typename std::enable_if<
+         !detail::is_completions<Fn>::value,
+         typename detail::rpc_return_no_sfinae<Fn(Arg...), detail::operation_cx_as_future_t>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < tm.rank_n(),
+      "rpc_immediate(team, recipient, ...) requires recipient in [0, team.rank_n()-1] == [0, " << tm.rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_internal<true, detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
+      backend::team_rank_to_world(tm, recipient), std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      operation_cx::as_future(), 0
+    );
+  }
+  
+  // rpc_immediate: world with default completions
+  template<typename Fn, typename ...Arg>
+  UPCXXI_NODISCARD
+  auto rpc_immediate(intrank_t recipient, Fn &&fn, Arg &&...args)
+    // computes our return type, but SFINAE's out if fn is a completions type
+    -> typename std::enable_if<
+         !detail::is_completions<Fn>::value,
+         typename detail::rpc_return_no_sfinae<Fn(Arg...), detail::operation_cx_as_future_t>::type
+       >::type {
+
+    UPCXXI_ASSERT_INIT();
+    UPCXXI_ASSERT_MASTER_CURRENT_IFSEQ();
+    UPCXX_ASSERT(recipient >= 0 && recipient < world().rank_n(),
+      "rpc_immediate(recipient, ...) requires recipient in [0, rank_n()-1] == [0, " << world().rank_n()-1 << "], but given: " << recipient);
+
+    return detail::rpc_internal<true, detail::operation_cx_as_future_t, Fn&&, Arg&&...>(
+      recipient, std::forward<Fn>(fn), std::forward<Arg>(args)...,
+      operation_cx::as_future(), 0
+    );
+  }
+ } // namespace experimental
+  
 } // namespace upcxx
 #endif
