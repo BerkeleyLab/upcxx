@@ -493,7 +493,7 @@ _EOF
         check_maybe_c_compiler
         return 2
     fi
-    if ! (set -x; eval $CXX $CXXFLAGS $CXXSTDFLAG -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
+    if ! (set -x; eval $CXX $CXXFLAGS $CXXSTDFLAG $LDFLAGS -o conftest.o conftest-cc.o conftest-cxx.o -lm) >> $DETAIL_LOG 2>&1 ; then
         echo "ERROR: CXX=$CXX failed to link object files produced by CC=$CC and CXX=$CXX"
         echo "ERROR: See $DETAIL_LOG for details. Last four lines are as follows:"
         tail -4 $DETAIL_LOG

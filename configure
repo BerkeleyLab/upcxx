@@ -1168,7 +1168,7 @@ if [[ $UPCXX_CUDA -eq 1 ]]; then
   # check that the CUDA Driver API is linkable, adding explicit link flags if needed
   echo -e "#include <cuda.h>\n#include <cuda_runtime_api.h>\nint main() { cuInit(0); return 0; }" >| conftest.cpp
   for ldextra in '' '-lcuda' '-framework CUDA' 'FAIL'; do
-    eval $CXX $UPCXX_CUDA_CPPFLAGS conftest.cpp -o conftest.exe $UPCXX_CUDA_LIBFLAGS $ldextra &> /dev/null
+    eval $CXX $UPCXX_CUDA_CPPFLAGS $LDFLAGS conftest.cpp -o conftest.exe $UPCXX_CUDA_LIBFLAGS $ldextra &> /dev/null
     if [[ $? -eq 0 ]] && ( ./conftest.exe 2>/dev/null ); then
       [[ -n "$ldextra" ]] && UPCXX_CUDA_LIBFLAGS+=" $ldextra"
       break
