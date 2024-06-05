@@ -1181,7 +1181,7 @@ if [[ $UPCXX_CUDA -eq 1 ]]; then
         break
       fi
     fi
-  ) &>> $DETAIL_LOG
+  ) >> $DETAIL_LOG 2>&1
   done
   rm -f conftest.cpp conftest.exe
   if [[ "$ldextra" == 'FAIL' ]]; then
