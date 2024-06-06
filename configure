@@ -1170,18 +1170,16 @@ if [[ $UPCXX_CUDA -eq 1 ]]; then
   rm -f $DETAIL_LOG
   echo -e "#include <cuda.h>\n#include <cuda_runtime_api.h>\nint main() { cuInit(0); return 0; }" >| conftest.cpp
   for ldextra in '' '-lcuda' '-framework CUDA' 'FAIL'; do
-  (
     cmd="$CXX $UPCXX_CUDA_CPPFLAGS $LDFLAGS conftest.cpp -o conftest.exe $UPCXX_CUDA_LIBFLAGS $ldextra"
-    echo '$' $cmd
-    eval $cmd
+    echo '$' $cmd >> $DETAIL_LOG
+    eval $cmd >> $DETAIL_LOG 2>&1
     if [[ $? -eq 0 ]]; then
-      echo '$ ./conftest.exe'
-      if ./conftest.exe; then
+      echo '$ ./conftest.exe' >> $DETAIL_LOG
+      if ./conftest.exe >> $DETAIL_LOG 2>&1 ; then
         [[ -n "$ldextra" ]] && UPCXX_CUDA_LIBFLAGS+=" $ldextra"
         break
       fi
     fi
-  ) >> $DETAIL_LOG 2>&1
   done
   rm -f conftest.cpp conftest.exe
   if [[ "$ldextra" == 'FAIL' ]]; then
