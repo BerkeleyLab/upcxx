@@ -252,8 +252,9 @@ def set_ssh_servers(ssh_servers, nranks, conduit):
     if ssh_servers:
         os.environ['SSH_SERVERS'] = ssh_servers
         os.environ['GASNET_SSH_SERVERS'] = ssh_servers
-        os.environ['GASNET_SPAWNFN'] = 'S'
-        os.environ['GASNET_IBV_SPAWNFN'] = 'ssh'
+        if conduit == 'udp':
+            os.environ['GASNET_SPAWNFN'] = 'S'
+        os.environ['GASNET_' + conduit.upper() + '_SPAWNER'] = 'ssh'
 
     
 def main():
