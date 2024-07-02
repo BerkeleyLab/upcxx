@@ -530,6 +530,11 @@ xcode-select --install
 Alternatively, the `--with-cc=...` and `--with-cxx=...` options to `configure`
 may be used to specify different compilers.
 
+Note that with GASNet versions 2024.5.3 or later, if you have MPI installed
+then you may also need to specify configure option `--with-cxx=mpicxx` or
+`--disable-mpi-compat` accordingly. See [Configuration: Linux](#markdown-header-configuration-linux)
+above for more details.
+
 In order to use a debugger on macOS, we advise you to enable "Developer
 Mode".  This is a system setting, not directly related to UPC\+\+.
 Developer Mode may already be enabled, for instance if one granted Xcode
