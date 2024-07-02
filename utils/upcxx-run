@@ -225,6 +225,11 @@ def get_conduit(args, command):
     conduit = get_key_in_exec(command, 'GASNetConduitName:')
     return None if not conduit else conduit.lower()
 
+# convert a version dotted string (e.g. "1.2.3") into a comparable tuple
+def version_tuple(v):
+    if v is None:
+        return 0
+    return tuple(map(int, (v.split("."))))
 
 def set_ssh_servers(ssh_servers, nranks, conduit):
     split_chars = ',|/|;|:| '
@@ -291,7 +296,7 @@ def main():
     if args.info:
         print_env_info(executable, args.network)
         return 0
-        
+
     spawner = None
     if args.verbose >= 1:
         os.environ['UPCXX_VERBOSE'] = '1'
@@ -300,18 +305,31 @@ def main():
     if args.verbose >= 3:
         os.environ['GASNET_SPAWN_VERBOSE'] = '1'
 
+    gex_version = get_key_in_exec(executable, 'UPCXXGASNetVersion:')
+    have_smp_spawner = version_tuple(gex_version) >= version_tuple("2024.5.3")
+
     if args.verbose:
         print('UPCXX_RUN:', executable, 'is compiled with', conduit, 'conduit')
+        print('UPCXX_RUN: GASNet-EX version is', gex_version)
 
     if args.sshservers and args.localhost:
         print_error_and_abort('Conflicting options: cannot specify both -ssh-servers and -localhost')
         
-    if conduit == 'smp':
+    if conduit == 'smp' and args.nnodes and args.nnodes != 1:
+        print('WARNING: '+executable+' was compiled with smp backend, which only supports single-node operation. -N option ignored.')
+        print('WARNING: For multi-node operation, please re-compile with UPCXX_NETWORK=<backend>')
+        args.nnodes = 1
+
+    ssh_server_conduits = ['udp', 'ibv', 'ucx', 'ofi'] 
+    localhost_conduits = ['udp']
+    if have_smp_spawner:
+        ssh_server_conduits.append('smp')
+        localhost_conduits.append('smp')
+
+    if conduit == 'smp' and \
+       (not have_smp_spawner or args.localhost):
+        os.environ['GASNET_SMP_SPAWNER'] = 'fork'
         os.environ['GASNET_PSHM_NODES'] = str(args.nranks)
-        if args.nnodes and args.nnodes != 1:
-            print('WARNING: '+executable+' was compiled with smp backend, which only supports single-node operation. -N option ignored.')
-            print('WARNING: For multi-node operation, please re-compile with UPCXX_NETWORK=<backend>')
-            args.nnodes = 1
     elif conduit == 'udp':
         spawner = 'amudprun'
         cmd = ['-np', str(args.nranks)] + cmd
@@ -319,22 +337,21 @@ def main():
             os.environ['GASNET_SPAWNFN'] = 'L'
         elif os.environ.get('GASNET_SPAWNFN') in [None , 'S', 's']:
             set_ssh_servers(args.sshservers, args.nranks, conduit)
-    elif conduit in ['mpi', 'ibv', 'aries', 'pami', 'ucx', 'ofi']:
+    elif conduit in ['mpi', 'ibv', 'aries', 'pami', 'ucx', 'ofi', 'smp']:
         spawner = 'gasnetrun_' + conduit
         cmd = ['-n', str(args.nranks)] + cmd
         if args.nnodes:
             cmd = ['-N', str(args.nnodes)] + cmd
-        if conduit in ['ibv', 'ucx']:
+        if conduit in ssh_server_conduits:
             set_ssh_servers(args.sshservers, args.nranks, conduit)
     else:
         print_error_and_abort('Unknown GASNet conduit: ' + conduit)
         
-    if conduit != 'udp' and args.localhost:
-        print('Ignoring -localhost setting: only applies to UDP conduit, not', conduit)
+    if args.localhost and conduit not in localhost_conduits:
+        print('WARNING: Ignoring -localhost setting: only applies to', localhost_conduits, 'conduit, not', conduit)
         
-    # FIXME: ucx intentionally omitted from warning text until we claim support
-    if args.sshservers and conduit not in ['udp', 'ibv', 'ucx', 'ofi']:
-        print('Ignoring -ssh-servers setting: only applies to UDP, IBV and OFI conduits, not', conduit)
+    if args.sshservers and conduit not in ssh_server_conduits:
+        print('WARNING: Ignoring -ssh-servers setting: only applies to', ssh_server_conduits, 'conduits, not', conduit)
         
     if spawner:
         print_verbose('UPCXX_RUN: Looking for spawner "' + spawner + '" in:')
