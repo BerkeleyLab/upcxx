@@ -5,6 +5,13 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
+### PENDING
+
+Notable issues resolved
+  (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
+
+* issue #627: smp-conduit cannot use new spawner support via upcxx-run
+
 ### 2023.12.15: Release 2023.9.0
 
 General features/enhancements: (see specification and programmer's guide for full details)
