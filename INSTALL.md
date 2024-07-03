@@ -477,10 +477,12 @@ control over how UPC\+\+ is configured can be found in the
 
 By default ibv-conduit (InfiniBand support) will use MPI for job spawning if a
 working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  The same is
-true for MPI, OFI and UCX conduits, if these have been enabled.  To ensure that
+true for SMP, MPI, OFI and UCX conduits, if these have been enabled.  To ensure that
 UPC\+\+ applications will link when one of these conduits are used, one of three
 options must be chosen.  Failure to do so will typically result in an error
 message at UPC\+\+ build time, directing you to this documentation.
+Note that smp-conduit is a recent addition to the list above with GASNet
+versions 2024.5.3 or later.
 
 Option 1. The most direct solution is to configure using `--with-cxx=mpicxx` (or
 similar) to ensure correct linking of UPC\+\+ applications which use MPI for job
@@ -500,8 +502,8 @@ using the given network API.  The case of missing hardware can often occur for
 IBV when Linux distros install the corresponding development packages as
 dependencies of other packages.
 
-Option 3. If one does not require MPI for job spawning (because SSH- or
-PMI-based spawning in GASNet are sufficient), then one may configure using
+Option 3. If one does not require MPI for job spawning (because SSH-based or
+PMI-based or SMP fork-based spawning in GASNet are sufficient), then one may configure using
 `--disable-mpi-compat` to eliminate the link-time dependence on MPI.
 Note that this particular option does NOT work for mpi-conduit.
 
@@ -527,6 +529,11 @@ xcode-select --install
 
 Alternatively, the `--with-cc=...` and `--with-cxx=...` options to `configure`
 may be used to specify different compilers.
+
+Note that with GASNet versions 2024.5.3 or later, if you have MPI installed
+then you may also need to specify configure option `--with-cxx=mpicxx` or
+`--disable-mpi-compat` accordingly. See [Configuration: Linux](#markdown-header-configuration-linux)
+above for more details.
 
 In order to use a debugger on macOS, we advise you to enable "Developer
 Mode".  This is a system setting, not directly related to UPC\+\+.
