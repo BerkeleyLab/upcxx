@@ -306,7 +306,7 @@ def main():
         os.environ['GASNET_SPAWN_VERBOSE'] = '1'
 
     gex_version = get_key_in_exec(executable, 'UPCXXGASNetVersion:')
-    have_smp_spawner = version_tuple(gex_version) >= version_tuple("2024.5.3")
+    have_smp_spawner = gex_version and version_tuple(gex_version) >= version_tuple("2024.5.3")
 
     if args.verbose:
         print('UPCXX_RUN:', executable, 'is compiled with', conduit, 'conduit')
