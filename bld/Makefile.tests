@@ -573,7 +573,7 @@ do-run-tests: force
 	   elif grep UPCXX_TEST_SKIPPED $$output; then                  \
 	     result=skip; : $$((++skipped));                            \
 	   else                                                         \
-	     tail -n +$$firstout $$output | grep -e "Test result:" -e SUCCESS $$output ; \
+	     tail -n +$$firstout $$output | grep -e "Test result:" -e SUCCESS ; \
 	     result=pass;                                               \
 	   fi;                                                          \
 	   $$MAKE $(MAKE_HERE) do-test-xml RESULT=run-$$result OUTPUT=$$output ; \
