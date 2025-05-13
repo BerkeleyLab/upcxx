@@ -66,8 +66,8 @@ eager.
 
 ## Exceptions thrown from RPC ##
 
-The communication functions `upcxx::rpc` and `upcxx::rpc_ff` may throw
-exceptions. The exceptions may be thrown on the initiating thread before or
+Calls to RPC communication functions (e.g., `upcxx::rpc()`) may throw exceptions. 
+The exceptions may be thrown on the initiating thread before or
 after serialization of the function arguments. In all other ways, a call
 throwing such an exception is effectively "canceled" -- it will not lead to
 invocation of the function object at the target, nor will it deliver any event
@@ -94,6 +94,10 @@ function pointer relocation information using
 `upcxx::experimental::relo::verify_segment()` when libraries are `dlopen`ed
 asynchronously.  See [docs/ccs-rpc.md](ccs-rpc.md) for more information
 about the CCS RPC feature.
+
+The [experimental immediate-mode RPC injection calls](#markdown-header-immediate-mode-rpc)
+may additionally throw a `upcxx::experimental::network_busy` exception in
+the presence of network congestion.
 
 ## Simplified Device Allocator Management
 
@@ -172,7 +176,17 @@ aborting program execution.
 ## Experimental Features ##
 
 Several unspecified, experimental features are implemented in the
-`upcxx::experimental` namespace. These include the following:
+`upcxx::experimental` namespace.
+
+### WARNING WARNING WARNING
+
+**All the features described in the following sections are subject to change or removal at
+any time. If you find any of them useful, please send an email to
+`upcxx@googlegroups.com`, and we will consider adding them to the specification proper.**
+
+### Non-trivial collectives
+
+`upcxx::experimental` interfaces for collectives over non-TriviallySerializable values:
 
   * broadcast of Serializable but non-TriviallySerializable values:
 
@@ -202,6 +216,10 @@ Several unspecified, experimental features are implemented in the
                                 Cx &&completions=operation_cx::as_future());
     ```
 
+### Environmental interaction
+
+Miscellaneous `upcxx::experimental` interfaces:
+
   * utilities for reading environment variables:
 
     ```c++
@@ -227,6 +245,83 @@ Several unspecified, experimental features are implemented in the
     };
     ```
 
+### Immediate-mode RPC
+
+`upcxx::experimental` interfaces for "immediate-mode" injection of RPCs.
+
+`rpc_ff_immediate()` and `rpc_immediate()` calls accept the same arguments as
+the corresponding non-immediate calls (`rpc_ff` and `rpc`, respectively),
+and have exactly the same semantics under conditions of low network congestion.
+However, when an injection attempt detects that network congestion is likely to cause
+the initiating thread to be blocked inside the call (stalling due to 
+constrained network resources), the immediate-mode RPC calls will instead
+abort the injection attempt by throwing `upcxx::experimental::network_busy`.
+
+```c++
+template <typename Func, typename ...Args>
+void rpc_ff_immediate(intrank_t recipient,
+            Func &&func, Args &&...args);
+template <typename Cx, typename Func, typename ...Args>
+RType rpc_ff_immediate(intrank_t recipient,
+            Cx &&completions,
+            Func &&func, Args &&...args);
+template <typename Func, typename ...Args>
+void rpc_ff_immediate(const team &team, intrank_t recipient,
+            Func &&func, Args &&...args);
+template <typename Cx, typename Func, typename ...Args>
+RType rpc_ff_immediate(const team &team, intrank_t recipient,
+            Cx &&completions,
+            Func &&func, Args &&...args);
+
+template <typename Func, typename ...Args>
+RType rpc_immediate(intrank_t recipient,
+            Func &&func, Args &&...args);
+            template <typename Cx, typename Func, typename ...Args>
+RType rpc_immediate(intrank_t recipient,
+            Cx &&completions,
+            Func &&func, Args &&...args);
+template <typename Func, typename ...Args>
+RType rpc_immediate(const team &team, intrank_t recipient,
+            Func &&func, Args &&...args);
+            template <typename Cx, typename Func, typename ...Args>
+RType rpc_immediate(const team &team, intrank_t recipient,
+            Cx &&completions,
+            Func &&func, Args &&...args);
+```
+
+*Exceptions*: 
+
+* May throw `upcxx::experimental::network_busy` on the calling thread 
+  (at the initiating process) under implementation-defined conditions. 
+  The ordering of any such exception throw with respect to argument 
+  serialization is unspecified. However a call throwing such an exception shall
+  not deliver any event notifications, nor shall it lead to invocation of the
+  function object.
+* As with non-immediate RPC, calls may also throw any of the usual 
+  [exceptions thrown from RPC](#markdown-header-exceptions-thrown-from-rpc).
+
+For discussion of this enhancement and experimental results, consult:
+
+* Paul H. Hargrove, Dan Bonachea.   
+  "**Investigation into the Performance Benefits of Exposing Network Backpressure in UPC++ and GASNet-EX**",   
+  Lawrence Berkeley National Laboratory Technical Report (LBNL-2001668), May 2025.    
+  <https://doi.org/10.25344/S4088R>
+
+Current caveats:
+
+1. Avoidance of injection-time blocking is "best effort" and not guaranteed, even
+   when using immediate-mode injection.  Whether any given injection call actually 
+   blocks at injection time depends on details of the network stack and dynamic system state.
+
+2. Currently immediate-mode behavior is only enabled for RPC payloads small enough
+   to use eager-mode RPC algorithm (under tunable threshold with a system-dependent default).
+   Injection of larger RPC payloads may still block due to network congestion.
+
+3. Acknowledgments for round-trip RPC never use immediate-mode injection, and
+   might cause an injection stall on the master persona of the target process.
+
+### `upcxx_memberof` Extension
+
 In addition, the implementation provides the following unspecified,
 experimental macro:
 
@@ -242,10 +337,6 @@ experimental macro:
         global_ptr<T, Kind> ptr, member-designator MEMBER
     )
     ```
-
-These features are subject to change or removal at any time. If you find any of
-them useful, please send an email to `upcxx@googlegroups.com`, and we will
-consider adding them to the specification proper.
 
 ## Unspecified Internals
 
