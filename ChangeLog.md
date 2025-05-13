@@ -7,6 +7,10 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
 ### PENDING
 
+* NEW: Experimental APIs for immediate-mode RPC communication, to help avoid 
+  injection stalls in the presence of network congestion.
+    - See [docs/implementation-defined.md](docs/implementation-defined.md) for more details.
+
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
