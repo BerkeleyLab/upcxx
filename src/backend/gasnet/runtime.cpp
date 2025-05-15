@@ -1550,18 +1550,28 @@ void backend::validate_global_ptr(bool allow_null, intrank_t rank, void *raw_ptr
 ////////////////////////////////////////////////////////////////////////
 // from: upcxx/backend/gasnet/runtime.hpp
 
+template<bool immediate>
 void *gasnet::prepare_npam_medium(
     intrank_t recipient, std::size_t buf_size, 
     int numargs, std::uintptr_t &npam_nonce) {
   UPCXX_ASSERT(numargs >= 0 && numargs <= UPCXXI_MAX_RPC_AM_ARGS);
   UPCXX_ASSERT(buf_size <= gex_AM_MaxRequestMedium(world_tm, recipient, GEX_EVENT_NOW, GEX_FLAG_AM_PREPARE_LEAST_ALLOC, numargs));
 
+  constexpr gex_Flags_t flags = ( immediate ? GEX_FLAG_IMMEDIATE : 0 );
+
   gex_AM_SrcDesc_t sd = 
     gex_AM_PrepareRequestMedium(
       world_tm, recipient,
       /*gex buf*/nullptr, 
       buf_size, buf_size, 
-      /*lc_opt*/nullptr, /*flags*/0, numargs);
+      /*lc_opt*/nullptr, flags, numargs);
+  
+  if_pf (immediate && sd == GEX_AM_SRCDESC_NO_OP) {
+    // need to set npam_nonce to non-zero to disable the am_send_buffer destructor
+    npam_nonce = 0xBADCAFE;
+    // TODO: propagate calling context information for error reporting
+    throw upcxx::experimental::network_busy(nullptr, buf_size, recipient);
+  }
 
   UPCXX_ASSERT(sd != GEX_AM_SRCDESC_NO_OP);
   UPCXX_ASSERT(gex_AM_SrcDescSize(sd) >= buf_size);
@@ -1571,7 +1581,8 @@ void *gasnet::prepare_npam_medium(
   UPCXX_ASSERT(npam_nonce != 0);
   return buf;
 }
-
+template void *gasnet::prepare_npam_medium<true>(intrank_t,std::size_t,int,std::uintptr_t &);
+template void *gasnet::prepare_npam_medium<false>(intrank_t,std::size_t,int,std::uintptr_t &);
 
 
 void gasnet::send_am_eager_restricted(
@@ -1600,6 +1611,7 @@ void gasnet::send_am_eager_restricted(
   after_gasnet();
 }
 
+template<bool immediate>
 void gasnet::send_am_eager_master(
     progress_level level,
     intrank_t recipient,
@@ -1610,23 +1622,46 @@ void gasnet::send_am_eager_master(
   ) {
   gex_AM_Arg_t const a0 = buf_align<<1 | (level == progress_level::user ? 1 : 0);
   
+  constexpr gex_Flags_t flags = ( immediate ? GEX_FLAG_IMMEDIATE : 0 );
+
   if (npam_nonce) {
-    gex_AM_CommitRequestMedium1(
-      reinterpret_cast<gex_AM_SrcDesc_t>(npam_nonce),
+    gex_AM_SrcDesc_t sd = reinterpret_cast<gex_AM_SrcDesc_t>(npam_nonce);
+  #if GASNET_SUPPORTS_AM_COMMIT_V2 && GASNET_SUPPORTS_AM_CANCEL
+    int result =
+    gex_AM_CommitRequestMedium1_v2(sd,
+      id_am_eager_master, buf_size,
+      flags,
+      a0
+    );
+    if_pf (immediate && result) {
+      gex_AM_CancelRequestMedium(sd, 0);
+      // TODO: propagate calling context information for error reporting
+      throw upcxx::experimental::network_busy(nullptr, buf_size, recipient);
+    }
+  #else
+    gex_AM_CommitRequestMedium1(sd,
       id_am_eager_master, buf_size,
       a0
     );
+  #endif
   } else { // FPAM
+    int result = 
     gex_AM_RequestMedium1(
       world_tm, recipient,
       id_am_eager_master, buf, buf_size,
-      GEX_EVENT_NOW, /*flags*/0,
+      GEX_EVENT_NOW, flags,
       a0
     );
+    if_pf (immediate && result) {
+      // TODO: propagate calling context information for error reporting
+      throw upcxx::experimental::network_busy(nullptr, buf_size, recipient);
+    }
   }
   
   after_gasnet();
 }
+template void gasnet::send_am_eager_master<true>(progress_level,intrank_t,void*,std::size_t,std::size_t,std::uintptr_t);
+template void gasnet::send_am_eager_master<false>(progress_level,intrank_t,void*,std::size_t,std::size_t,std::uintptr_t);
 
 void gasnet::send_am_eager_persona(
     progress_level level,
