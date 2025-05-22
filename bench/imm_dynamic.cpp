@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <upcxx/upcxx.hpp>
+#include "common/report.hpp"
 
 // WARNING: This is an "open-box" test that relies upon unspecified interfaces and/or
 // behaviors of the UPC++ implementation that are subject to change or removal
@@ -235,7 +236,7 @@ int main(int argc, char **argv) {
   if (help || argc > arg) test_usage();
 
   if (numrank < 2) {
-    say() << "WARNING: This test requires two or more ranks.  Test skipped.";
+    print_test_skipped("This test requires two or more ranks");
     exit(0); /* exit 0 to prevent false negatives in test harness */
   }
 
