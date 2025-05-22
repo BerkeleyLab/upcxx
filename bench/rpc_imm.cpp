@@ -155,7 +155,7 @@ void run_test(bool iamprimary, const char *desc) {
       pause_sleep();
       p.finalize().wait();
     }
-    if (fullduplex || !iamprimary) { // am recvr
+    if (fullduplex || !iamprimary || peer == self) { // am recvr
       pause_sleep();
       if (ff) {
         while (recv_cnt < warmup_iters) progress();
