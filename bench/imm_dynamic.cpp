@@ -110,7 +110,8 @@ void doRPC_FF(gex_Flags_t imm_flag);
 
 int main(int argc, char **argv) {
   gex_AM_Entry_t htable[] = { 
-    { hidx_expect_dec_handler, (gex_AM_Fn_t)expect_dec_handler, GEX_FLAG_AM_REQREP|GEX_FLAG_AM_MEDLONG, 0 },
+    { hidx_expect_dec_handler, (gex_AM_Fn_t)expect_dec_handler, GEX_FLAG_AM_REQREP|GEX_FLAG_AM_MEDLONG, 
+      /*nargs=*/0, /*cdata=*/0, /*name=*/"expect_dec_handler" },
   };
 
   upcxx::init();
