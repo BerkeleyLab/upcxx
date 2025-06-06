@@ -20,13 +20,13 @@ upcxx::future<size_t> fut = upcxx::broadcast(elem_count, 0);
 
 // do some overlapped work like preparing buffer for next broadcast
 if (upcxx::rank_me() == 0) {
-  buffer.reserve(elem_count);
+  buffer.resize(elem_count);
   for (size_t i = 0; i < elem_count; i++)
     buffer[i] = (int)i;
 }
 
 elem_count = fut.wait(); // complete first broadcast
-buffer.reserve(elem_count); // non-zero ranks allocate vector space
+buffer.resize(elem_count); // non-zero ranks allocate vector space
 
 // launch a bulk broadcast of element data from rank 0
 upcxx::future<> fut_bulk = upcxx::broadcast( buffer.data(), elem_count, 0); 

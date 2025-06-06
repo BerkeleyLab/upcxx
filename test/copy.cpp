@@ -91,10 +91,10 @@
   void DEVICE_INIT() {
     ZE_CHECK(zeInit(0));
     const int dev_n = ze_device::device_n();
-    zeDev.reserve(dev_n);
-    zeCtx.reserve(dev_n);
-    zeQueue.reserve(dev_n);
-    zeCmd.reserve(dev_n);
+    zeDev.resize(dev_n);
+    zeCtx.resize(dev_n);
+    zeQueue.resize(dev_n);
+    zeCmd.resize(dev_n);
     for (int d = 0; d < dev_n; d++) {
       zeDev[d] = ze_device::device_id_to_device_handle(d);
       zeCtx[d] = ze_device::get_driver_context(zeDev[d]);

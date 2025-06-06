@@ -274,7 +274,7 @@ int main(int argc, char **argv) {
       space = new char[param_SZ + GASNET_PAGESIZE];
       local_addr = (char *)alignup_ptr(space, GASNET_PAGESIZE);
     }
-    remain.reserve(numrank);
+    remain.resize(numrank);
   } // rank 0
 
   if (!myrank) {
