@@ -266,6 +266,7 @@ test_pgi_debug_symbols_broken = \
 	MEMBEROF \
 	MISC_PERF \
 	COPY_COVER \
+	RPC_IMM \
 	ISSUE138
 endif
 $(foreach test,$(test_pgi_debug_symbols_broken),$(eval export TEST_FLAGS_$(test):=$(TEST_FLAGS_$(test)) -purge-option=-g))
