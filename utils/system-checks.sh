@@ -686,7 +686,7 @@ platform_sanity_checks() {
             if test aarch64 = "$ARCH" && echo "$CXXVERS" | head -1 | egrep ' +\(ARM' 2>&1 > /dev/null ; then
               COMPILER_GOOD=
             fi
-        elif echo "$CXXVERS" | egrep 'clang version [23]' 2>&1 > /dev/null ; then
+        elif echo "$CXXVERS" | egrep 'clang version [23]\.' 2>&1 > /dev/null ; then
             COMPILER_BAD=1
         elif test x86_64 = "$ARCH" && echo "$CXXVERS" | egrep 'clang version ([4-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
             COMPILER_GOOD=1
