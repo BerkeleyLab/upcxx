@@ -397,7 +397,7 @@ namespace upcxx {
       
       template<typename ...Arg>
       void operator()(Arg &&...arg) const {
-        backend::template send_awaken_lpc(
+        backend::template send_awaken_lpc<>(
           initiator,
           remote_lpc, std::tuple<Arg&&...>(std::forward<Arg>(arg)...)
         );
