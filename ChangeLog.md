@@ -15,6 +15,8 @@ Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
 * issue #627: smp-conduit cannot use new spawner support via upcxx-run
+* issue #641: UPC++ configure rejects LLVM-20+ compilers
+* issue #642: CMake support triggers warnings with recent CMake
 
 ### 2023.12.15: Release 2023.9.0
 
