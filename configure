@@ -992,7 +992,8 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
   if [[ -z $UPCXX_HIP_CPPFLAGS ]]; then
     if $CXXVERS | grep -e 'Free Software Foundation' -e 'clang version' &> /dev/null ; then
       # -isystem silences obnoxious warnings from ROCm headers that are not pedantic-clean
-      cppflags+=" -isystem ${HIP_HOME}/include" 
+      # but `-isystem /usr/include` can break `#include_next` (issue 630)
+      [[ "${HIP_HOME}" = '/usr' ]] || cppflags+=" -isystem ${HIP_HOME}/include"
     fi
   fi
   case ${hip_platform} in
