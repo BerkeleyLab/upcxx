@@ -556,7 +556,7 @@ VPATH = $(addprefix $(top_srcdir)/src/, $(sort $(dir $(libupcxx_sources))))
 libupcxx_objs = $(addsuffix .o,$(notdir $(basename $(libupcxx_sources))))
 $(libupcxx_objs): $(makefiles)
 libupcxx.a: $(libupcxx_objs)
-	ar rcs $@ $?
+	$(AR) rcs $@ $?
 do-libupcxx: force
 	@$(MAKE) -C $(UPCXX_DIR)/ -f "$(builddir)/Makefile" $(UPCXX_CONFIG_HEADER)
 	@$(MAKE) -C $(UPCXX_DIR)/lib -f "$(builddir)/Makefile" do-libupcxx-deps
