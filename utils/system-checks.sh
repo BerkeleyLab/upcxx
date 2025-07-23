@@ -711,7 +711,13 @@ platform_sanity_checks() {
               fi
             fi
         elif [[ $CXXVERS =~ (oneAPI .* (20[0-9][0-9])\.([0-9]+)\.([0-9]+)) ]]; then
-            if ((BASH_REMATCH[2]*10000 + BASH_REMATCH[3]*100 + BASH_REMATCH[4] >= 20210102 )); then
+            if [[ $LMOD_FAMILY_PRGENV = PrgEnv-intel ]]; then
+              # HPE Cray EX (Shasta) only validated for intel/2023.1.0 and newer
+              floor=20230100
+            else
+              floor=20210102
+            fi
+            if ((BASH_REMATCH[2]*10000 + BASH_REMATCH[3]*100 + BASH_REMATCH[4] >= floor )); then
               COMPILER_GOOD=1
             fi
             # older versions unknown for now
@@ -721,6 +727,13 @@ platform_sanity_checks() {
             # Arm Ltd's gcc not yet tested
             if test aarch64 = "$ARCH" && echo "$CXXVERS" | head -1 | egrep ' +\(ARM' 2>&1 > /dev/null ; then
               COMPILER_GOOD=
+            fi
+            if [[ $LMOD_FAMILY_PRGENV = PrgEnv-gnu ]]; then
+              # HPE Cray EX (Shasta) only validated for gcc/10.3.0 and newer
+              [[ $CXXVERS =~ (^g\+\+.* ([1-9][0-9])\.([0-9]+)\.([0-9]+)) ]]
+              if ((BASH_REMATCH[2]*10000 + BASH_REMATCH[3]*100 + BASH_REMATCH[4] < 100400 )); then
+                unset COMPILER_GOOD
+              fi
             fi
         elif echo "$CXXVERS" | egrep 'clang version [23]\.' 2>&1 > /dev/null ; then
             COMPILER_BAD=1
