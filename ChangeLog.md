@@ -14,6 +14,7 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
 
+* issue #621: Enforce EX-specific compiler floors
 * issue #627: smp-conduit cannot use new spawner support via upcxx-run
 * issue #630: HIP-enabled build breaks when HIP_HOME=/usr
 * issue #634: Warning regarding redefinition of `__HIP_PLATFORM_AMD__`
