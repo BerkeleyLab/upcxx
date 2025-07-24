@@ -410,7 +410,7 @@ namespace upcxx {
 
       UPCXXI_PROGRESS_UNTIL(impl_.ready(), detail::future_wait_upcxx_progress_user{});
       
-      return std::move(*this).template result_tuple();
+      return std::move(*this).template result_tuple<>();
     }
     
     template<int i=-1>
