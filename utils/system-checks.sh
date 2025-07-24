@@ -140,6 +140,42 @@ cpp_extract_pp_expr() {
     cpp_extract_expr "$1" "$2" "$3" "$gasnet_includes" '#include "gasnet_portable_platform.h"'
 }
 
+# Run C or C++ preprocessor to determine if an identifer is defined
+#
+# Arguments:
+#   compiler: literal 'CC' or 'CXX'
+#      ident: pre-processor identifier to test
+#      flags: (optional) extra compiler flags (such as -I and -D)
+#   includes: (optional) string to be expanded first in the source file
+#
+# The return value is normally the exit code of the preprocessor
+#     zero: ident is defined
+#    other: ident is undefined (or some other error occurred)
+cpp_defined() {
+    case $1 in
+         CC) local suffix=c   cmd="$CC  $CFLAGS   $3 -E";;
+        CXX) local suffix=cpp cmd="$CXX $CXXFLAGS $3 -E";;
+          *) echo Internal error; exit 3;;
+    esac
+    local ident="$2"
+    local headers="$4"
+
+    local conftest="conftest.$suffix"
+    trap "rm -f $conftest" RETURN
+
+    rm -f $conftest
+    cat >$conftest <<_EOF
+      $headers
+      #ifndef ${ident}
+      #error UNDEF
+      #endif
+_EOF
+
+    # Run preprocessor, discarding output and returning its exit code
+    eval $cmd $conftest >/dev/null 2>&1
+    return $?
+}
+
 # For probing for lowest acceptable (for its libstdc++) g++ version.
 # These are defaults, which may be overridden per-platform (such as Cray XC).
 MIN_GNU_MAJOR=6

@@ -16,6 +16,7 @@ Notable issues resolved
 
 * issue #627: smp-conduit cannot use new spawner support via upcxx-run
 * issue #630: HIP-enabled build breaks when HIP_HOME=/usr
+* issue #634: Warning regarding redefinition of `__HIP_PLATFORM_AMD__`
 * issue #637: use of literal "ar" in bld/Makefile
 * issue #638: Build failure with Intel oneAPI 2025+, LLVM 19+
 * issue #641: UPC++ configure rejects LLVM-20+ compilers

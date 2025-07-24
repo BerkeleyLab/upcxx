@@ -998,7 +998,8 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
   fi
   case ${hip_platform} in
     amd|hcc|'')
-      UPCXX_HIP_CPPFLAGS+=" -D__HIP_PLATFORM_AMD__= -D__HIP_PLATFORM_HCC__="
+      cpp_defined CXX __HIP_PLATFORM_AMD__ || UPCXX_HIP_CPPFLAGS+=' -D__HIP_PLATFORM_AMD__='
+      cpp_defined CXX __HIP_PLATFORM_HCC__ || UPCXX_HIP_CPPFLAGS+=' -D__HIP_PLATFORM_HCC__='
       export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lamdhip64}
       ;;
     nvidia|nvcc)
@@ -1008,7 +1009,8 @@ if [[ $UPCXX_HIP -eq 1 ]]; then
           cppflags+=" -Wno-deprecated-declarations -Wno-return-type"
         fi
       fi
-      UPCXX_HIP_CPPFLAGS+=" -D__HIP_PLATFORM_NVIDIA__= -D__HIP_PLATFORM_NVCC__="
+      cpp_defined CXX __HIP_PLATFORM_NVIDIA__ || UPCXX_HIP_CPPFLAGS+=' -D__HIP_PLATFORM_NVIDIA__='
+      cpp_defined CXX __HIP_PLATFORM_NVCC__   || UPCXX_HIP_CPPFLAGS+=' -D__HIP_PLATFORM_NVCC__='
       export UPCXX_HIP_LIBFLAGS=${UPCXX_HIP_LIBFLAGS:--L${HIP_HOME}/lib -lcudart}
       UPCXX_CUDA=1 # force enable full CUDA support for simplicity
       ;;
