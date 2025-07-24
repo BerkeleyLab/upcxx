@@ -669,7 +669,8 @@ platform_sanity_checks() {
                # PrgEnv-pgi: currently neither GOOD nor BAD due to lack of testing
                # However, if logic above identified a bad version, we'll preserve that.
                unset COMPILER_GOOD
-            elif [[ $LMOD_FAMILY_PRGENV = PrgEnv-nvidia || $LMOD_FAMILY_PRGENV = PrgEnv-nvhpc ]]; then
+            elif [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-nvidia || \
+                    $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-nvhpc ]]; then
                # HPE Cray EX (Shasta) only validated for 21.9 and newer
                if ! egrep ' +(21\.9|21\.1[0-9]|2[2-9]\.[0-9]+|[3-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                   unset COMPILER_GOOD
@@ -711,7 +712,7 @@ platform_sanity_checks() {
               fi
             fi
         elif [[ $CXXVERS =~ (oneAPI .* (20[0-9][0-9])\.([0-9]+)\.([0-9]+)) ]]; then
-            if [[ $LMOD_FAMILY_PRGENV = PrgEnv-intel ]]; then
+            if [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-intel ]]; then
               # HPE Cray EX (Shasta) only validated for intel/2023.1.0 and newer
               floor=20230100
             else
@@ -728,7 +729,7 @@ platform_sanity_checks() {
             if test aarch64 = "$ARCH" && echo "$CXXVERS" | head -1 | egrep ' +\(ARM' 2>&1 > /dev/null ; then
               COMPILER_GOOD=
             fi
-            if [[ $LMOD_FAMILY_PRGENV = PrgEnv-gnu ]]; then
+            if [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-gnu ]]; then
               # HPE Cray EX (Shasta) only validated for gcc/10.3.0 and newer
               [[ $CXXVERS =~ (^g\+\+.* ([1-9][0-9])\.([0-9]+)\.([0-9]+)) ]]
               if ((BASH_REMATCH[2]*10000 + BASH_REMATCH[3]*100 + BASH_REMATCH[4] < 100400 )); then
@@ -739,13 +740,13 @@ platform_sanity_checks() {
             COMPILER_BAD=1
         elif test x86_64 = "$ARCH" && echo "$CXXVERS" | egrep 'clang version ([4-9]\.|[1-9][0-9])' 2>&1 > /dev/null ; then
             COMPILER_GOOD=1
-            if [[ $LMOD_FAMILY_PRGENV = PrgEnv-aocc ]]; then
+            if [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-aocc ]]; then
                # HPE Cray EX (Shasta) only validated for aocc/3.1.0 and newer
                # NOTE: 3.2 was end of 3.x series, but we'll accept up to 3.9 here
                if ! egrep 'AOCC_(3\.[1-9]|[4-9]\.|[1-9][0-9]\.)' <<<"$CXXVERS" 2>&1 >/dev/null ; then
                   unset COMPILER_GOOD
                fi
-            elif [[ $LMOD_FAMILY_PRGENV = PrgEnv-amd ]]; then
+            elif [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-amd ]]; then
                # HPE Cray EX (Shasta) only validated for amd/4.2.0 and newer
                # NOTE: 4.5 was end of 4.x series, but we'll accept up to 4.9 here
                if ! egrep 'roc-(4\.[2-9]|[5-9]\.|[1-9][0-9]\.)' <<<"$CXXVERS" 2>&1 >/dev/null ; then
