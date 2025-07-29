@@ -783,7 +783,7 @@ RANKS ?= 4
 run: force
 	@$(MAKE) do-exe
 	@export GASNET_PREFIX=$(builddir)/$(GASNETDIR); \
-	 eval $(top_srcdir)/utils/upcxx-run -n $(RANKS) $(UPCXX_EXE) $(ARGS)
+	 eval $(UPCXX_PYTHON) $(top_srcdir)/utils/upcxx-run -n $(RANKS) $(UPCXX_EXE) $(ARGS)
 
 .PHONY: run
 
