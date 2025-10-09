@@ -60,6 +60,7 @@ Notable issues resolved
 * issue #616: Linker warning on macos
 * issue #617: Spawner warnings (upcxx-run) with Python 3.12
 * issue #618: CCS segment limit exceeded on MacOS
+* issue #636: Unfriendly ZE kinds support when lacking the hardware
 * spec issue 104: `discharge()` from the restricted context is an error
 * spec issue 206: Add `future::is_ready()` as a synonym for `future::ready()`
 
