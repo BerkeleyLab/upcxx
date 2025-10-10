@@ -17,6 +17,7 @@ Notable issues resolved
 * issue #621: Enforce EX-specific compiler floors
 * issue #627: smp-conduit cannot use new spawner support via upcxx-run
 * issue #630: HIP-enabled build breaks when HIP_HOME=/usr
+* issue #633: CUDA crashes from implicit `~device_allocator` after finalize
 * issue #634: Warning regarding redefinition of `__HIP_PLATFORM_AMD__`
 * issue #637: use of literal "ar" in bld/Makefile
 * issue #638: Build failure with Intel oneAPI 2025+, LLVM 19+
