@@ -75,7 +75,7 @@ namespace upcxx {
       device_allocator_core(hip_device &dev, void *base, std::size_t size);
       device_allocator_core(device_allocator_core&&) = default;
       device_allocator_core& operator=(device_allocator_core&&) = default;
-      ~device_allocator_core() { release(); }
+      ~device_allocator_core() { if (backend::init_count > 0) release(); }
       void release();
     };
 
