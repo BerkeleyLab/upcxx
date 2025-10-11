@@ -415,6 +415,9 @@ int ze_device::device_n() {
   #if UPCXXI_ZE_ENABLED
     static int dev_n = [](){ // first call
       int result = 0;
+      if (ze_init(true) == ZE_RESULT_ERROR_UNINITIALIZED) {
+        return 0; // zeInit can give this error when no devices are visible
+      }
       enumerate_ze_devices(
         [&](id_type id, ...) {
           UPCXX_ASSERT(result == id);
