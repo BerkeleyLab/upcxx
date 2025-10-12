@@ -19,6 +19,7 @@ Notable issues resolved
 * issue #630: HIP-enabled build breaks when HIP_HOME=/usr
 * issue #633: CUDA crashes from implicit `~device_allocator` after finalize
 * issue #634: Warning regarding redefinition of `__HIP_PLATFORM_AMD__`
+* issue #636: Unfriendly ZE kinds support when lacking the hardware
 * issue #637: use of literal "ar" in bld/Makefile
 * issue #638: Build failure with Intel oneAPI 2025+, LLVM 19+
 * issue #641: UPC++ configure rejects LLVM-20+ compilers
@@ -61,7 +62,6 @@ Notable issues resolved
 * issue #616: Linker warning on macos
 * issue #617: Spawner warnings (upcxx-run) with Python 3.12
 * issue #618: CCS segment limit exceeded on MacOS
-* issue #636: Unfriendly ZE kinds support when lacking the hardware
 * spec issue 104: `discharge()` from the restricted context is an error
 * spec issue 206: Add `future::is_ready()` as a synonym for `future::ready()`
 
