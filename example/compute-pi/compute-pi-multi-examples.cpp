@@ -67,7 +67,8 @@ int main(int argc, char **argv)
 {
     upcxx::init();
     if (!upcxx::rank_me()) {
-        cout << "Testing " << basename((char*)__FILE__) << " with " << upcxx::rank_n() << " ranks" << endl;
+        char src_file[] = __FILE__; // because basename() is permitted to modify the passed string
+        cout << "Testing " << basename(src_file) << " with " << upcxx::rank_n() << " ranks" << endl;
     }
     int my_hits = 0;
     int my_trials = 100000;
