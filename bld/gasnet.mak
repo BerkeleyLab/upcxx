@@ -3,7 +3,7 @@
 #
 
 # All conduits supported (officially or not) by UPC++
-ALL_CONDUITS = smp udp mpi ibv aries ucx ofi
+ALL_CONDUITS = smp udp mpi ibv ucx ofi
 
 # Conduits for which testing should be skipped by default
 UNOFFICIAL_CONDUITS = mpi

@@ -754,35 +754,12 @@ fi
 #
 # Cross-compilation
 #
-cross_aries() {  # auto-detection for partial or empty target
-    local srun=$(type -p srun)
-    local aprun=$(type -p aprun)
-    local fullauto="${UPCXX_CROSS-y}"
-    if [[ ( -z $srun && -z $aprun ) || ( -n $srun && -n $aprun ) ]]; then
-        echo_and_die 'ERROR: Unable to determine Cray XC job scheduler.  Please pass either' \
-                     '`--with-cross=cray-aries-slurm` or `--with-cross=cray-aries-alps`.'
-    elif [[ -n $srun ]]; then
-       UPCXX_CROSS='cray-aries-slurm'
-    else
-       UPCXX_CROSS='cray-aries-alps'
-    fi
-    warnings+="\nINFO: Cross-compiling for target '$UPCXX_CROSS' based on current environment.\n"
-    if [[ $fullauto == 'y' ]]; then
-        warnings+='INFO: You may pass `--without-cross` to disable cross-compilation.\n'
-    fi
-}
 if [[ ${UPCXX_CROSS-unset} == 'unset' ]]; then
-    # attempt to auto-detect from environment
-    if [[ $CRAYPE_NETWORK_TARGET == aries ]]; then
-        echo 'INFO: Cray aries network software detected.  Will cross-compile.'
-        cross_aries # auto-detect job scheduler
-    else
-        UPCXX_CROSS=''
-    fi
+    : # attempt to auto-detect from environment if/when possible
 else
     case $UPCXX_CROSS in
-      ''|cray-aries-slurm|cray-aries-alps)
-        # disabled or known/supported: nothing to do
+      '')
+        # disabled: nothing to do
         ;;
       *)
         # explicit but unknown
@@ -1198,7 +1175,7 @@ fi
 #
 # Default conduit
 #
-ALL_CONDUITS='smp udp mpi ibv aries ucx ofi'
+ALL_CONDUITS='smp udp mpi ibv ucx ofi'
 UNOFFICIAL_CONDUITS='mpi'
 ##
 unset OFFICIAL_CONDUITS
@@ -1211,9 +1188,7 @@ done
 # tolower()
 GASNET_CONDUIT=$(tr '[A-Z]' '[a-z]' <<<$GASNET_CONDUIT)
 if [[ -z $GASNET_CONDUIT ]]; then
-  if [[ "$UPCXX_CROSS" =~ -aries- ]]; then
-    GASNET_CONDUIT=aries
-  elif [[ $(uname -s) = 'Darwin' ]]; then
+  if [[ $(uname -s) = 'Darwin' ]]; then
     GASNET_CONDUIT=smp
   fi
 elif [[ " $UNOFFICIAL_CONDUITS " =~ " $GASNET_CONDUIT " ]]; then
