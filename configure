@@ -537,12 +537,12 @@ if [[ -n "$single" && -r "$GASNET/gasnet_config.h" ]] ; then
   # single + GASNET=builddir (may or may not be a srcdir as well)
   GASNET_TYPE=build
   # Convert relative path of build directory to absolute if necessary
-  if ! expr "$GASNET" : ^/ >/dev/null; then
+  if ! expr "/$GASNET" : // >/dev/null; then
     export GASNET=$(cd "$GASNET" && pwd -P)
   fi
 elif [ -r "$GASNET/gasnet_config.h.in" ]; then
   # Convert relative path of souce directory to absolute if necessary
-  if ! expr "$GASNET" : ^/ >/dev/null; then
+  if ! expr "/$GASNET" : // >/dev/null; then
     export GASNET=$(cd "$GASNET" && pwd -P)
   fi
 elif [ -r "$GASNET/gasnetex.h" ]; then
