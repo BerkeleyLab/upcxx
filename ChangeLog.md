@@ -19,6 +19,7 @@ Notable issues resolved
 * issue #630: HIP-enabled build breaks when HIP_HOME=/usr
 * issue #633: CUDA crashes from implicit `~device_allocator` after finalize
 * issue #634: Warning regarding redefinition of `__HIP_PLATFORM_AMD__`
+* issue #635: `upcxx_memberof_general` failures with smp-conduit and non-fork spawners
 * issue #636: Unfriendly ZE kinds support when lacking the hardware
 * issue #637: use of literal "ar" in bld/Makefile
 * issue #638: Build failure with Intel oneAPI 2025+, LLVM 19+
