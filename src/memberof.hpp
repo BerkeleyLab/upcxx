@@ -106,10 +106,7 @@ namespace upcxx {
 //   Note this only applies to user types (and not, eg libstdc++.so), because std:: has no 
 //   public non-static data members in classes with virtual bases that could be passed to this macro.
 #ifndef UPCXXI_UNIFORM_LOCAL_VTABLES
-  #if UPCXX_NETWORK_SMP
-    // smp-conduit always spawns using fork(), guaranteeing uniform segment layout
-    #define UPCXXI_UNIFORM_LOCAL_VTABLES 1
-  #elif __PIE__ || __PIC__ 
+  #if __PIE__ || __PIC__ 
     // this is conservative: -fPIC alone doesn't generate relocatable vtables,
     // but some compilers only define(__PIC__) for -pie -fpie
     #define UPCXXI_UNIFORM_LOCAL_VTABLES 0
