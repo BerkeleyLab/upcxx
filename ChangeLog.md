@@ -5,11 +5,26 @@ This is the ChangeLog for public releases of [UPC++](https://upcxx.lbl.gov).
 For information on using UPC++, see: [README.md](README.md)    
 For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 
-### PENDING
+### 2025.10.31: Release 2025.10.0
 
 * NEW: Experimental APIs for immediate-mode RPC communication, to help avoid 
   injection stalls in the presence of network congestion.
     - See [docs/implementation-defined.md](docs/implementation-defined.md) for more details.
+
+General features/enhancements: (see specification and programmer's guide for full details)
+
+* Updated `upcxx-run` supports launch of smp-conduit jobs via ssh, MPI and PMI on
+  supported systems, matching the capabilites of (for instance) ibv and ofi.
+
+Infrastructure changes:
+
+* Support for the Cray XC platform and its aries network, deprecated since 2023.9.0,
+  have been removed.
+* Correction to install script enables use of LLVM/clang++ version 20 and higher
+* Newer embedded GASNet-EX resolves various issues seen when using:
+    - GNU Compiler Collection (GCC) version 15.1.0, and newer
+    - AMD ROCm version 6.0, and newer
+    - HPE's Slingshot Host Software (SHS) version 12.0.1, and newer
 
 Notable issues resolved
   (see the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for details):
@@ -26,9 +41,24 @@ Notable issues resolved
 * issue #641: UPC++ configure rejects LLVM-20+ compilers
 * issue #642: CMake support triggers warnings with recent CMake
 
-Breaking changes:
-* Support for the Cray XC platform and its aries network, deprecated since 2023.9.0,
-  have been removed.
+Embeds a GASNet-EX library that addresses the following notable issues
+  (see the [GASNet issue tracker](https://gasnet-bugs.lbl.gov) for details):
+
+  - bug3421: putv/getv should respect GASNET_VIS_MAXCHUNK
+  - bug4733: Intermittent exitcode=9 from ssh-spawner
+  - bug4734: incorrect hwloc-based NIC selection with cxi provider
+  - bug4752: Incomplete work-around for bug 4376 (FI_EAGAIN when reposting multi-recv buffer)
+  - bug4753: ofi: race condition in multi-receive message accounting
+  - bug4765: ucx-conduit flaw in gex_AD_OpNBI for GEX_OP_SET and _GET
+  - bug4768: memcpy with NULL destination in collectives
+  - bug4787: GCC-15 errors and warnings regarding incompatible pointers-to-function
+  - bug4797: Intermittent init-time crash inside gasneti_bootstrapBarrier_am()
+  - bug4808: gex_EP_BindSegment failures with CUDA device memory and SHS 12.0.1
+
+This library release conforms to the
+[UPC++ v1.0 Specification, Revision 2023.9.0](docs/spec.pdf).
+All currently specified features are fully implemented.
+See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
 ### 2023.12.15: Release 2023.9.0
 
