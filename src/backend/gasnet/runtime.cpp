@@ -658,10 +658,6 @@ void upcxx::init() {
     #if GASNET_CONDUIT_UCX
       // except on ucx-conduit which peaks around 2kb
       #define UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT 2048
-    #elif GASNET_CONDUIT_ARIES
-      // aries maxmedium defaults to ~4k but can be raised higher via configure
-      // 2020-11 testing shows the right crossover is around 8kb on knl and haswell
-      #define UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT 8192
     #else
       #define UPCXXI_RPC_EAGER_THRESHOLD_DEFAULT am_medium_size
     #endif

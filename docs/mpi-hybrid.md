@@ -124,9 +124,9 @@ differ based on which GASNet conduit your UPC++ application was compiled for
 (via `$UPCXX_NETWORK` or the default value determined at installation
 time).
 
-#### aries-conduit for Cray XC systems
+#### ofi-conduit for HPE Cray EX systems
 
-The native GASNet conduits on Cray are fully compatible with the PMI-based ALPS
+The use of ofi-conduit on HPE Cray EX is fully compatible with the PMI-based ALPS
 and SLURM spawners used at most sites. Run your job using the normal `aprun` or
 `srun` command recommended for MPI programs at your site.
 
@@ -224,10 +224,3 @@ here are some things to consider:
         Set `export UPCXX_NETWORK=udp` when compiling UPC++ app code
     3.  Use MPI for communication in UPC++  
         Set `export UPCXX_NETWORK=mpi` when compiling UPC++ app code
-
-2.  The Aries network adapter on the Cray XC platform has approximately 120
-    hardware contexts for communications.  With MPI and UPC++ each consuming one
-    per process, a 64-process-per-node run of a hybrid application exceeds the
-    available resources.  The solution is to set the following two environment
-    variables at run time to instruct both libraries to request virtualized
-    contexts: `GASNET_GNI_FMA_SHARING=1 MPICH_GNI_FMA_SHARING=enabled`

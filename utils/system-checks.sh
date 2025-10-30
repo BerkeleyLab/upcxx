@@ -177,7 +177,7 @@ _EOF
 }
 
 # For probing for lowest acceptable (for its libstdc++) g++ version.
-# These are defaults, which may be overridden per-platform (such as Cray XC).
+# These are defaults, which may be overridden per-platform (such as was done for Cray XC).
 MIN_GNU_MAJOR=6
 MIN_GNU_MINOR=4
 MIN_GNU_PATCH=0
@@ -560,35 +560,7 @@ platform_sanity_checks() {
         if test Linux = "$KERNEL" || test Darwin = "$KERNEL" ; then
             KERNEL_GOOD=1
         fi
-        if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
-            if test -n "$CRAY_PRGENVCRAY" && expr "$CRAY_CC_VERSION" : "^[78]" > /dev/null; then
-                echo 'ERROR: UPC++ on Cray XC with PrgEnv-cray requires cce/9.0 or newer.'
-                exit 1
-            elif test -n "$CRAY_PRGENVCRAY" && expr x"$CRAY_PE_CCE_VARIANT" : "xCC=Classic" > /dev/null; then
-                echo 'ERROR: UPC++ on Cray XC with PrgEnv-cray does not support the "-classic" compilers such as' \
-                     $(grep -o 'cce/[^:]*' <<<$LOADEDMODULES)
-                exit 1
-            elif test -z "$CRAY_PRGENVGNU$CRAY_PRGENVINTEL$CRAY_PRGENVCRAY"; then
-                echo 'WARNING: Unsupported PrgEnv.' \
-                     'UPC++ on Cray XC currently supports PrgEnv-gnu, intel or cray. ' \
-                     'Please do: `module switch PrgEnv-[CURRENT] PrgEnv-[FAMILY]`' \
-                     'for your preferred compiler FAMILY.'
-                # currently neither GOOD nor BAD
-            fi
-            CC=${CC:-cc}
-            CXX=${CXX:-CC}
-            MIN_GNU_MAJOR=7
-            if test -z "$CRAY_PRGENVINTEL"; then
-              MIN_GNU_MINOR=1
-            else
-              # Old icpc with new g++ reports 0 for __GNUC_MINOR__.
-              # Since GCC releases START at MINOR=1 (never 0) we can safely
-              # allow a MINOR==0 knowing the real value is at least 1.
-              MIN_GNU_MINOR=0
-            fi
-            MIN_GNU_PATCH=0
-            MIN_GNU_STRING='7.1'
-        elif test "$KERNEL" = "Darwin" ; then # default to XCode clang
+        if test "$KERNEL" = "Darwin" ; then # default to XCode clang
             CC=${CC:-/usr/bin/clang}
             CXX=${CXX:-/usr/bin/clang++}
         else
@@ -604,7 +576,7 @@ platform_sanity_checks() {
             ARCH_GOOD=1
         elif test aarch64 = "$ARCH" ; then
             ARCH_GOOD=1
-            # ARM-based Cray XC not yet tested
+            # ARM-based Cray system(s) not yet tested
             if test -n "$CRAY_PEVERSION" ; then
               ARCH_GOOD=
             fi
@@ -665,11 +637,7 @@ platform_sanity_checks() {
                # Unsuported platform or version
                COMPILER_BAD=1
             fi
-            if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
-               # PrgEnv-pgi: currently neither GOOD nor BAD due to lack of testing
-               # However, if logic above identified a bad version, we'll preserve that.
-               unset COMPILER_GOOD
-            elif [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-nvidia || \
+            if [[ $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-nvidia || \
                     $LMOD_FAMILY_CRAYPE,$LMOD_FAMILY_PRGENV = craype,PrgEnv-nvhpc ]]; then
                # HPE Cray EX (Shasta) only validated for 21.9 and newer
                if ! egrep ' +(21\.9|21\.1[0-9]|2[2-9]\.[0-9]+|[3-9][0-9]\.[0-9]+)-' <<<"$CXXVERS" 2>&1 >/dev/null ; then
@@ -826,10 +794,6 @@ We recommend one of the following C++ compilers (or any later versions where no 
                               NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0
-           Cray XC systems:   PrgEnv-gnu with gcc/7.1.0 environment module loaded
-                              PrgEnv-intel with Intel C 18.0.1 and gcc/7.1.0 environment modules loaded
-                              PrgEnv-cray with cce/9.0.0 environment module loaded
-                              ALCF's PrgEnv-llvm/4.0
            HPE Cray EX:       PrgEnv-gnu with gcc/10.3.0 environment module loaded
                               PrgEnv-cray with cce/12.0.0 environment module loaded
                               PrgEnv-amd with amd/4.2.0 environment module loaded
@@ -869,9 +833,5 @@ platform_settings() {
      *)
        ;;
    esac
-   if [[ $UPCXX_CROSS =~ ^cray-aries- ]]; then
-     # ~8kb is experimentally the best max AM threshold for RPC eager protocol on aries
-     GASNET_CONFIGURE_ARGS="--with-aries-max-medium=8128 ${GASNET_CONFIGURE_ARGS}"
-   fi
 }
 

@@ -26,6 +26,10 @@ Notable issues resolved
 * issue #641: UPC++ configure rejects LLVM-20+ compilers
 * issue #642: CMake support triggers warnings with recent CMake
 
+Breaking changes:
+* Support for the Cray XC platform and its aries network, deprecated since 2023.9.0,
+  have been removed.
+
 ### 2023.12.15: Release 2023.9.0
 
 General features/enhancements: (see specification and programmer's guide for full details)
