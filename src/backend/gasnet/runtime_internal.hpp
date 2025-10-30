@@ -20,7 +20,7 @@
             (GASNET_RELEASE_VERSION_MAJOR*10000 + GASNET_RELEASE_VERSION_MINOR*100 + GASNET_RELEASE_VERSION_PATCH)
 
     #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR  0
-    #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR  14 // if you change this number, also change the package version below!!!
+    #define UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR  17 // if you change this number, also change the package version below!!!
     #define UPCXXI_REQUIRES_GEX_SPEC_VERSION \
             (UPCXXI_REQUIRES_GEX_SPEC_VERSION_MAJOR*100 + UPCXXI_REQUIRES_GEX_SPEC_VERSION_MINOR)
 
@@ -29,7 +29,7 @@
       #error UPC++ requires a current version of GASNet-EX (not to be confused with GASNet-1). Please rerun configure without '--with-gasnet=...' to use the default GASNet-EX layer.
     #elif UPCXXI_GEX_SPEC_VERSION < UPCXXI_REQUIRES_GEX_SPEC_VERSION
       // User is trying to compile with a GASNet-EX version that does not meet our current minimum requirement:
-      #error This version of UPC++ requires GASNet-EX version 2021.9.0 or newer. Please rerun configure (without '--with-gasnet=...') to fetch and use the default GASNet-EX layer.
+      #error This version of UPC++ requires GASNet-EX version 2023.9.0 or newer. Please rerun configure (without '--with-gasnet=...') to fetch and use the default GASNet-EX layer.
     #endif
 
 #else
