@@ -13,7 +13,7 @@ int main(void) {
 
   say() << "PID: " << getpid();
 
-  std::size_t sz = 32*1024*1024;
+  std::size_t sz = 1024*1024;
 
   cuda_allocator = upcxx::make_gpu_allocator<upcxx::cuda_device>(sz);
   hip_allocator  = upcxx::make_gpu_allocator<upcxx::hip_device>(sz);
