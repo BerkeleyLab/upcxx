@@ -158,9 +158,11 @@ aborting program execution.
 
   * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:    
     Evaluates `test` exactly once, and if the result is a false value, then:
+
        1. outputs `message` (if provided) along with file location information to standard error, 
        2. optionally prints a backtrace and/or freezes for debugger (controlled by environment variables), and 
        3. aborts execution by calling `std::abort()`. 
+
     `message` may be any expression such that `std::cerr << message` 
     is well-formed; for instance, it may itself include
     stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, "error! x = " << x)`). 
@@ -168,6 +170,7 @@ aborting program execution.
     `message` is not provided, it defaults to a string that includes a textual
     representation of `test`. In all cases, this macro expands to an expression
     with type `void`.
+
   * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:    
     In the "debug" codemode, provides the same behavior as
     `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, this macro expands to a
@@ -232,7 +235,7 @@ Miscellaneous `upcxx::experimental` interfaces:
                         std::size_t mem_size_multiplier);
     ```
     Example uses:
-    ```
+    ```c++
     int thread_per_rank = upcxx::experimental::os_env<int>("THREADS", 4);
     size_t szval = upcxx::experimental::os_env("SEGSZ", 128<<20, 1<<20); // default units = MB
     ```
@@ -251,7 +254,7 @@ Miscellaneous `upcxx::experimental` interfaces:
     };
     ```
     Example use:
-    ```
+    ```c++
     upcxx::experimental::say() << "my value: " << d;
     ```
     Could result in output like this when run with three processes:
