@@ -86,7 +86,7 @@ address offset from the basis pointer.
 
 Verified segment number to offset conversion uses a fixed-size array with a
 size defined by the `UPCXX_CCS_MAX_SEGMENTS` environment variable, defaulting
-to 256 segments.
+to the initially loaded segment count + 256.
 
 Each batch of `verify_all()` or `verify_segment()` newly verified segments are
 sorted and appended to a vector of segments that can be identified by index.
