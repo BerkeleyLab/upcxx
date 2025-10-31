@@ -333,7 +333,12 @@ int main() {
       // verify that network buffer lifetime extends to returned future in rpc_ff.
       int origin = rank_me();
       int target[1] = {(rank_me() + 1)%rank_n()};
+#if defined(__GNUC__) && (__GNUC__ >= 15)
+      // The added `volatile` qualifer prevents Issue #649
+      upcxx::promise<> * volatile rpc_done2 = new upcxx::promise<>;
+#else
       upcxx::promise<> *rpc_done2 = new upcxx::promise<>;
+#endif
       upcxx::rpc_ff(
         target[0],
         [=](upcxx::view<int> v) {
