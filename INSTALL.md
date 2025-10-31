@@ -546,7 +546,7 @@ resident in a CUDA-compatible NVIDIA GPU.  General requirements:
 This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory
 kinds data transfers on selected platforms using modern NVIDIA-branded GPUs
 with NVIDIA- or Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
-This support requires one of the following native network conduit
+This support requires one of the following high-performance network conduit
 configurations, and the current/default version of GASNet-EX:
 
 * ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
@@ -700,7 +700,7 @@ resident in a ROCm/HIP-compatible AMD GPU.  General requirements:
 
 This version of UPC++ supports ROCmRDMA acceleration of memory
 kinds data transfers on selected platforms using modern AMD-branded GPUs.
-This support requires one of the following native network conduit
+This support requires one of the following high-performance network conduit
 configurations, and the current/default version of GASNet-EX:
 
 * ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
@@ -947,7 +947,7 @@ preliminary and has known correctness and functionality limitations**, and
 is thus disabled by default; configure option `--enable-kind-ze` must be
 provided to activate this support.
 
-This support requires the following native network conduit
+This support requires the following high-performance network conduit
 configurations, and the current/default version of GASNet-EX:
 
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
@@ -970,7 +970,7 @@ been tuned for performance. In particular, `upcxx::copy` will stage data
 transfers involving device memory through intermediate buffers in host memory,
 and is expected to underperform relative to solutions using zero-copy technologies.
 Future versions of UPC++ and GASNet-EX will expand and enhance the support
-for native memory kinds acceleration on Intel GPUs.
+for memory kinds acceleration on Intel GPUs.
 
 #### Use of UPC++ memory kinds
 

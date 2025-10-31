@@ -136,7 +136,7 @@ Usage:
   --with-hip-platform=nvidia
         Activates EXPERIMENTAL support for --enable-hip using HIP-over-CUDA on NVIDIA GPUs.
         Additionally requires a working CUDA installation (details in INSTALL.md).
-        The default of --with-hip-platform=amd selects native AMD GPU hardware.
+        The default of --with-hip-platform=amd selects AMD-branded GPU hardware.
 
   --enable-ze
   --disable-ze
@@ -1004,7 +1004,7 @@ fi
 #
 if [[ $UPCXX_ZE -eq 1 ]]; then
   # PREpend to allow user to disable if needed
-  # Do not enable until native ZE kind support in GASNet-EX reaches production-quality
+  # Do not enable until accelerated ZE kind support in GASNet-EX reaches production-quality
   #GASNET_CONFIGURE_ARGS="--enable-kind-ze ${GASNET_CONFIGURE_ARGS}"
 
   ZE_HEADER="include/level_zero/ze_api.h"

@@ -672,7 +672,7 @@ build determines whether "native" GASNet memory kinds or "reference" memory
 kinds will be used for each enabled memory kind; this information is advertised
 to runtime code in `UPCXXI_GEX_MK_*` defines. Every UPC++-level device class
 provides an internal `static constexpr use_gex_mk()` query indicating whether
-that memory kind is configured to use native GASNet memory kinds. These boolean
+that memory kind is configured to use GASNet accelerated memory kinds. These boolean
 settings are commonly set independently to different values even within a
 single UPC++ install (for example, some GASNet conduits lack memory kinds
 support entirely). 
@@ -695,8 +695,8 @@ corresponding `heap_state` object. `heap_idx==-1` is used internally by
 `upcxx::copy()` to indicate the private host heap, which also has no
 corresponding `heap_state` object. Other (positive) heap indexes correspond to
 heaps created for devices and active heaps have a corresponding `heap_state`
-object tracking their state. `heap_idx`'s corresponding to heaps using native
-GASNet memory kinds maintain the invariant of numerical equality to the
+object tracking their state. `heap_idx`'s corresponding to heaps using
+GASNet accelerated memory kinds maintain the invariant of numerical equality to the
 corresponding GASNet endpoint index, which is used for issuing kind-enabled
 GASNet communication. Aside from the special case of `heap_idx==0`, we notably
 do NOT maintain any single-valued invariants for `heap_idx` values across
@@ -706,7 +706,7 @@ corresponding to a reference device kind are only meaningful to the process
 owning that heap.
 
 `heap_state` is the base class for an inheritance hierarchy that pulls in
-kind-independent GASNet objects (for heaps using native kinds) and
+kind-independent GASNet objects (for heaps using accelerated kinds) and
 kind-specific driver state into a `device_heap_state<Device>` object, which
 tracks state information for an open device. Each `heap_state` object also
 contains a pointer to a `detail::device_allocator_base` object, a base class
@@ -729,7 +729,7 @@ select the code path used to service a particular copy request. Examples
 include specializations for: optimizing host-to-host copies via `rput`/`rget`,
 recognizing host buffers belonging to `local_team()` peers and leveraging
 explicit shared-memory bypass, converting put-like copies into RDMA gets to
-optimize remote completion latency, and dispatching to a native GASNet memory
+optimize remote completion latency, and dispatching to a GASNet accelerated memory
 kinds RDMA vs mediating a reference memory kinds transfer that explicitly
 stages through host memory on one or both sides.
 

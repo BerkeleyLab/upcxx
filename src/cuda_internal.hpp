@@ -13,7 +13,7 @@
   #include <cuda.h>
 
   #if UPCXXI_GEX_MK_CUDA
-    // Validate GASNet native memory kinds support
+    // Validate GASNet accelerated memory kinds support
     #if GASNET_MAXEPS <= 1 || !GASNET_HAVE_MK_CLASS_CUDA_UVA
     #error Internal error: missing expected GASNet MK CUDA support
     #endif

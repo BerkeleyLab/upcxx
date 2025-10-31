@@ -108,7 +108,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
   - ibv-conduit now attempts to maximize `RLIMIT_MEMLOCK` by default. 
   - bug4172: crash in ucx-conduit atexit handlers when mpi interop is enabled
   - bug4413: (partial fix) set `FI_UNIVERSE_SIZE` (conflicting provider requirements)
-  - bug4594: UCX should not enable native atomics unconditionally
+  - bug4594: UCX should not enable accelerated atomics unconditionally
   - bug4598: ucx-conduit + ssh-spawner `GASNET_FREEZE` support is unusable
   - bug4655: ucx: bad exits on Summit
   - bug4663: failure compiling pmi-spawner with PMIx 4.2.0 and higher
@@ -333,7 +333,7 @@ feature that supports efficient PGAS communication involving GPU memory buffers.
 
 * NEW: Memory kinds support for AMD GPUs using ROCm/HIP, see [INSTALL.md](INSTALL.md).
     New `configure --enable-hip` flag activates new `upcxx::hip_device` class.
-    This includes native offload support for `upcxx::copy()` using ROCmRDMA on 
+    This includes accelerated support for `upcxx::copy()` using ROCmRDMA on 
     recent InfiniBand network hardware - see GASNet-EX documentation for details.
 * `cuda_device` and `hip_device` are derived from new abstract base class `gpu_device` and
   `device_allocator<Device>` is now derived from new abstract base class `heap_allocator`.
@@ -660,7 +660,7 @@ Breaking changes:
 ### 2020.10.30: Memory Kinds Prototype 2020.11.0
 
 This is a **prototype** release of UPC++ demonstrating the new GPUDirect RDMA (GDR)
-native implementation of memory kinds for NVIDIA-branded CUDA devices with
+accelerated implementation of memory kinds for NVIDIA-branded CUDA devices with
 NVIDIA- or Mellanox-branded InfiniBand network adapters.
 
 As a prototype, it has not been validated as widely as normal stable releases,
