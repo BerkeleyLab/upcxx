@@ -32,6 +32,15 @@ The current release is known to work on the following configurations:
     macOS 13 "Ventura" and macOS 14 "Sonoma".
     We welcome reports of success or failure on macOS 13 and/or 14.
 
+* Apple macOS/aarch64 (aka "Apple Silicon")  
+    - The most recent Xcode release for each macOS release is generally well-tested
+        + It is suspected that any compatible Xcode (ie Apple clang) will work
+    - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
+      of a recent version should also work
+    Caveat: Nothing platform-specific has been implemented for the mix of
+    "performance" and "efficiency" cores, meaning performance could be highly
+    variable.  
+
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)    
@@ -74,14 +83,6 @@ The current release is known to work on the following configurations:
     - PrgEnv-intel with intel/2023.1.0 (or later) loaded.
 
 * NOT officially supported:  
-    - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
-      Testing on this platform with both Xcode and Free Software
-      Foundation g++ show functionally complete and correct operation.  
-      Nothing platform-specific has been implemented for the mix of
-      "performance" and "efficiency" cores, meaning performance could be
-      highly variable.  
-      At this time we consider it premature to list this platform as
-      "supported", and the `configure` script will issue a warning.
     - Vendor-specific `clang++` or `g++` variants.  
       At least Arm Ltd. provides compilers based on their own modifications to
       Clang/LLVM.  Similarly, at least Arm Ltd. and IBM provide forks of `g++`.  
