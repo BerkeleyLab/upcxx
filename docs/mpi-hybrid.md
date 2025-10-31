@@ -7,15 +7,16 @@ not require any special treatment). Note however, that strict programming
 conventions (below) must be adhered to when switching between MPI and UPC++
 network communication, otherwise deadlock can result on many systems.
 
-In general, mixed MPI/UPC++ applications must be linked with an MPI C++
+In general, hybrid MPI/UPC++ applications must be linked with an MPI C++
 compiler.  This may be named `mpicxx` or `mpic++`, among other possible names.
 However, on Cray systems `CC` is both the regular C++ compiler and the MPI C++
 compiler.  You may need to pass this same compiler as $CXX when installing UPC++
 to ensure object compatibility.
 
-Certain UPC++ network types (currently `mpi`, `ibv`, `ofi` and `smp`) may use MPI
-internally. For this reason, MPI objects should be compiled with the same MPI
-compiler that was used when UPC++ itself was build (normally the `mpicc` in
+Certain UPC++ network types (currently all but `udp`) may use MPI
+internally (generally as job-spawning option). 
+For this reason, MPI objects should be compiled with the same MPI
+compiler that was used when UPC++ itself was built (e.g. the `mpicxx` in
 one's $PATH, unless some action is taken to override that default).
 Additionally, the MPI portion of an application should make use of
 `MPI_Initialized()` to ensure exactly one call is made to initialize MPI.
@@ -26,7 +27,7 @@ so without any coordination. As a result, it is quite easy to cause network
 deadlock when mixing MPI and UPC++, unless the following protocol is strictly
 observed:
 
-1.  When the application starts, the first MPI or UPC++ call (*i.e.*
+1.  When the application starts, the first MPI or UPC++ call (i.e.,
     `MPI_Init()` or `upcxx::init()`) which may result in network traffic from
     any thread should be considered to put the entire job in 'MPI' or 'UPC++'
     mode, respectively.
