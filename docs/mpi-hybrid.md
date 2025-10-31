@@ -13,7 +13,7 @@ However, on Cray systems `CC` is both the regular C++ compiler and the MPI C++
 compiler.  You may need to pass this same compiler as $CXX when installing UPC++
 to ensure object compatibility.
 
-Certain UPC++ network types (currently `mpi`, `ibv` and `ofi`) may use MPI
+Certain UPC++ network types (currently `mpi`, `ibv`, `ofi` and `smp`) may use MPI
 internally. For this reason, MPI objects should be compiled with the same MPI
 compiler that was used when UPC++ itself was build (normally the `mpicc` in
 one's $PATH, unless some action is taken to override that default).
