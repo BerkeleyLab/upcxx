@@ -196,12 +196,15 @@ choice for distributed systems.
 
 #### smp-conduit for single-node systems
 
-smp-conduit is currently incompatible with hybrid MPI applications, due to job
-spawning limitations. Please use one of the other conduits listed above with
-appropriate spawn arguments to use your single node. By default UPC++ will use
-process shared memory and efficient inter-process comms to implement all the
-on-node communication (bypassing the network adapter).  High-quality MPI
-implementations will do the same.
+Since UPC++ 2025.10.0, smp-conduit is conditionally compatible with hybrid MPI
+applications.  The base requirements and instructions are the same as those
+given above for InfiniBand, with `GASNET_SMP_SPAWNER=mpi` as the environment
+setting to force MPI-based launch.
+
+The compatibility is "conditional" in the sense that the launch of MPI
+applications must be configured to run all ranks on a single node.  However, it
+is worth noting that it is not required that this be the node which runs
+`upcxx-run`, `mpirun`, or similar.
 
 ### Troubleshooting:
 
