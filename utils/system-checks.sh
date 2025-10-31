@@ -580,6 +580,8 @@ platform_sanity_checks() {
             if test -n "$CRAY_PEVERSION" ; then
               ARCH_GOOD=
             fi
+        elif test arm64 = "$ARCH" ; then
+            ARCH_GOOD=1
         elif expr "$ARCH" : 'i.86' >/dev/null 2>&1 ; then
             ARCH_BAD=1
         fi
@@ -794,6 +796,7 @@ We recommend one of the following C++ compilers (or any later versions where no 
                               NVIDIA HPC SDK 20.9
            Linux on aarch64:  g++ 6.4.0, LLVM/clang 4.0.0
            macOS on x86_64:   g++ 6.4.0, Xcode/clang 8.0.0
+           macOS on arm64:    g++ 10.2.0, Xcode/clang 12.0.0 (version floors are estimated)
            HPE Cray EX:       PrgEnv-gnu with gcc/10.3.0 environment module loaded
                               PrgEnv-cray with cce/12.0.0 environment module loaded
                               PrgEnv-amd with amd/4.2.0 environment module loaded
