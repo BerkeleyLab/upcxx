@@ -13,7 +13,7 @@ However, on Cray systems `CC` is both the regular C++ compiler and the MPI C++
 compiler.  You may need to pass this same compiler as $CXX when installing UPC++
 to ensure object compatibility.
 
-Certain UPC++ network types (currently `mpi` and `ibv`) may use MPI
+Certain UPC++ network types (currently `mpi`, `ibv` and `ofi`) may use MPI
 internally. For this reason, MPI objects should be compiled with the same MPI
 compiler that was used when UPC++ itself was build (normally the `mpicc` in
 one's $PATH, unless some action is taken to override that default).
@@ -39,7 +39,7 @@ observed:
 
 3.  When an application is in 'UPC++' mode, and an MPI call that may communicate
     is needed, the application must quiesce all UPC++ communication and then
-    execute a upcxx::barrier() before any MPI calls are made. Once any MPI
+    execute a `upcxx::barrier()` before any MPI calls are made. Once any MPI
     functions have been called from any thread, the program should be considered
     to be in 'MPI' mode.
 
@@ -155,7 +155,7 @@ then the job can be spawned using `upcxx-run`:
 ```bash
 export GASNET_SPAWNFN='C'
 export GASNET_CSPAWN_CMD='mpirun -np %N %C'
-export GASNET_WORKER_RANK=OMPI_COMM_WORLD_RANK   # optional, assumes Open MPI
+export GASNET_WORKER_RANK=OMPI_COMM_WORLD_RANK   # optional, see below
 upcxx-run -np 2 hello-world
 ```
 
@@ -183,6 +183,9 @@ so you may want to perform an MPI rank renumbering after startup, eg:
 ```
 to create an MPI communicator that re-numbers the MPI ranks to match the UPC++ rank order.
 Consult MPI documentation for further details on using communicators.
+
+Note that the use of `upcxx::rank_me()` above is not a violation of the
+communication phasing rule, because it does not involve communication.
 
 #### mpi-conduit portable MPI-based backend
 
