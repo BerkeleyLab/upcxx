@@ -44,7 +44,7 @@ The following macro definitions are provided by `upcxx/upcxx.hpp`:
     `UPCXX_NETWORK_` prefix followed by the network name in capitals, which is
     defined to a non-zero integer value.  Identifiers corresponding to other
     networks are undefined.  Examples include `UPCXX_NETWORK_IBV` and
-    `UPCXX_NETWORK_ARIES`.
+    `UPCXX_NETWORK_UDP`.
 
 ## Eagerness of Future and Promise Completions ##
 
@@ -107,7 +107,7 @@ alias for a GPU device type. The binding of that alias is determined as follows:
 1. For the common case where UPC++ is configured for exactly one GPU
    variety (e.g. `--enable-cuda` OR `--enable-hip` OR `--enable-ze`) then
    `upcxx::gpu_default_device` defaults to an alias for that corresponding device
-   type (i.e. `upcxx::cuda_device`, `upcxx::hip_device`, `upcxx::ze_device`).
+   type (i.e. `upcxx::cuda_device`, `upcxx::hip_device` or `upcxx::ze_device`, respectively).
 
 2. When no device support is configured, then `upcxx::gpu_default_device`
    defaults to an alias for `upcxx::cuda_device`.
@@ -156,18 +156,19 @@ distributed systems. Unlike the standard `assert()` macro, the macros below
 print a backtrace and/or freeze to allow a debugger to be attached before
 aborting program execution.
 
-  * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:
-    Evaluates `test`, and if the result is a false value, outputs `message` if
-    provided and diagnostic information to standard error, optionally prints a
-    backtrace and/or freezes for debugger, and aborts execution by calling
-    `std::abort()`. `message` may be any expression such that `std::cerr <<
-    message` is well-formed; for instance, it may itself include
-    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, "error! x = "
-    << x)`). `message` is only evaluated when `test` produces a false value. If
+  * `UPCXX_ASSERT_ALWAYS(test)`, `UPCXX_ASSERT_ALWAYS(test, message)`:    
+    Evaluates `test` exactly once, and if the result is a false value, then:
+       1. outputs `message` (if provided) along with file location information to standard error, 
+       2. optionally prints a backtrace and/or freezes for debugger (controlled by environment variables), and 
+       3. aborts execution by calling `std::abort()`. 
+    `message` may be any expression such that `std::cerr << message` 
+    is well-formed; for instance, it may itself include
+    stream-insertion operators (e.g. `UPCXX_ASSERT_ALWAYS(x > 5, "error! x = " << x)`). 
+    `message` is only evaluated when `test` produces a false value. If
     `message` is not provided, it defaults to a string that includes a textual
     representation of `test`. In all cases, this macro expands to an expression
     with type `void`.
-  * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:
+  * `UPCXX_ASSERT(test)`, `UPCXX_ASSERT(test, message)`:    
     In the "debug" codemode, provides the same behavior as
     `UPCXX_ASSERT_ALWAYS()`. In the "opt" codemode, this macro expands to a
     side-effect-free expression with type `void` that does not evaluate the
@@ -255,7 +256,7 @@ and have exactly the same semantics under conditions of low network congestion.
 However, when an injection attempt detects that network congestion is likely to cause
 the initiating thread to be blocked inside the call (stalling due to 
 constrained network resources), the immediate-mode RPC calls will instead
-abort the injection attempt by throwing `upcxx::experimental::network_busy`.
+cancel the injection attempt by throwing `upcxx::experimental::network_busy`.
 
 ```c++
 template <typename Func, typename ...Args>
@@ -314,20 +315,21 @@ Current caveats:
    blocks at injection time depends on details of the network stack and dynamic system state.
 
 2. Currently immediate-mode behavior is only enabled for RPC payloads small enough
-   to use eager-mode RPC algorithm (under tunable threshold with a system-dependent default).
+   to use the eager-mode RPC algorithm (under a tunable threshold with a system-dependent default).
    Injection of larger RPC payloads may still block due to network congestion.
 
 3. Acknowledgments for round-trip RPC never use immediate-mode injection, and
    might cause an injection stall on the master persona of the target process.
 
-### `upcxx_memberof` Extension
+### upcxx_memberof Extension
 
 In addition, the implementation provides the following unspecified,
 experimental macro:
 
-  * variant of `upcxx_memberof` that can be used on a type `T` that is either
+  * `upcxx_experimental_memberof_unsafe` 
+    is a variant of `upcxx_memberof` that can be used on a type `T` that is either
     standard-layout (in which case the equivalent, specified `upcxx_memberof`
-    should be used instead), or for which the compiler conditionally supports
+    should be preferred), or for which the compiler conditionally supports
     `offsetof`:
 
     ```c++
@@ -347,7 +349,7 @@ prefix are intended solely for internal use by the implementation.
 The behavior and existence of all such interfaces and identifiers is subject
 to change without notice, and as such their use in user code is STRONGLY discouraged.
 
-The UPC++ v1.0 Specification is the canonical authoritative document that 
+The [UPC++ v1.0 Specification](spec.pdf) is the canonical authoritative document that 
 specifies all the required and guaranteed behaviors of the UPC++ interface.
 Users are strongly advised to rely solely on features and behaviors specified
 by that document, or implementation-defined behaviors outlined in the other
@@ -357,9 +359,9 @@ sections of this document.
 
 The "seq" build of libupcxx is performance-optimized for single-threaded
 processes, or for a model where only a single thread per process will ever be
-invoking interprocess communication via upcxx. The performance gains with
+invoking interprocess communication via UPC++. The performance gains with
 respect to the "par" build stem from the removal of internal synchronization
-(mutexes, atomic memory ops) within the upcxx runtime. Affected upcxx routines
+(mutexes, atomic memory ops) within the UPC++ runtime. Affected UPC++ routines
 will be observed to have lower overhead than their "par" counterparts.
 
 Whereas "par-mode" libupcxx permits the full generality of the UPC++
@@ -369,7 +371,7 @@ additional restrictions on the client application:
   * Only the thread which invokes `upcxx::init()` may ever hold the master
     persona. This thread is regarded as the "primordial" thread.
 
-  * Any upcxx routine with internal or user-progress (typically inter-process
+  * Any UPC++ routine with internal or user-progress (typically inter-process
     communication, e.g. `upcxx::rput/rget/rpc/...`) must be called from the
     primordial thread with the master persona at the top of the active persona
     stack. There are some routines which are excepted from this restriction and
@@ -393,7 +395,7 @@ Types of communication that do not experience restriction:
     thread while it has the master persona.
 
   * Upcasting/downcasting shared heap memory (e.g. `global_ptr::local()`) is
-    always OK. This facilitates a kind of interprocess communication via native
+    always OK. This facilitates a kind of interprocess communication via load/store
     CPU shared memory access which is permitted in "seq". Note that
     `upcxx::rput/rget` is still invalid from non-primordial threads even when
     the remote memory is downcastable locally.
