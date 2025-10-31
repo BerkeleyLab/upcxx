@@ -231,6 +231,11 @@ Miscellaneous `upcxx::experimental` interfaces:
     std::int64_t os_env(const std::string &name, const std::int64_t &otherwise,
                         std::size_t mem_size_multiplier);
     ```
+    Example uses:
+    ```
+    int thread_per_rank = upcxx::experimental::os_env<int>("THREADS", 4);
+    size_t szval = upcxx::experimental::os_env("SEGSZ", 128<<20, 1<<20); // default units = MB
+    ```
 
   * `ostream`-like class that prints to a stream with an optional prefix and as
     much atomicity as possible:
@@ -244,6 +249,16 @@ Miscellaneous `upcxx::experimental` interfaces:
       template<typename T>
       say& operator<<(T const &that);
     };
+    ```
+    Example use:
+    ```
+    upcxx::experimental::say() << "my value: " << d;
+    ```
+    Could result in output like this when run with three processes:
+    ```
+    [0] my value: 0
+    [1] my value: 24.742
+    [2] my value: 49.484
     ```
 
 ### Immediate-mode RPC
