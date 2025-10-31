@@ -32,7 +32,8 @@ The current release is known to work on the following configurations:
     - The most recent Xcode release for each macOS release is generally well-tested
         + It is suspected that any compatible Xcode (ie Apple clang) will work
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
-      of a recent version should also work
+      of a recent version should also work  
+
     Caveat: Nothing platform-specific has been implemented for the mix of
     "performance" and "efficiency" cores, meaning performance could be highly
     variable.  
