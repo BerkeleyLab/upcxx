@@ -14,7 +14,7 @@ For information on installing UPC++, see: [INSTALL.md](INSTALL.md)
 General features/enhancements: (see specification and programmer's guide for full details)
 
 * Updated `upcxx-run` supports launch of smp-conduit jobs via ssh, MPI and PMI on
-  supported systems, matching the capabilites of (for instance) ibv and ofi.
+  supported systems, matching the capabilities of (for instance) ibv and ofi.
 
 Infrastructure changes:
 
