@@ -446,7 +446,7 @@ general, can be found in the corresponding GASNet-EX report:
 [bug 4517](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4517).
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ### Configuration: Linux
 
@@ -489,7 +489,7 @@ PMI-based or SMP fork-based spawning in GASNet are sufficient), then one may con
 Note that this particular option does NOT work for mpi-conduit.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ### Configuration: Apple macOS
 
@@ -527,7 +527,7 @@ desirable, then use of debuggers will be limited to members of the
 provide additional information.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ### Configuration: CUDA GPU support
 
@@ -681,7 +681,7 @@ See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more detail
 using the CUDA support.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ### Configuration: AMD ROCm/HIP GPU support
 
@@ -813,7 +813,7 @@ See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more detail
 using the UPC++ GPU support.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ### Configuration: HIP-over-CUDA GPU support
 
@@ -854,7 +854,7 @@ As mentioned in prior sections, both UPC++ and your UPC++ application must be
 compiled using the same host compiler toolchain.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ### Configuration: Intel oneAPI GPU support
 
@@ -976,7 +976,7 @@ See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more detail
 using the UPC++ GPU support.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
+[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
 
 ## Advanced Configuration
 
