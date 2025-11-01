@@ -19,7 +19,11 @@ This module tries to find the upcxx-meta utility in the following locations:
 #]=======================================================================]
 
 
-cmake_minimum_required( VERSION 3.6 )
+if(CMAKE_VERSION VERSION_LESS 3.12)
+  cmake_minimum_required( VERSION 3.6 )
+else() # range syntax was introduced in 3.12
+  cmake_minimum_required( VERSION 3.6...4.0 )
+endif()
 
 option(UPCXX_VERBOSE "Verbose UPC++ detection" OFF)
 function(UPCXX_VERB MESSAGE)

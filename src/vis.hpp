@@ -257,8 +257,8 @@ namespace upcxx
       static constexpr bool static_scope = false;
       void initiate()
       {
-        detail::rma_put_irreg_nb(rank_d, dest.size(), &(dest[0]),
-                                src.size(), &(src[0]),
+        detail::rma_put_irreg_nb(rank_d, dest.size(), dest.data(),
+                                src.size(), src.data(),
                                 this->source_cb(), this->operation_cb()); 
       }
 
@@ -288,8 +288,8 @@ namespace upcxx
       static constexpr bool static_scope = false;
       void initiate(std::size_t destlen, std::size_t srclen)
       {
-        detail::rma_put_reg_nb(rank_d, dest.size(), &(dest[0]), destlen,
-                               src.size(), &(src[0]), srclen,
+        detail::rma_put_reg_nb(rank_d, dest.size(), dest.data(), destlen,
+                               src.size(), src.data(), srclen,
                                this->source_cb(), this->operation_cb());
       }
 
@@ -338,8 +338,8 @@ namespace upcxx
         state_here{std::move(here)}, src(Src), dest(Dest) { }
       void initiate(intrank_t rank_s)
       {
-        detail::rma_get_irreg_nb(dest.size(), &(dest[0]),
-                                rank_s  ,src.size(), &(src[0]),
+        detail::rma_get_irreg_nb(dest.size(), dest.data(),
+                                rank_s  ,src.size(), src.data(),
                                 this);
       }
       void execute_and_delete(backend::gasnet::handle_cb_successor) {
@@ -361,8 +361,8 @@ namespace upcxx
         state_here{std::move(here)}, src(Src), dest(Dest) { }
       void initiate(intrank_t rank_s, std::size_t srclength, std::size_t dstlength)
       {
-        detail::rma_get_reg_nb(dest.size(), &(dest[0]), dstlength, 
-                               rank_s  ,src.size(), &(src[0]), srclength,
+        detail::rma_get_reg_nb(dest.size(), dest.data(), dstlength, 
+                               rank_s  ,src.size(), src.data(), srclength,
                                this);
       }
       void execute_and_delete(backend::gasnet::handle_cb_successor) {

@@ -43,7 +43,7 @@ compile() {
   set +e; (set -e; compile2); res=$?
   set -e
   if ((res)); then
-    rm -r "${testdir:-${testname}}" || true
+    rm -rf "${testdir:-${testname}}" || true
     rm "${testname}.runcmd" || true
     return 1
   fi

@@ -41,7 +41,7 @@ GASNET=$(basename "${GASNET_URL}" .tar.gz)
 
 # Downoad GEX and extract info
 mkdir -p ${RELEASE}/src
-(cd ${RELEASE}/src && $WWW_CMD "${GASNET_URL}")
+(cd ${RELEASE}/src && $WWW_CMD "${GASNET_URL}" || (echo 'ERROR: Failed to download GEX tarball' ; exit 1 ) )
 GASNET_TGZ=${RELEASE}/src/${GASNET}.tar.gz
 GEX_MD5SUM="$( $MD5_CMD ${GASNET_TGZ} | cut -d\  -f1 )"
 if ! gzip -t $GASNET_TGZ; then

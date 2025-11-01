@@ -3,6 +3,7 @@
 
 # Programs we use
 PERL = @PERL@
+AR = @AR@
 
 # Probed parameters
 CONDUITS = @CONDUITS@

@@ -8,7 +8,7 @@ not an efficient implementation of vector addition.
 
 Three versions of the example can be compiled: one using CUDA kernels, one using 
 HIP kernels, and the final one using SYCL kernels. The CUDA version must be run 
-on a machine with NVIDIA GPUs. The HIP version can be run either natively on AMD 
+on a machine with NVIDIA GPUs. The HIP version can be run either on AMD-branded
 GPUs or on NVIDIA GPUs using the HIP-over-CUDA adapter. The SYCL version must 
 be run on a machine using Intel GPUs.
 
@@ -67,7 +67,7 @@ generated.
 
 ### SYCL version
 A specific SYCL architecture can be specified using the `SYCLARCH` variable.
-Intel GPUs which lack native support for double-precision FP arithmetic may 
+Intel GPUs which lack hardware support for double-precision FP arithmetic may 
 still be able to run the SYCL version of this example by setting the following
 two environment variables:
 ```bash

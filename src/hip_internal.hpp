@@ -13,7 +13,7 @@
   #include <hip/hip_runtime_api.h>
 
   #if UPCXXI_GEX_MK_HIP
-    // Validate GASNet native memory kinds support
+    // Validate GASNet accelerated memory kinds support
     #if GASNET_MAXEPS <= 1 || !GASNET_HAVE_MK_CLASS_HIP
     #error Internal error: missing expected GASNet MK HIP support
     #endif

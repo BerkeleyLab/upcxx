@@ -62,6 +62,30 @@ namespace upcxx {
      static constexpr const char *_base = "upcxx::bad_segment_alloc: ";
   };
   //////////////////////////////////////////////////////////////////////
+  namespace experimental {
+   struct network_busy : public std::exception {
+    network_busy(const char *where=nullptr, size_t nbytes=0, intrank_t who=-1) noexcept {
+      std::stringstream ss;
+      ss << _base << "UPC++ detected a busy network while attempting injection of immediate-mode communication";
+      if (nbytes) ss << "\n of size " 
+                     << nbytes <<  " bytes (" << backend::gasnet::noise_log::size(nbytes) << ")";
+      if (who != -1) ss << "\n to process " << who;
+      if (where) ss << "\n inside upcxx::" << where;
+      ss << "\n This communication was cancelled, and can be retried later.";
+      _what = ss.str();
+    }
+    network_busy(const std::string & reason) noexcept : _what(_base) {
+      _what += reason;
+    }
+    virtual const char* what() const noexcept {
+      return _what.c_str();
+    }
+    private:
+     std::string _what;
+     static constexpr const char *_base = "upcxx::experimental::network_busy: ";
+   };
+  } // namespace experimental
+  //////////////////////////////////////////////////////////////////////
   
 } // namespace upcxx
 

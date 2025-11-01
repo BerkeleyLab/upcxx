@@ -22,15 +22,21 @@ a modern C++ compiler and corresponding standard library implementation.
 
 The current release is known to work on the following configurations:
 
-* Apple macOS/x86\_64 (smp and udp conduits):
+* Apple macOS/x86\_64:  
     - The most recent Xcode release for each macOS release is generally well-tested
         + It is suspected that any Xcode (ie Apple clang) release 8.0 or newer will work
     - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
       version 6.4.0 or newer should also work
 
-    At the time of the 2023.9.0 release of UPC++, we have tested only lightly on
-    macOS 13 "Ventura" and macOS 14 "Sonoma".
-    We welcome reports of success or failure on macOS 13 and/or 14.
+* Apple macOS/aarch64 (aka "Apple Silicon"):  
+    - The most recent Xcode release for each macOS release is generally well-tested
+        + It is suspected that any compatible Xcode (ie Apple clang) will work
+    - Free Software Foundation g++ (e.g., as installed by Homebrew or Fink)
+      of a recent version should also work  
+
+    Caveat: Nothing platform-specific has been implemented for the mix of
+    "performance" and "efficiency" cores, meaning performance could be highly
+    variable.  
 
 * Linux/x86\_64 with one of the following compilers:
     - g++ 6.4.0 or newer    
@@ -73,31 +79,7 @@ The current release is known to work on the following configurations:
     - PrgEnv-nvhpc with nvhpc/21.9 (or later) loaded.
     - PrgEnv-intel with intel/2023.1.0 (or later) loaded.
 
-* **DEPRECATED**  
-  Cray XC/x86\_64 with one of the following PrgEnv environment modules and
-  its dependencies (smp and aries conduits):
-    - PrgEnv-gnu with gcc/7.1.0 (or later) loaded.
-    - PrgEnv-intel with intel/18.0.1 and gcc/7.1.0 (or later) loaded.
-    - PrgEnv-cray with cce/9.0.0 (or later) loaded.
-      Note that does not include support for "cce/9.x.y-classic".
-
-    ALCF's PrgEnv-llvm is also supported on the Cray XC.  Unlike Cray's
-    PrgEnv-\* modules, PrgEnv-llvm is versioned to match the llvm toolchain
-    it includes, rather than the Cray PE version.  UPC++ has been tested
-    against PrgEnv-llvm/4.0 (clang++ 4.0) and newer.  When using PrgEnv-llvm,
-    it is recommended to `module unload xalt` to avoid a large volume of
-    verbose linker output in this configuration.  Mixing with OpenMP in this
-    configuration is not currently supported.  (smp and aries conduits).
-
 * NOT officially supported:  
-    - Apple macOS/aarch64 (aka "Apple M1" and "Apple Silicon")  
-      Testing on this platform with both Xcode and Free Software
-      Foundation g++ show functionally complete and correct operation.  
-      Nothing platform-specific has been implemented for the mix of
-      "performance" and "efficiency" cores, meaning performance could be
-      highly variable.  
-      At this time we consider it premature to list this platform as
-      "supported", and the `configure` script will issue a warning.
     - Vendor-specific `clang++` or `g++` variants.  
       At least Arm Ltd. provides compilers based on their own modifications to
       Clang/LLVM.  Similarly, at least Arm Ltd. and IBM provide forks of `g++`.  
@@ -176,7 +158,6 @@ in the following sections, below:
 * [Configuration: HPE Cray EX](#markdown-header-configuration-hpe-cray-ex)
 * [Configuration: Linux](#markdown-header-configuration-linux)
 * [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
-* [Configuration: Cray XC](#markdown-header-configuration-cray-xc)
 * [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
 * [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
 * [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
@@ -267,7 +248,7 @@ make check
 
 This compiles all available tests for the default network and then runs them.
 One can override the default network by appending `NETWORKS=net1,net2`
-to this command, with network names (such as `smp`, `udp`, `ibv`, `ofi` or `aries`)
+to this command, with network names (such as `smp`, `udp`, `ibv` or `ofi`)
 substituted for the `netN` placeholders.
 
 Setting of `NETWORKS` to restrict what is tested may be necessary, for
@@ -477,10 +458,12 @@ control over how UPC\+\+ is configured can be found in the
 
 By default ibv-conduit (InfiniBand support) will use MPI for job spawning if a
 working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  The same is
-true for MPI, OFI and UCX conduits, if these have been enabled.  To ensure that
+true for SMP, MPI, OFI and UCX conduits, if these have been enabled.  To ensure that
 UPC\+\+ applications will link when one of these conduits are used, one of three
 options must be chosen.  Failure to do so will typically result in an error
 message at UPC\+\+ build time, directing you to this documentation.
+Note that smp-conduit is a recent addition to the list above with GASNet
+versions 2024.5.3 or later.
 
 Option 1. The most direct solution is to configure using `--with-cxx=mpicxx` (or
 similar) to ensure correct linking of UPC\+\+ applications which use MPI for job
@@ -500,8 +483,8 @@ using the given network API.  The case of missing hardware can often occur for
 IBV when Linux distros install the corresponding development packages as
 dependencies of other packages.
 
-Option 3. If one does not require MPI for job spawning (because SSH- or
-PMI-based spawning in GASNet are sufficient), then one may configure using
+Option 3. If one does not require MPI for job spawning (because SSH-based or
+PMI-based or SMP fork-based spawning in GASNet are sufficient), then one may configure using
 `--disable-mpi-compat` to eliminate the link-time dependence on MPI.
 Note that this particular option does NOT work for mpi-conduit.
 
@@ -528,6 +511,11 @@ xcode-select --install
 Alternatively, the `--with-cc=...` and `--with-cxx=...` options to `configure`
 may be used to specify different compilers.
 
+Note that with GASNet versions 2024.5.3 or later, if you have MPI installed
+then you may also need to specify configure option `--with-cxx=mpicxx` or
+`--disable-mpi-compat` accordingly. See [Configuration: Linux](#markdown-header-configuration-linux)
+above for more details.
+
 In order to use a debugger on macOS, we advise you to enable "Developer
 Mode".  This is a system setting, not directly related to UPC\+\+.
 Developer Mode may already be enabled, for instance if one granted Xcode
@@ -537,44 +525,6 @@ use development tools, including the `lldb` debugger.  If that is not
 desirable, then use of debuggers will be limited to members of the
 `_developer` group.  An internet search for `macos _developer group` will
 provide additional information.
-
-After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
-
-### Configuration: Cray XC
-
-** Support for the Cray XC platform is deprecated and will be removed in a future release. **
-
-By default, on a Cray XC the logic in `configure` will automatically detect either
-the SLURM or Cray ALPS job scheduler and will cross-configure for the
-appropriate package.  If this auto-detection fails, you may need to explicitly
-pass the appropriate value for your system:
-
-* `--with-cross=cray-aries-slurm`: Cray XC systems using the SLURM job scheduler (srun)
-* `--with-cross=cray-aries-alps`: Cray XC systems using the Cray ALPS job scheduler (aprun)
-
-When Intel compilers are being used (a common default for these systems),
-`g++` in `$PATH` must be version 7.1.0 or newer.  If the default is too old,
-then you may need to explicitly load a `gcc` environment module, e.g.:
-
-```bash
-module load gcc/7.1.0
-cd <upcxx-source-path>
-./configure --prefix=<upcxx-install-path> --with-cross=cray-aries-slurm
-```
-
-If using PrgEnv-cray, then version 9.0 or newer of the Cray compilers is
-required.  This means the cce/9.0.0 or later environment module must be
-loaded, and not "cce/9.0.0-classic" (the "-classic" Cray compilers are not
-supported).
-
-The `configure` script will use the `cc` and `CC` compiler aliases of the Cray
-programming environment loaded.  It is *not* necessary to specify these
-explicitly using `--with-cc` or `--with-cxx`.
-
-Currently only Intel-based Cray XC systems have been tested, including Xeon
-and Xeon Phi (aka "KNL").  Note that UPC++ has not yet been tested on an
-ARM-based Cray XC.
 
 After running `configure`, return to
 [Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc4343), above.
@@ -594,7 +544,7 @@ resident in a CUDA-compatible NVIDIA GPU.  General requirements:
 This version of UPC++ supports GPUDirect RDMA (GDR) acceleration of memory
 kinds data transfers on selected platforms using modern NVIDIA-branded GPUs
 with NVIDIA- or Mellanox-branded InfiniBand or HPE Slingshot network hardware.  
-This support requires one of the following native network conduit
+This support requires one of the following high-performance network conduit
 configurations, and the current/default version of GASNet-EX:
 
 * ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
@@ -748,7 +698,7 @@ resident in a ROCm/HIP-compatible AMD GPU.  General requirements:
 
 This version of UPC++ supports ROCmRDMA acceleration of memory
 kinds data transfers on selected platforms using modern AMD-branded GPUs.
-This support requires one of the following native network conduit
+This support requires one of the following high-performance network conduit
 configurations, and the current/default version of GASNet-EX:
 
 * ibv-conduit with recent NVIDIA/Mellanox-branded InfiniBand network hardware
@@ -995,7 +945,7 @@ preliminary and has known correctness and functionality limitations**, and
 is thus disabled by default; configure option `--enable-kind-ze` must be
 provided to activate this support.
 
-This support requires the following native network conduit
+This support requires the following high-performance network conduit
 configurations, and the current/default version of GASNet-EX:
 
 * ofi-conduit on HPE Cray EX with HPE Slingshot-11 (cxi provider)
@@ -1018,7 +968,7 @@ been tuned for performance. In particular, `upcxx::copy` will stage data
 transfers involving device memory through intermediate buffers in host memory,
 and is expected to underperform relative to solutions using zero-copy technologies.
 Future versions of UPC++ and GASNet-EX will expand and enhance the support
-for native memory kinds acceleration on Intel GPUs.
+for memory kinds acceleration on Intel GPUs.
 
 #### Use of UPC++ memory kinds
 
@@ -1043,8 +993,7 @@ options:
   compile for the front-end of a Cray XC system.
 * `--with-default-network=...`: Sets the default network to be used by the
   `upcxx` compiler wrapper.  Valid values are listed under "UPC\+\+ Backends" in
-  [README.md](README.md).  The default is `aries` when cross-compiling for a
-  Cray XC, and (currently) `smp` for all other systems.  Users with high-speed
+  [README.md](README.md). The default is (currently) `smp`. Users with high-speed
   networks, such as InfiniBand (`ibv`), are encouraged to set this parameter
   to a value appropriate for their system.
 * `--with-gasnet=...`: Provides the GASNet-EX source tree from which UPC\+\+

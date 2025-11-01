@@ -2,6 +2,10 @@
 
 using namespace upcxx;
 
+#if __cplusplus < 201703L
+main_test_skipped("This test requires C++17 or later");
+#else
+
 static void check(const future<int, double, char, int> &fut) {
   UPCXX_ASSERT_ALWAYS(fut.is_ready());
   auto [i, d, c, j] = fut.wait();
@@ -31,3 +35,5 @@ int main() {
   print_test_success();
   finalize();
 }
+
+#endif
