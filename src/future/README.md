@@ -4,7 +4,7 @@ This document covers internal design details of the UPC++ runtime and is not
 intended for consumption by end users. In particular, all information herein is
 non-normative, may be out-of-date and is subject to change without notice. End
 users should NEVER rely on UPC++ types that are not documented in the formal
-[UPC++ v1.0 Specification](https://bitbucket.org/berkeleylab/upcxx/raw/master/docs/spec.pdf)
+[UPC++ v1.0 Specification](https://github.com/BerkeleyLab/upcxx/raw/refs/heads/master/docs/spec.pdf)
 
 ## Implementation of `upcxx::future` ##
 
