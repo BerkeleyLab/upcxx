@@ -582,7 +582,7 @@ cd <upcxx-source-path>
 This will detect whether the requirements for GDR acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's GDR support, please see
-[docs/memory_kinds](https://bitbucket.org/berkeleylab/gasnet/raw/master/docs/memory_kinds.pdf)
+[docs/memory_kinds_implementation.md](https://gasnet.lbl.gov/dist-ex/docs/memory_kinds_implementation.md)
 in the GASNet distribution.
 
 `configure --enable-cuda` expects to find the NVIDIA `nvcc` compiler wrapper in your `$PATH` and
@@ -736,7 +736,7 @@ cd <upcxx-source-path>
 This will detect whether the requirements for ROCmRDMA acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's ROCmRDMA support, please see
-[docs/memory_kinds](https://bitbucket.org/berkeleylab/gasnet/raw/master/docs/memory_kinds.pdf)
+[docs/memory_kinds_implementation.md](https://gasnet.lbl.gov/dist-ex/docs/memory_kinds_implementation.md)
 in the GASNet distribution.
 
 `configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
