@@ -95,7 +95,7 @@ function pointer relocation information using
 asynchronously.  See [docs/ccs-rpc.md](ccs-rpc.md) for more information
 about the CCS RPC feature.
 
-The [experimental immediate-mode RPC injection calls](#markdown-header-immediate-mode-rpc)
+The [experimental immediate-mode RPC injection calls](#immediate-mode-rpc)
 may additionally throw a `upcxx::experimental::network_busy` exception in
 the presence of network congestion.
 
@@ -317,7 +317,7 @@ RType rpc_immediate(const team &team, intrank_t recipient,
   not deliver any event notifications, nor shall it lead to invocation of the
   function object.
 * As with non-immediate RPC, calls may also throw any of the usual 
-  [exceptions thrown from RPC](#markdown-header-exceptions-thrown-from-rpc).
+  [exceptions thrown from RPC](#exceptions-thrown-from-rpc).
 
 For discussion of this enhancement and experimental results, consult:
 

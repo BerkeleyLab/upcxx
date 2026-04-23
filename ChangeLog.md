@@ -219,7 +219,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
   - bug4606: current `aprun` not recognized by gasnetrun
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2023.3.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2023.3.0.pdf).
+[UPC++ v1.0 Specification, Revision 2023.3.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2023.3.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -257,7 +257,7 @@ Serialization changes:
   and `deserializing_iterator<T>::deserialize_overwrite()` functions
   that work analogously to their `*_into()` counterparts, but additionally
   destruct target objects before deserializing into them.
-* See [the specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2022.9.0.pdf) for further details.
+* See [the specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2022.9.0.pdf) for further details.
 
 Infrastructure changes:
 
@@ -307,7 +307,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
   - bug4509: Non-scalable reduction temporaries
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2022.9.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2022.9.0.pdf).
+[UPC++ v1.0 Specification, Revision 2022.9.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2022.9.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -401,7 +401,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
 * bug4366: intermittent exit-time assertion failures from debug memcheck
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2022.3.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2022.3.0.pdf).
+[UPC++ v1.0 Specification, Revision 2022.3.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2022.3.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -532,7 +532,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
 * bug4330: ibv conduit incorrectly implements `HIDDEN_AM_CONCURRENCY_LEVEL`
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2021.9.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2021.9.0.pdf).
+[UPC++ v1.0 Specification, Revision 2021.9.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2021.9.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -629,7 +629,7 @@ Embeds a GASNet-EX library that addresses the following notable issues
 * bug4208: ibv: unfortunate multi-rail interactions with PSHM and XRC
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2021.3.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2021.3.0.pdf).
+[UPC++ v1.0 Specification, Revision 2021.3.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2021.3.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -698,7 +698,7 @@ Notable issues resolved
 * issue #421: Regression with `upcxx::copy(remote_cx::as_rpc)`
 
 This prototype library release conforms to the
-[UPC++ v1.0 Specification, Revision 2020.11.0-draft](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2020.11.0-draft.pdf).
+[UPC++ v1.0 Specification, Revision 2020.11.0-draft](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2020.11.0-draft.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -799,7 +799,7 @@ Notable issues resolved
 * spec issue 170: Implement `upcxx::in_progress()` query
 
 This library release conforms to the
-[UPC++ v1.0 Specification, Revision 2020.10.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2020.10.0.pdf).
+[UPC++ v1.0 Specification, Revision 2020.10.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2020.10.0.pdf).
 All currently specified features are fully implemented.
 See the [UPC++ issue tracker](https://upcxx-bugs.lbl.gov) for status of known bugs.
 
@@ -859,7 +859,7 @@ New features/enhancements: (see specification and programmer's guide for full de
 
 * Added support for non-trivial serialization of user-defined types.  See the 
   [new chapter of the programmer's guide](https://upcxx.lbl.gov/docs/html/guide.html#serialization)
-  for an introduction, and [the specification](docs/spec.pdf) for all the details.
+  for an introduction, and [the specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2020.3.0.pdf) for all the details.
 * Implement `upcxx_memberof(_general)()`, enabling RMA access to fields of remote objects
 * `upcxx::promise` now behaves as a CopyAssignable handle to a reference-counted hidden object,
   meaning users no longer have to worry about promise lifetime issues.
@@ -896,7 +896,7 @@ Notable issues resolved
 * spec issue 155: value argument type to value collectives is changed to a simple by-value T
 
 This library release mostly conforms to the
-[UPC++ v1.0 Specification, Revision 2020.3.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2020.3.0.pdf).
+[UPC++ v1.0 Specification, Revision 2020.3.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2020.3.0.pdf).
 The following features from that specification are not yet implemented:
 
 * view buffer lifetime extension for `remote_cx::as_rpc` (issue #262)
@@ -974,7 +974,7 @@ Notable issues resolved
 * spec issue 142: add `persona::active_with_caller()`
 
 This library release mostly conforms to the
-[UPC++ v1.0 Specification, Revision 2019.9.0](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-2019.9.0.pdf).
+[UPC++ v1.0 Specification, Revision 2019.9.0](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-2019.9.0.pdf).
 The following features from that specification are not yet implemented:
 
 * view buffer lifetime extension for `remote_cx::as_rpc` (issue #262)
@@ -1033,7 +1033,7 @@ Notable issues resolved
 * issue #205: incorrect metadata handling in `~persona_scope()`
 
 This library release mostly conforms to the
-[UPC++ v1.0 Draft 10 Specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-V1.0-Draft10.pdf).
+[UPC++ v1.0 Draft 10 Specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-V1.0-Draft10.pdf).
 The following features from that specification are not yet implemented:
 
 * `barrier_async()` and `broadcast()` only support default future-based completion (issue #234)
@@ -1076,7 +1076,7 @@ Notable issues resolved
 * issue #141: missing promise move assignment operator
 
 This library release mostly conforms to the
-[UPC++ v1.0 Draft 8 Specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-V1.0-Draft8.pdf).
+[UPC++ v1.0 Draft 8 Specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-V1.0-Draft8.pdf).
 The following features from that specification are not yet implemented:
 
 * `barrier_async()` and `broadcast()` only support default future-based completion (issue #234)
@@ -1116,7 +1116,7 @@ Notable issues resolved
  * Minor improvements to upcxx-run and run-tests.
 
 This library release mostly conforms to the
-[UPC++ v1.0 Draft 6 Specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-V1.0-Draft6.pdf).
+[UPC++ v1.0 Draft 6 Specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-V1.0-Draft6.pdf).
 The following features from that specification are not yet implemented:
 
  * Teams: `team::split`, `team_id`, collectives over teams, passing
@@ -1144,7 +1144,7 @@ New features/enhancements:
  * Improvements to internal assertion checking and diagnostics.
   
 This library release mostly conforms to the
-[UPC++ v1.0 Draft 5 Specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-V1.0-Draft5.pdf).
+[UPC++ v1.0 Draft 5 Specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-V1.0-Draft5.pdf).
 The following features from that specification are not yet implemented:
 
  * Teams
@@ -1161,7 +1161,7 @@ This release is not performant, and may be unstable or buggy.
 The initial public release of UPC++ v1.0. 
 
 This library release mostly conforms to the
-[UPC++ v1.0 Draft 4 Specification](https://bitbucket.org/berkeleylab/upcxx/downloads/upcxx-spec-V1.0-Draft4.pdf).
+[UPC++ v1.0 Draft 4 Specification](https://github.com/BerkeleyLab/upcxx/wiki/pubs/upcxx-spec-V1.0-Draft4.pdf).
 The following features from that specification are not yet implemented:
 
  * Continuation-based and Promise-based completion (use future completion for

@@ -48,7 +48,7 @@ The current release is known to work on the following configurations:
     - AMD AOCC compilers 2.3.0 or newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
-    see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
+    see [Linux Compiler Notes](#linux-compiler-notes), below.
 
 * Linux/ppc64le (aka IBM POWER little-endian) with one of the following compilers:
     - g++ 6.4.0 or newer
@@ -57,14 +57,14 @@ The current release is known to work on the following configurations:
     - NVIDIA HPC SDK (aka nvhpc) 20.9 and newer (with libstdc++ from g++ 6.4.0 or newer)
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
-    see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
+    see [Linux Compiler Notes](#linux-compiler-notes), below.
 
 * Linux/aarch64 (aka "arm64" or "armv8") with one of the following compilers:
     - g++ 6.4.0 or newer
     - clang++ 4.0.0 or newer (with libstdc++ from g++ 6.4.0 or newer)   
 
     If `/usr/bin/g++` is older than 6.4.0 (even if using another compiler),
-    see [Linux Compiler Notes](#markdown-header-linux-compiler-notes), below.
+    see [Linux Compiler Notes](#linux-compiler-notes), below.
 
     Note the GPUDirect drivers necessary for GDR-accelerated memory kinds on
     InfiniBand are not supported on the Linux/aarch64 platform.
@@ -155,17 +155,17 @@ Depending on the platform, additional command-line arguments may be necessary
 when invoking `configure`. For guidance, see the platform-specific instructions
 in the following sections, below:
 
-* [Configuration: HPE Cray EX](#markdown-header-configuration-hpe-cray-ex)
-* [Configuration: Linux](#markdown-header-configuration-linux)
-* [Configuration: Apple macOS](#markdown-header-configuration-apple-macos)
-* [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
-* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
-* [Configuration: HIP-over-CUDA GPU support](#markdown-header-configuration-hip-over-cuda-gpu-support)
-* [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
+* [Configuration: HPE Cray EX](#configuration-hpe-cray-ex)
+* [Configuration: Linux](#configuration-linux)
+* [Configuration: Apple macOS](#configuration-apple-macos)
+* [Configuration: CUDA GPU support](#configuration-cuda-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#configuration-amd-rocmhip-gpu-support)
+* [Configuration: HIP-over-CUDA GPU support](#configuration-hip-over-cuda-gpu-support)
+* [Configuration: Intel oneAPI GPU support](#configuration-intel-oneapi-gpu-support)
 
 Running `<upcxx-source-path>/configure --help` will provide general
 information on the available configuration options, and similar information is
-provided in the [Advanced Configuration](#markdown-header-advanced-configuration)
+provided in the [Advanced Configuration](#advanced-configuration)
 section below.
 
 If you are using a source tarball release downloaded from the website, it
@@ -220,7 +220,7 @@ encounter a failure you should retry without a `-j` option.
 Some combinations of network and `configure` options require that `CXX` be
 capable of linking MPI applications.  If that requirement exists but is unmet,
 then this step will fail with output giving instructions to read the section
-[Configuration: Linux](#markdown-header-configuration-linux) in this document,
+[Configuration: Linux](#configuration-linux) in this document,
 where this issue is described in more detail.
 
 The output generated at the successful conclusion of this step gives the
@@ -424,9 +424,9 @@ UPC++ release supports GPUs using Nvidia CUDA, AMD ROCm/HIP, and Intel oneAPI
 in HPE Cray EX systems.  Please _also_ see the respective sections of this
 document for UPC++ configure options needed to enable this support:
 
-* [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
-* [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
-* [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
+* [Configuration: CUDA GPU support](#configuration-cuda-gpu-support)
+* [Configuration: AMD ROCm/HIP GPU support](#configuration-amd-rocmhip-gpu-support)
+* [Configuration: Intel oneAPI GPU support](#configuration-intel-oneapi-gpu-support)
 
 With the Slingshot-11 network, some users have seen application hangs due to
 what appears to be "lost" RPCs.  At the time this is written, there are two
@@ -446,7 +446,7 @@ general, can be found in the corresponding GASNet-EX report:
 [bug 4517](https://gasnet-bugs.lbl.gov/bugzilla/show_bug.cgi?id=4517).
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ### Configuration: Linux
 
@@ -454,7 +454,7 @@ The `configure` command above will work as-is. The default compilers used will
 be gcc/g++. The `--with-cc=...` and `--with-cxx=...` options may specify
 alternatives to override this behavior.  Additional options providing finer
 control over how UPC\+\+ is configured can be found in the
-[Advanced Configuration](#markdown-header-advanced-configuration) section below.
+[Advanced Configuration](#advanced-configuration) section below.
 
 By default ibv-conduit (InfiniBand support) will use MPI for job spawning if a
 working `mpicc` is found in your `$PATH` when UPC\+\+ is built.  The same is
@@ -489,7 +489,7 @@ PMI-based or SMP fork-based spawning in GASNet are sufficient), then one may con
 Note that this particular option does NOT work for mpi-conduit.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ### Configuration: Apple macOS
 
@@ -513,7 +513,7 @@ may be used to specify different compilers.
 
 Note that with GASNet versions 2024.5.3 or later, if you have MPI installed
 then you may also need to specify configure option `--with-cxx=mpicxx` or
-`--disable-mpi-compat` accordingly. See [Configuration: Linux](#markdown-header-configuration-linux)
+`--disable-mpi-compat` accordingly. See [Configuration: Linux](#configuration-linux)
 above for more details.
 
 In order to use a debugger on macOS, we advise you to enable "Developer
@@ -527,7 +527,7 @@ desirable, then use of debuggers will be limited to members of the
 provide additional information.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ### Configuration: CUDA GPU support
 
@@ -582,7 +582,7 @@ cd <upcxx-source-path>
 This will detect whether the requirements for GDR acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's GDR support, please see
-[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/master/docs/memory_kinds.md)
+[docs/memory_kinds_implementation.md](https://gasnet.lbl.gov/dist-ex/docs/memory_kinds_implementation.md)
 in the GASNet distribution.
 
 `configure --enable-cuda` expects to find the NVIDIA `nvcc` compiler wrapper in your `$PATH` and
@@ -681,7 +681,7 @@ See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more detail
 using the CUDA support.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ### Configuration: AMD ROCm/HIP GPU support
 
@@ -736,7 +736,7 @@ cd <upcxx-source-path>
 This will detect whether the requirements for ROCmRDMA acceleration are met and
 automatically activate that feature. 
 For troubleshooting installation of GASNet's ROCmRDMA support, please see
-[docs/memory_kinds.md](https://bitbucket.org/berkeleylab/gasnet/src/master/docs/memory_kinds.md)
+[docs/memory_kinds_implementation.md](https://gasnet.lbl.gov/dist-ex/docs/memory_kinds_implementation.md)
 in the GASNet distribution.
 
 `configure --enable-hip` expects to find the AMD ROCm `hipcc` compiler wrapper
@@ -813,7 +813,7 @@ See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more detail
 using the UPC++ GPU support.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ### Configuration: HIP-over-CUDA GPU support
 
@@ -833,7 +833,7 @@ configurations:
 as well as modern NVIDIA-branded [CUDA-compatible GPU hardware](https://developer.nvidia.com/cuda-gpus).
 
 Additional requirements for GPUDirect RDMA can be found in the section 
-[Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support).
+[Configuration: CUDA GPU support](#configuration-cuda-gpu-support).
 
 #### `configure` Command for Enabling HIP-over-CUDA GPU Support
 
@@ -847,14 +847,14 @@ cd <upcxx-source-path>
 
 For issues with automatic detection of compiler location or build flags, 
 consult the relevant sections of  
-[Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support) and 
-[Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support).
+[Configuration: CUDA GPU support](#configuration-cuda-gpu-support) and 
+[Configuration: AMD ROCm/HIP GPU support](#configuration-amd-rocmhip-gpu-support).
 
 As mentioned in prior sections, both UPC++ and your UPC++ application must be 
 compiled using the same host compiler toolchain.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ### Configuration: Intel oneAPI GPU support
 
@@ -976,7 +976,7 @@ See the "Memory Kinds" section in the _UPC++ Programmer's Guide_ for more detail
 using the UPC++ GPU support.
 
 After running `configure`, return to
-[Step 2: Compiling UPC\+\+](#markdown-header-2-compiling-upc), above.
+[Step 2: Compiling UPC\+\+](#2-compiling-upc), above.
 
 ## Advanced Configuration
 
@@ -1009,11 +1009,11 @@ options:
   suitable interpreter when `upcxx-run` is executed.  This option results in the
   use of a full path to the Python interpreter in `upcxx-run`.
 * Options for control of (optional) CUDA support are documented in the section
-  [Configuration: CUDA GPU support](#markdown-header-configuration-cuda-gpu-support)
+  [Configuration: CUDA GPU support](#configuration-cuda-gpu-support)
 * Options for control of (optional) AMD ROCm/HIP GPU support are documented in the section
-  [Configuration: AMD ROCm/HIP GPU support](#markdown-header-configuration-amd-rocmhip-gpu-support)
+  [Configuration: AMD ROCm/HIP GPU support](#configuration-amd-rocmhip-gpu-support)
 * Options for control of (optional) Intel oneAPI GPU support are documented in the section
-  [Configuration: Intel oneAPI GPU support](#markdown-header-configuration-intel-oneapi-gpu-support)
+  [Configuration: Intel oneAPI GPU support](#configuration-intel-oneapi-gpu-support)
 * Options not recognized by the UPC\+\+ `configure` script will be passed to
   the GASNet-EX `configure`.  For instance, `--with-mpirun-cmd=...` might be
   required to setup MPI-based launch of ibv-conduit applications.  Please read
