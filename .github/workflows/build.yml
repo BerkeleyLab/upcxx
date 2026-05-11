@@ -1,4 +1,4 @@
-name: Build
+name: Smoke Test
 
 on: 
   push:
@@ -12,10 +12,21 @@ on:
       - '**.md'
   pull_request:
     paths-ignore: *paths_ignore
+  workflow_dispatch:
+    inputs:
+      configure_args:
+        description: 'Additional configure arguments'
+        type: string
+        required: false
+      env_vars:
+        description: 'Environment variable settings'
+        type: string
+        default: 'GASNET_STATSFILE=- GASNET_MALLOC_INIT=1'
+        required: false
 
 concurrency:
   # De-duplicate concurrent workflow runs on the same branch/ref
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ ( github.event_name == 'workflow_dispatch' && github.run_id ) || 'auto' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/develop' }}
 
 jobs:
@@ -105,11 +116,14 @@ jobs:
       COMPILER_VERSION: ${{ matrix.version }}
       CC: ${{ matrix.compiler }}
       CFLAGS: ${{ matrix.extra_flags }}
-      CONFIGURE_ARGS: --disable-mpi-compat --enable-rpath
+      CONFIGURE_ARGS: --disable-mpi-compat --enable-rpath ${{ inputs.configure_args }}
       GASNET_BACKTRACE: 1
       GASNET_SPAWN_VERBOSE: 1
       GASNET_SPAWNFN: L
       GASNET_MASTERIP: 127.0.0.1
+      UPCXX_VERBOSE: 1
+      RANKS: 4
+      MAKE_FLAGS: -j 4
 
     steps:
     - name: Checkout code
@@ -174,15 +188,22 @@ jobs:
           fi
         fi
 
+    - name: Set Workflow Dispatch Environment
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        for setting in ${{ inputs.env_vars }}; do
+          echo $setting >> "$GITHUB_ENV"
+        done
+
     - name: Version info
       run: |
         set +x
-        echo == TOOL VERSIONS ==
-        echo Platform version info:
+        echo == Platform version info ==
         uname -a
         if test -r /etc/os-release ; then grep -e NAME -e VERSION /etc/os-release  ; fi
         if test -x /usr/bin/sw_vers ; then /usr/bin/sw_vers ; fi
         echo
+        echo == Tool version info ==
         echo PATH="$PATH"
         for tool in ${CC} ${CXX} make ; do
           ( echo ; set -x ; w=$(which $tool) ; ls -al $w ; ls -alhL $w ; $tool --version )
@@ -194,18 +215,21 @@ jobs:
 
     - name: make all
       run: |
-        make all
+        make ${MAKE_FLAGS} all
 
     - name: make install
       run: |
-        make install
+        make ${MAKE_FLAGS} install
 
     - name: make test_install
       run: |
-        make test_install
+        make ${MAKE_FLAGS} test_install
 
     - name: make check
       run: |
-        make check
+        if [[ ${RANKS} > 2 ]] ; then
+          export GASNET_SUPERNODE_MAXSIZE=2 
+        fi 
+        make ${MAKE_FLAGS} check
 
 
