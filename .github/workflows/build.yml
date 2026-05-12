@@ -232,8 +232,12 @@ jobs:
 
     - name: make check
       run: |
-        if [[ ${RANKS} > 2 ]] ; then
-          export GASNET_SUPERNODE_MAXSIZE=2 
+        if [[ -z "$GASNET_SUPERNODE_MAXSIZE" ]] ; then
+          if [[ ${RANKS} > 2 ]] ; then
+            export GASNET_SUPERNODE_MAXSIZE=2
+          else
+            export GASNET_SUPERNODE_MAXSIZE=1
+          fi
         fi 
         make ${MAKE_FLAGS} check
 
