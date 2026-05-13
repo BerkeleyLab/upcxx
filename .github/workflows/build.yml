@@ -26,7 +26,7 @@ on:
       env_vars:
         description: 'Environment variable settings'
         type: string
-        default: 'GASNET_STATSFILE=- GASNET_MALLOC_INIT=1'
+        default: ''
         required: false
 
 concurrency:
