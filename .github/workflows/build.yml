@@ -1,4 +1,5 @@
-name: Build
+name: Smoke Test
+run-name: ${{ github.event_name == 'workflow_dispatch' && 'Manual:' || '' }} ${{ inputs.run_name }}
 
 on: 
   push:
@@ -12,10 +13,25 @@ on:
       - '**.md'
   pull_request:
     paths-ignore: *paths_ignore
+  workflow_dispatch:
+    inputs:
+      run_name:
+        description: 'Descriptive name for this run'
+        type: string
+        required: false
+      configure_args:
+        description: 'Additional configure arguments'
+        type: string
+        required: false
+      env_vars:
+        description: 'Environment variable settings'
+        type: string
+        default: ''
+        required: false
 
 concurrency:
   # De-duplicate concurrent workflow runs on the same branch/ref
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ ( github.event_name == 'workflow_dispatch' && github.run_id ) || 'auto' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/develop' }}
 
 jobs:
@@ -24,7 +40,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        shell: bash
+        shell: bash --noprofile --norc -e -x -o pipefail {0}
     strategy:
       fail-fast: false
       matrix:
@@ -100,16 +116,20 @@ jobs:
 
     container:
       image: ${{ matrix.container }}
+      options: --shm-size=2gb
 
     env:
       COMPILER_VERSION: ${{ matrix.version }}
       CC: ${{ matrix.compiler }}
       CFLAGS: ${{ matrix.extra_flags }}
-      CONFIGURE_ARGS: --disable-mpi-compat --enable-rpath
+      CONFIGURE_ARGS: --disable-mpi-compat --enable-rpath ${{ inputs.configure_args }}
       GASNET_BACKTRACE: 1
       GASNET_SPAWN_VERBOSE: 1
       GASNET_SPAWNFN: L
       GASNET_MASTERIP: 127.0.0.1
+      UPCXX_VERBOSE: 1
+      RANKS: 4
+      MAKE_FLAGS: -j 4
 
     steps:
     - name: Checkout code
@@ -118,53 +138,48 @@ jobs:
     - name: Install Ubuntu Native Dependencies
       if: ${{ contains(matrix.os, 'ubuntu') && matrix.container == '' && matrix.compiler == 'gcc' }}
       run: |
-        set -x
         sudo apt update
         #sudo apt list -a 'gcc-*'
         sudo apt install -y build-essential
-        if (( ${COMPILER_VERSION} < 15 )) ; then \
-          sudo apt install -y gcc-${COMPILER_VERSION} ; \
-        else \
-          curl -L https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o install-homebrew.sh ; \
-          chmod +x install-homebrew.sh ; \
-          env CI=1 ./install-homebrew.sh ; \
-          HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew" ; \
-          ${HOMEBREW_PREFIX}/bin/brew install -v gcc@${COMPILER_VERSION} binutils ; \
-          ls -al ${HOMEBREW_PREFIX}/bin ; \
-          echo "PATH=${HOMEBREW_PREFIX}/bin:${PATH}" >> "$GITHUB_ENV" ; \
-          : Homebrew GCC@15 needs binutils 2.44+ ; \
-          HOMEBREW_BINUTILS=$(ls -d ${HOMEBREW_PREFIX}/Cellar/binutils/2.*/bin ) ; \
-          ls -al ${HOMEBREW_BINUTILS} ; \
-          echo "FFLAGS=$FFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV" ; \
-          echo "CFLAGS=$CFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV" ; \
-          echo "CXXFLAGS=$CXXFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV" ; \
+        if (( ${COMPILER_VERSION} < 15 )) ; then
+          sudo apt install -y gcc-${COMPILER_VERSION}
+        else
+          curl -L https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o install-homebrew.sh
+          chmod +x install-homebrew.sh
+          env CI=1 ./install-homebrew.sh
+          HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
+          ${HOMEBREW_PREFIX}/bin/brew install -v gcc@${COMPILER_VERSION} binutils
+          ls -al ${HOMEBREW_PREFIX}/bin
+          echo "PATH=${HOMEBREW_PREFIX}/bin:${PATH}" >> "$GITHUB_ENV"
+          : Homebrew GCC@15 needs binutils 2.44+
+          HOMEBREW_BINUTILS=$(ls -d ${HOMEBREW_PREFIX}/Cellar/binutils/2.*/bin )
+          ls -al ${HOMEBREW_BINUTILS}
+          echo "FFLAGS=$FFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
+          echo "CFLAGS=$CFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=$CXXFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
         fi
 
     - name: Install Ubuntu Container Dependencies
       if: ${{ contains(matrix.os, 'ubuntu') && matrix.container != '' && !contains(matrix.container, 'phhargrove') }}
       run: |
-        set -x
         apt update
         apt install -y build-essential # pkg-config make git curl
 
     - name: Install macOS Dependencies
       if: contains(matrix.os, 'macos') && matrix.version == '12'
       run: |
-        set -x
         brew update
         brew install gcc@12
 
     - name: Install LLVM on macOS
       if: contains(matrix.os, 'macos') && matrix.compiler == 'clang'
       run: |
-        set -x
         brew install llvm@${COMPILER_VERSION} 
         # Prepend homebrew clang to PATH:
         echo "PATH=$(brew --prefix)/opt/llvm/bin:${PATH}" >> "$GITHUB_ENV"
 
     - name: Setup Compilers
       run: |
-        set -x
         if test "$CC" = "clang" ; then
           echo "CXX=clang++" >> "$GITHUB_ENV"
         elif test "$CC" = "icx" ; then 
@@ -179,14 +194,23 @@ jobs:
           fi
         fi
 
+    - name: Set Workflow Dispatch Environment
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        for setting in ${{ inputs.env_vars }}; do
+          echo $setting >> "$GITHUB_ENV"
+        done
+
     - name: Version info
       run: |
-        echo == TOOL VERSIONS ==
-        echo Platform version info:
+        set +x
+        echo == Platform version info ==
         uname -a
         if test -r /etc/os-release ; then grep -e NAME -e VERSION /etc/os-release  ; fi
         if test -x /usr/bin/sw_vers ; then /usr/bin/sw_vers ; fi
+        if test -d /dev/shm ; then df -h /dev/shm ; fi
         echo
+        echo == Tool version info ==
         echo PATH="$PATH"
         for tool in ${CC} ${CXX} make ; do
           ( echo ; set -x ; w=$(which $tool) ; ls -al $w ; ls -alhL $w ; $tool --version )
@@ -194,27 +218,29 @@ jobs:
 
     - name: configure
       run: |
-        set -x
         ./configure --prefix=$PWD/inst ${CONFIGURE_ARGS}
 
     - name: make all
       run: |
-        set -x
-        make all
+        make ${MAKE_FLAGS} all
 
     - name: make install
       run: |
-        set -x
-        make install
+        make ${MAKE_FLAGS} install
 
     - name: make test_install
       run: |
-        set -x
-        make test_install
+        make ${MAKE_FLAGS} test_install
 
     - name: make check
       run: |
-        set -x
-        make check
+        if [[ -z "$GASNET_SUPERNODE_MAXSIZE" ]] ; then
+          if [[ ${RANKS} > 2 ]] ; then
+            export GASNET_SUPERNODE_MAXSIZE=2
+          else
+            export GASNET_SUPERNODE_MAXSIZE=1
+          fi
+        fi 
+        make ${MAKE_FLAGS} check
 
 
