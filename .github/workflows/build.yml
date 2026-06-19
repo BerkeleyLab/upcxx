@@ -46,7 +46,7 @@ jobs:
       matrix:
         os: [ macos-14, macos-15, macos-15-intel, macos-26, macos-26-intel, ubuntu-24.04 ]
         compiler: [ gcc ]
-        version: [ 12, 13, 14, 15 ]
+        version: [ 12, 13, 14, 15, 16 ]
         extra_flags: [ -g ]
 
         include:
@@ -141,7 +141,7 @@ jobs:
         sudo apt update
         #sudo apt list -a 'gcc-*'
         sudo apt install -y build-essential
-        if (( ${COMPILER_VERSION} < 15 )) ; then
+        if [[ ${COMPILER_VERSION} -lt 15 ]] ; then
           sudo apt install -y gcc-${COMPILER_VERSION}
         else
           curl -L https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o install-homebrew.sh
@@ -167,12 +167,17 @@ jobs:
         apt install -y build-essential # pkg-config make git curl
 
     - name: Install macOS Dependencies
-      if: contains(matrix.os, 'macos') && matrix.version == '12'
+      if: contains(matrix.os, 'macos')
       run: |
         # silence Homebrew tap trust warnings:
         (set +e ; brew untap -f aws/tap hashicorp/tap 2>&1 | perl -pe 's/#*.warning./warn: /' ; brew trust azure/bicep )
         brew update
-        brew install gcc@12
+        if [[ "${{ matrix.compiler }}@${{ matrix.version }}" == gcc@12 ]] ; then
+          brew install gcc@12
+        fi
+        if [[ ${{ matrix.compiler }} == 'gcc' && ${COMPILER_VERSION} -gt 15 ]] ; then
+          brew install gcc@${COMPILER_VERSION}
+        fi
 
     - name: Install LLVM on macOS
       if: contains(matrix.os, 'macos') && matrix.compiler == 'clang'
