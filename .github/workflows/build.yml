@@ -199,7 +199,7 @@ jobs:
       if: ${{ contains(matrix.os, 'macos') }}
       run: |
         # silence Homebrew tap trust warnings:
-        (set +e ; brew untap -f aws/tap hashicorp/tap 2>&1 | perl -pe 's/#*.warning./warn: /' ; brew trust azure/bicep )
+        (set +e ; brew untap -f aws/tap hashicorp/tap 2>&1 | perl -pe 's/^::*//;s/^##*//' ; brew trust azure/bicep ; echo )
         # set some Homebrew knobs to accelerate installation
         # but only when we are not simulating the user environment brew-via-install workflow
         if [[ -z "${{ matrix.brew_via_install }}" ]] ; then
@@ -212,8 +212,6 @@ jobs:
     - name: Install macOS Dependencies
       if: contains(matrix.os, 'macos')
       run: |
-        # silence Homebrew tap trust warnings:
-        (set +e ; brew untap -f aws/tap hashicorp/tap 2>&1 | perl -pe 's/#*.warning./warn: /' ; brew trust azure/bicep )
         retry brew update
         if [[ "${{ matrix.compiler }}@${{ matrix.version }}" == gcc@12 ]] ; then
           retry brew install gcc@12 \
