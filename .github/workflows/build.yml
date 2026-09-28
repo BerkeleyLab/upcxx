@@ -124,6 +124,7 @@ jobs:
       CFLAGS: ${{ matrix.extra_flags }}
       CONFIGURE_ARGS: --disable-mpi-compat --enable-rpath ${{ inputs.configure_args }}
       CURL_OPTIONS: --retry 10 --retry-all-errors --fail -L
+      BREW_WARNING_FILTER: 's/^[[:punct:]]*warning[[:punct:]]*(You are using macOS)/warn: \1/i'
       GASNET_BACKTRACE: 1
       GASNET_SPAWN_VERBOSE: 1
       GASNET_SPAWNFN: L
@@ -194,16 +195,19 @@ jobs:
         (set +e ; brew untap -f aws/tap hashicorp/tap 2>&1 | perl -pe 's/#*.warning./warn: /' ; brew trust azure/bicep )
         retry brew update
         if [[ "${{ matrix.compiler }}@${{ matrix.version }}" == gcc@12 ]] ; then
-          retry brew install gcc@12
+          retry brew install gcc@12 \
+              2>&1 | perl -pe "$BREW_WARNING_FILTER" ; test ${PIPESTATUS[0]} = 0
         fi
         if [[ ${{ matrix.compiler }} == 'gcc' && ${COMPILER_VERSION} -gt 15 ]] ; then
-          retry brew install gcc@${COMPILER_VERSION}
+          retry brew install gcc@${COMPILER_VERSION} \
+              2>&1 | perl -pe "$BREW_WARNING_FILTER" ; test ${PIPESTATUS[0]} = 0
         fi
 
     - name: Install LLVM on macOS
       if: contains(matrix.os, 'macos') && matrix.compiler == 'clang'
       run: |
-        retry brew install llvm@${COMPILER_VERSION} 
+        retry brew install llvm@${COMPILER_VERSION} \
+              2>&1 | perl -pe "$BREW_WARNING_FILTER" ; test ${PIPESTATUS[0]} = 0
         # Prepend homebrew clang to PATH:
         echo "PATH=$(brew --prefix)/opt/llvm/bin:${PATH}" >> "$GITHUB_ENV"
 
