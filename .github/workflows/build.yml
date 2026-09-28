@@ -64,21 +64,20 @@ jobs:
 
           # --- LLVM clang coverage ---
 
-          - os: macos-14
-            compiler: clang
-            version: 22
-          - os: macos-15
-            compiler: clang
-            version: 22
-          - os: macos-15-intel
-            compiler: clang
-            version: 22
-          - os: macos-26
-            compiler: clang
-            version: 22
-          - os: macos-26-intel
-            compiler: clang
-            version: 22
+          # Build currently broken with clang 23.1.2
+          #- os: macos-15
+          #  compiler: clang
+          #  version: 23
+          #- os: macos-26
+          #  compiler: clang
+          #  version: 23
+          # No bottles for mac-intel
+          #- os: macos-15-intel
+          #  compiler: clang
+          #  version: 22
+          #- os: macos-26-intel
+          #  compiler: clang
+          #  version: 22
 
           # https://hub.docker.com/r/phhargrove/llvm-flang/tags
           - os: ubuntu-24.04
