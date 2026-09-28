@@ -171,8 +171,8 @@ jobs:
         retry sudo apt update
         #sudo apt list -a 'gcc-*'
         retry sudo apt install -y build-essential
-        if [[ ${COMPILER_VERSION} -lt 15 ]] ; then
-          retry sudo apt install -y gcc-${COMPILER_VERSION}
+        if [[ ${COMPILER_VERSION} -lt 15 ]] || type -p gcc-${COMPILER_VERSION} ; then
+          retry sudo apt install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION}
         else
           curl $CURL_OPTIONS https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o install-homebrew.sh
           chmod +x install-homebrew.sh
