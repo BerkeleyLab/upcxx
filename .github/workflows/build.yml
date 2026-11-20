@@ -186,6 +186,7 @@ jobs:
         retry sudo apt update
         #sudo apt list -a 'gcc-*'
         retry sudo apt install -y build-essential
+        [[ ${{ matrix.compiler }} == 'gcc' ]] # assert no container means gcc
         if [[ ${COMPILER_VERSION} -lt 15 ]] || type -p gcc-${COMPILER_VERSION} ; then
           retry sudo apt install -y gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION}
         else
@@ -200,9 +201,10 @@ jobs:
           : Homebrew GCC@15 needs binutils 2.44+
           HOMEBREW_BINUTILS=$(ls -d ${HOMEBREW_PREFIX}/Cellar/binutils/2.*/bin )
           ls -al ${HOMEBREW_BINUTILS}
-          echo "FFLAGS=$FFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
-          echo "CFLAGS=$CFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
-          echo "CXXFLAGS=$CXXFLAGS -B ${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
+          echo "FFLAGS=${FFLAGS:+"$FFLAGS" }-B${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
+          echo "CFLAGS=${CFLAGS:+"$CFLAGS" }-B${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
+          echo "CXXFLAGS=${CXXFLAGS:+"$CXXFLAGS" }-B${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
+          echo "LDFLAGS=${LDFLAGS:+"$LDFLAGS" }-B${HOMEBREW_BINUTILS}" >> "$GITHUB_ENV"
         fi
 
     - name: Install Ubuntu Container Dependencies
